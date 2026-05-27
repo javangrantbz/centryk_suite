@@ -1,0 +1,69 @@
+<?php
+require_once __DIR__ . '/../core/Auth.php';
+require_once __DIR__ . '/../core/DB.php';
+
+class AuthService
+{
+    public static function me(): array
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return ['authenticated' => false];
+        }
+
+        return [
+            'authenticated' => true,
+            'user'          => $user,
+            'apps'          => self::allAppsWithEnrollment((int)$user['id']),
+        ];
+    }
+
+    public static function accessibleApps(int $userId): array
+    {
+        $stmt = DB::pdo()->prepare(
+            'SELECT a.key, a.label, a.description, a.url_local, a.url_production, a.icon, a.color
+             FROM apps a
+             JOIN user_app_access ua ON ua.app_id = a.id
+             WHERE ua.user_id = :user_id AND a.status = "active"
+             ORDER BY a.sort_order ASC'
+        );
+        $stmt->execute(['user_id' => $userId]);
+        return $stmt->fetchAll();
+    }
+
+    public static function allAppsWithEnrollment(int $userId): array
+    {
+        $stmt = DB::pdo()->prepare(
+            'SELECT a.key, a.label, a.description, a.url_local, a.url_production, a.icon, a.color,
+                    (ua.user_id IS NOT NULL) AS enrolled
+             FROM apps a
+             LEFT JOIN user_app_access ua ON ua.app_id = a.id AND ua.user_id = :user_id
+             WHERE a.status = "active"
+             ORDER BY a.sort_order ASC'
+        );
+        $stmt->execute(['user_id' => $userId]);
+        return $stmt->fetchAll();
+    }
+
+    public static function launchApp(int $userId, string $appKey, string $companyUuid = ''): ?string
+    {
+        $stmt = DB::pdo()->prepare(
+            'SELECT a.url_local FROM apps a
+             JOIN user_app_access ua ON ua.app_id = a.id
+             WHERE ua.user_id = :user_id AND a.key = :app_key AND a.status = "active" LIMIT 1'
+        );
+        $stmt->execute(['user_id' => $userId, 'app_key' => $appKey]);
+        $app = $stmt->fetch();
+
+        if (!$app) {
+            return null;
+        }
+
+        $token = Auth::issueToken($userId, $appKey);
+        $url   = $app['url_local'] . '?sso_token=' . $token;
+        if ($companyUuid !== '') {
+            $url .= '&company_uuid=' . urlencode($companyUuid);
+        }
+        return $url;
+    }
+}

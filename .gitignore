@@ -1,0 +1,14 @@
+# Environment — never commit credentials
+.env
+
+# Claude Code project context
+.claude/
+
+# Composer dependencies
+vendor/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
