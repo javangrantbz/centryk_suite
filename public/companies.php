@@ -212,6 +212,12 @@ $requestedCompanyUuid = trim($_GET['company_uuid'] ?? '');
 
 <!-- Company List View -->
 <div id="listView" class="mx-auto max-w-5xl px-6 py-10">
+    <div class="mb-2">
+        <a href="index.php" class="inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-[0.12em] text-white/35 transition hover:text-white/80">
+            <i data-lucide="arrow-left" class="h-3.5 w-3.5"></i>
+            Back to Dashboard
+        </a>
+    </div>
     <div class="mb-8 flex items-center justify-between">
         <div>
             <h1 class="text-2xl font-black tracking-tight text-white">Companies</h1>
@@ -394,6 +400,7 @@ $requestedCompanyUuid = trim($_GET['company_uuid'] ?? '');
     var pendingRemove   = { companyId: null, userId: null };
     var selectedUuid    = null;
     var requestedCompanyUuid = <?= json_encode($requestedCompanyUuid, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
+    var membersRequestSeq = 0;
 
     // ── User menu ─────────────────────────────────────────────────────────────
     var userMenuBtn = document.getElementById('userMenuBtn');
@@ -473,6 +480,9 @@ $requestedCompanyUuid = trim($_GET['company_uuid'] ?? '');
     }
 
     function showDetailView(company) {
+        if (currentCompany && String(currentCompany.id) === String(company.id)) {
+            return;
+        }
         currentCompany = company;
         document.getElementById('listView').classList.add('hidden');
         document.getElementById('detailView').classList.remove('hidden');
@@ -600,7 +610,9 @@ $requestedCompanyUuid = trim($_GET['company_uuid'] ?? '');
                     document.getElementById('companyPickerLabel').classList.remove('text-slate-400');
                     document.getElementById('companyPickerLabel').classList.add('text-slate-800');
                     requestedCompanyUuid = null;
-                    showDetailView(matchedCompany);
+                    if (!currentCompany || String(currentCompany.id) !== String(matchedCompany.id)) {
+                        showDetailView(matchedCompany);
+                    }
                 }
                 if (window.lucide) { lucide.createIcons(); }
             });
@@ -610,12 +622,16 @@ $requestedCompanyUuid = trim($_GET['company_uuid'] ?? '');
     function loadMembers(companyId) {
         var list    = document.getElementById('membersList');
         var loading = document.getElementById('membersLoading');
+        var requestId = ++membersRequestSeq;
         list.innerHTML = '';
         loading.classList.remove('hidden');
 
         fetch('api/companies/members.php?company_id=' + companyId)
             .then(function (r) { return r.json(); })
             .then(function (data) {
+                if (requestId !== membersRequestSeq || !currentCompany || String(currentCompany.id) !== String(companyId)) {
+                    return;
+                }
                 loading.classList.add('hidden');
                 if (!data.success) { return; }
                 document.getElementById('detailMemberCount').textContent = data.members.length + ' member' + (data.members.length === 1 ? '' : 's');
@@ -711,6 +727,13 @@ $requestedCompanyUuid = trim($_GET['company_uuid'] ?? '');
                 });
 
                 if (window.lucide) { lucide.createIcons(); }
+            })
+            .catch(function () {
+                if (requestId !== membersRequestSeq) {
+                    return;
+                }
+                loading.classList.add('hidden');
+                list.innerHTML = '<div class="px-6 py-6 text-sm font-semibold text-red-400">Could not load members.</div>';
             });
     }
 
