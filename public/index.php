@@ -629,12 +629,6 @@ if ($me['authenticated']) {
             </div>
         </div>
 
-        <!-- Manage Companies shortcut -->
-        <a href="companies.php" class="shrink-0 flex items-center gap-1.5 rounded-xl border border-slate-200 px-2.5 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 hover:border-slate-300">
-            <i data-lucide="settings-2" class="h-3.5 w-3.5"></i>
-            <span class="hidden sm:inline">Manage Companies</span>
-        </a>
-
         <!-- Spacer -->
         <div class="flex-1"></div>
 
@@ -701,19 +695,84 @@ if ($me['authenticated']) {
 <!-- Main -->
 <main class="mx-auto max-w-5xl px-6 py-10">
 
-    <!-- Greeting -->
-    <div class="mb-8">
-        <h1 class="text-2xl font-black tracking-tight text-slate-900">
-            Welcome back, <?= htmlspecialchars($user['first_name']) ?>
-        </h1>
-        <p id="companyContext" class="mt-1 text-sm font-semibold text-slate-400">Select a company above, then open an app.</p>
-        <a id="companyProfileLink"
-           href="companies.php"
-           class="mt-2 hidden inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-[0.12em] text-slate-500 transition hover:text-slate-900">
-            <i data-lucide="users" class="h-3.5 w-3.5"></i>
-            <span id="companyMemberCount">0 members</span>
-            <i data-lucide="arrow-up-right" class="h-3.5 w-3.5"></i>
-        </a>
+    <!-- Company profile card -->
+    <div class="mb-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+
+        <!-- Empty state (no company selected) -->
+        <div id="coCardEmpty" class="px-6 py-5">
+            <h1 class="text-2xl font-black tracking-tight text-slate-900">
+                Welcome back, <?= htmlspecialchars($user['first_name']) ?>
+            </h1>
+            <p id="companyContext" class="mt-1 text-sm font-semibold text-slate-400">Select a company above, then open an app.</p>
+        </div>
+
+        <!-- Filled state (company selected) -->
+        <div id="coCardFilled" class="hidden">
+
+            <!-- Main row -->
+            <div class="flex flex-wrap items-center gap-4 px-6 py-5">
+
+                <!-- Avatar -->
+                <div id="coAvatar" class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-xl font-black text-white select-none">?</div>
+
+                <!-- Name + context -->
+                <div class="flex-1 min-w-0">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span id="coName" class="text-xl font-black tracking-tight text-slate-900 truncate">—</span>
+                        <span id="coRoleBadge" class="rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em]">—</span>
+                    </div>
+                    <p class="mt-0.5 text-sm font-semibold text-slate-400">
+                        Welcome back, <?= htmlspecialchars($user['first_name']) ?> &middot;
+                        <a id="coMemberLink" href="companies.php" class="transition hover:text-slate-700">
+                            <span id="coMemberCount">0</span> members
+                        </a>
+                    </p>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex flex-wrap items-center gap-2 shrink-0">
+                    <a id="coInviteBtn" href="companies.php"
+                       class="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 transition hover:bg-slate-50 hover:border-slate-300">
+                        <i data-lucide="user-plus" class="h-3.5 w-3.5"></i>
+                        <span class="hidden sm:inline">Invite Member</span>
+                    </a>
+                    <a href="companies.php"
+                       class="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 transition hover:bg-slate-50 hover:border-slate-300">
+                        <i data-lucide="building-2" class="h-3.5 w-3.5"></i>
+                        <span class="hidden sm:inline">Manage</span>
+                    </a>
+                    <button disabled title="Coming soon"
+                            class="flex items-center gap-1.5 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-xs font-black text-slate-400 cursor-not-allowed">
+                        <i data-lucide="share-2" class="h-3.5 w-3.5"></i>
+                        <span class="hidden sm:inline">Advertise</span>
+                        <span class="rounded-full bg-violet-100 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] text-violet-500">Soon</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Setup progress (hidden once complete) -->
+            <div id="setupProgressWrap" class="hidden border-t border-slate-100 px-6 py-3.5">
+                <div class="mb-2 flex items-center justify-between">
+                    <p class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Getting Started</p>
+                    <p id="setupProgressLabel" class="text-[10px] font-bold text-slate-400">0 of 3 complete</p>
+                </div>
+                <div class="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                    <div id="setupProgressBar" class="h-1.5 rounded-full bg-violet-500 transition-all duration-500" style="width:0%"></div>
+                </div>
+                <div class="mt-2.5 flex flex-wrap items-center gap-x-5 gap-y-1">
+                    <span id="setupStep1" class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400">
+                        <span class="h-2 w-2 rounded-full bg-slate-200"></span>Company created
+                    </span>
+                    <span id="setupStep2" class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400">
+                        <span class="h-2 w-2 rounded-full bg-slate-200"></span>Team added
+                    </span>
+                    <span id="setupStep3" class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400">
+                        <span class="h-2 w-2 rounded-full bg-slate-200"></span>Apps active
+                    </span>
+                </div>
+            </div>
+
+        </div>
     </div>
 
     <!-- Apps grid -->
@@ -947,11 +1006,7 @@ if ($me['authenticated']) {
     var dropdown     = document.getElementById('companyDropdown');
     var dropdownList = document.getElementById('companyDropdownList');
     var ctxText      = document.getElementById('companyContext');
-    var profileLink  = document.getElementById('companyProfileLink');
-    var memberCount  = document.getElementById('companyMemberCount');
     var noCompNotice = document.getElementById('noCompanyNotice');
-
-    var roleColors = { admin: '#7c3aed', manager: '#2563eb', employee: '#475569' };
 
     function esc(s) {
         return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -984,9 +1039,76 @@ if ($me['authenticated']) {
             pickerLabel.classList.remove('text-slate-400');
             pickerLabel.classList.add('text-slate-800');
             ctxText.textContent = 'Launching as ' + c.name + ' (' + c.role + ')';
-            memberCount.textContent = c.member_count + ' member' + (Number(c.member_count) === 1 ? '' : 's');
-            profileLink.href = 'companies.php' + (selectedUuid ? ('?company_uuid=' + encodeURIComponent(selectedUuid)) : '');
-            profileLink.classList.remove('hidden');
+            // ── Company profile card ──────────────────────────────────────
+            var roleColors = { admin: '#7c3aed', manager: '#2563eb', employee: '#475569', owner: '#0ea5e9' };
+            var rColor = roleColors[c.role] || roleColors.employee;
+
+            var coEmpty  = document.getElementById('coCardEmpty');
+            var coFilled = document.getElementById('coCardFilled');
+            if (coEmpty)  { coEmpty.classList.add('hidden'); }
+            if (coFilled) { coFilled.classList.remove('hidden'); }
+
+            var coAvatar = document.getElementById('coAvatar');
+            if (coAvatar) {
+                coAvatar.textContent = (c.name || '?').charAt(0).toUpperCase();
+                coAvatar.style.background = rColor;
+            }
+            var coNameEl = document.getElementById('coName');
+            if (coNameEl) { coNameEl.textContent = c.name || ''; }
+
+            var coRoleBadge = document.getElementById('coRoleBadge');
+            if (coRoleBadge) {
+                coRoleBadge.textContent = c.role || '';
+                coRoleBadge.style.background = rColor + '22';
+                coRoleBadge.style.color = rColor;
+            }
+
+            var n = Number(c.member_count) || 0;
+            var coMemberCount = document.getElementById('coMemberCount');
+            if (coMemberCount) { coMemberCount.textContent = n; }
+
+            var companiesUrl = 'companies.php' + (selectedUuid ? ('?company_uuid=' + encodeURIComponent(selectedUuid)) : '');
+            var coMemberLink = document.getElementById('coMemberLink');
+            if (coMemberLink) { coMemberLink.href = companiesUrl; }
+            var coInviteBtn  = document.getElementById('coInviteBtn');
+            if (coInviteBtn)  { coInviteBtn.href = companiesUrl; }
+
+            // ── Setup progress ────────────────────────────────────────────
+            var enrolledCount = document.querySelectorAll('.app-card[data-enrolled="1"]').length;
+            var step1Done = true;
+            var step2Done = n > 1;
+            var step3Done = enrolledCount > 0;
+            var stepsComplete = (step1Done ? 1 : 0) + (step2Done ? 1 : 0) + (step3Done ? 1 : 0);
+
+            var progressWrap = document.getElementById('setupProgressWrap');
+            if (progressWrap) {
+                if (stepsComplete < 3) {
+                    progressWrap.classList.remove('hidden');
+                    var pct = Math.round((stepsComplete / 3) * 100);
+                    var bar = document.getElementById('setupProgressBar');
+                    var lbl = document.getElementById('setupProgressLabel');
+                    if (bar) { bar.style.width = pct + '%'; }
+                    if (lbl) { lbl.textContent = stepsComplete + ' of 3 complete'; }
+
+                    function markStep(id, done) {
+                        var el = document.getElementById(id);
+                        if (!el) { return; }
+                        var dot = el.querySelector('span');
+                        if (done) {
+                            el.style.color = '#10b981';
+                            if (dot) { dot.style.background = '#10b981'; }
+                        } else {
+                            el.style.color = '';
+                            if (dot) { dot.style.background = ''; }
+                        }
+                    }
+                    markStep('setupStep1', step1Done);
+                    markStep('setupStep2', step2Done);
+                    markStep('setupStep3', step3Done);
+                } else {
+                    progressWrap.classList.add('hidden');
+                }
+            }
 
             // Update per-app employee counts on each card
             var counts = (c.app_counts && typeof c.app_counts === 'object') ? c.app_counts : {};
@@ -1016,12 +1138,12 @@ if ($me['authenticated']) {
             dropdownList.innerHTML = '<p class="px-4 py-3 text-xs text-slate-400">No companies found.</p>';
             noCompanyNotice.classList.remove('hidden');
             pickerLabel.textContent = 'No companies';
-            profileLink.classList.add('hidden');
             return;
         }
 
+        var _rc = { admin: '#7c3aed', manager: '#2563eb', employee: '#475569', owner: '#0ea5e9' };
         dropdownList.innerHTML = companies.map(function (c) {
-            var color   = roleColors[c.role] || roleColors.employee;
+            var color   = _rc[c.role] || _rc.employee;
             var initial = (c.name || '?').charAt(0).toUpperCase();
             return '<button class="company-option w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-slate-50 transition"' +
                 ' data-id="' + c.id + '">' +
@@ -1044,7 +1166,6 @@ if ($me['authenticated']) {
             selectCompany(companies[0].id);
         } else {
             pickerLabel.textContent = 'Select a company…';
-            profileLink.classList.add('hidden');
             // Dim enrolled app cards until a company is chosen
             document.querySelectorAll('.app-card[data-enrolled="1"]').forEach(function (card) {
                 card.disabled = true;
