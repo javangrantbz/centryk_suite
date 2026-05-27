@@ -256,7 +256,13 @@ $requestedCompanyUuid = trim($_GET['company_uuid'] ?? '');
         <!-- Detail header -->
         <div class="flex items-center justify-between border-b border-white/8 px-6 py-5">
             <div>
-                <h2 id="detailName" class="text-xl font-black tracking-tight text-white"></h2>
+                <div class="flex items-center gap-2">
+                    <h2 id="detailName" class="text-xl font-black tracking-tight text-white"></h2>
+                    <button id="renameCompanyBtn" title="Rename company"
+                            class="hidden flex items-center justify-center rounded-lg p-1 text-white/25 transition hover:bg-white/10 hover:text-white/70">
+                        <i data-lucide="pencil" class="h-3.5 w-3.5"></i>
+                    </button>
+                </div>
                 <div class="mt-1 flex items-center gap-2">
                     <span id="detailRoleBadge" class="rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-[0.12em]"></span>
                     <span id="detailMemberCount" class="text-xs text-white/40"></span>
@@ -295,6 +301,28 @@ $requestedCompanyUuid = trim($_GET['company_uuid'] ?? '');
             <button class="modal-close rounded-xl px-4 py-2.5 text-sm font-bold text-white/40 transition hover:text-white/70">Cancel</button>
             <button id="createCompanyBtn" class="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-black text-white transition hover:bg-blue-500">
                 Create Company
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ─── Rename Company Modal ─── -->
+<div id="renameCompanyModal" class="modal-backdrop fixed inset-0 z-50 hidden items-center justify-center p-4">
+    <div class="w-full max-w-md rounded-[20px] border border-white/10 bg-[#111827] p-6 shadow-2xl">
+        <div class="mb-5 flex items-center justify-between">
+            <h3 class="text-lg font-black text-white">Rename Company</h3>
+            <button class="modal-close text-white/30 transition hover:text-white/70">
+                <i data-lucide="x" class="h-5 w-5"></i>
+            </button>
+        </div>
+        <div id="renameCompanyError" class="mb-3 hidden rounded-xl bg-red-500/15 px-4 py-2.5 text-sm font-semibold text-red-400"></div>
+        <label class="block text-xs font-black uppercase tracking-[0.14em] text-white/40 mb-2">Company Name</label>
+        <input id="renameCompanyInput" type="text" placeholder="Company name"
+            class="w-full rounded-xl border border-white/10 bg-white/6 px-4 py-3 text-sm font-semibold text-white placeholder-white/20 outline-none focus:border-blue-500/50 focus:bg-white/8">
+        <div class="mt-5 flex gap-3 justify-end">
+            <button class="modal-close rounded-xl px-4 py-2.5 text-sm font-bold text-white/40 transition hover:text-white/70">Cancel</button>
+            <button id="saveRenameBtn" class="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-black text-white transition hover:bg-blue-500">
+                Save
             </button>
         </div>
     </div>
@@ -495,8 +523,10 @@ $requestedCompanyUuid = trim($_GET['company_uuid'] ?? '');
 
         if (company.role === 'admin') {
             document.getElementById('addMemberBtn').classList.remove('hidden');
+            document.getElementById('renameCompanyBtn').classList.remove('hidden');
         } else {
             document.getElementById('addMemberBtn').classList.add('hidden');
+            document.getElementById('renameCompanyBtn').classList.add('hidden');
         }
 
         loadMembers(company.id);
@@ -764,6 +794,69 @@ $requestedCompanyUuid = trim($_GET['company_uuid'] ?? '');
             if (!data.success) { errEl.textContent = data.message; errEl.classList.remove('hidden'); return; }
             closeModal('newCompanyModal');
             loadCompanies();
+        });
+    });
+
+    // ── Rename company ────────────────────────────────────────────────────────
+    document.getElementById('renameCompanyBtn').addEventListener('click', function () {
+        var modal = document.getElementById('renameCompanyModal');
+        var input = document.getElementById('renameCompanyInput');
+        var err   = document.getElementById('renameCompanyError');
+        input.value = currentCompany ? currentCompany.name : '';
+        err.classList.add('hidden');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        setTimeout(function () { input.focus(); input.select(); }, 50);
+    });
+
+    document.getElementById('saveRenameBtn').addEventListener('click', function () {
+        var modal = document.getElementById('renameCompanyModal');
+        var input = document.getElementById('renameCompanyInput');
+        var err   = document.getElementById('renameCompanyError');
+        var btn   = document.getElementById('saveRenameBtn');
+        var name  = input.value.trim();
+
+        if (!name) {
+            err.textContent = 'Company name cannot be empty.';
+            err.classList.remove('hidden');
+            return;
+        }
+        if (!currentCompany) { return; }
+
+        btn.disabled    = true;
+        btn.textContent = 'Saving…';
+        err.classList.add('hidden');
+
+        fetch('api/companies/rename.php', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ company_id: currentCompany.id, name: name }),
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            btn.disabled    = false;
+            btn.textContent = 'Save';
+            if (data.success) {
+                currentCompany.name = name;
+                document.getElementById('detailName').textContent = name;
+                // Update company card and picker label if this is the selected company
+                var pickerLbl = document.getElementById('companyPickerLabel');
+                if (pickerLbl && pickerLbl.textContent !== 'Select a company…' && pickerLbl.textContent !== 'No companies') {
+                    pickerLbl.textContent = name;
+                }
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                loadCompanies();
+            } else {
+                err.textContent = data.message || 'Could not rename company.';
+                err.classList.remove('hidden');
+            }
+        })
+        .catch(function () {
+            btn.disabled    = false;
+            btn.textContent = 'Save';
+            err.textContent = 'Network error. Please try again.';
+            err.classList.remove('hidden');
         });
     });
 
