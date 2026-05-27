@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../app/core/Auth.php';
+require_once __DIR__ . '/../app/core/DB.php';
 require_once __DIR__ . '/../app/services/AuthService.php';
 
 // ── Maintenance mode — set to false to re-open the site ──────────────────────
@@ -13,9 +14,29 @@ if (in_array(trim(explode(',', $visitor_ip)[0]), $maintenance_whitelist)) {
 Auth::start();
 $me = AuthService::me();
 
+$showOnboarding    = false;
+$hasDefaultPassword = false;
 if ($me['authenticated']) {
     $user = $me['user'];
     $apps = $me['apps'];
+
+    // Check if onboarding modal should be shown
+    try {
+        $obRow = DB::pdo()->prepare(
+            "SELECT onboarding_seen, password FROM users WHERE id = :id LIMIT 1"
+        );
+        $obRow->execute(['id' => $user['id']]);
+        $obData = $obRow->fetch(PDO::FETCH_ASSOC);
+        if ($obData) {
+            $hasDefaultPassword = (
+                password_verify('password',    $obData['password']) ||
+                password_verify('password123', $obData['password'])
+            );
+            $showOnboarding = (!(int)$obData['onboarding_seen']) || $hasDefaultPassword;
+        }
+    } catch (Exception $e) {
+        $showOnboarding = false;
+    }
 }
 ?>
 <!doctype html>
@@ -790,6 +811,107 @@ if ($me['authenticated']) {
 <!-- Toast -->
 <div id="toastWrap" class="pointer-events-none fixed bottom-6 left-1/2 z-[60] flex -translate-x-1/2 flex-col items-center gap-2"></div>
 
+<?php if ($showOnboarding): ?>
+<!-- ── Onboarding modal ── -->
+<div id="onboardingModal" class="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+    <div class="relative w-full max-w-lg rounded-3xl bg-white shadow-2xl overflow-hidden">
+
+        <!-- Top gradient bar -->
+        <div class="h-[3px] w-full bg-gradient-to-r from-purple-600 via-blue-500 to-orange-500"></div>
+
+        <div class="px-8 py-8">
+            <!-- Header -->
+            <div class="mb-6 text-center">
+                <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-900">
+                    <svg viewBox="0 0 24 24" fill="white" class="h-7 w-7">
+                        <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+                        <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+                        <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+                        <rect x="14" y="14" width="7" height="7" rx="1.5"/>
+                    </svg>
+                </div>
+                <h2 class="text-2xl font-black tracking-tight text-slate-900">Welcome to Centryk</h2>
+                <?php if ($hasDefaultPassword): ?>
+                <p class="mt-1.5 text-sm font-semibold text-slate-500">Your account is ready — finish setting it up below.</p>
+                <?php else: ?>
+                <p class="mt-1.5 text-sm font-semibold text-slate-500">Let's get you set up in a few quick steps.</p>
+                <?php endif; ?>
+            </div>
+
+            <?php if ($hasDefaultPassword): ?>
+            <!-- Default password warning -->
+            <div class="mb-5 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3.5">
+                <svg class="mt-0.5 h-4 w-4 shrink-0 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                </svg>
+                <div>
+                    <p class="text-xs font-black text-amber-800">Your password is still set to the default.</p>
+                    <p class="mt-0.5 text-xs font-semibold text-amber-700">Please change it now to keep your account secure.</p>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- Steps -->
+            <div class="mb-6 space-y-4">
+                <!-- Step 1 -->
+                <div class="flex items-start gap-4">
+                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-900 text-sm font-black text-white">1</div>
+                    <div class="flex-1 pt-1">
+                        <p class="text-sm font-black text-slate-900">Create Your Account</p>
+                        <p class="mt-0.5 text-xs font-semibold text-slate-500">Your account has already been created — welcome aboard!</p>
+                    </div>
+                    <svg class="mt-1 h-5 w-5 shrink-0 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                    </svg>
+                </div>
+                <!-- Step 2 -->
+                <div class="flex items-start gap-4">
+                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-black text-white">2</div>
+                    <div class="flex-1 pt-1">
+                        <p class="text-sm font-black text-slate-900">Set Up Your Business</p>
+                        <p class="mt-0.5 text-xs font-semibold text-slate-500">Add your stores, products, employees, or payroll information depending on the apps you'll use.</p>
+                    </div>
+                </div>
+                <!-- Step 3 -->
+                <div class="flex items-start gap-4">
+                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-slate-200 text-sm font-black text-slate-400">3</div>
+                    <div class="flex-1 pt-1">
+                        <p class="text-sm font-black text-slate-400">Start Using Your Tools</p>
+                        <p class="mt-0.5 text-xs font-semibold text-slate-400">Access OnePay for inventory &amp; POS or MyPay for payroll and HR management.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex flex-col gap-2.5">
+                <?php if ($hasDefaultPassword): ?>
+                <a href="profile.php" id="onboardingChangePwBtn"
+                   class="flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-black text-white transition hover:bg-slate-800">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                    </svg>
+                    Change My Password
+                </a>
+                <button id="onboardingDismissBtn"
+                        class="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-500 transition hover:bg-slate-50">
+                    Remind me later
+                </button>
+                <?php else: ?>
+                <button id="onboardingDismissBtn"
+                        class="flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-black text-white transition hover:bg-slate-800">
+                    Got it — let's go
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5-5 5M6 12h12"/>
+                    </svg>
+                </button>
+                <?php endif; ?>
+            </div>
+        </div>
+
+    </div>
+</div>
+<?php endif; ?>
+
 <!-- Launch overlay -->
 <div id="launchOverlay" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 backdrop-blur-sm">
     <div class="flex items-center gap-3 rounded-2xl bg-white px-8 py-5 shadow-2xl">
@@ -978,6 +1100,24 @@ if ($me['authenticated']) {
     });
 
     loadCompanies();
+
+    // ── Onboarding modal dismiss ──────────────────────────────────────────────
+    var onboardingModal   = document.getElementById('onboardingModal');
+    var onboardingDismiss = document.getElementById('onboardingDismissBtn');
+
+    if (onboardingDismiss) {
+        onboardingDismiss.addEventListener('click', function () {
+            if (onboardingModal) { onboardingModal.style.display = 'none'; }
+            fetch('api/auth/onboarding-dismiss.php', { method: 'POST' }).catch(function () {});
+        });
+    }
+    // Clicking password-change link also dismisses
+    var onboardingChangePw = document.getElementById('onboardingChangePwBtn');
+    if (onboardingChangePw) {
+        onboardingChangePw.addEventListener('click', function () {
+            fetch('api/auth/onboarding-dismiss.php', { method: 'POST' }).catch(function () {});
+        });
+    }
 }());
 </script>
 
