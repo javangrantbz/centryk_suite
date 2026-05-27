@@ -11,6 +11,7 @@ $userApps = AuthService::allAppsWithEnrollment((int)$user['id']);
 $fullName = htmlspecialchars($user['first_name'] . ' ' . $user['last_name']);
 $initial  = strtoupper(substr($user['first_name'], 0, 1));
 $email    = htmlspecialchars($user['email']);
+$requestedCompanyUuid = trim($_GET['company_uuid'] ?? '');
 ?>
 <!doctype html>
 <html lang="en">
@@ -392,6 +393,7 @@ $email    = htmlspecialchars($user['email']);
     var currentCompany  = null;
     var pendingRemove   = { companyId: null, userId: null };
     var selectedUuid    = null;
+    var requestedCompanyUuid = <?= json_encode($requestedCompanyUuid, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
 
     // ── User menu ─────────────────────────────────────────────────────────────
     var userMenuBtn = document.getElementById('userMenuBtn');
@@ -573,6 +575,7 @@ $email    = htmlspecialchars($user['email']);
                     return;
                 }
                 empty.classList.add('hidden');
+                var matchedCompany = null;
                 data.companies.forEach(function (c) {
                     var card = document.createElement('button');
                     card.className = 'group flex flex-col rounded-2xl border border-white/10 bg-[#111827] p-5 text-left transition hover:border-white/20 hover:bg-[#161f2e] active:scale-[0.98]';
@@ -587,7 +590,18 @@ $email    = htmlspecialchars($user['email']);
                         '</div>';
                     card.addEventListener('click', function () { showDetailView(c); });
                     grid.appendChild(card);
+                    if (requestedCompanyUuid && c.uuid === requestedCompanyUuid) {
+                        matchedCompany = c;
+                    }
                 });
+                if (matchedCompany) {
+                    selectedUuid = matchedCompany.uuid || null;
+                    document.getElementById('companyPickerLabel').textContent = matchedCompany.name;
+                    document.getElementById('companyPickerLabel').classList.remove('text-slate-400');
+                    document.getElementById('companyPickerLabel').classList.add('text-slate-800');
+                    requestedCompanyUuid = null;
+                    showDetailView(matchedCompany);
+                }
                 if (window.lucide) { lucide.createIcons(); }
             });
     }

@@ -707,6 +707,13 @@ if ($me['authenticated']) {
             Welcome back, <?= htmlspecialchars($user['first_name']) ?>
         </h1>
         <p id="companyContext" class="mt-1 text-sm font-semibold text-slate-400">Select a company above, then open an app.</p>
+        <a id="companyProfileLink"
+           href="companies.php"
+           class="mt-2 hidden inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-[0.12em] text-slate-500 transition hover:text-slate-900">
+            <i data-lucide="users" class="h-3.5 w-3.5"></i>
+            <span id="companyMemberCount">0 members</span>
+            <i data-lucide="arrow-up-right" class="h-3.5 w-3.5"></i>
+        </a>
     </div>
 
     <!-- Apps grid -->
@@ -934,6 +941,8 @@ if ($me['authenticated']) {
     var dropdown     = document.getElementById('companyDropdown');
     var dropdownList = document.getElementById('companyDropdownList');
     var ctxText      = document.getElementById('companyContext');
+    var profileLink  = document.getElementById('companyProfileLink');
+    var memberCount  = document.getElementById('companyMemberCount');
     var noCompNotice = document.getElementById('noCompanyNotice');
 
     var roleColors = { admin: '#7c3aed', manager: '#2563eb', employee: '#475569' };
@@ -969,6 +978,9 @@ if ($me['authenticated']) {
             pickerLabel.classList.remove('text-slate-400');
             pickerLabel.classList.add('text-slate-800');
             ctxText.textContent = 'Launching as ' + c.name + ' (' + c.role + ')';
+            memberCount.textContent = c.member_count + ' member' + (Number(c.member_count) === 1 ? '' : 's');
+            profileLink.href = 'companies.php' + (selectedUuid ? ('?company_uuid=' + encodeURIComponent(selectedUuid)) : '');
+            profileLink.classList.remove('hidden');
         }
         dropdown.classList.add('hidden');
         // Re-enable enrolled app cards only
@@ -983,6 +995,7 @@ if ($me['authenticated']) {
             dropdownList.innerHTML = '<p class="px-4 py-3 text-xs text-slate-400">No companies found.</p>';
             noCompanyNotice.classList.remove('hidden');
             pickerLabel.textContent = 'No companies';
+            profileLink.classList.add('hidden');
             return;
         }
 
@@ -1010,6 +1023,7 @@ if ($me['authenticated']) {
             selectCompany(companies[0].id);
         } else {
             pickerLabel.textContent = 'Select a company…';
+            profileLink.classList.add('hidden');
             // Dim enrolled app cards until a company is chosen
             document.querySelectorAll('.app-card[data-enrolled="1"]').forEach(function (card) {
                 card.disabled = true;
