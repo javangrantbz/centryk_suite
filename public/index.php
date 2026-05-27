@@ -381,6 +381,10 @@ if ($me['authenticated']) {
                     </button>
                 </form>
                 <div id="reqAlert" class="mt-3 hidden rounded-xl p-3 text-xs font-semibold"></div>
+                <p class="mt-3 flex items-center gap-1.5 text-[11px] font-semibold text-slate-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 shrink-0 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    We'll review your request and reach out within 24 hours.
+                </p>
             </div>
 
             <div class="mt-4 flex flex-wrap items-center justify-center gap-4">
