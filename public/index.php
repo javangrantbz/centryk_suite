@@ -210,7 +210,49 @@ if ($me['authenticated']) {
                     <h1 class="max-w-sm text-[2rem] font-black leading-[1.05] tracking-tight text-slate-950">
                         Run your business.<br>All in one place.
                     </h1>
-                    <p class="mt-2 text-sm font-semibold text-slate-500">One login. Two powerful apps. Built for businesses in Belize.</p>
+                </div>
+
+                <!-- 3-step onboarding -->
+                <div>
+                    <p class="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Get started in 3 easy steps</p>
+                    <div class="flex flex-col gap-0">
+
+                        <!-- Step 1 -->
+                        <div class="flex gap-3">
+                            <div class="flex flex-col items-center">
+                                <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-900 text-[11px] font-black text-white">1</span>
+                                <div class="mt-1 w-px flex-1 bg-slate-200"></div>
+                            </div>
+                            <div class="pb-4">
+                                <p class="text-sm font-black text-slate-900">Create your account</p>
+                                <p class="mt-0.5 text-xs font-semibold leading-relaxed text-slate-500">Enter your company email, name, and business name to get instant access.</p>
+                            </div>
+                        </div>
+
+                        <!-- Step 2 -->
+                        <div class="flex gap-3">
+                            <div class="flex flex-col items-center">
+                                <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[11px] font-black text-slate-500 ring-1 ring-slate-200">2</span>
+                                <div class="mt-1 w-px flex-1 bg-slate-200"></div>
+                            </div>
+                            <div class="pb-4">
+                                <p class="text-sm font-black text-slate-900">Set up your business</p>
+                                <p class="mt-0.5 text-xs font-semibold leading-relaxed text-slate-500">Add your stores, products, employees, or payroll information depending on the app you'll use.</p>
+                            </div>
+                        </div>
+
+                        <!-- Step 3 -->
+                        <div class="flex gap-3">
+                            <div class="flex flex-col items-center">
+                                <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[11px] font-black text-slate-500 ring-1 ring-slate-200">3</span>
+                            </div>
+                            <div class="pb-1">
+                                <p class="text-sm font-black text-slate-900">Start using your tools</p>
+                                <p class="mt-0.5 text-xs font-semibold leading-relaxed text-slate-500">Access OnePay for inventory &amp; POS or MyPay for payroll and HR management.</p>
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
 
                 <div class="h-px w-full bg-slate-200"></div>
