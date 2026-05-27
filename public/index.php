@@ -832,16 +832,9 @@ if ($me['authenticated']) {
                     <?= htmlspecialchars($app['description']) ?>
                 </p>
                 <?php if ($enrolled): ?>
-                <div id="app-count-<?= htmlspecialchars($app['key']) ?>" class="app-count-badge mt-3 hidden items-center gap-1.5 text-[11px] font-bold text-slate-400">
-                    <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0Z"/>
-                    </svg>
-                    <span class="app-count-num">—</span>
-                </div>
-                <div class="mt-3 flex items-center justify-between rounded-xl px-3 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-white"
-                     style="background:<?= htmlspecialchars($app['color']) ?>">
-                    Open <?= htmlspecialchars($app['label']) ?>
-                    <i data-lucide="arrow-right" class="h-3.5 w-3.5"></i>
+                <div id="app-count-<?= htmlspecialchars($app['key']) ?>" class="app-count-badge mt-3 flex items-center gap-1.5">
+                    <span class="app-count-dot inline-block h-1.5 w-1.5 rounded-full bg-slate-300"></span>
+                    <span class="app-count-num text-[11px] font-bold text-slate-400">0 active users</span>
                 </div>
                 <?php else: ?>
                 <div class="mt-4 flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] bg-slate-200 text-slate-400">
@@ -850,6 +843,12 @@ if ($me['authenticated']) {
                 </div>
                 <?php endif; ?>
             </div>
+            <?php if ($enrolled): ?>
+            <div class="flex items-center justify-between border-t border-slate-100 px-5 py-3 text-xs font-bold text-slate-500 transition-colors group-hover:text-slate-800">
+                <span>Launch <?= htmlspecialchars($app['label']) ?></span>
+                <i data-lucide="arrow-right" class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"></i>
+            </div>
+            <?php endif; ?>
         </button>
         <?php endforeach; ?>
 
@@ -1127,14 +1126,21 @@ if ($me['authenticated']) {
             document.querySelectorAll('.app-count-badge').forEach(function (badge) {
                 var appKey = badge.id.replace('app-count-', '');
                 var n = counts[appKey];
+                var count = (n !== undefined && n !== null) ? parseInt(n, 10) : 0;
                 var numEl = badge.querySelector('.app-count-num');
+                var dotEl = badge.querySelector('.app-count-dot');
                 if (numEl) {
-                    numEl.textContent = (n !== undefined && n !== null)
-                        ? (n === 1 ? '1 active user' : n + ' active users')
-                        : 'No users yet';
+                    numEl.textContent = count === 1 ? '1 active user' : count + ' active users';
                 }
-                badge.classList.remove('hidden');
-                badge.classList.add('flex');
+                if (dotEl) {
+                    if (count > 0) {
+                        dotEl.className = 'app-count-dot inline-block h-1.5 w-1.5 rounded-full bg-emerald-400';
+                        numEl && (numEl.className = 'app-count-num text-[11px] font-bold text-emerald-600');
+                    } else {
+                        dotEl.className = 'app-count-dot inline-block h-1.5 w-1.5 rounded-full bg-slate-300';
+                        numEl && (numEl.className = 'app-count-num text-[11px] font-bold text-slate-400');
+                    }
+                }
             });
         }
         dropdown.classList.add('hidden');
