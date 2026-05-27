@@ -353,12 +353,20 @@ if ($me['authenticated']) {
                 </button>
             </form>
 
+            <!-- Divider -->
+            <div class="my-4 flex items-center gap-3">
+                <div class="h-px flex-1 bg-slate-200"></div>
+                <span class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">or</span>
+                <div class="h-px flex-1 bg-slate-200"></div>
+            </div>
+
             <!-- Account request -->
-            <div class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div class="flex items-center gap-2">
-                    <span class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Need an account?</span>
-                    <span class="rounded-full bg-emerald-500 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.12em] text-white">Free</span>
+            <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div class="flex items-start justify-between gap-2 mb-0.5">
+                    <h3 class="text-base font-black tracking-tight text-slate-900">Are you a business in Belize?</h3>
+                    <span class="mt-0.5 shrink-0 rounded-full bg-emerald-500 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.12em] text-white">Free</span>
                 </div>
+                <p class="mb-3 text-xs font-semibold text-slate-500">Get started free — no credit card required.</p>
                 <form id="requestForm" class="mt-3 flex flex-col gap-2">
                     <div class="grid gap-2 sm:grid-cols-2">
                         <input id="reqEmail" type="email" required placeholder="you@company.com"
