@@ -23,7 +23,7 @@ if ($me['authenticated']) {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Centryk — Run your business. All in one place.</title>
+    <title>Centryk — Built for Belize. Built for business.</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
@@ -208,8 +208,9 @@ if ($me['authenticated']) {
                 <!-- Tagline -->
                 <div>
                     <h1 class="max-w-sm text-[2rem] font-black leading-[1.05] tracking-tight text-slate-950">
-                        Run your business.<br>All in one place.
+                        Built for Belize.<br>Built for business.
                     </h1>
+                    <p class="mt-2 text-sm font-semibold text-slate-500">The business platform Belize was waiting for.</p>
                 </div>
 
                 <!-- 3-step onboarding -->
