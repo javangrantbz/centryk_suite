@@ -118,12 +118,6 @@ $requestedCompanyUuid = trim($_GET['company_uuid'] ?? '');
             </div>
         </div>
 
-        <!-- Manage Companies — active state since we're already on this page -->
-        <span class="shrink-0 flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-2.5 py-2 text-xs font-black uppercase tracking-[0.12em] text-blue-600 select-none">
-            <i data-lucide="settings-2" class="h-3.5 w-3.5"></i>
-            <span class="hidden sm:inline">Manage Companies</span>
-        </span>
-
         <!-- App switcher (waffle dots) -->
         <div class="relative shrink-0" id="appSwitcherWrapper">
             <button id="appSwitcherBtn" title="Launch app"

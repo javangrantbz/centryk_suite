@@ -626,6 +626,18 @@ if ($me['authenticated']) {
                     <p class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Your Companies</p>
                 </div>
                 <div id="companyDropdownList" class="max-h-64 overflow-y-auto py-1.5"></div>
+                <div class="border-t border-slate-100">
+                    <button id="btnCreateCompanyFromDropdown" class="w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition hover:bg-indigo-50 group">
+                        <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100 transition">
+                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                        </span>
+                        <span class="text-sm font-bold text-indigo-600 group-hover:text-indigo-700">Create a new Company Profile</span>
+                    </button>
+                    <a href="companies.php" class="flex items-center justify-between px-3 py-2 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition border-t border-slate-50">
+                        <span>Manage all companies</span>
+                        <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                    </a>
+                </div>
             </div>
         </div>
 
@@ -1257,6 +1269,10 @@ if ($me['authenticated']) {
 
     loadCompanies();
 
+    // Expose for cross-script use (create company modal)
+    window._ctrykLoadCompanies  = loadCompanies;
+    window._ctrykSelectCompany  = selectCompany;
+
     // ── Onboarding modal dismiss ──────────────────────────────────────────────
     var onboardingModal   = document.getElementById('onboardingModal');
     var onboardingDismiss = document.getElementById('onboardingDismissBtn');
@@ -1278,6 +1294,120 @@ if ($me['authenticated']) {
 </script>
 
 <?php endif; ?>
+
+<!-- ── Create Company Modal ── -->
+<div id="createCompanyModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+    <div class="relative w-full max-w-sm rounded-3xl bg-white shadow-2xl overflow-hidden">
+        <div class="px-6 pt-6 pb-5">
+            <div class="flex items-center justify-between mb-5">
+                <div>
+                    <h2 class="text-lg font-black text-slate-900">New Company Profile</h2>
+                    <p class="text-xs text-slate-400 mt-0.5">You'll be the admin of this company.</p>
+                </div>
+                <button id="btnCloseCreateCompany" class="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div id="createCompanyError" class="hidden mb-3 rounded-xl bg-red-50 border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600"></div>
+            <label class="block text-xs font-black uppercase tracking-[0.14em] text-slate-500 mb-1.5">Company Name</label>
+            <input id="createCompanyName" type="text" placeholder="e.g. BHI Limited"
+                class="w-full rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-500 focus:bg-white transition">
+            <div class="mt-5 flex gap-2">
+                <button id="btnCancelCreateCompany" class="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">Cancel</button>
+                <button id="btnSubmitCreateCompany" class="flex-1 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-black text-white hover:bg-indigo-700 transition">Create Company</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var modal   = document.getElementById('createCompanyModal');
+    var nameIn  = document.getElementById('createCompanyName');
+    var errEl   = document.getElementById('createCompanyError');
+    var submitBtn = document.getElementById('btnSubmitCreateCompany');
+
+    function openCreateModal() {
+        if (!modal) return;
+        nameIn.value = '';
+        errEl.classList.add('hidden');
+        errEl.textContent = '';
+        submitBtn.textContent = 'Create Company';
+        submitBtn.disabled = false;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        // close dropdown
+        var dd = document.getElementById('companyDropdown');
+        if (dd) { dd.classList.add('hidden'); }
+        setTimeout(function () { nameIn.focus(); }, 50);
+    }
+
+    function closeCreateModal() {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    document.getElementById('btnCreateCompanyFromDropdown').addEventListener('click', openCreateModal);
+    document.getElementById('btnCloseCreateCompany').addEventListener('click', closeCreateModal);
+    document.getElementById('btnCancelCreateCompany').addEventListener('click', closeCreateModal);
+
+    modal.addEventListener('click', function (e) {
+        if (e.target === modal) closeCreateModal();
+    });
+
+    nameIn.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); submitBtn.click(); }
+    });
+
+    submitBtn.addEventListener('click', function () {
+        var name = nameIn.value.trim();
+        if (!name) {
+            errEl.textContent = 'Company name is required.';
+            errEl.classList.remove('hidden');
+            nameIn.focus();
+            return;
+        }
+        errEl.classList.add('hidden');
+        submitBtn.textContent = 'Creating…';
+        submitBtn.disabled = true;
+
+        fetch('api/companies/create.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: name })
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (!data.success) {
+                errEl.textContent = data.message || 'Could not create company.';
+                errEl.classList.remove('hidden');
+                submitBtn.textContent = 'Create Company';
+                submitBtn.disabled = false;
+                return;
+            }
+            closeCreateModal();
+            // reload company list, then auto-select the new company
+            var newId = data.id;
+            if (typeof window._ctrykLoadCompanies === 'function') {
+                window._ctrykLoadCompanies();
+                // give loadCompanies a tick to finish, then select
+                setTimeout(function () {
+                    if (newId && typeof window._ctrykSelectCompany === 'function') {
+                        window._ctrykSelectCompany(newId);
+                    }
+                    if (window.lucide) lucide.createIcons();
+                }, 350);
+            }
+        })
+        .catch(function () {
+            errEl.textContent = 'Network error. Please try again.';
+            errEl.classList.remove('hidden');
+            submitBtn.textContent = 'Create Company';
+            submitBtn.disabled = false;
+        });
+    });
+}());
+</script>
 
 <script src="https://unpkg.com/lucide@latest"></script>
 <script>
