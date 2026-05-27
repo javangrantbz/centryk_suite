@@ -761,7 +761,13 @@ if ($me['authenticated']) {
                     <?= htmlspecialchars($app['description']) ?>
                 </p>
                 <?php if ($enrolled): ?>
-                <div class="mt-4 flex items-center justify-between rounded-xl px-3 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-white"
+                <div id="app-count-<?= htmlspecialchars($app['key']) ?>" class="app-count-badge mt-3 hidden items-center gap-1.5 text-[11px] font-bold text-slate-400">
+                    <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0Z"/>
+                    </svg>
+                    <span class="app-count-num">—</span>
+                </div>
+                <div class="mt-3 flex items-center justify-between rounded-xl px-3 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-white"
                      style="background:<?= htmlspecialchars($app['color']) ?>">
                     Open <?= htmlspecialchars($app['label']) ?>
                     <i data-lucide="arrow-right" class="h-3.5 w-3.5"></i>
@@ -981,6 +987,21 @@ if ($me['authenticated']) {
             memberCount.textContent = c.member_count + ' member' + (Number(c.member_count) === 1 ? '' : 's');
             profileLink.href = 'companies.php' + (selectedUuid ? ('?company_uuid=' + encodeURIComponent(selectedUuid)) : '');
             profileLink.classList.remove('hidden');
+
+            // Update per-app employee counts on each card
+            var counts = (c.app_counts && typeof c.app_counts === 'object') ? c.app_counts : {};
+            document.querySelectorAll('.app-count-badge').forEach(function (badge) {
+                var appKey = badge.id.replace('app-count-', '');
+                var n = counts[appKey];
+                var numEl = badge.querySelector('.app-count-num');
+                if (numEl) {
+                    numEl.textContent = (n !== undefined && n !== null)
+                        ? (n === 1 ? '1 active user' : n + ' active users')
+                        : 'No users yet';
+                }
+                badge.classList.remove('hidden');
+                badge.classList.add('flex');
+            });
         }
         dropdown.classList.add('hidden');
         // Re-enable enrolled app cards only
