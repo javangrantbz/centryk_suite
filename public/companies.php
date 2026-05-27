@@ -246,10 +246,10 @@ $requestedCompanyUuid = trim($_GET['company_uuid'] ?? '');
 <!-- Company Detail View (hidden initially) -->
 <div id="detailView" class="hidden mx-auto max-w-5xl px-6 py-10">
     <div class="mb-6 flex items-center gap-3">
-        <button id="backBtn" class="flex items-center gap-1.5 text-xs font-black uppercase tracking-[0.12em] text-white/35 transition hover:text-white/80">
+        <a href="index.php" class="flex items-center gap-1.5 text-xs font-black uppercase tracking-[0.12em] text-white/35 transition hover:text-white/80">
             <i data-lucide="arrow-left" class="h-3.5 w-3.5"></i>
-            Back
-        </button>
+            Back to Dashboard
+        </a>
     </div>
 
     <div class="overflow-hidden rounded-[24px] border border-white/10 bg-[#111827]">
@@ -831,11 +831,6 @@ $requestedCompanyUuid = trim($_GET['company_uuid'] ?? '');
         });
     });
 
-    // ── Back button ───────────────────────────────────────────────────────────
-    document.getElementById('backBtn').addEventListener('click', function () {
-        showListView();
-        loadCompanies();
-    });
 
     // ── Escape key closes modals ──────────────────────────────────────────────
     document.addEventListener('keydown', function (e) {
