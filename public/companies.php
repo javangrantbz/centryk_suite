@@ -344,10 +344,23 @@ $requestedCompanyUuid = trim($_GET['company_uuid'] ?? '');
         <div id="addMemberError" class="mb-3 hidden rounded-xl bg-red-500/15 px-4 py-2.5 text-sm font-semibold text-red-400"></div>
 
         <div class="space-y-3">
-            <div>
+            <div id="inviteEmailWrap">
                 <label class="block text-xs font-black uppercase tracking-[0.14em] text-white/40 mb-2">Email Address</label>
                 <input id="inviteEmail" type="email" placeholder="employee@example.com"
                     class="w-full rounded-xl border border-white/10 bg-white/6 px-4 py-3 text-sm font-semibold text-white placeholder-white/20 outline-none focus:border-blue-500/50 focus:bg-white/8">
+                <button type="button" id="inviteNoEmailToggle" class="mt-2 text-[11px] font-bold text-blue-400 transition hover:text-blue-300">
+                    No email address? Create with username instead →
+                </button>
+            </div>
+
+            <div id="inviteUsernameWrap" class="hidden">
+                <label class="block text-xs font-black uppercase tracking-[0.14em] text-white/40 mb-2">Username</label>
+                <input id="inviteUsername" type="text" placeholder="john.doe"
+                    class="w-full rounded-xl border border-white/10 bg-white/6 px-4 py-3 text-sm font-semibold text-white placeholder-white/20 outline-none focus:border-blue-500/50 focus:bg-white/8">
+                <p class="mt-2 text-[11px] text-white/40 font-semibold">Login: <span id="inviteUsernamePreview" class="font-mono text-white/70">username@centryk.com</span></p>
+                <button type="button" id="inviteBackToEmailBtn" class="mt-1 text-[11px] font-bold text-blue-400 transition hover:text-blue-300">
+                    ← Use an email instead
+                </button>
             </div>
 
             <p class="text-[11px] text-white/30 font-semibold">If this person doesn't have a Centryk account yet, fill in their details below.</p>
@@ -833,27 +846,70 @@ $requestedCompanyUuid = trim($_GET['company_uuid'] ?? '');
     });
 
     // ── Add member ────────────────────────────────────────────────────────────
+    var inviteNoEmailMode = false;
+
+    function inviteSyncUsername() {
+        var first    = (document.getElementById('inviteFirstName').value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        var last     = (document.getElementById('inviteLastName').value  || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        var userEl   = document.getElementById('inviteUsername');
+        var previewEl = document.getElementById('inviteUsernamePreview');
+        if (userEl && !userEl.value) {
+            userEl.value = [first, last].filter(Boolean).join('.');
+        }
+        if (previewEl) {
+            previewEl.textContent = ((userEl && userEl.value.trim()) || 'username') + '@centryk.com';
+        }
+    }
+    function inviteSetNoEmail(enabled) {
+        inviteNoEmailMode = enabled;
+        document.getElementById('inviteEmailWrap').classList.toggle('hidden', enabled);
+        document.getElementById('inviteUsernameWrap').classList.toggle('hidden', !enabled);
+        if (enabled) inviteSyncUsername();
+    }
+    document.getElementById('inviteNoEmailToggle').addEventListener('click', function () {
+        inviteSetNoEmail(true);
+        setTimeout(function () { document.getElementById('inviteUsername').focus(); }, 30);
+    });
+    document.getElementById('inviteBackToEmailBtn').addEventListener('click', function () {
+        inviteSetNoEmail(false);
+        setTimeout(function () { document.getElementById('inviteEmail').focus(); }, 30);
+    });
+    ['inviteFirstName','inviteLastName','inviteUsername'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener('input', function () { if (inviteNoEmailMode) inviteSyncUsername(); });
+    });
+
     document.getElementById('addMemberBtn').addEventListener('click', function () {
-        ['inviteEmail','inviteFirstName','inviteLastName','invitePassword'].forEach(function (id) {
-            document.getElementById(id).value = '';
+        ['inviteEmail','inviteFirstName','inviteLastName','invitePassword','inviteUsername'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) el.value = '';
         });
         document.getElementById('inviteRole').value = 'employee';
         document.getElementById('addMemberError').classList.add('hidden');
+        inviteSetNoEmail(false);
         openModal('addMemberModal');
     });
 
     document.getElementById('inviteSubmitBtn').addEventListener('click', function () {
         var errEl = document.getElementById('addMemberError');
+        var emailVal;
+        if (inviteNoEmailMode) {
+            var u = (document.getElementById('inviteUsername').value.trim() || '').toLowerCase().replace(/[^a-z0-9._-]/g, '');
+            if (!u) { errEl.textContent = 'Username is required.'; errEl.classList.remove('hidden'); return; }
+            emailVal = u + '@centryk.com';
+        } else {
+            emailVal = document.getElementById('inviteEmail').value.trim();
+        }
         var payload = {
             company_id: currentCompany.id,
-            email:      document.getElementById('inviteEmail').value.trim(),
+            email:      emailVal,
             first_name: document.getElementById('inviteFirstName').value.trim(),
             last_name:  document.getElementById('inviteLastName').value.trim(),
             password:   document.getElementById('invitePassword').value,
             role:       document.getElementById('inviteRole').value
         };
 
-        if (!payload.email) { errEl.textContent = 'Email is required.'; errEl.classList.remove('hidden'); return; }
+        if (!payload.email) { errEl.textContent = inviteNoEmailMode ? 'Username is required.' : 'Email is required.'; errEl.classList.remove('hidden'); return; }
 
         var btn = document.getElementById('inviteSubmitBtn');
         btn.textContent = 'Adding...';

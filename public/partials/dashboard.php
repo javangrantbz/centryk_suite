@@ -197,11 +197,11 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
 
                 <!-- Actions -->
                 <div class="flex flex-wrap items-center gap-2 shrink-0">
-                    <a id="coInviteBtn" href="companies.php"
+                    <button id="coInviteBtn" type="button"
                        class="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 transition hover:bg-slate-50 hover:border-slate-300">
                         <i data-lucide="user-plus" class="h-3.5 w-3.5"></i>
                         <span class="hidden sm:inline">Invite Member</span>
-                    </a>
+                    </button>
                     <a href="companies.php"
                        class="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 transition hover:bg-slate-50 hover:border-slate-300">
                         <i data-lucide="building-2" class="h-3.5 w-3.5"></i>
@@ -236,6 +236,64 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
                         <span class="h-2 w-2 rounded-full bg-slate-200"></span>Apps active
                     </span>
                 </div>
+            </div>
+
+            <!-- Inline invite form (toggled by coInviteBtn) -->
+            <div id="inlineInviteForm" class="hidden border-t border-slate-100 bg-slate-50/60 px-6 py-5">
+                <div class="mb-4 flex items-start justify-between gap-3">
+                    <div>
+                        <p class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Add a member</p>
+                        <h3 class="mt-0.5 text-sm font-black text-slate-800">Invite someone to this company</h3>
+                    </div>
+                    <button id="closeInlineInviteBtn" type="button" class="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-200 hover:text-slate-600">
+                        <i data-lucide="x" class="h-4 w-4"></i>
+                    </button>
+                </div>
+
+                <div id="inviteAlert" class="hidden mb-3 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-600"></div>
+                <div id="inviteSuccess" class="hidden mb-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-semibold text-emerald-700"></div>
+
+                <form id="inviteForm" class="grid gap-3 sm:grid-cols-2">
+                    <div>
+                        <label class="mb-1 block text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">First Name</label>
+                        <input id="invFirst" type="text" required placeholder="John" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-violet-500 focus:ring-4 focus:ring-violet-100">
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Last Name</label>
+                        <input id="invLast" type="text" required placeholder="Doe" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-violet-500 focus:ring-4 focus:ring-violet-100">
+                    </div>
+                    <div id="invEmailWrap" class="sm:col-span-2">
+                        <label class="mb-1 block text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Email Address</label>
+                        <input id="invEmail" type="email" placeholder="john@company.com" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-violet-500 focus:ring-4 focus:ring-violet-100">
+                        <button type="button" id="invNoEmailToggle" class="mt-1.5 text-[11px] font-bold text-violet-600 transition hover:text-violet-700">
+                            No email address? Create with username instead →
+                        </button>
+                    </div>
+                    <div id="invUsernameWrap" class="hidden sm:col-span-2">
+                        <label class="mb-1 block text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Username</label>
+                        <input id="invUsername" type="text" placeholder="john.doe" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-violet-500 focus:ring-4 focus:ring-violet-100">
+                        <p class="mt-1 text-[11px] font-semibold text-slate-400">Login: <span id="invUsernamePreview" class="font-mono text-slate-600">username@centryk.com</span></p>
+                        <button type="button" id="invBackToEmailBtn" class="mt-1.5 text-[11px] font-bold text-violet-600 transition hover:text-violet-700">
+                            ← Use an email instead
+                        </button>
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Temporary Password</label>
+                        <input id="invPassword" type="password" required minlength="8" placeholder="At least 8 characters" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-violet-500 focus:ring-4 focus:ring-violet-100">
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Role</label>
+                        <select id="invRole" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-900 outline-none transition focus:border-violet-500 focus:ring-4 focus:ring-violet-100">
+                            <option value="employee">Employee</option>
+                            <option value="manager">Manager</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                    <div class="sm:col-span-2 mt-1 flex items-center justify-end gap-2">
+                        <button type="button" id="cancelInviteBtn" class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-600 transition hover:bg-slate-50">Cancel</button>
+                        <button type="submit" id="submitInviteBtn" class="rounded-xl bg-slate-900 px-5 py-2 text-xs font-black uppercase tracking-[0.1em] text-white transition hover:bg-slate-700">Add Member</button>
+                    </div>
+                </form>
             </div>
 
         </div>
@@ -559,8 +617,6 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
             var companiesUrl = 'companies.php' + (selectedUuid ? ('?company_uuid=' + encodeURIComponent(selectedUuid)) : '');
             var coMemberLink = document.getElementById('coMemberLink');
             if (coMemberLink) { coMemberLink.href = companiesUrl; }
-            var coInviteBtn  = document.getElementById('coInviteBtn');
-            if (coInviteBtn)  { coInviteBtn.href = companiesUrl; }
 
             // ── Setup progress ────────────────────────────────────────────
             var enrolledCount = document.querySelectorAll('.app-card[data-enrolled="1"]').length;
@@ -786,6 +842,139 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
     if (onboardingChangePw) {
         onboardingChangePw.addEventListener('click', function () {
             fetch('api/auth/onboarding-dismiss.php', { method: 'POST' }).catch(function () {});
+        });
+    }
+
+    // ── Inline invite-member form ────────────────────────────────────────────
+    var invBtn       = document.getElementById('coInviteBtn');
+    var invForm      = document.getElementById('inviteForm');
+    var invWrap      = document.getElementById('inlineInviteForm');
+    var invClose     = document.getElementById('closeInlineInviteBtn');
+    var invCancel    = document.getElementById('cancelInviteBtn');
+    var invAlert     = document.getElementById('inviteAlert');
+    var invSuccess   = document.getElementById('inviteSuccess');
+    var invSubmit    = document.getElementById('submitInviteBtn');
+    var invFirst     = document.getElementById('invFirst');
+    var invLast      = document.getElementById('invLast');
+    var invEmail     = document.getElementById('invEmail');
+    var invEmailWrap = document.getElementById('invEmailWrap');
+    var invUserWrap  = document.getElementById('invUsernameWrap');
+    var invUser      = document.getElementById('invUsername');
+    var invUserPrev  = document.getElementById('invUsernamePreview');
+    var invPassword  = document.getElementById('invPassword');
+    var invRole      = document.getElementById('invRole');
+    var invToggleNo  = document.getElementById('invNoEmailToggle');
+    var invToggleEm  = document.getElementById('invBackToEmailBtn');
+    var invNoEmail   = false;
+
+    function invShowForm() {
+        if (!invWrap) return;
+        invWrap.classList.remove('hidden');
+        invAlert.classList.add('hidden');
+        invSuccess.classList.add('hidden');
+        if (window.lucide) { lucide.createIcons(); }
+        setTimeout(function () { invFirst && invFirst.focus(); }, 50);
+    }
+    function invHideForm() { invWrap && invWrap.classList.add('hidden'); }
+    function invReset() {
+        if (!invForm) return;
+        invFirst.value = ''; invLast.value = '';
+        invEmail.value = ''; invUser.value = '';
+        invPassword.value = ''; invRole.value = 'employee';
+        invSetNoEmail(false);
+        invAlert.classList.add('hidden');
+    }
+    function invSetNoEmail(enabled) {
+        invNoEmail = enabled;
+        invEmailWrap.classList.toggle('hidden', enabled);
+        invUserWrap.classList.toggle('hidden', !enabled);
+        if (enabled) invSyncUsername();
+    }
+    function invSyncUsername() {
+        var first = (invFirst.value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        var last  = (invLast.value  || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (!invUser.value) {
+            invUser.value = [first, last].filter(Boolean).join('.');
+        }
+        invUserPrev.textContent = (invUser.value.trim() || 'username') + '@centryk.com';
+    }
+
+    if (invBtn) {
+        invBtn.addEventListener('click', function () {
+            if (!selectedId) {
+                showToast('Select a company first.', 'error');
+                return;
+            }
+            if (invWrap.classList.contains('hidden')) { invReset(); invShowForm(); }
+            else { invHideForm(); }
+        });
+    }
+    invClose  && invClose.addEventListener('click', invHideForm);
+    invCancel && invCancel.addEventListener('click', invHideForm);
+    invToggleNo && invToggleNo.addEventListener('click', function () { invSetNoEmail(true); setTimeout(function () { invUser && invUser.focus(); }, 30); });
+    invToggleEm && invToggleEm.addEventListener('click', function () { invSetNoEmail(false); setTimeout(function () { invEmail && invEmail.focus(); }, 30); });
+    [invFirst, invLast, invUser].forEach(function (el) {
+        if (!el) return;
+        el.addEventListener('input', function () { if (invNoEmail) invSyncUsername(); });
+    });
+
+    if (invForm) {
+        invForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            if (!selectedId) {
+                invAlert.textContent = 'Select a company first.';
+                invAlert.classList.remove('hidden');
+                return;
+            }
+            var payload = {
+                company_id: selectedId,
+                first_name: invFirst.value.trim(),
+                last_name:  invLast.value.trim(),
+                password:   invPassword.value,
+                role:       invRole.value
+            };
+            if (invNoEmail) {
+                var u = (invUser.value.trim() || '').toLowerCase().replace(/[^a-z0-9._-]/g, '');
+                if (!u) { invAlert.textContent = 'Username is required.'; invAlert.classList.remove('hidden'); return; }
+                payload.email = u + '@centryk.com';
+            } else {
+                payload.email = invEmail.value.trim();
+            }
+            if (!payload.email)            { invAlert.textContent = 'Email or username is required.'; invAlert.classList.remove('hidden'); return; }
+            if (payload.password.length < 8) { invAlert.textContent = 'Password must be at least 8 characters.'; invAlert.classList.remove('hidden'); return; }
+
+            invAlert.classList.add('hidden');
+            invSubmit.disabled = true;
+            invSubmit.textContent = 'Adding…';
+
+            fetch('api/companies/invite.php', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify(payload)
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                invSubmit.disabled = false;
+                invSubmit.textContent = 'Add Member';
+                if (!data.success) {
+                    invAlert.textContent = data.message || 'Could not add member.';
+                    invAlert.classList.remove('hidden');
+                    return;
+                }
+                invSuccess.innerHTML = invNoEmail
+                    ? 'Account created — they can log in as <span class="font-mono font-bold">' + payload.email + '</span> with the password you set.'
+                    : 'Member added successfully.';
+                invSuccess.classList.remove('hidden');
+                invReset();
+                // Refresh member count + close form after a beat
+                setTimeout(function () { window.location.reload(); }, 1600);
+            })
+            .catch(function () {
+                invSubmit.disabled = false;
+                invSubmit.textContent = 'Add Member';
+                invAlert.textContent = 'Network error. Please try again.';
+                invAlert.classList.remove('hidden');
+            });
         });
     }
 }());
