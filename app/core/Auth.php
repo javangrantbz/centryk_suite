@@ -124,7 +124,7 @@ class Auth
             ->execute(['token' => $token]);
 
         $userStmt = $pdo->prepare(
-            'SELECT id, uuid, first_name, last_name, email, phone, status, mfa_enabled FROM users WHERE id = :id AND status = "active" LIMIT 1'
+            'SELECT id, uuid, first_name, last_name, email, phone, status, mfa_enabled, is_admin FROM users WHERE id = :id AND status = "active" LIMIT 1'
         );
         $userStmt->execute(['id' => $row['user_id']]);
         $user = $userStmt->fetch();
