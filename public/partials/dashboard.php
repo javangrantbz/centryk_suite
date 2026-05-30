@@ -22,6 +22,16 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         @keyframes spin { to { transform: rotate(360deg); } }
         .animate-spin  { animation: spin 1s linear infinite; }
         [data-lucide]  { display: inline-block; }
+
+        @keyframes dash-fade-up {
+            from { opacity: 0; transform: translateY(14px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .dash-fade {
+            opacity: 0;
+            animation: dash-fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+            animation-delay: calc(var(--i, 0) * 70ms + 100ms);
+        }
     </style>
 </head>
 <body class="min-h-screen bg-slate-100 font-sans antialiased">
@@ -152,7 +162,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
 <main class="mx-auto max-w-6xl px-6 py-10">
 
     <!-- Company profile card -->
-    <div class="mb-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div style="--i:0" class="dash-fade mb-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
 
         <!-- Empty state (no company selected) -->
         <div id="coCardEmpty" class="px-6 py-5">
@@ -233,10 +243,11 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
 
     <!-- Apps grid -->
     <div id="appsGrid" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <?php foreach ($apps as $app):
+        <?php $_appIdx = 0; foreach ($apps as $app):
+            $_appIdx++;
             $enrolled = !empty($app['enrolled']);
         ?>
-        <button class="app-card group flex flex-col overflow-hidden rounded-2xl border text-left shadow-sm transition
+        <button style="--i:<?= $_appIdx ?>" class="dash-fade app-card group flex flex-col overflow-hidden rounded-2xl border text-left shadow-sm transition
                     <?= $enrolled
                         ? 'border-slate-200 bg-white hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-y-0 disabled:shadow-sm'
                         : 'border-slate-200/50 bg-slate-50 opacity-50 cursor-not-allowed' ?>"
@@ -297,7 +308,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         <?php endforeach; ?>
 
         <!-- Invoice Maker — coming soon (static, not in DB) -->
-        <div class="flex flex-col overflow-hidden rounded-2xl border border-emerald-200/70 bg-emerald-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
+        <div style="--i:<?= ($_appIdx ?? 0) + 1 ?>" class="dash-fade flex flex-col overflow-hidden rounded-2xl border border-emerald-200/70 bg-emerald-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
             <div class="h-1.5 w-full bg-emerald-500/50"></div>
             <div class="flex flex-1 flex-col p-5">
                 <div class="flex items-center gap-3">
@@ -322,7 +333,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         </div>
 
         <!-- Case Management — coming soon (static, not in DB) -->
-        <div class="flex flex-col overflow-hidden rounded-2xl border border-blue-200/70 bg-blue-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
+        <div style="--i:<?= ($_appIdx ?? 0) + 2 ?>" class="dash-fade flex flex-col overflow-hidden rounded-2xl border border-blue-200/70 bg-blue-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
             <div class="h-1.5 w-full bg-blue-500/50"></div>
             <div class="flex flex-1 flex-col p-5">
                 <div class="flex items-center gap-3">
