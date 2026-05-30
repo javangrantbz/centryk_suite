@@ -320,6 +320,31 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
                 </div>
             </div>
         </div>
+
+        <!-- Case Management — coming soon (static, not in DB) -->
+        <div class="flex flex-col overflow-hidden rounded-2xl border border-blue-200/70 bg-blue-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
+            <div class="h-1.5 w-full bg-blue-500/50"></div>
+            <div class="flex flex-1 flex-col p-5">
+                <div class="flex items-center gap-3">
+                    <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-100">
+                        <svg class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 14.15v4.073a2.25 2.25 0 01-2.25 2.25H5.904a2.25 2.25 0 01-2.25-2.25V14.15M16.5 6.75V5.625a2.25 2.25 0 00-2.25-2.25h-2.25a2.25 2.25 0 00-2.25 2.25V6.75M3.375 6.75h17.25a1.125 1.125 0 011.125 1.125v3.026a48.34 48.34 0 01-10.5 1.299 48.34 48.34 0 01-10.5-1.299V7.875A1.125 1.125 0 013.375 6.75z"/>
+                        </svg>
+                    </span>
+                    <div>
+                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-blue-600/80">Cases &amp; Workflows</div>
+                        <div class="text-lg font-black tracking-tight text-slate-800">Case Management</div>
+                    </div>
+                </div>
+                <p class="mt-3 text-xs font-semibold leading-relaxed text-slate-500">
+                    Track and resolve cases across your team — from intake to outcome — all in one place.
+                </p>
+                <div class="mt-4 flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] bg-blue-100 text-blue-700 border border-blue-200">
+                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2m6-2a10 10 0 1 1-20 0 10 10 0 0 1 20 0Z"/></svg>
+                    Coming Soon
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- No-company notice (shown when no companies exist) -->
