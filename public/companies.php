@@ -4,7 +4,7 @@ require_once __DIR__ . '/../app/services/AuthService.php';
 Auth::start();
 $user = Auth::user();
 if (!$user) {
-    header('Location: index.php');
+    header('Location: login.php');
     exit;
 }
 $userApps = AuthService::allAppsWithEnrollment((int)$user['id']);

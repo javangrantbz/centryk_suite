@@ -30,13 +30,13 @@
             <img src="../centryk_logo.png" alt="Centryk" class="h-14 w-auto">
         </a>
         <div class="flex-1"></div>
-        <div class="hidden md:flex items-center gap-1">
+        <div class="hidden md:flex items-center gap-2">
+            <?php $awAlign = 'left'; include __DIR__ . '/partials/app_switcher.php'; ?>
+            <div class="h-4 w-px bg-slate-200"></div>
             <a href="about.php"   class="px-3 py-1.5 rounded-lg text-sm font-semibold text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition">About</a>
             <a href="contact.php" class="px-3 py-1.5 rounded-lg text-sm font-semibold text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition">Contact</a>
-            <a href="refer.php"   class="px-3 py-1.5 rounded-lg text-sm font-semibold text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition">Refer</a>
-            <a href="terms.php"   class="px-3 py-1.5 rounded-lg text-sm font-bold   text-slate-900 bg-slate-100 transition">Terms</a>
         </div>
-        <a href="index.php" class="ml-3 rounded-xl bg-slate-900 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-slate-700">Sign In</a>
+        <a href="login.php" class="ml-3 rounded-xl bg-slate-900 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-slate-700">Sign In</a>
     </div>
 </nav>
 
@@ -267,25 +267,7 @@
     </div>
 </div>
 
-<!-- FOOTER -->
-<footer class="border-t border-slate-200 bg-white px-6 py-8">
-    <div class="mx-auto max-w-6xl flex flex-col items-center justify-between gap-4 md:flex-row">
-        <div class="flex items-center gap-2.5">
-            <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-900 text-white">
-                <svg viewBox="0 0 24 24" fill="currentColor" class="h-3.5 w-3.5"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
-            </div>
-            <span class="text-sm font-black tracking-tight text-slate-900">Centryk</span>
-        </div>
-        <div class="flex flex-wrap justify-center gap-5 text-xs font-bold text-slate-400">
-            <a href="about.php"   class="hover:text-slate-700 transition">About</a>
-            <a href="contact.php" class="hover:text-slate-700 transition">Contact</a>
-            <a href="refer.php"   class="hover:text-slate-700 transition">Refer</a>
-            <a href="terms.php"   class="hover:text-slate-700 transition">Terms</a>
-            <a href="index.php"   class="hover:text-slate-700 transition">Sign In</a>
-        </div>
-        <p class="text-xs font-bold text-slate-300">&copy; <?php echo date('Y'); ?> Centryk. All rights reserved.</p>
-    </div>
-</footer>
+<?php include __DIR__ . '/partials/footer.php'; ?>
 
 </body>
 </html>

@@ -62,14 +62,14 @@
 
         <div class="flex-1"></div>
 
-        <div class="hidden md:flex items-center gap-1">
+        <div class="hidden md:flex items-center gap-2">
+            <?php $awAlign = 'left'; include __DIR__ . '/partials/app_switcher.php'; ?>
+            <div class="h-4 w-px bg-slate-200"></div>
             <a href="about.php"   class="px-3 py-1.5 rounded-lg text-sm font-bold text-slate-900 bg-slate-100">About</a>
             <a href="contact.php" class="px-3 py-1.5 rounded-lg text-sm font-semibold text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition">Contact</a>
-            <a href="refer.php"   class="px-3 py-1.5 rounded-lg text-sm font-semibold text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition">Refer</a>
-            <a href="terms.php"   class="px-3 py-1.5 rounded-lg text-sm font-semibold text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition">Terms</a>
         </div>
 
-        <a href="index.php"
+        <a href="login.php"
            class="ml-3 rounded-xl bg-slate-900 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-slate-700">
             Sign In
         </a>
@@ -77,75 +77,21 @@
 </nav>
 
 
-<!-- ── SECTION JUMP BAR ──────────────────────────────────────────────────── -->
-<div class="border-b border-slate-200 bg-white px-6 py-3">
-    <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-2">
-        <span class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300 mr-1">Sections</span>
-        <a href="#platform" class="rounded-full border border-slate-200 bg-slate-50 px-3.5 py-1 text-[11px] font-black uppercase tracking-[0.14em] text-slate-600 transition hover:bg-slate-900 hover:text-white hover:border-slate-900">Platform</a>
-        <a href="#onepay"   class="rounded-full border border-purple-200 bg-purple-50 px-3.5 py-1 text-[11px] font-black uppercase tracking-[0.14em] text-purple-700 transition hover:bg-purple-700 hover:text-white hover:border-purple-700">OnePay</a>
-        <a href="#mypay"    class="rounded-full border border-orange-200 bg-orange-50 px-3.5 py-1 text-[11px] font-black uppercase tracking-[0.14em] text-orange-700 transition hover:bg-orange-600 hover:text-white hover:border-orange-600">MyPay</a>
-        <a href="#onelink"  class="rounded-full border border-blue-200 bg-blue-50 px-3.5 py-1 text-[11px] font-black uppercase tracking-[0.14em] text-blue-700 transition hover:bg-blue-600 hover:text-white hover:border-blue-600">OneLink</a>
-        <a href="#users"    class="rounded-full border border-slate-200 bg-slate-50 px-3.5 py-1 text-[11px] font-black uppercase tracking-[0.14em] text-slate-600 transition hover:bg-slate-900 hover:text-white hover:border-slate-900">User Management</a>
-        <a href="#security" class="rounded-full border border-emerald-200 bg-emerald-50 px-3.5 py-1 text-[11px] font-black uppercase tracking-[0.14em] text-emerald-700 transition hover:bg-emerald-600 hover:text-white hover:border-emerald-600">Security</a>
-        <a href="#faq"      class="rounded-full border border-slate-200 bg-slate-50 px-3.5 py-1 text-[11px] font-black uppercase tracking-[0.14em] text-slate-600 transition hover:bg-slate-900 hover:text-white hover:border-slate-900">FAQ</a>
-    </div>
-</div>
-
 <!-- ── HERO ───────────────────────────────────────────────────────────────── -->
-<section class="relative overflow-hidden bg-[linear-gradient(135deg,#0d1117_0%,#0f1928_50%,#111d35_100%)] px-6 py-24 text-white">
-    <div class="absolute inset-x-0 top-0 h-px bg-white/10"></div>
-    <div class="absolute left-0 top-0 h-[500px] w-[500px] rounded-full bg-purple-700/10 blur-3xl -translate-x-1/2 -translate-y-1/4"></div>
-    <div class="absolute right-0 bottom-0 h-[400px] w-[400px] rounded-full bg-blue-700/10 blur-3xl translate-x-1/3 translate-y-1/4"></div>
-
-    <div class="relative mx-auto max-w-4xl text-center">
-        <span class="inline-block rounded-full border border-white/15 bg-white/8 px-4 py-1.5 text-[11px] font-black uppercase tracking-[0.22em] text-white/60 mb-6">
-            Built for Belize
-        </span>
-        <h1 class="text-5xl font-black leading-[1.05] tracking-tight md:text-6xl">
-            Run your business.<br>
-            <span class="gradient-text">All in one place.</span>
-        </h1>
-        <p class="mx-auto mt-6 max-w-2xl text-lg font-semibold leading-relaxed text-white/60">
-            Centryk is a unified business platform that gives Belizean companies one secure login to access
-            powerful tools for inventory, point of sale, HR, payroll, and cashless payments.
+<section class="relative overflow-hidden bg-[linear-gradient(135deg,#0d1117_0%,#0f1928_50%,#111d35_100%)] px-6 py-20 text-white">
+    <div class="absolute left-0 top-0 h-96 w-96 rounded-full bg-purple-700/10 blur-3xl -translate-x-1/2 -translate-y-1/4"></div>
+    <div class="absolute right-0 bottom-0 h-80 w-80 rounded-full bg-blue-700/8 blur-3xl translate-x-1/3"></div>
+    <div class="relative mx-auto max-w-3xl text-center">
+        <span class="inline-block rounded-full border border-white/15 bg-white/8 px-4 py-1.5 text-[11px] font-black uppercase tracking-[0.22em] text-white/60 mb-6">Built for Belize</span>
+        <h1 class="text-5xl font-black leading-tight tracking-tight">About Centryk</h1>
+        <p class="mt-5 text-lg font-semibold leading-relaxed text-white/55 max-w-2xl mx-auto">
+            One platform. One login. Everything your Belizean business needs to run inventory, payroll, and payments.
         </p>
-
-        <div class="mt-10 flex flex-wrap items-center justify-center gap-4">
-            <a href="index.php"
-               class="rounded-xl bg-white px-6 py-3 text-sm font-black uppercase tracking-[0.12em] text-slate-900 shadow-lg transition hover:bg-slate-100">
-                Get Started — It's Free
-            </a>
-            <a href="#platform"
-               class="rounded-xl border border-white/15 px-6 py-3 text-sm font-black uppercase tracking-[0.12em] text-white/80 transition hover:border-white/30 hover:text-white">
-                Explore the Platform
-            </a>
-        </div>
-
-        <!-- Trust badges -->
-        <div class="mt-12 flex flex-wrap items-center justify-center gap-6 text-white/35">
-            <span class="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.16em]">
-                <svg class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7l-9-5z"/></svg>
-                Encrypted &amp; Secure
-            </span>
-            <span class="h-4 w-px bg-white/15"></span>
-            <span class="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.16em]">
-                <svg class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20A10 10 0 0012 2zm-1 14.5v-5l-2-1 1-1.73 2 1.15 2-1.15 1 1.73-2 1v5h-2z"/></svg>
-                Built for Belize
-            </span>
-            <span class="h-4 w-px bg-white/15"></span>
-            <span class="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.16em]">
-                <svg class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M17 8C8 10 5.9 16.17 3.82 21.34L5.71 22l1-2.3A4.49 4.49 0 008 20c9 0 10-8 10-8A1 1 0 0017 8z"/></svg>
-                Free to Request Access
-            </span>
-            <span class="h-4 w-px bg-white/15"></span>
-            <span class="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.16em]">
-                <svg class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
-                Two Apps, One Login
-            </span>
-        </div>
-
     </div>
 </section>
+
+
+<!-- ── SECTION JUMP BAR ──────────────────────────────────────────────────── -->
 
 
 <!-- ── WHAT IS CENTRYK ────────────────────────────────────────────────────── -->
@@ -235,9 +181,6 @@
         </div>
 
         <!-- Section nav -->
-        <div class="mt-12 flex justify-end">
-            <a href="#how-it-works" class="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm transition hover:bg-slate-900 hover:text-white hover:border-slate-900">How it Works <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></a>
-        </div>
     </div>
 </section>
 
@@ -270,17 +213,13 @@
         </div>
 
         <div class="mt-10 text-center">
-            <a href="index.php"
+            <a href="login.php"
                class="inline-block rounded-xl bg-slate-900 px-8 py-3 text-sm font-black uppercase tracking-[0.12em] text-white shadow transition hover:bg-slate-700">
                 Request Access Now
             </a>
         </div>
 
         <!-- Section nav -->
-        <div class="mt-10 flex items-center justify-between">
-            <a href="#platform" class="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm transition hover:bg-slate-900 hover:text-white hover:border-slate-900"><svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg> The Platform</a>
-            <a href="#onepay" class="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm transition hover:bg-slate-900 hover:text-white hover:border-slate-900">OnePay <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></a>
-        </div>
     </div>
 </section>
 
@@ -370,10 +309,6 @@
         </div>
 
         <!-- Section nav -->
-        <div class="mt-8 flex items-center justify-between">
-            <a href="#how-it-works" class="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm transition hover:bg-slate-900 hover:text-white hover:border-slate-900"><svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg> How it Works</a>
-            <a href="#mypay" class="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm transition hover:bg-slate-900 hover:text-white hover:border-slate-900">MyPay <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></a>
-        </div>
     </div>
 </section>
 
@@ -458,10 +393,6 @@
         </div>
 
         <!-- Section nav -->
-        <div class="mt-8 flex items-center justify-between">
-            <a href="#onepay" class="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm transition hover:bg-slate-900 hover:text-white hover:border-slate-900"><svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg> OnePay</a>
-            <a href="#onelink" class="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm transition hover:bg-slate-900 hover:text-white hover:border-slate-900">OneLink <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></a>
-        </div>
     </div>
 </section>
 
@@ -554,10 +485,6 @@
         </div>
 
         <!-- Section nav -->
-        <div class="mt-10 flex items-center justify-between">
-            <a href="#mypay" class="flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-white/70 transition hover:bg-white/20 hover:text-white"><svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg> MyPay</a>
-            <a href="#users" class="flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-white/70 transition hover:bg-white/20 hover:text-white">User Management <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></a>
-        </div>
     </div>
 </section>
 
@@ -646,10 +573,6 @@
         </div>
 
         <!-- Section nav -->
-        <div class="mt-10 flex items-center justify-between">
-            <a href="#onelink" class="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm transition hover:bg-slate-900 hover:text-white hover:border-slate-900"><svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg> OneLink</a>
-            <a href="#security" class="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm transition hover:bg-slate-900 hover:text-white hover:border-slate-900">Security <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></a>
-        </div>
     </div>
 </section>
 
@@ -717,10 +640,6 @@
         </div>
 
         <!-- Section nav -->
-        <div class="mt-10 flex items-center justify-between">
-            <a href="#users" class="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm transition hover:bg-slate-900 hover:text-white hover:border-slate-900"><svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg> User Management</a>
-            <a href="#who-we-serve" class="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm transition hover:bg-slate-900 hover:text-white hover:border-slate-900">Who We Serve <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></a>
-        </div>
     </div>
 </section>
 
@@ -758,10 +677,6 @@
         </div>
 
         <!-- Section nav -->
-        <div class="mt-10 flex items-center justify-between">
-            <a href="#security" class="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm transition hover:bg-slate-900 hover:text-white hover:border-slate-900"><svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg> Security</a>
-            <a href="#faq" class="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm transition hover:bg-slate-900 hover:text-white hover:border-slate-900">FAQ <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></a>
-        </div>
     </div>
 </section>
 
@@ -859,10 +774,6 @@
         </div>
 
         <!-- Section nav -->
-        <div class="mt-10 flex items-center justify-between">
-            <a href="#who-we-serve" class="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm transition hover:bg-slate-900 hover:text-white hover:border-slate-900"><svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg> Who We Serve</a>
-            <a href="index.php" class="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm transition hover:bg-slate-900 hover:text-white hover:border-slate-900">Get Started <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></a>
-        </div>
     </div>
 </section>
 
@@ -883,7 +794,7 @@
             Join businesses across Belize already running on Centryk. Request access today — it's free, fast, and our team will have you up and running within one business day.
         </p>
         <div class="mt-10 flex flex-wrap items-center justify-center gap-4">
-            <a href="index.php"
+            <a href="login.php"
                class="rounded-xl bg-white px-8 py-3 text-sm font-black uppercase tracking-[0.12em] text-slate-900 shadow-lg transition hover:bg-slate-100">
                 Request Free Access
             </a>
@@ -902,29 +813,7 @@
 </button>
 
 
-<!-- ── FOOTER ─────────────────────────────────────────────────────────────── -->
-<footer class="border-t border-slate-200 bg-white px-6 py-10">
-    <div class="mx-auto max-w-6xl">
-        <div class="flex flex-col items-center justify-between gap-6 md:flex-row">
-            <div class="flex items-center">
-                <img src="../centryk_logo.png" alt="Centryk" class="h-12 w-auto">
-            </div>
-
-            <div class="flex flex-wrap justify-center gap-5 text-xs font-bold text-slate-400">
-                <a href="#platform" class="hover:text-slate-700 transition">Platform</a>
-                <a href="#onepay"   class="hover:text-slate-700 transition">OnePay</a>
-                <a href="#mypay"    class="hover:text-slate-700 transition">MyPay</a>
-                <a href="#onelink"  class="hover:text-slate-700 transition">OneLink</a>
-                <a href="#users"    class="hover:text-slate-700 transition">User Management</a>
-                <a href="#security" class="hover:text-slate-700 transition">Security</a>
-                <a href="#faq"      class="hover:text-slate-700 transition">FAQ</a>
-                <a href="index.php" class="hover:text-slate-700 transition">Sign In</a>
-            </div>
-
-            <p class="text-xs font-bold text-slate-300">&copy; <?php echo date('Y'); ?> Centryk. All rights reserved.</p>
-        </div>
-    </div>
-</footer>
+<?php include __DIR__ . '/partials/footer.php'; ?>
 
 
 <script>

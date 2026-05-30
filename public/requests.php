@@ -6,7 +6,7 @@ Auth::start();
 $me = AuthService::me();
 
 if (!$me['authenticated'] || empty($me['user']['is_admin'])) {
-    header('Location: index.php');
+    header('Location: login.php');
     exit;
 }
 
