@@ -13,6 +13,16 @@ if (!$me['authenticated']) {
 
 $user = $me['user'];
 
+// Has the user enabled Calendar yet?
+$_calStmt = DB::pdo()->prepare('
+    SELECT 1 FROM user_app_access ua
+    JOIN apps a ON a.id = ua.app_id
+    WHERE ua.user_id = :uid AND a.`key` = "calendar"
+    LIMIT 1
+');
+$_calStmt->execute(['uid' => (int)$user['id']]);
+$calendarEnrolled = (bool)$_calStmt->fetchColumn();
+
 // Month to render — default to current month, allow ?ym=YYYY-MM
 $ym = $_GET['ym'] ?? '';
 if (!preg_match('/^\d{4}-\d{2}$/', $ym)) {
@@ -139,6 +149,24 @@ $todayYr   = (int)date('Y');
 <!-- Main -->
 <main class="mx-auto max-w-6xl px-6 py-10">
 
+    <?php if (!$calendarEnrolled): ?>
+    <!-- Enable banner — visible until the user opts in -->
+    <div id="enableBanner" class="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-teal-200 bg-teal-50 px-5 py-4">
+        <div class="flex items-start gap-3">
+            <span class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal-500 text-white">
+                <i data-lucide="calendar-plus" class="h-4 w-4"></i>
+            </span>
+            <div>
+                <p class="text-sm font-black text-teal-900">Calendar isn't enabled for your account yet.</p>
+                <p class="mt-0.5 text-xs font-semibold text-teal-700">Enable it to add Calendar to your dashboard and show the calendar shortcut across your apps.</p>
+            </div>
+        </div>
+        <button id="enableCalendarBtn" type="button" class="rounded-xl bg-teal-600 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-white shadow-sm transition hover:bg-teal-700">
+            Enable Calendar
+        </button>
+    </div>
+    <?php endif; ?>
+
     <!-- Title bar -->
     <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -219,6 +247,34 @@ $todayYr   = (int)date('Y');
     if (logout) {
         logout.addEventListener('click', function () {
             fetch('api/auth/logout.php', { method: 'POST' }).finally(function () { window.location.href = 'index.php'; });
+        });
+    }
+
+    var enableBtn = document.getElementById('enableCalendarBtn');
+    if (enableBtn) {
+        enableBtn.addEventListener('click', function () {
+            enableBtn.disabled = true;
+            enableBtn.textContent = 'Enabling…';
+            fetch('api/apps/enable.php', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ app_key: 'calendar' })
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    enableBtn.disabled = false;
+                    enableBtn.textContent = 'Enable Calendar';
+                    alert(data.message || 'Could not enable Calendar.');
+                }
+            })
+            .catch(function () {
+                enableBtn.disabled = false;
+                enableBtn.textContent = 'Enable Calendar';
+                alert('Network error. Please try again.');
+            });
         });
     }
 }());

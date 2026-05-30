@@ -304,14 +304,18 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         <?php $_appIdx = 0; foreach ($apps as $app):
             $_appIdx++;
             $enrolled = !empty($app['enrolled']);
+            $optIn    = !empty($app['opt_in']);
         ?>
         <button style="--i:<?= $_appIdx ?>" class="dash-fade app-card group flex flex-col overflow-hidden rounded-2xl border text-left shadow-sm transition
                     <?= $enrolled
                         ? 'border-slate-200 bg-white hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-y-0 disabled:shadow-sm'
-                        : 'border-slate-200/50 bg-slate-50 opacity-50 cursor-not-allowed' ?>"
+                        : ($optIn
+                            ? 'border-dashed border-slate-300 bg-white hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98]'
+                            : 'border-slate-200/50 bg-slate-50 opacity-50 cursor-not-allowed') ?>"
                 data-app="<?= htmlspecialchars($app['key']) ?>"
                 data-enrolled="<?= $enrolled ? '1' : '0' ?>"
-                <?= $enrolled ? '' : 'disabled' ?>>
+                data-opt-in="<?= $optIn ? '1' : '0' ?>"
+                <?= ($enrolled || $optIn) ? '' : 'disabled' ?>>
             <div class="h-1.5 w-full" style="background:<?= htmlspecialchars($app['color']) . ($enrolled ? '' : ';opacity:.4') ?>"></div>
             <div class="flex flex-1 flex-col p-5">
                 <div class="flex items-center gap-3">
@@ -349,6 +353,11 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
                     <span class="app-count-dot inline-block h-1.5 w-1.5 rounded-full bg-slate-300"></span>
                     <span class="app-count-num text-[11px] font-bold text-slate-400">0 active users</span>
                 </div>
+                <?php elseif ($optIn): ?>
+                <div class="mt-3 flex items-center gap-1.5">
+                    <span class="inline-block h-1.5 w-1.5 rounded-full" style="background:<?= htmlspecialchars($app['color']) ?>"></span>
+                    <span class="text-[11px] font-bold" style="color:<?= htmlspecialchars($app['color']) ?>">Available — tap to enable</span>
+                </div>
                 <?php else: ?>
                 <div class="mt-4 flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] bg-slate-200 text-slate-400">
                     <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"/></svg>
@@ -360,6 +369,11 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
             <div class="flex items-center justify-between border-t border-slate-100 px-5 py-3 text-xs font-bold text-slate-500 transition-colors group-hover:text-slate-800">
                 <span>Launch <?= htmlspecialchars($app['label']) ?></span>
                 <i data-lucide="arrow-right" class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"></i>
+            </div>
+            <?php elseif ($optIn): ?>
+            <div class="flex items-center justify-between border-t border-dashed border-slate-200 px-5 py-3 text-xs font-bold text-slate-600 transition-colors group-hover:text-slate-900">
+                <span>Enable <?= htmlspecialchars($app['label']) ?></span>
+                <i data-lucide="plus" class="h-3.5 w-3.5"></i>
             </div>
             <?php endif; ?>
         </button>
@@ -781,6 +795,34 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
 
     document.querySelectorAll('.app-card').forEach(function (card) {
         card.addEventListener('click', function () {
+            var enrolled = card.dataset.enrolled === '1';
+            var optIn    = card.dataset.optIn    === '1';
+
+            // Opt-in app the user hasn't enabled yet → self-enable then reload
+            if (!enrolled && optIn) {
+                card.style.opacity = '0.6';
+                fetch('api/apps/enable.php', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ app_key: card.dataset.app })
+                })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.success) {
+                        window.location.reload();
+                    } else {
+                        card.style.opacity = '';
+                        showToast(data.message || 'Could not enable app.', 'error');
+                    }
+                })
+                .catch(function () {
+                    card.style.opacity = '';
+                    showToast('Network error. Please try again.', 'error');
+                });
+                return;
+            }
+
+            if (!enrolled) { return; }
             if (!selectedId && companies.length > 1) {
                 pickerBtn.focus();
                 dropdown.classList.remove('hidden');

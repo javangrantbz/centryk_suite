@@ -35,6 +35,7 @@ class AuthService
     {
         $stmt = DB::pdo()->prepare(
             'SELECT a.key, a.label, a.description, a.url_local, a.url_production, a.icon, a.color,
+                    COALESCE(a.opt_in, 0) AS opt_in,
                     (ua.user_id IS NOT NULL) AS enrolled
              FROM apps a
              LEFT JOIN user_app_access ua ON ua.app_id = a.id AND ua.user_id = :user_id
@@ -43,6 +44,25 @@ class AuthService
         );
         $stmt->execute(['user_id' => $userId]);
         return $stmt->fetchAll();
+    }
+
+    /**
+     * Self-enable an opt-in app for the given user (idempotent).
+     * Returns true if granted, false if the app is not opt-in or not found.
+     */
+    public static function enableApp(int $userId, string $appKey): bool
+    {
+        $stmt = DB::pdo()->prepare(
+            'SELECT id FROM apps WHERE `key` = :key AND status = "active" AND COALESCE(opt_in, 0) = 1 LIMIT 1'
+        );
+        $stmt->execute(['key' => $appKey]);
+        $row = $stmt->fetch();
+        if (!$row) {
+            return false;
+        }
+        DB::pdo()->prepare('INSERT IGNORE INTO user_app_access (user_id, app_id) VALUES (:uid, :aid)')
+            ->execute(['uid' => $userId, 'aid' => (int)$row['id']]);
+        return true;
     }
 
     public static function launchApp(int $userId, string $appKey, string $companyUuid = ''): ?string

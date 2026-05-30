@@ -1,9 +1,23 @@
--- Add Calendar app to Centryk's apps registry.
+-- Add Calendar app to Centryk's apps registry, and add an opt_in flag so
+-- users can self-enable certain apps from their dashboard.
 -- Run via phpMyAdmin (or `mysql`) against the centryk_core database.
 -- Idempotent: safe to run multiple times.
 
--- 1. Register the Calendar app
-INSERT INTO apps (`key`, label, description, url_local, url_production, icon, color, sort_order)
+-- 1. Add opt_in column to apps (default 0 = admin-controlled, existing behaviour)
+SET @col_exists := (
+    SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'apps'
+      AND COLUMN_NAME = 'opt_in'
+);
+SET @sql := IF(@col_exists = 0,
+    'ALTER TABLE apps ADD COLUMN opt_in TINYINT(1) NOT NULL DEFAULT 0 AFTER sort_order',
+    'SELECT "apps.opt_in already exists" AS info'
+);
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- 2. Register the Calendar app as opt-in (users self-enable from the dashboard)
+INSERT INTO apps (`key`, label, description, url_local, url_production, icon, color, sort_order, opt_in)
 VALUES (
     'calendar',
     'Calendar',
@@ -12,7 +26,8 @@ VALUES (
     'https://centryk.net/calendar.php',
     '📅',
     '#14b8a6',
-    3
+    3,
+    1
 )
 ON DUPLICATE KEY UPDATE
     label          = VALUES(label),
@@ -21,12 +36,5 @@ ON DUPLICATE KEY UPDATE
     url_production = VALUES(url_production),
     icon           = VALUES(icon),
     color          = VALUES(color),
-    sort_order     = VALUES(sort_order);
-
--- 2. Grant Calendar access to all existing Centryk admins
---    (Non-admins won't see Calendar in the launcher until granted.)
-INSERT IGNORE INTO user_app_access (user_id, app_id)
-SELECT u.id, a.id
-FROM users u, apps a
-WHERE u.is_admin = 1
-  AND a.`key` = 'calendar';
+    sort_order     = VALUES(sort_order),
+    opt_in         = VALUES(opt_in);
