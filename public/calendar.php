@@ -121,10 +121,21 @@ function calLink(int $companyId, string $ym): string {
             <img src="../centryk_logo.png" alt="Centryk" class="h-14 w-auto">
         </a>
         <div class="h-5 w-px bg-slate-200 shrink-0"></div>
-        <div class="flex items-center gap-2">
-            <i data-lucide="calendar" class="h-4 w-4 text-slate-400"></i>
-            <span class="text-sm font-bold text-slate-700">Calendar</span>
+        <?php if (count($companies) > 1): ?>
+        <div class="flex items-center gap-2 shrink-0">
+            <i data-lucide="building-2" class="h-4 w-4 text-teal-500 shrink-0"></i>
+            <select id="companyPicker" class="rounded-xl border border-teal-200 bg-teal-50 px-3 py-1.5 text-sm font-bold text-teal-700 outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100">
+                <?php foreach ($companies as $c): ?>
+                <option value="<?= (int)$c['id'] ?>" <?= ((int)$c['id'] === $activeCompanyId) ? 'selected' : '' ?>><?= htmlspecialchars($c['name']) ?></option>
+                <?php endforeach; ?>
+            </select>
         </div>
+        <?php elseif (!empty($activeCompanyName)): ?>
+        <span class="inline-flex items-center gap-1.5 rounded-xl border border-teal-200 bg-teal-50 px-3 py-1.5 text-sm font-bold text-teal-700 shrink-0">
+            <i data-lucide="building-2" class="h-4 w-4 text-teal-500"></i>
+            <?= htmlspecialchars($activeCompanyName) ?>
+        </span>
+        <?php endif; ?>
         <div class="flex-1"></div>
         <?php if (!empty($user['is_admin'])): ?>
         <a href="requests.php" class="hidden sm:flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
@@ -134,6 +145,10 @@ function calLink(int $companyId, string $ym): string {
             <i data-lucide="history" class="h-3.5 w-3.5"></i> Audit Trail
         </a>
         <?php endif; ?>
+        <div class="flex items-center gap-2 shrink-0">
+            <i data-lucide="calendar" class="h-4 w-4 text-teal-500"></i>
+            <span class="hidden text-sm font-bold text-slate-700 sm:inline">Calendar</span>
+        </div>
         <?php $awAlign = 'right'; $awMode = 'launch'; include __DIR__ . '/partials/app_switcher.php'; ?>
         <div class="h-5 w-px bg-slate-200 shrink-0"></div>
         <div class="relative shrink-0" id="userMenuWrapper">
@@ -183,21 +198,6 @@ function calLink(int $companyId, string $ym): string {
                 <p class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Calendar</p>
                 <h1 class="mt-1 text-2xl font-black tracking-tight text-slate-900"><?= htmlspecialchars($monthLabel) ?></h1>
             </div>
-            <?php if (count($companies) > 1): ?>
-            <div class="ml-2 flex items-center gap-2">
-                <i data-lucide="building-2" class="h-4 w-4 text-slate-400 shrink-0"></i>
-                <select id="companyPicker" class="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-bold text-slate-700 outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100">
-                    <?php foreach ($companies as $c): ?>
-                    <option value="<?= (int)$c['id'] ?>" <?= ((int)$c['id'] === $activeCompanyId) ? 'selected' : '' ?>><?= htmlspecialchars($c['name']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <?php elseif (!empty($activeCompanyName)): ?>
-            <span class="ml-2 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-bold text-slate-700">
-                <i data-lucide="building-2" class="h-4 w-4 text-slate-400"></i>
-                <?= htmlspecialchars($activeCompanyName) ?>
-            </span>
-            <?php endif; ?>
         </div>
         <div class="flex items-center gap-2">
             <a href="<?= htmlspecialchars(calLink((int)$activeCompanyId, $prevMonth)) ?>" class="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-800" title="Previous month">
