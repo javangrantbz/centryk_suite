@@ -597,6 +597,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         selectedUuid = c ? (c.uuid || null) : null;
         // Remember the choice so it carries over when returning from another app.
         if (selectedUuid) { try { localStorage.setItem('centryk_company_uuid', selectedUuid); } catch (e) {} }
+        markActiveCompany();
         if (c) {
             pickerLabel.textContent = c.name;
             pickerLabel.classList.remove('text-slate-400');
@@ -701,6 +702,16 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         });
     }
 
+    // Show the checkmark + highlight on the currently selected company row.
+    function markActiveCompany() {
+        dropdownList.querySelectorAll('.company-option').forEach(function (btn) {
+            var active = String(btn.dataset.id) === String(selectedId);
+            var chk = btn.querySelector('.company-check');
+            if (chk) { chk.classList.toggle('hidden', !active); }
+            btn.classList.toggle('bg-slate-50', active);
+        });
+    }
+
     function buildDropdown() {
         if (!companies.length) {
             dropdownList.innerHTML = '<p class="px-4 py-3 text-xs text-slate-400">No companies found.</p>';
@@ -720,6 +731,9 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
                     '<div class="text-sm font-bold text-slate-800 truncate">' + esc(c.name) + '</div>' +
                     '<div class="text-[10px] font-semibold capitalize" style="color:' + color + '">' + esc(c.role) + '</div>' +
                 '</div>' +
+                '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="company-check ml-auto h-4 w-4 shrink-0 text-slate-900 hidden">' +
+                    '<path fill-rule="evenodd" d="M12.416 3.376a.75.75 0 0 1 .208 1.04l-5 7.5a.75.75 0 0 1-1.154.114l-3-3a.75.75 0 0 1 1.06-1.06l2.353 2.353 4.493-6.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd"/>' +
+                '</svg>' +
                 '</button>';
         }).join('');
 
