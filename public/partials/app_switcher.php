@@ -8,9 +8,10 @@
 // AuthService::allAppsWithEnrollment(). If the caller already populated
 // $apps in scope (the dashboard does), that's used directly; otherwise
 // the partial queries it itself.
-$awAlign = $awAlign ?? 'left';
-$awMode  = $awMode  ?? 'links';
-$awPos   = $awAlign === 'right' ? 'right-0' : 'left-0';
+$awAlign   = $awAlign   ?? 'left';
+$awMode    = $awMode    ?? 'links';
+$awCurrent = $awCurrent ?? 'centryk'; // which app key is the current page
+$awPos     = $awAlign === 'right' ? 'right-0' : 'left-0';
 
 if ($awMode === 'launch' && !isset($apps)) {
     if (class_exists('Auth') && class_exists('AuthService')) {
@@ -54,24 +55,37 @@ $awTileIcon = function (string $key, string $color = '', string $label = '') {
         <p class="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Switch App</p>
         <div class="grid grid-cols-3 gap-2">
 
-            <!-- Centryk (current) -->
+            <!-- Centryk: current (highlighted) or a link back to the dashboard -->
+            <?php $awCentrykIcon = '<svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>'; ?>
+            <?php if ($awCurrent === 'centryk'): ?>
             <div class="flex flex-col items-center gap-2 rounded-xl p-3 text-center bg-slate-100 ring-1 ring-slate-200 cursor-default">
-                <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-sm">
-                    <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
-                </span>
+                <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-sm"><?= $awCentrykIcon ?></span>
                 <span class="text-xs font-semibold text-slate-700">Centryk</span>
             </div>
+            <?php else: ?>
+            <a href="index.php" class="flex flex-col items-center gap-2 rounded-xl p-3 text-center transition hover:bg-slate-50">
+                <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-sm"><?= $awCentrykIcon ?></span>
+                <span class="text-xs font-medium text-slate-700">Centryk</span>
+            </a>
+            <?php endif; ?>
 
             <?php if ($awMode === 'launch' && !empty($apps)): ?>
                 <?php foreach ($apps as $app):
                     if (empty($app['enrolled'])) continue;          // only enrolled apps
-                    if (($app['key'] ?? '') === 'centryk') continue; // centryk shown as current above
+                    if (($app['key'] ?? '') === 'centryk') continue; // centryk shown above
                     $k = (string)$app['key'];
                 ?>
+                <?php if ($k === $awCurrent): ?>
+                <div class="flex flex-col items-center gap-2 rounded-xl p-3 text-center bg-slate-100 ring-1 ring-slate-200 cursor-default">
+                    <?= $awTileIcon($k, (string)($app['color'] ?? ''), (string)($app['label'] ?? '')) ?>
+                    <span class="text-xs font-semibold text-slate-700"><?= htmlspecialchars($app['label']) ?></span>
+                </div>
+                <?php else: ?>
                 <button type="button" data-app="<?= htmlspecialchars($k) ?>" class="aw-app flex flex-col items-center gap-2 rounded-xl p-3 text-center transition hover:bg-slate-50">
                     <?= $awTileIcon($k, (string)($app['color'] ?? ''), (string)($app['label'] ?? '')) ?>
                     <span class="text-xs font-medium text-slate-700"><?= htmlspecialchars($app['label']) ?></span>
                 </button>
+                <?php endif; ?>
                 <?php endforeach; ?>
             <?php elseif ($awMode === 'links'): ?>
                 <!-- OnePay (marketing) -->

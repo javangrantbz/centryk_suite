@@ -167,7 +167,7 @@ function calLink(int $companyId, string $ym): string {
             <i data-lucide="calendar" class="h-4 w-4 text-teal-500"></i>
             <span class="hidden text-sm font-bold text-slate-700 sm:inline">Calendar</span>
         </div>
-        <?php $awAlign = 'right'; $awMode = 'launch'; include __DIR__ . '/partials/app_switcher.php'; ?>
+        <?php $awAlign = 'right'; $awMode = 'launch'; $awCurrent = 'calendar'; include __DIR__ . '/partials/app_switcher.php'; ?>
         <div class="h-5 w-px bg-slate-200 shrink-0"></div>
         <div class="relative shrink-0" id="userMenuWrapper">
             <button id="userMenuBtn" class="flex items-center gap-2.5 rounded-xl px-3 py-2 transition hover:bg-slate-100">
