@@ -595,6 +595,8 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         selectedId   = id;
         var c = companies.find(function (x) { return x.id == id; });
         selectedUuid = c ? (c.uuid || null) : null;
+        // Remember the choice so it carries over when returning from another app.
+        if (selectedUuid) { try { localStorage.setItem('centryk_company_uuid', selectedUuid); } catch (e) {} }
         if (c) {
             pickerLabel.textContent = c.name;
             pickerLabel.classList.remove('text-slate-400');
@@ -727,8 +729,13 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
             });
         });
 
-        // Auto-select first if only one company
-        if (companies.length === 1) {
+        // Carry over a company selected elsewhere: prefer ?company_uuid= in the
+        // URL (passed by OnePay/MyPay when switching back), then the last choice
+        // remembered in localStorage. Fall back to auto-select when there's one.
+        var preferredId = preferredCompanyId();
+        if (preferredId != null) {
+            selectCompany(preferredId);
+        } else if (companies.length === 1) {
             selectCompany(companies[0].id);
         } else {
             pickerLabel.textContent = 'Select a company…';
@@ -737,6 +744,18 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
                 card.disabled = true;
             });
         }
+    }
+
+    // Resolve the company to preselect from the URL or remembered choice.
+    function preferredCompanyId() {
+        var uuid = '';
+        try { uuid = new URL(window.location.href).searchParams.get('company_uuid') || ''; } catch (e) {}
+        if (!uuid) {
+            try { uuid = localStorage.getItem('centryk_company_uuid') || ''; } catch (e) {}
+        }
+        if (!uuid) return null;
+        var match = companies.find(function (c) { return c.uuid === uuid; });
+        return match ? match.id : null;
     }
 
     function loadCompanies() {
