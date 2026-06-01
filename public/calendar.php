@@ -23,17 +23,24 @@ $coStmt = $pdo->prepare("
 $coStmt->execute(['uid' => (int)$user['id']]);
 $companies = $coStmt->fetchAll(PDO::FETCH_ASSOC);
 
-// ── Active company (?company_id, else first) ────────────────────────────────
+// ── Active company (?company_id, or ?company_uuid from other apps, else first) ─
 $activeCompanyId   = null;
 $activeCompanyName = '';
 $activeCompanyUuid = '';
 $activeRole        = null;
 if (!empty($companies)) {
-    $requestedCid = isset($_GET['company_id']) ? (int)$_GET['company_id'] : 0;
+    $requestedCid  = isset($_GET['company_id'])   ? (int)$_GET['company_id'] : 0;
+    $requestedUuid = isset($_GET['company_uuid']) ? trim((string)$_GET['company_uuid']) : '';
     $picked = null;
     if ($requestedCid) {
         foreach ($companies as $c) {
             if ((int)$c['id'] === $requestedCid) { $picked = $c; break; }
+        }
+    }
+    // Fall back to the cross-app uuid (passed by the dashboard/OnePay/MyPay).
+    if (!$picked && $requestedUuid !== '') {
+        foreach ($companies as $c) {
+            if ((string)($c['uuid'] ?? '') === $requestedUuid) { $picked = $c; break; }
         }
     }
     if (!$picked) $picked = $companies[0];
