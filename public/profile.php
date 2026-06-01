@@ -216,11 +216,32 @@ $companyCount = count($myCompanies);
         </div>
     </div>
 
-    <!-- 3-col grid -->
-    <div class="grid gap-4 lg:grid-cols-3">
+    <!-- Account: left menu + panels -->
+    <div class="grid gap-4 lg:grid-cols-[200px_1fr]">
+
+        <!-- Left menu -->
+        <aside class="rounded-xl border border-white/10 bg-[#111827] p-2 h-max lg:sticky lg:top-4">
+            <nav class="space-y-0.5" id="accountNav">
+                <button type="button" data-target="personal" class="acct-nav-btn w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-bold text-white bg-blue-500/15 transition hover:bg-white/8 text-left">
+                    <i data-lucide="user" class="h-4 w-4 shrink-0"></i> Personal Information
+                </button>
+                <button type="button" data-target="password" class="acct-nav-btn w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-bold text-white/60 transition hover:bg-white/8 text-left">
+                    <i data-lucide="lock" class="h-4 w-4 shrink-0"></i> Change Password
+                </button>
+                <button type="button" data-target="companies" class="acct-nav-btn w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-bold text-white/60 transition hover:bg-white/8 text-left">
+                    <i data-lucide="building-2" class="h-4 w-4 shrink-0"></i> My Companies
+                </button>
+                <button type="button" data-target="apps" class="acct-nav-btn w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-bold text-white/60 transition hover:bg-white/8 text-left">
+                    <i data-lucide="layout-grid" class="h-4 w-4 shrink-0"></i> Connected Apps
+                </button>
+            </nav>
+        </aside>
+
+        <!-- Panels -->
+        <div class="min-w-0 space-y-4">
 
         <!-- Change Password -->
-        <div class="rounded-xl border border-white/10 bg-[#111827] p-4">
+        <section data-panel="password" class="acct-panel hidden rounded-xl border border-white/10 bg-[#111827] p-4 max-w-2xl">
             <div class="flex items-center gap-2 mb-3">
                 <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/15">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3.5 w-3.5 text-blue-400">
@@ -277,10 +298,10 @@ $companyCount = count($myCompanies);
                     </button>
                 </div>
             </form>
-        </div>
+        </section>
 
-        <!-- Account Details -->
-        <div class="rounded-xl border border-white/10 bg-[#111827] p-4">
+        <!-- Personal Information -->
+        <section data-panel="personal" class="acct-panel rounded-xl border border-white/10 bg-[#111827] p-4 max-w-2xl">
             <div class="flex items-center gap-2 mb-3">
                 <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-500/15">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3.5 w-3.5 text-orange-400">
@@ -288,8 +309,8 @@ $companyCount = count($myCompanies);
                     </svg>
                 </div>
                 <div>
-                    <h2 class="text-xs font-black text-white">Account Details</h2>
-                    <p class="text-[10px] text-white/35">Update your display name.</p>
+                    <h2 class="text-xs font-black text-white">Personal Information</h2>
+                    <p class="text-[10px] text-white/35">Update your name and contact details.</p>
                 </div>
             </div>
 
@@ -331,10 +352,10 @@ $companyCount = count($myCompanies);
                     <span class="text-[10px] text-white/25 font-semibold">Email changes require admin.</span>
                 </div>
             </form>
-        </div>
+        </section>
 
         <!-- My Companies -->
-        <div class="rounded-xl border border-white/10 bg-[#111827] p-4 flex flex-col">
+        <section data-panel="companies" class="acct-panel hidden rounded-xl border border-white/10 bg-[#111827] p-4 flex flex-col">
             <div class="flex items-center gap-2 mb-3">
                 <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-500/15">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3.5 w-3.5 text-purple-400">
@@ -380,12 +401,10 @@ $companyCount = count($myCompanies);
                     </a>
                 </div>
             <?php endif; ?>
-        </div>
+        </section>
 
-    </div>
-
-    <!-- Connected Apps -->
-    <div class="hidden rounded-xl border border-white/10 bg-[#111827] p-4">
+        <!-- Connected Apps -->
+        <section data-panel="apps" class="acct-panel hidden rounded-xl border border-white/10 bg-[#111827] p-4">
         <div class="flex items-center gap-2 mb-4">
             <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-white/8">
                 <svg viewBox="0 0 24 24" fill="currentColor" class="h-3.5 w-3.5 text-white/50">
@@ -483,7 +502,10 @@ $companyCount = count($myCompanies);
             </div>
 
         </div>
-    </div>
+        </section>
+
+        </div><!-- /panels -->
+    </div><!-- /account layout -->
 
 </div><!-- /page body -->
 
@@ -619,6 +641,29 @@ document.getElementById('updateNameForm').addEventListener('submit', async funct
         lucide.createIcons();
     }
 });
+
+// ── Account menu (left panel) ──────────────────────────────────────────────
+(function () {
+    const btns   = Array.from(document.querySelectorAll('.acct-nav-btn'));
+    const panels = Array.from(document.querySelectorAll('.acct-panel'));
+    if (!btns.length) return;
+    const valid = panels.map(p => p.dataset.panel);
+    function activate(target) {
+        if (!valid.includes(target)) target = valid[0];
+        panels.forEach(p => p.classList.toggle('hidden', p.dataset.panel !== target));
+        btns.forEach(b => {
+            const on = b.dataset.target === target;
+            b.classList.toggle('bg-blue-500/15', on);
+            b.classList.toggle('text-white', on);
+            b.classList.toggle('text-white/60', !on);
+        });
+        try { localStorage.setItem('centrykAccountTab', target); } catch (e) {}
+    }
+    btns.forEach(b => b.addEventListener('click', () => activate(b.dataset.target)));
+    const hash = (location.hash || '').replace('#', '');
+    let saved = null; try { saved = localStorage.getItem('centrykAccountTab'); } catch (e) {}
+    activate(valid.includes(hash) ? hash : (saved || 'personal'));
+})();
 </script>
 </body>
 </html>
