@@ -60,12 +60,12 @@ $awTileIcon = function (string $key, string $color = '', string $label = '') {
             <?php if ($awCurrent === 'centryk'): ?>
             <div class="flex flex-col items-center gap-2 rounded-xl p-3 text-center bg-slate-100 ring-1 ring-slate-200 cursor-default">
                 <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-sm"><?= $awCentrykIcon ?></span>
-                <span class="text-xs font-semibold text-slate-700">Centryk</span>
+                <span class="text-xs font-semibold text-slate-700">Account</span>
             </div>
             <?php else: ?>
             <a href="index.php" class="flex flex-col items-center gap-2 rounded-xl p-3 text-center transition hover:bg-slate-50">
                 <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-sm"><?= $awCentrykIcon ?></span>
-                <span class="text-xs font-medium text-slate-700">Centryk</span>
+                <span class="text-xs font-medium text-slate-700">Account</span>
             </a>
             <?php endif; ?>
 
