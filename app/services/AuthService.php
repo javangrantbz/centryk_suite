@@ -68,7 +68,7 @@ class AuthService
     public static function launchApp(int $userId, string $appKey, string $companyUuid = ''): ?string
     {
         $stmt = DB::pdo()->prepare(
-            'SELECT a.url_local FROM apps a
+            'SELECT a.url_local, a.url_production FROM apps a
              JOIN user_app_access ua ON ua.app_id = a.id
              WHERE ua.user_id = :user_id AND a.key = :app_key AND a.status = "active" LIMIT 1'
         );
@@ -79,8 +79,14 @@ class AuthService
             return null;
         }
 
+        // Use the production URL unless we're actually running on localhost,
+        // so launching from the live server doesn't redirect to localhost.
+        $host    = $_SERVER['HTTP_HOST'] ?? '';
+        $isLocal = preg_match('/^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i', $host) === 1;
+        $base    = ($isLocal || empty($app['url_production'])) ? $app['url_local'] : $app['url_production'];
+
         $token = Auth::issueToken($userId, $appKey);
-        $url   = $app['url_local'] . '?sso_token=' . $token;
+        $url   = $base . '?sso_token=' . $token;
         if ($companyUuid !== '') {
             $url .= '&company_uuid=' . urlencode($companyUuid);
         }
