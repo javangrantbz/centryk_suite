@@ -26,6 +26,7 @@ $companies = $coStmt->fetchAll(PDO::FETCH_ASSOC);
 // ── Active company (?company_id, else first) ────────────────────────────────
 $activeCompanyId   = null;
 $activeCompanyName = '';
+$activeCompanyUuid = '';
 $activeRole        = null;
 if (!empty($companies)) {
     $requestedCid = isset($_GET['company_id']) ? (int)$_GET['company_id'] : 0;
@@ -38,6 +39,7 @@ if (!empty($companies)) {
     if (!$picked) $picked = $companies[0];
     $activeCompanyId   = (int)$picked['id'];
     $activeCompanyName = $picked['name'];
+    $activeCompanyUuid = (string)($picked['uuid'] ?? '');
     $activeRole        = $picked['role'];
 }
 $isAdmin = ($activeRole === 'admin');
@@ -396,6 +398,21 @@ function calLink(int $companyId, string $ym): string {
             window.location.href = url.toString();
         });
     }
+
+    // ── App switcher (waffle) → launch other apps via switch.php ─────────────
+    var activeCompanyUuid = <?= json_encode($activeCompanyUuid ?? '') ?>;
+    document.querySelectorAll('.aw-app').forEach(function (tile) {
+        tile.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var dd = document.getElementById('appSwitcherDropdown');
+            if (dd) dd.classList.add('hidden');
+            var url = 'switch.php?app=' + encodeURIComponent(tile.dataset.app);
+            if (activeCompanyUuid) {
+                url += '&company_uuid=' + encodeURIComponent(activeCompanyUuid);
+            }
+            window.location.href = url;
+        });
+    });
 
     // ── Event modal ───────────────────────────────────────────────────────────
     var activeCompanyId = <?= (int)($activeCompanyId ?? 0) ?>;
