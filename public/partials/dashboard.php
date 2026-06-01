@@ -131,7 +131,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
                 <div class="p-2 space-y-0.5">
                     <a href="profile.php" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition">
                         <i data-lucide="user-cog" class="h-4 w-4 shrink-0"></i>
-                        Manage Profile
+                        Manage your Centryk Account
                     </a>
                     <?php if (!empty($user['is_admin'])): ?>
                     <a href="companies.php" class="flex sm:hidden items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition">

@@ -170,7 +170,7 @@ $requestedCompanyUuid = trim($_GET['company_uuid'] ?? '');
                     </button>
                     <a href="profile.php" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition">
                         <i data-lucide="user-cog" class="h-4 w-4 shrink-0"></i>
-                        Manage Profile
+                        Manage your Centryk Account
                     </a>
                     <button id="logoutBtn" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-red-50 hover:text-red-600 transition text-left">
                         <i data-lucide="log-out" class="h-4 w-4 shrink-0"></i>
