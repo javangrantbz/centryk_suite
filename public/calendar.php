@@ -122,16 +122,34 @@ function calLink(int $companyId, string $ym): string {
         </a>
         <div class="h-5 w-px bg-slate-200 shrink-0"></div>
         <?php if (count($companies) > 1): ?>
-        <div class="flex items-center gap-2 shrink-0">
-            <i data-lucide="building-2" class="h-4 w-4 text-teal-500 shrink-0"></i>
-            <select id="companyPicker" class="rounded-xl border border-teal-200 bg-teal-50 px-3 py-1.5 text-sm font-bold text-teal-700 outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100">
-                <?php foreach ($companies as $c): ?>
-                <option value="<?= (int)$c['id'] ?>" <?= ((int)$c['id'] === $activeCompanyId) ? 'selected' : '' ?>><?= htmlspecialchars($c['name']) ?></option>
+        <div class="relative shrink-0" id="companySwitcherWrap">
+            <button id="companySwitcherBtn" type="button"
+                    class="flex items-center gap-1.5 rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-semibold text-teal-700 hover:bg-teal-100 transition-colors">
+                <i data-lucide="building-2" class="h-4 w-4 text-teal-500 shrink-0"></i>
+                <span><?= htmlspecialchars($activeCompanyName) ?></span>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="h-3.5 w-3.5 text-teal-400">
+                    <path fill-rule="evenodd" d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd"/>
+                </svg>
+            </button>
+            <div id="companySwitcherDropdown"
+                 class="absolute left-0 top-full z-50 mt-1.5 hidden w-56 rounded-xl border border-slate-200 bg-white py-1 shadow-lg shadow-slate-200/60">
+                <?php foreach ($companies as $c): $isActive = ((int)$c['id'] === $activeCompanyId); ?>
+                <a href="<?= htmlspecialchars(calLink((int)$c['id'], $ym)) ?>"
+                   class="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm transition-colors <?= $isActive ? 'bg-teal-50 font-semibold text-teal-700' : 'text-slate-700 hover:bg-slate-50' ?>">
+                    <?php if ($isActive): ?>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="h-3.5 w-3.5 text-teal-500 shrink-0">
+                        <path fill-rule="evenodd" d="M12.416 3.376a.75.75 0 0 1 .208 1.04l-5 7.5a.75.75 0 0 1-1.154.114l-3-3a.75.75 0 0 1 1.06-1.06l2.353 2.353 4.493-6.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd"/>
+                    </svg>
+                    <?php else: ?>
+                    <span class="h-3.5 w-3.5 shrink-0"></span>
+                    <?php endif; ?>
+                    <?= htmlspecialchars($c['name']) ?>
+                </a>
                 <?php endforeach; ?>
-            </select>
+            </div>
         </div>
         <?php elseif (!empty($activeCompanyName)): ?>
-        <span class="inline-flex items-center gap-1.5 rounded-xl border border-teal-200 bg-teal-50 px-3 py-1.5 text-sm font-bold text-teal-700 shrink-0">
+        <span class="inline-flex items-center gap-1.5 rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-semibold text-teal-700 shrink-0">
             <i data-lucide="building-2" class="h-4 w-4 text-teal-500"></i>
             <?= htmlspecialchars($activeCompanyName) ?>
         </span>
@@ -396,14 +414,12 @@ function calLink(int $companyId, string $ym): string {
         });
     }
 
-    // ── Company picker → reload with new company_id ──────────────────────────
-    var coPicker = document.getElementById('companyPicker');
-    if (coPicker) {
-        coPicker.addEventListener('change', function () {
-            var url = new URL(window.location.href);
-            url.searchParams.set('company_id', coPicker.value);
-            window.location.href = url.toString();
-        });
+    // ── Company switcher dropdown (rows are links that reload) ────────────────
+    var coBtn = document.getElementById('companySwitcherBtn');
+    var coDd  = document.getElementById('companySwitcherDropdown');
+    if (coBtn && coDd) {
+        coBtn.addEventListener('click', function (e) { e.stopPropagation(); coDd.classList.toggle('hidden'); });
+        document.addEventListener('click', function () { coDd.classList.add('hidden'); });
     }
 
     // ── App switcher (waffle) → launch other apps via switch.php ─────────────
