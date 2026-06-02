@@ -210,6 +210,9 @@ $companyCount = count($myCompanies);
                 <button type="button" data-target="password" class="acct-nav-btn w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-bold text-white/60 transition hover:bg-white/8 text-left">
                     <i data-lucide="lock" class="h-4 w-4 shrink-0"></i> Change Password
                 </button>
+                <button type="button" data-target="security" class="acct-nav-btn w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-bold text-white/60 transition hover:bg-white/8 text-left">
+                    <i data-lucide="shield-check" class="h-4 w-4 shrink-0"></i> Sign-in activity
+                </button>
                 <button type="button" data-target="companies" class="acct-nav-btn w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-bold text-white/60 transition hover:bg-white/8 text-left">
                     <i data-lucide="building-2" class="h-4 w-4 shrink-0"></i> My Companies
                 </button>
@@ -280,6 +283,27 @@ $companyCount = count($myCompanies);
                     </button>
                 </div>
             </form>
+        </section>
+
+        <!-- Sign-in activity -->
+        <section data-panel="security" class="acct-panel hidden rounded-xl border border-white/10 bg-[#111827] p-4 max-w-2xl">
+            <div class="flex items-center gap-2 mb-3">
+                <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/15">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3.5 w-3.5 text-emerald-400">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-xs font-black text-white">Sign-in activity</h2>
+                    <p class="text-[10px] text-white/35">Your recent sign-ins across Centryk and its apps.</p>
+                </div>
+            </div>
+            <div id="loginActivityBody" class="space-y-1.5">
+                <p class="px-1 py-6 text-center text-xs text-white/30">Loading…</p>
+            </div>
+            <p class="mt-3 pt-3 border-t border-white/6 text-[10px] text-white/30">
+                Don't recognize an entry? <a href="#" class="font-bold text-blue-400 hover:text-blue-300" data-target="password" id="goChangePw">Change your password</a> right away.
+            </p>
         </section>
 
         <!-- Personal Information -->
@@ -606,6 +630,43 @@ document.getElementById('updateNameForm').addEventListener('submit', async funct
     const panels = Array.from(document.querySelectorAll('.acct-panel'));
     if (!btns.length) return;
     const valid = panels.map(p => p.dataset.panel);
+
+    // ── Sign-in activity (lazy-loaded from login_events) ───────────────────
+    let activityLoaded = false;
+    function esc(s) { return String(s || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+    function fmtWhen(s) {
+        if (!s) return '';
+        const d = new Date(String(s).replace(' ', 'T'));
+        return isNaN(d) ? esc(s) : d.toLocaleString('en-US', { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
+    }
+    function activityRow(e) {
+        const ok = e.success;
+        return '<div class="flex items-center gap-3 rounded-lg bg-white/4 border border-white/6 px-3 py-2.5">' +
+            '<div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ' + (ok ? 'bg-blue-500/15 text-blue-400' : 'bg-rose-500/15 text-rose-400') + '">' +
+                '<i data-lucide="' + esc(e.icon || 'monitor') + '" class="h-4 w-4"></i>' +
+            '</div>' +
+            '<div class="min-w-0 flex-1">' +
+                '<p class="text-sm font-bold text-white truncate">' + esc(e.label) + '</p>' +
+                '<p class="text-[11px] text-white/40">' + esc(e.ip) + ' · ' + fmtWhen(e.created_at) + '</p>' +
+            '</div>' +
+            (ok ? '' : '<span class="shrink-0 rounded-full bg-rose-500/15 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-rose-400">Failed</span>') +
+        '</div>';
+    }
+    function loadLoginActivity() {
+        if (activityLoaded) return;
+        activityLoaded = true;
+        const body = document.getElementById('loginActivityBody');
+        fetch('api/profile/login-activity.php')
+            .then(r => r.json())
+            .then(d => {
+                const evs = (d && d.events) || [];
+                body.innerHTML = evs.length ? evs.map(activityRow).join('')
+                    : '<p class="px-1 py-6 text-center text-xs text-white/30">No recent sign-ins.</p>';
+                if (window.lucide) lucide.createIcons();
+            })
+            .catch(() => { activityLoaded = false; body.innerHTML = '<p class="px-1 py-6 text-center text-xs text-white/30">Couldn\'t load activity.</p>'; });
+    }
+
     function activate(target) {
         if (!valid.includes(target)) target = valid[0];
         panels.forEach(p => p.classList.toggle('hidden', p.dataset.panel !== target));
@@ -615,9 +676,12 @@ document.getElementById('updateNameForm').addEventListener('submit', async funct
             b.classList.toggle('text-white', on);
             b.classList.toggle('text-white/60', !on);
         });
+        if (target === 'security') loadLoginActivity();
         try { localStorage.setItem('centrykAccountTab', target); } catch (e) {}
     }
     btns.forEach(b => b.addEventListener('click', () => activate(b.dataset.target)));
+    document.getElementById('goChangePw')?.addEventListener('click', e => { e.preventDefault(); activate('password'); });
+
     const hash = (location.hash || '').replace('#', '');
     let saved = null; try { saved = localStorage.getItem('centrykAccountTab'); } catch (e) {}
     activate(valid.includes(hash) ? hash : (saved || 'personal'));
