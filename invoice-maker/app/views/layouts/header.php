@@ -25,6 +25,8 @@ $invCalQs    = $invHdrUuid !== '' ? '?company_uuid=' . urlencode($invHdrUuid) : 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= APP_NAME ?></title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] } } } }</script>
+    <link rel="icon" type="image/svg+xml" href="<?= CENTRYK_BASE ?>/favicon.svg">
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
@@ -36,9 +38,12 @@ $invCalQs    = $invHdrUuid !== '' ? '?company_uuid=' . urlencode($invHdrUuid) : 
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
     </style>
 </head>
-<body class="bg-[#f8fafc] text-slate-900 overflow-hidden">
+<body class="bg-[#f8fafc] text-slate-900 overflow-hidden font-sans">
 
-<div class="flex h-screen overflow-hidden">
+<!-- Centryk accent bar -->
+<div class="h-[3px] w-full bg-gradient-to-r from-purple-600 via-blue-500 to-orange-500"></div>
+
+<div class="flex overflow-hidden" style="height: calc(100vh - 3px)">
     <!-- Slim Sidebar Navigation -->
     <aside class="w-20 lg:w-24 bg-[#1a1a1a] flex flex-col items-center py-8 flex-shrink-0 z-50">
         <div class="mb-10 text-emerald-500">
