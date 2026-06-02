@@ -88,6 +88,22 @@ if ($_swIsLocal) {
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ── Notification preferences (catalog + the user's stored overrides) ──────────
+$notifCatalog = require __DIR__ . '/../app/config/notifications.php';
+$notifSaved   = [];
+try {
+    $s = $pdo->prepare('SELECT pref_key, enabled FROM user_notification_prefs WHERE user_id = :uid');
+    $s->execute(['uid' => (int)$user['id']]);
+    foreach ($s->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        $notifSaved[$r['pref_key']] = (int)$r['enabled'];
+    }
+} catch (Exception $e) {}
+$notifPrefs = [];
+foreach ($notifCatalog as $key => $meta) {
+    $meta['enabled'] = array_key_exists($key, $notifSaved) ? $notifSaved[$key] : (int)$meta['default'];
+    $notifPrefs[$key] = $meta;
+}
+
 $fullName     = htmlspecialchars($user['first_name'] . ' ' . $user['last_name']);
 $firstName    = htmlspecialchars($user['first_name']);
 $lastName     = htmlspecialchars($user['last_name']);
@@ -213,6 +229,9 @@ $companyCount = count($myCompanies);
                 <button type="button" data-target="security" class="acct-nav-btn w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-bold text-white/60 transition hover:bg-white/8 text-left">
                     <i data-lucide="shield-check" class="h-4 w-4 shrink-0"></i> Sign-in activity
                 </button>
+                <button type="button" data-target="notifications" class="acct-nav-btn w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-bold text-white/60 transition hover:bg-white/8 text-left">
+                    <i data-lucide="bell" class="h-4 w-4 shrink-0"></i> Notifications
+                </button>
                 <button type="button" data-target="companies" class="acct-nav-btn w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-bold text-white/60 transition hover:bg-white/8 text-left">
                     <i data-lucide="building-2" class="h-4 w-4 shrink-0"></i> My Companies
                 </button>
@@ -304,6 +323,34 @@ $companyCount = count($myCompanies);
             <p class="mt-3 pt-3 border-t border-white/6 text-[10px] text-white/30">
                 Don't recognize an entry? <a href="#" class="font-bold text-blue-400 hover:text-blue-300" data-target="password" id="goChangePw">Change your password</a> right away.
             </p>
+        </section>
+
+        <!-- Notifications -->
+        <section data-panel="notifications" class="acct-panel hidden rounded-xl border border-white/10 bg-[#111827] p-4 max-w-2xl">
+            <div class="flex items-center gap-2 mb-3">
+                <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/15">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3.5 w-3.5 text-amber-400">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-xs font-black text-white">Notifications</h2>
+                    <p class="text-[10px] text-white/35">Choose which emails Centryk sends you.</p>
+                </div>
+            </div>
+            <div class="space-y-1.5">
+                <?php foreach ($notifPrefs as $key => $pref): ?>
+                <label class="flex items-center justify-between gap-3 rounded-lg bg-white/4 border border-white/6 px-3 py-3 cursor-pointer">
+                    <div class="min-w-0">
+                        <p class="text-sm font-bold text-white"><?= htmlspecialchars($pref['label']) ?></p>
+                        <p class="text-[11px] text-white/40"><?= htmlspecialchars($pref['desc']) ?></p>
+                    </div>
+                    <input type="checkbox" class="notif-toggle sr-only peer" data-key="<?= htmlspecialchars($key) ?>" <?= $pref['enabled'] ? 'checked' : '' ?>>
+                    <span class="relative h-5 w-9 shrink-0 rounded-full bg-white/15 transition-colors peer-checked:bg-blue-500 after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-transform peer-checked:after:translate-x-4"></span>
+                </label>
+                <?php endforeach; ?>
+            </div>
+            <p id="notifStatus" class="mt-3 h-4 text-[10px] font-bold text-emerald-400"></p>
         </section>
 
         <!-- Personal Information -->
@@ -685,6 +732,36 @@ document.getElementById('updateNameForm').addEventListener('submit', async funct
     const hash = (location.hash || '').replace('#', '');
     let saved = null; try { saved = localStorage.getItem('centrykAccountTab'); } catch (e) {}
     activate(valid.includes(hash) ? hash : (saved || 'personal'));
+})();
+
+// ── Notification preferences (save each toggle) ────────────────────────────
+(function () {
+    const status = document.getElementById('notifStatus');
+    let statusTimer = null;
+    function flash(msg, ok) {
+        if (!status) return;
+        status.textContent = msg;
+        status.className = 'mt-3 h-4 text-[10px] font-bold ' + (ok ? 'text-emerald-400' : 'text-rose-400');
+        clearTimeout(statusTimer);
+        statusTimer = setTimeout(() => { status.textContent = ''; }, 2500);
+    }
+    document.querySelectorAll('.notif-toggle').forEach(cb => {
+        cb.addEventListener('change', () => {
+            const enabled = cb.checked;
+            cb.disabled = true;
+            fetch('api/profile/notification-prefs.php', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pref_key: cb.dataset.key, enabled })
+            })
+            .then(r => r.json())
+            .then(d => {
+                if (d && d.success) { flash('Saved', true); }
+                else { cb.checked = !enabled; flash('Could not save', false); }
+            })
+            .catch(() => { cb.checked = !enabled; flash('Network error', false); })
+            .finally(() => { cb.disabled = false; });
+        });
+    });
 })();
 </script>
 </body>
