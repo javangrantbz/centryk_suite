@@ -31,6 +31,16 @@ if (!empty($invoice['quote_id'])) {
     $sourceQuote = $sq->fetch();
 }
 
+// Public share link (tokenized).
+if (empty($invoice['share_token'])) {
+    $tok = bin2hex(random_bytes(20));
+    $pdo->prepare("UPDATE invoices SET share_token = ? WHERE id = ? AND company_id = ?")->execute([$tok, $id, current_company_id()]);
+    $invoice['share_token'] = $tok;
+}
+$invScheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+$shareUrl  = $invScheme . '://' . ($_SERVER['HTTP_HOST'] ?? '') . BASE_URL . '/share.php?t=' . $invoice['share_token'];
+$shareMsg  = 'Invoice ' . $invoice['invoice_number'] . ' (' . money($invoice['total']) . '): ' . $shareUrl;
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['mark_paid'])) {
         $stmt = $pdo->prepare("
@@ -89,6 +99,12 @@ function getStatusBadge($status) {
         </div>
 
         <div class="flex items-center gap-3">
+            <a href="https://wa.me/?text=<?= rawurlencode($shareMsg) ?>" target="_blank" rel="noopener" title="Share via WhatsApp" class="flex items-center justify-center w-12 h-12 rounded-2xl bg-[#25D366] text-white hover:opacity-90 transition shadow-lg shadow-green-100">
+                <i data-lucide="message-circle" class="w-5 h-5"></i>
+            </a>
+            <a href="mailto:?subject=<?= rawurlencode('Invoice ' . $invoice['invoice_number']) ?>&body=<?= rawurlencode($shareMsg) ?>" title="Share via Email" class="flex items-center justify-center w-12 h-12 rounded-2xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
+                <i data-lucide="mail" class="w-5 h-5"></i>
+            </a>
             <a href="<?= BASE_URL ?>/pdf-invoice.php?id=<?= $invoice['id'] ?>" target="_blank" class="flex items-center bg-[#1a1a1a] hover:bg-emerald-600 text-white px-6 py-3 rounded-2xl font-bold transition-all shadow-lg shadow-gray-200">
                 <i data-lucide="download" class="w-4 h-4 mr-2"></i>
                 Download PDF

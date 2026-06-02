@@ -54,8 +54,10 @@ CREATE TABLE IF NOT EXISTS invoices (
     total          DECIMAL(10,2) DEFAULT 0.00,
     amount_paid    DECIMAL(10,2) DEFAULT 0.00,
     notes          TEXT          NULL,
+    share_token    CHAR(40)      NULL,
     created_by     INT UNSIGNED  NULL,
     created_at     DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_invoices_share (share_token),
     INDEX idx_invoices_company (company_id),
     CONSTRAINT fk_invoices_company  FOREIGN KEY (company_id)  REFERENCES companies(id) ON DELETE CASCADE,
     CONSTRAINT fk_invoices_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
@@ -97,8 +99,10 @@ CREATE TABLE IF NOT EXISTS quotes (
     discount     DECIMAL(10,2) DEFAULT 0.00,
     total        DECIMAL(10,2) DEFAULT 0.00,
     notes        TEXT          NULL,
+    share_token  CHAR(40)      NULL,
     created_by   INT UNSIGNED  NULL,
     created_at   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_quotes_share (share_token),
     INDEX idx_quotes_company (company_id),
     CONSTRAINT fk_quotes_company  FOREIGN KEY (company_id)  REFERENCES companies(id) ON DELETE CASCADE,
     CONSTRAINT fk_quotes_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE

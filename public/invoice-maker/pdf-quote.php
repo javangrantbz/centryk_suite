@@ -1,15 +1,16 @@
 <?php
 
-require_once __DIR__ . '/../../invoice-maker/bootstrap.php';
-
-require_once __DIR__ . '/../../invoice-maker/vendor/autoload.php';
-
 use Dompdf\Dompdf;
 
-require_auth();
-
-$id = $_GET['id'] ?? null;
-$companyId = current_company_id();
+if (!isset($invShare)) {
+    // Authenticated mode: a logged-in user downloading their own PDF.
+    require_once __DIR__ . '/../../invoice-maker/bootstrap.php';
+    require_once __DIR__ . '/../../invoice-maker/vendor/autoload.php';
+    require_auth();
+    $id = $_GET['id'] ?? null;
+    $companyId = current_company_id();
+}
+// Share mode: share.php has already set $invShare, $pdo, $id, $companyId + autoload.
 
 $userStmt = $pdo->prepare("SELECT * FROM invoice_settings WHERE company_id = ?");
 $userStmt->execute([$companyId]);
