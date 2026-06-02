@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../app/core/Auth.php';
 require_once __DIR__ . '/../app/core/DB.php';
+require_once __DIR__ . '/../app/services/AuthService.php';
 
 Auth::start();
 $user = Auth::user();
@@ -162,14 +163,7 @@ $companyCount = count($myCompanies);
         </div>
 
         <div class="flex items-center gap-3">
-            <a href="index.php" class="hidden sm:flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
-                <i data-lucide="layout-grid" class="h-3.5 w-3.5"></i>
-                Launcher
-            </a>
-            <a href="companies.php" class="hidden sm:flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
-                <i data-lucide="building-2" class="h-3.5 w-3.5"></i>
-                Companies
-            </a>
+            <?php $awAlign = 'right'; $awMode = 'launch'; $awCurrent = 'centryk'; include __DIR__ . '/partials/app_switcher.php'; ?>
 
             <div class="relative" id="userMenuWrapper">
                 <button id="userMenuBtn" class="flex items-center gap-2.5 rounded-xl px-3 py-2 transition hover:bg-slate-100">
@@ -189,6 +183,10 @@ $companyCount = count($myCompanies);
                         <p class="text-xs text-slate-400 mt-0.5"><?= $email ?></p>
                     </div>
                     <div class="p-2 space-y-0.5">
+                        <a href="profile.php" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition">
+                            <i data-lucide="user-cog" class="h-4 w-4 shrink-0"></i>
+                            Manage your Centryk Account
+                        </a>
                         <button id="themeToggle" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition text-left">
                             <i data-lucide="sun"  id="themeIconSun"  class="h-4 w-4 shrink-0"></i>
                             <i data-lucide="moon" id="themeIconMoon" class="h-4 w-4 shrink-0 hidden"></i>
@@ -574,6 +572,23 @@ document.getElementById('userMenuBtn')?.addEventListener('click', e => {
     document.getElementById('userMenu').classList.toggle('hidden');
 });
 document.addEventListener('click', () => document.getElementById('userMenu')?.classList.add('hidden'));
+
+// ── App switcher (waffle) ──────────────────────────────────────────────────
+(function () {
+    const b = document.getElementById('appSwitcherBtn');
+    const d = document.getElementById('appSwitcherDropdown');
+    if (b && d) {
+        b.addEventListener('click', e => { e.stopPropagation(); d.classList.toggle('hidden'); });
+        document.addEventListener('click', () => d.classList.add('hidden'));
+    }
+    document.querySelectorAll('.aw-app').forEach(tile => {
+        tile.addEventListener('click', () => {
+            if (d) d.classList.add('hidden');
+            window.location.href = 'switch.php?app=' + encodeURIComponent(tile.dataset.app);
+        });
+    });
+})();
+
 document.getElementById('logoutBtn')?.addEventListener('click', () => {
     fetch('api/auth/logout.php', { method: 'POST' }).finally(() => { window.location.href = 'index.php'; });
 });
