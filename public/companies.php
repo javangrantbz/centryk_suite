@@ -12,6 +12,8 @@ $fullName = htmlspecialchars($user['first_name'] . ' ' . $user['last_name']);
 $initial  = strtoupper(substr($user['first_name'], 0, 1));
 $email    = htmlspecialchars($user['email']);
 $requestedCompanyUuid = trim($_GET['company_uuid'] ?? '');
+// Embedded mode: rendered inside the Profile → My Companies panel (no chrome).
+$embed = (($_GET['embed'] ?? '') === '1');
 ?>
 <!doctype html>
 <html lang="en">
@@ -84,7 +86,7 @@ $requestedCompanyUuid = trim($_GET['company_uuid'] ?? '');
         body.light .modal-backdrop { background: rgba(0,0,0,0.4); }
     </style>
 </head>
-<body class="min-h-screen bg-[#0d1117] font-sans antialiased text-white">
+<body class="<?= $embed ? 'bg-[#0d1117]' : 'min-h-screen bg-[#0d1117]' ?> font-sans antialiased text-white">
 <script>var _ct=localStorage.getItem('centrikyTheme');if(_ct==='light'){document.body.classList.add('light');}if(_ct==='dark'){document.body.classList.add('dark');}</script>
 
 <?php
@@ -120,19 +122,27 @@ ob_start(); ?>
 <?php endif; ?>
 <?php $headerActionsHtml = ob_get_clean();
 
-$pageTitle  = 'Companies';
-$headerMaxW = 'max-w-6xl';
-include __DIR__ . '/partials/account_header.php';
+if ($embed) {
+    // Keep the picker markup in the DOM (hidden) so its JS keeps working,
+    // but render none of the page chrome — the profile page provides that.
+    echo '<div class="hidden" aria-hidden="true">' . $headerMiddleHtml . '</div>';
+} else {
+    $pageTitle  = 'Companies';
+    $headerMaxW = 'max-w-6xl';
+    include __DIR__ . '/partials/account_header.php';
+}
 ?>
 
 <!-- Company List View -->
-<div id="listView" class="mx-auto max-w-5xl px-6 py-10">
+<div id="listView" class="mx-auto max-w-5xl px-6 <?= $embed ? 'pt-2 pb-6' : 'py-10' ?>">
+    <?php if (!$embed): ?>
     <div class="mb-2">
         <a href="index.php" class="inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-[0.12em] text-white/35 transition hover:text-white/80">
             <i data-lucide="arrow-left" class="h-3.5 w-3.5"></i>
             Back to Dashboard
         </a>
     </div>
+    <?php endif; ?>
     <div class="mb-8 flex items-center justify-between">
         <div>
             <h1 class="text-2xl font-black tracking-tight text-white">Companies</h1>
@@ -159,12 +169,19 @@ include __DIR__ . '/partials/account_header.php';
 </div>
 
 <!-- Company Detail View (hidden initially) -->
-<div id="detailView" class="hidden mx-auto max-w-5xl px-6 py-10">
+<div id="detailView" class="hidden mx-auto max-w-5xl px-6 <?= $embed ? 'pt-2 pb-6' : 'py-10' ?>">
     <div class="mb-6 flex items-center gap-3">
+        <?php if ($embed): ?>
+        <button type="button" id="detailBackEmbed" class="flex items-center gap-1.5 text-xs font-black uppercase tracking-[0.12em] text-white/35 transition hover:text-white/80">
+            <i data-lucide="arrow-left" class="h-3.5 w-3.5"></i>
+            Back to companies
+        </button>
+        <?php else: ?>
         <a href="index.php" class="flex items-center gap-1.5 text-xs font-black uppercase tracking-[0.12em] text-white/35 transition hover:text-white/80">
             <i data-lucide="arrow-left" class="h-3.5 w-3.5"></i>
             Back to Dashboard
         </a>
+        <?php endif; ?>
     </div>
 
     <div class="overflow-hidden rounded-[24px] border border-white/10 bg-[#111827]">
@@ -391,6 +408,7 @@ include __DIR__ . '/partials/account_header.php';
         document.getElementById('detailView').classList.add('hidden');
         currentCompany = null;
     }
+    document.getElementById('detailBackEmbed')?.addEventListener('click', showListView);
 
     function showDetailView(company) {
         if (currentCompany && String(currentCompany.id) === String(company.id)) {
@@ -886,5 +904,20 @@ include __DIR__ . '/partials/account_header.php';
 })();
 </script>
 <div id="toastWrap" class="pointer-events-none fixed bottom-6 left-1/2 z-[60] flex -translate-x-1/2 flex-col items-center gap-2"></div>
+<?php if ($embed): ?>
+<script>
+// Report our content height to the parent (Profile) so it can size the iframe.
+(function () {
+    function postHeight() {
+        var h = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
+        parent.postMessage({ type: 'centryk-embed-height', height: h }, '*');
+    }
+    window.addEventListener('load', postHeight);
+    if (window.ResizeObserver) { new ResizeObserver(postHeight).observe(document.body); }
+    document.addEventListener('click', function () { setTimeout(postHeight, 350); });
+    setTimeout(postHeight, 400);
+})();
+</script>
+<?php endif; ?>
 </body>
 </html>

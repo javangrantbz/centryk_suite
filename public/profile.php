@@ -408,52 +408,25 @@ $companyCount = count($myCompanies);
         </section>
 
         <!-- My Companies -->
-        <section data-panel="companies" class="acct-panel hidden rounded-xl border border-white/10 bg-[#111827] p-4 flex flex-col">
-            <div class="flex items-center gap-2 mb-3">
-                <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-500/15">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3.5 w-3.5 text-purple-400">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-                    </svg>
-                </div>
-                <div>
-                    <h2 class="text-xs font-black text-white">My Companies</h2>
-                    <p class="text-[10px] text-white/35"><?= $companyCount ?> <?= $companyCount === 1 ? 'company' : 'companies' ?> linked</p>
-                </div>
-            </div>
-
-            <?php if (empty($myCompanies)): ?>
-                <div class="flex-1 flex flex-col items-center justify-center text-center py-4">
-                    <i data-lucide="building-2" class="h-8 w-8 text-white/15 mb-2"></i>
-                    <p class="text-xs font-bold text-white/25">No companies yet.</p>
-                </div>
-            <?php else: ?>
-                <div class="flex-1 space-y-1.5">
-                    <?php foreach ($myCompanies as $co):
-                        $role      = htmlspecialchars($co['role'] ?? 'Member');
-                        $active    = strtolower($co['status'] ?? 'active') === 'active';
-                        $roleLower = strtolower($role);
-                        $badgeClass = match(true) {
-                            $roleLower === 'owner' => 'bg-purple-500/15 text-purple-400',
-                            $roleLower === 'admin' => 'bg-blue-500/15 text-blue-400',
-                            default                => 'bg-white/8 text-white/45',
-                        };
-                    ?>
-                    <div class="flex items-center justify-between gap-2 rounded-lg bg-white/4 border border-white/6 px-3 py-2">
-                        <div class="min-w-0">
-                            <p class="text-xs font-bold text-white truncate"><?= htmlspecialchars($co['name']) ?></p>
-                            <span class="text-[9px] <?= $active ? 'text-emerald-500' : 'text-white/25' ?> font-bold uppercase tracking-wider"><?= $active ? 'Active' : 'Inactive' ?></span>
-                        </div>
-                        <span class="shrink-0 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider <?= $badgeClass ?>"><?= $role ?></span>
+        <section data-panel="companies" class="acct-panel hidden rounded-xl border border-white/10 bg-[#111827] overflow-hidden">
+            <div class="flex items-center justify-between gap-2 px-4 py-3 border-b border-white/6">
+                <div class="flex items-center gap-2">
+                    <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-500/15">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3.5 w-3.5 text-purple-400">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                        </svg>
                     </div>
-                    <?php endforeach; ?>
+                    <div>
+                        <h2 class="text-xs font-black text-white">My Companies</h2>
+                        <p class="text-[10px] text-white/35"><?= $companyCount ?> <?= $companyCount === 1 ? 'company' : 'companies' ?> linked</p>
+                    </div>
                 </div>
-                <div class="mt-3 pt-3 border-t border-white/6">
-                    <a href="companies.php" class="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-white/30 transition hover:text-white/60">
-                        <i data-lucide="settings-2" class="h-3 w-3"></i>
-                        Manage Companies
-                    </a>
-                </div>
-            <?php endif; ?>
+                <a href="companies.php" target="_blank" rel="noopener" class="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-white/30 transition hover:text-white/60">
+                    <i data-lucide="external-link" class="h-3 w-3"></i> Open full page
+                </a>
+            </div>
+            <iframe id="companiesFrame" data-src="companies.php?embed=1" title="My Companies"
+                    class="block w-full" style="height:560px;border:0;background:transparent;" scrolling="no"></iframe>
         </section>
 
         <!-- Connected Apps -->
@@ -714,6 +687,21 @@ document.getElementById('updateNameForm').addEventListener('submit', async funct
             .catch(() => { activityLoaded = false; body.innerHTML = '<p class="px-1 py-6 text-center text-xs text-white/30">Couldn\'t load activity.</p>'; });
     }
 
+    // ── Embedded companies page (lazy-loaded; auto-height via postMessage) ──
+    let frameLoaded = false;
+    function loadCompaniesFrame() {
+        if (frameLoaded) return;
+        frameLoaded = true;
+        const f = document.getElementById('companiesFrame');
+        if (f && f.dataset.src) f.src = f.dataset.src;
+    }
+    window.addEventListener('message', e => {
+        const d = e.data;
+        if (!d || d.type !== 'centryk-embed-height') return;
+        const f = document.getElementById('companiesFrame');
+        if (f && d.height) f.style.height = Math.max(320, d.height) + 'px';
+    });
+
     function activate(target) {
         if (!valid.includes(target)) target = valid[0];
         panels.forEach(p => p.classList.toggle('hidden', p.dataset.panel !== target));
@@ -723,7 +711,8 @@ document.getElementById('updateNameForm').addEventListener('submit', async funct
             b.classList.toggle('text-white', on);
             b.classList.toggle('text-white/60', !on);
         });
-        if (target === 'security') loadLoginActivity();
+        if (target === 'security')  loadLoginActivity();
+        if (target === 'companies') loadCompaniesFrame();
         try { localStorage.setItem('centrykAccountTab', target); } catch (e) {}
     }
     btns.forEach(b => b.addEventListener('click', () => activate(b.dataset.target)));
