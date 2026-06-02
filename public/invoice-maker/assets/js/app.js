@@ -1,0 +1,1 @@
+console.log('Invoice Tracker loaded');

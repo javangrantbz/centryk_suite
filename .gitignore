@@ -6,6 +6,11 @@
 
 # Composer dependencies
 vendor/
+# …but keep the bundled dompdf for the integrated Invoices app (no composer on deploy)
+!invoice-maker/vendor/
+# Uploaded invoice logos / documents are runtime data, not source
+public/invoice-maker/uploads/
+invoice-maker/storage/documents/
 
 # OS / editor
 .DS_Store
