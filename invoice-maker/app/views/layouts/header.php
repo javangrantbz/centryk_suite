@@ -1,3 +1,23 @@
+<?php
+// Suite header data: the user's enrolled apps (for the waffle) + active company uuid.
+$invHdrApps = [];
+$invHdrUuid = '';
+$__hdrUid = (int)($_SESSION['user']['id'] ?? 0);
+if ($__hdrUid) {
+    $__hs = $pdo->prepare("SELECT a.`key`, a.label, a.color, a.icon
+                           FROM apps a JOIN user_app_access ua ON ua.app_id = a.id
+                           WHERE ua.user_id = :u AND a.status = 'active' ORDER BY a.sort_order");
+    $__hs->execute(['u' => $__hdrUid]);
+    $invHdrApps = $__hs->fetchAll(PDO::FETCH_ASSOC);
+}
+if (function_exists('current_company_id') && current_company_id()) {
+    $__cs = $pdo->prepare("SELECT uuid FROM companies WHERE id = ?");
+    $__cs->execute([current_company_id()]);
+    $invHdrUuid = (string)($__cs->fetchColumn() ?: '');
+}
+$invSwitchQs = $invHdrUuid !== '' ? '&company_uuid=' . urlencode($invHdrUuid) : '';
+$invCalQs    = $invHdrUuid !== '' ? '?company_uuid=' . urlencode($invHdrUuid) : '';
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -47,34 +67,76 @@
     <div class="flex-1 flex flex-col min-w-0 bg-[#f8fafc]">
         <!-- Top Bar (Made Taller - "The Car") -->
         <header class="h-20 bg-white border-b border-gray-200 flex items-center justify-between px-8 flex-shrink-0 shadow-sm z-40">
-            <div class="relative dropdown group">
-                <button class="flex items-center space-x-4 hover:bg-gray-50 p-2.5 rounded-2xl transition-all border border-transparent hover:border-gray-100">
-                    <div class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-sm shadow-lg shadow-emerald-100">
-                        <?= strtoupper(substr(current_user()['name'], 0, 1)) ?>
-                    </div>
-                    <div class="text-left hidden sm:block">
-                        <p class="text-sm font-black text-slate-900 leading-none mb-1"><?= e(current_user()['name']) ?></p>
-                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest"><?= e(current_user()['email']) ?></p>
-                    </div>
-                    <i data-lucide="chevron-down" class="w-4 h-4 text-gray-300"></i>
-                </button>
-                
-                <div class="dropdown-menu hidden absolute left-0 mt-3 w-64 bg-white rounded-[2rem] shadow-2xl border border-gray-100 p-3 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-                    <div class="px-4 py-4 border-b border-gray-50 mb-3">
-                        <p class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Account Active</p>
-                        <p class="text-xs font-bold text-slate-600 truncate"><?= e(current_user()['email']) ?></p>
-                    </div>
-                    
-                    <a href="<?= BASE_URL ?>/logout.php" class="flex items-center justify-center space-x-3 w-full bg-red-50 text-red-600 hover:bg-red-600 hover:text-white p-4 rounded-2xl transition-all font-black text-sm group/logout">
-                        <i data-lucide="log-out" class="w-5 h-5 group-hover/logout:translate-x-1 transition-transform"></i>
-                        <span>LOGOUT SESSION</span>
-                    </a>
-                </div>
-            </div>
-
+            <!-- Brand -->
             <a href="<?= BASE_URL ?>/?page=dashboard" class="flex items-center text-[#1a1a1a] hover:text-emerald-600 transition-all group">
                 <span class="text-2xl font-black tracking-tighter italic group-hover:scale-105 transition-transform"><?= APP_NAME ?></span>
             </a>
+
+            <!-- Suite cluster: calendar · waffle · account -->
+            <div class="flex items-center gap-1.5">
+
+                <!-- Calendar -->
+                <a href="<?= CENTRYK_BASE ?>/calendar.php<?= $invCalQs ?>" title="Calendar"
+                   class="w-10 h-10 flex items-center justify-center rounded-xl text-slate-500 hover:bg-teal-50 hover:text-teal-600 transition">
+                    <i data-lucide="calendar" class="w-5 h-5"></i>
+                </a>
+
+                <!-- Waffle app switcher -->
+                <div class="relative dropdown group">
+                    <button class="w-10 h-10 flex items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 transition" title="Switch app">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <rect x="3" y="3" width="4" height="4" rx="1"/><rect x="10" y="3" width="4" height="4" rx="1"/><rect x="17" y="3" width="4" height="4" rx="1"/>
+                            <rect x="3" y="10" width="4" height="4" rx="1"/><rect x="10" y="10" width="4" height="4" rx="1"/><rect x="17" y="10" width="4" height="4" rx="1"/>
+                            <rect x="3" y="17" width="4" height="4" rx="1"/><rect x="10" y="17" width="4" height="4" rx="1"/><rect x="17" y="17" width="4" height="4" rx="1"/>
+                        </svg>
+                    </button>
+                    <div class="dropdown-menu hidden absolute right-0 mt-3 w-72 bg-white rounded-2xl shadow-2xl border border-gray-100 p-4 z-50">
+                        <p class="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Switch App</p>
+                        <div class="grid grid-cols-3 gap-2">
+                            <!-- Account -->
+                            <a href="<?= CENTRYK_BASE ?>/profile.php" class="flex flex-col items-center gap-2 rounded-xl p-3 text-center hover:bg-slate-50 transition">
+                                <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-sm">
+                                    <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+                                </span>
+                                <span class="text-xs font-medium text-slate-700">Account</span>
+                            </a>
+                            <?php foreach ($invHdrApps as $a): $k = (string)$a['key']; if ($k === 'centryk') continue; ?>
+                                <?php if ($k === 'invoice'): ?>
+                                <div class="flex flex-col items-center gap-2 rounded-xl p-3 text-center bg-slate-100 ring-1 ring-slate-200 cursor-default">
+                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl text-2xl shadow-sm" style="background:<?= e($a['color']) ?>18"><?= e($a['icon']) ?></span>
+                                    <span class="text-xs font-semibold text-slate-700"><?= e($a['label']) ?></span>
+                                </div>
+                                <?php else: ?>
+                                <a href="<?= CENTRYK_BASE ?>/switch.php?app=<?= urlencode($k) . $invSwitchQs ?>" class="flex flex-col items-center gap-2 rounded-xl p-3 text-center hover:bg-slate-50 transition">
+                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl text-2xl shadow-sm" style="background:<?= e($a['color']) ?>18"><?= e($a['icon']) ?></span>
+                                    <span class="text-xs font-medium text-slate-700"><?= e($a['label']) ?></span>
+                                </a>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Account -->
+                <div class="relative dropdown group">
+                    <button class="flex items-center gap-2 hover:bg-gray-50 p-1.5 rounded-xl transition border border-transparent hover:border-gray-100">
+                        <div class="w-9 h-9 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-black text-sm shadow shadow-emerald-100"><?= strtoupper(substr(current_user()['name'], 0, 1)) ?></div>
+                        <i data-lucide="chevron-down" class="w-4 h-4 text-gray-300"></i>
+                    </button>
+                    <div class="dropdown-menu hidden absolute right-0 mt-3 w-64 bg-white rounded-2xl shadow-2xl border border-gray-100 p-3 z-50">
+                        <div class="px-3 py-3 border-b border-gray-50 mb-2">
+                            <p class="text-sm font-bold text-slate-800 truncate"><?= e(current_user()['name']) ?></p>
+                            <p class="text-xs text-gray-400 truncate"><?= e(current_user()['email']) ?></p>
+                        </div>
+                        <a href="<?= CENTRYK_BASE ?>/profile.php" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">
+                            <i data-lucide="user-cog" class="w-4 h-4"></i> Manage your Centryk Account
+                        </a>
+                        <a href="<?= BASE_URL ?>/logout.php" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-red-600 hover:bg-red-50 transition">
+                            <i data-lucide="log-out" class="w-4 h-4"></i> Sign out
+                        </a>
+                    </div>
+                </div>
+            </div>
         </header>
 
         <!-- Main Content Area -->
