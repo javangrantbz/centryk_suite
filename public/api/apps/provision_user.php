@@ -32,7 +32,7 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
 
 $pdo = DB::pdo();
 
-$app = $pdo->prepare('SELECT id FROM apps WHERE app_key = :key AND status = "active" LIMIT 1');
+$app = $pdo->prepare('SELECT id FROM apps WHERE `key` = :key AND status = "active" LIMIT 1');
 $app->execute(['key' => $appKey]);
 $appRow = $app->fetch();
 if (!$appRow) {
