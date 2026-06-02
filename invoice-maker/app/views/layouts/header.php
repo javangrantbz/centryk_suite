@@ -10,14 +10,26 @@ if ($__hdrUid) {
     $__hs->execute(['u' => $__hdrUid]);
     $invHdrApps = $__hs->fetchAll(PDO::FETCH_ASSOC);
 }
-if (function_exists('current_company_id') && current_company_id()) {
-    $__cs = $pdo->prepare("SELECT uuid FROM companies WHERE id = ?");
-    $__cs->execute([current_company_id()]);
-    $invHdrUuid = (string)($__cs->fetchColumn() ?: '');
+// The user's companies (for the Centryk company picker) + active company/role.
+$invHdrCompanies = [];
+if ($__hdrUid) {
+    $__ccs = $pdo->prepare("SELECT c.id, c.uuid, c.name, cm.role
+                            FROM company_members cm JOIN companies c ON c.id = cm.company_id
+                            WHERE cm.user_id = :u AND cm.status = 'active' AND c.status = 'active'
+                            ORDER BY c.name");
+    $__ccs->execute(['u' => $__hdrUid]);
+    $invHdrCompanies = $__ccs->fetchAll(PDO::FETCH_ASSOC);
+}
+$invActiveCid  = function_exists('current_company_id') ? current_company_id() : 0;
+$invActiveName = '';
+$invActiveRole = '';
+foreach ($invHdrCompanies as $c) {
+    if ((int)$c['id'] === $invActiveCid) { $invActiveName = $c['name']; $invActiveRole = $c['role']; $invHdrUuid = (string)$c['uuid']; }
 }
 $invSwitchQs = $invHdrUuid !== '' ? '&company_uuid=' . urlencode($invHdrUuid) : '';
 $invCalQs    = $invHdrUuid !== '' ? '?company_uuid=' . urlencode($invHdrUuid) : '';
 ?>
+<?php $invPage = $_GET['page'] ?? 'dashboard'; ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -72,10 +84,34 @@ $invCalQs    = $invHdrUuid !== '' ? '?company_uuid=' . urlencode($invHdrUuid) : 
     <div class="flex-1 flex flex-col min-w-0 bg-[#f8fafc]">
         <!-- Top Bar (Made Taller - "The Car") -->
         <header class="h-20 bg-white border-b border-gray-200 flex items-center justify-between px-8 flex-shrink-0 shadow-sm z-40">
-            <!-- Brand -->
-            <a href="<?= BASE_URL ?>/?page=dashboard" class="flex items-center text-[#1a1a1a] hover:text-emerald-600 transition-all group">
-                <span class="text-2xl font-black tracking-tighter italic group-hover:scale-105 transition-transform"><?= APP_NAME ?></span>
-            </a>
+            <!-- Brand + Centryk company picker -->
+            <div class="flex items-center gap-4 min-w-0">
+                <a href="<?= BASE_URL ?>/?page=dashboard" class="flex items-center text-[#1a1a1a] hover:text-emerald-600 transition-all group shrink-0">
+                    <span class="text-2xl font-black tracking-tighter italic group-hover:scale-105 transition-transform"><?= APP_NAME ?></span>
+                </a>
+                <?php if (!empty($invHdrCompanies)): ?>
+                <div class="relative dropdown group shrink-0">
+                    <button class="flex items-center gap-1.5 rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-semibold text-teal-700 hover:bg-teal-100 transition">
+                        <i data-lucide="building-2" class="h-4 w-4 text-teal-500"></i>
+                        <span class="max-w-[160px] truncate"><?= e($invActiveName ?: 'Select company') ?></span>
+                        <i data-lucide="chevron-down" class="h-3.5 w-3.5 text-teal-400"></i>
+                    </button>
+                    <div class="dropdown-menu hidden absolute left-0 mt-2 w-56 rounded-xl border border-slate-200 bg-white py-1 shadow-2xl z-50">
+                        <?php foreach ($invHdrCompanies as $c): $act = ((int)$c['id'] === $invActiveCid); ?>
+                        <a href="<?= BASE_URL ?>/?page=<?= e($invPage) ?>&company_id=<?= (int)$c['id'] ?>"
+                           class="flex items-center gap-2.5 px-4 py-2.5 text-sm transition <?= $act ? 'bg-teal-50 font-semibold text-teal-700' : 'text-slate-700 hover:bg-slate-50' ?>">
+                            <?php if ($act): ?>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="h-3.5 w-3.5 text-teal-500 shrink-0"><path fill-rule="evenodd" d="M12.416 3.376a.75.75 0 0 1 .208 1.04l-5 7.5a.75.75 0 0 1-1.154.114l-3-3a.75.75 0 0 1 1.06-1.06l2.353 2.353 4.493-6.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd"/></svg>
+                            <?php else: ?>
+                            <span class="h-3.5 w-3.5 shrink-0"></span>
+                            <?php endif; ?>
+                            <span class="truncate"><?= e($c['name']) ?></span>
+                        </a>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+                <?php endif; ?>
+            </div>
 
             <!-- Suite cluster: calendar · waffle · account -->
             <div class="flex items-center gap-1.5">
@@ -124,14 +160,23 @@ $invCalQs    = $invHdrUuid !== '' ? '?company_uuid=' . urlencode($invHdrUuid) : 
 
                 <!-- Account -->
                 <div class="relative dropdown group">
-                    <button class="flex items-center gap-2 hover:bg-gray-50 p-1.5 rounded-xl transition border border-transparent hover:border-gray-100">
+                    <button class="flex items-center gap-2.5 hover:bg-gray-50 p-1.5 rounded-xl transition border border-transparent hover:border-gray-100">
                         <div class="w-9 h-9 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-black text-sm shadow shadow-emerald-100"><?= strtoupper(substr(current_user()['name'], 0, 1)) ?></div>
+                        <div class="text-left hidden sm:block leading-none">
+                            <p class="text-sm font-bold text-slate-800 leading-none"><?= e(current_user()['name']) ?></p>
+                            <p class="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 leading-none"><?= e($invActiveRole ?: 'Member') ?></p>
+                        </div>
                         <i data-lucide="chevron-down" class="w-4 h-4 text-gray-300"></i>
                     </button>
                     <div class="dropdown-menu hidden absolute right-0 mt-3 w-64 bg-white rounded-2xl shadow-2xl border border-gray-100 p-3 z-50">
                         <div class="px-3 py-3 border-b border-gray-50 mb-2">
-                            <p class="text-sm font-bold text-slate-800 truncate"><?= e(current_user()['name']) ?></p>
-                            <p class="text-xs text-gray-400 truncate"><?= e(current_user()['email']) ?></p>
+                            <div class="flex items-center justify-between gap-2">
+                                <p class="text-sm font-bold text-slate-800 truncate"><?= e(current_user()['name']) ?></p>
+                                <?php if ($invActiveRole): ?>
+                                <span class="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-emerald-600"><?= e($invActiveRole) ?></span>
+                                <?php endif; ?>
+                            </div>
+                            <p class="mt-0.5 text-xs text-gray-400 truncate"><?= e(current_user()['email']) ?></p>
                         </div>
                         <a href="<?= CENTRYK_BASE ?>/profile.php" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">
                             <i data-lucide="user-cog" class="w-4 h-4"></i> Manage your Centryk Account
