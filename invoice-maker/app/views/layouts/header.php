@@ -66,14 +66,14 @@ $invCalQs    = $invHdrUuid !== '' ? '?company_uuid=' . urlencode($invHdrUuid) : 
             <?php
             $invCur = $_GET['page'] ?? 'dashboard';
             $invNav = [
-                ['customers', 'users',          'Clients'],
-                ['quotes',    'clipboard-list', 'Quotes'],
-                ['invoices',  'receipt',        'Invoices'],
-                ['documents', 'folder',         'Files'],
-                ['settings',  'settings',       'Settings'],
+                ['customers', 'users',    'Clients',  ['customers']],
+                ['invoices',  'receipt',  'Invoices', ['invoices', 'quotes']],
+                ['documents', 'folder',   'Files',    ['documents']],
+                ['settings',  'settings', 'Settings', ['settings']],
             ];
-            foreach ($invNav as [$pg, $ic, $lbl]):
-                $on = ($invCur === $pg) || str_starts_with($invCur, $pg . '-');
+            foreach ($invNav as [$pg, $ic, $lbl, $matches]):
+                $on = false;
+                foreach ($matches as $m) { if ($invCur === $m || str_starts_with($invCur, $m . '-')) { $on = true; break; } }
             ?>
             <a href="<?= BASE_URL ?>/?page=<?= $pg ?>"
                class="flex flex-col items-center gap-1 rounded-2xl py-2.5 transition-all <?= $on ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/40' : 'text-gray-400 hover:text-white hover:bg-white/5' ?>">

@@ -1,6 +1,6 @@
 <?php
 $companyId = current_company_id();
-function inv_scalar(PDO $pdo, string $sql, array $p) { $s = $pdo->prepare($sql); $s->execute($p); return $s->fetchColumn(); }
+if (!function_exists('inv_scalar')) { function inv_scalar(PDO $pdo, string $sql, array $p) { $s = $pdo->prepare($sql); $s->execute($p); return $s->fetchColumn(); } }
 
 $cClients     = inv_scalar($pdo, "SELECT COUNT(*) FROM customers WHERE company_id = ?", [$companyId]);
 $cInvoices    = inv_scalar($pdo, "SELECT COUNT(*) FROM invoices  WHERE company_id = ?", [$companyId]);
