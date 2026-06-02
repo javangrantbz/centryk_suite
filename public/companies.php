@@ -87,22 +87,9 @@ $requestedCompanyUuid = trim($_GET['company_uuid'] ?? '');
 <body class="min-h-screen bg-[#0d1117] font-sans antialiased text-white">
 <script>var _ct=localStorage.getItem('centrikyTheme');if(_ct==='light'){document.body.classList.add('light');}if(_ct==='dark'){document.body.classList.add('dark');}</script>
 
-<!-- Top accent bar -->
-<div class="h-[3px] w-full bg-gradient-to-r from-purple-600 via-blue-500 to-orange-500 sticky top-0 z-50"></div>
-
-<!-- Header -->
-<header class="sticky top-[3px] z-40 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
-    <div class="mx-auto flex max-w-6xl items-center gap-4 px-6 py-3">
-
-        <!-- Logo -->
-        <a href="index.php" class="flex shrink-0 items-center">
-            <img src="../centryk_logo.png" alt="Centryk" class="h-14 w-auto">
-        </a>
-
-        <!-- Divider -->
-        <div class="h-5 w-px bg-slate-200 shrink-0"></div>
-
-        <!-- Company selector -->
+<?php
+// Header middle slot: the company selector (its JS lives in this page).
+ob_start(); ?>
         <div class="relative flex-1 max-w-xs" id="companyPickerWrapper">
             <button id="companyPickerBtn"
                 class="flex w-full items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left text-sm font-semibold text-slate-800 transition hover:bg-white hover:border-slate-300 focus:outline-none">
@@ -117,12 +104,11 @@ $requestedCompanyUuid = trim($_GET['company_uuid'] ?? '');
                 <div id="companyDropdownList" class="max-h-64 overflow-y-auto py-1.5"></div>
             </div>
         </div>
+<?php $headerMiddleHtml = ob_get_clean();
 
-        <!-- Spacer -->
-        <div class="flex-1"></div>
-
-        <!-- Admin links -->
-        <?php if (!empty($user['is_admin'])): ?>
+// Header actions slot: admin-only links.
+ob_start(); ?>
+<?php if (!empty($user['is_admin'])): ?>
         <a href="requests.php" class="hidden sm:flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
             <i data-lucide="users" class="h-3.5 w-3.5"></i>
             New Users
@@ -131,56 +117,13 @@ $requestedCompanyUuid = trim($_GET['company_uuid'] ?? '');
             <i data-lucide="history" class="h-3.5 w-3.5"></i>
             Audit Trail
         </a>
-        <?php endif; ?>
+<?php endif; ?>
+<?php $headerActionsHtml = ob_get_clean();
 
-        <!-- Waffle app switcher -->
-        <?php $awAlign = 'right'; $awMode = 'launch'; include __DIR__ . '/partials/app_switcher.php'; ?>
-
-        <!-- Divider -->
-        <div class="h-5 w-px bg-slate-200 shrink-0"></div>
-
-        <!-- User dropdown -->
-        <div class="relative shrink-0" id="userMenuWrapper">
-            <button id="userMenuBtn" class="flex items-center gap-2.5 rounded-xl px-3 py-2 transition hover:bg-slate-100">
-                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[12px] font-black text-slate-700">
-                    <?= $initial ?>
-                </div>
-                <div class="text-left hidden sm:block">
-                    <p class="text-sm font-semibold text-slate-800 leading-tight"><?= $fullName ?></p>
-                    <p class="text-[10px] text-slate-400 leading-tight"><?= $email ?></p>
-                </div>
-                <i data-lucide="chevron-down" class="h-3.5 w-3.5 text-slate-400 shrink-0"></i>
-            </button>
-
-            <div id="userMenu" class="absolute right-0 top-full mt-2 w-60 hidden rounded-2xl border border-slate-200 bg-white shadow-xl z-50 overflow-hidden">
-                <div class="px-4 py-3.5 border-b border-slate-100">
-                    <div class="flex items-center justify-between gap-2">
-                        <p class="text-sm font-bold text-slate-900 leading-tight truncate"><?= $fullName ?></p>
-                        <span class="shrink-0 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] <?= !empty($user['is_admin']) ? 'bg-violet-100 text-violet-600' : 'bg-slate-100 text-slate-500' ?>">
-                            <?= !empty($user['is_admin']) ? 'Admin' : 'Member' ?>
-                        </span>
-                    </div>
-                    <p class="text-xs text-slate-400 mt-0.5 truncate"><?= $email ?></p>
-                </div>
-                <div class="p-2 space-y-0.5">
-                    <button id="themeToggle" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition text-left">
-                        <i data-lucide="sun"  id="themeIconSun"  class="h-4 w-4 shrink-0"></i>
-                        <i data-lucide="moon" id="themeIconMoon" class="h-4 w-4 shrink-0 hidden"></i>
-                        <span id="themeLabel">Light mode</span>
-                    </button>
-                    <a href="profile.php" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition">
-                        <i data-lucide="user-cog" class="h-4 w-4 shrink-0"></i>
-                        Manage your Centryk Account
-                    </a>
-                    <button id="logoutBtn" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-red-50 hover:text-red-600 transition text-left">
-                        <i data-lucide="log-out" class="h-4 w-4 shrink-0"></i>
-                        Sign out
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-</header>
+$pageTitle  = 'Companies';
+$headerMaxW = 'max-w-6xl';
+include __DIR__ . '/partials/account_header.php';
+?>
 
 <!-- Company List View -->
 <div id="listView" class="mx-auto max-w-5xl px-6 py-10">
@@ -415,75 +358,32 @@ $requestedCompanyUuid = trim($_GET['company_uuid'] ?? '');
     var requestedCompanyUuid = <?= json_encode($requestedCompanyUuid, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
     var membersRequestSeq = 0;
 
-    // ── User menu ─────────────────────────────────────────────────────────────
-    var userMenuBtn = document.getElementById('userMenuBtn');
-    var userMenu    = document.getElementById('userMenu');
-
-    userMenuBtn.addEventListener('click', function (e) {
-        e.stopPropagation();
-        userMenu.classList.toggle('hidden');
-        if (window.lucide) { lucide.createIcons(); }
-    });
-
-    document.addEventListener('click', function () {
-        userMenu.classList.add('hidden');
-        document.getElementById('companyDropdown').classList.add('hidden');
-        document.getElementById('appSwitcherDropdown').classList.add('hidden');
-    });
-
     // ── Header company picker ─────────────────────────────────────────────────
+    // (waffle, account menu, theme and logout are owned by account_header.php)
     document.getElementById('companyPickerBtn').addEventListener('click', function (e) {
         e.stopPropagation();
         document.getElementById('companyDropdown').classList.toggle('hidden');
         document.getElementById('appSwitcherDropdown').classList.add('hidden');
     });
-
-    // ── App switcher (waffle) ─────────────────────────────────────────────────
-    document.getElementById('appSwitcherBtn').addEventListener('click', function (e) {
-        e.stopPropagation();
-        document.getElementById('appSwitcherDropdown').classList.toggle('hidden');
+    document.addEventListener('click', function () {
         document.getElementById('companyDropdown').classList.add('hidden');
     });
 
-    document.querySelectorAll('.aw-app').forEach(function (btn) {
-        btn.addEventListener('click', function (e) {
-            e.stopPropagation();
-            document.getElementById('appSwitcherDropdown').classList.add('hidden');
-            if (!selectedUuid) {
-                showToast('Select a company from the dropdown first.', 'error');
-                document.getElementById('companyDropdown').classList.remove('hidden');
-                return;
-            }
-            window.location.href = 'switch.php?app=' + encodeURIComponent(btn.dataset.app) + '&company_uuid=' + encodeURIComponent(selectedUuid);
-        });
-    });
+    // ── Waffle launch hook: require a company to be selected first ─────────────
+    window.centrykAppLaunch = function (appKey) {
+        if (!selectedUuid) {
+            showToast('Select a company from the dropdown first.', 'error');
+            document.getElementById('companyDropdown').classList.remove('hidden');
+            return;
+        }
+        window.location.href = 'switch.php?app=' + encodeURIComponent(appKey) + '&company_uuid=' + encodeURIComponent(selectedUuid);
+    };
 
-    // ── Logout ────────────────────────────────────────────────────────────────
-    document.getElementById('logoutBtn').addEventListener('click', function () {
-        fetch('api/auth/logout.php', { method: 'POST' }).then(function () {
-            window.location.href = 'index.php';
-        });
-    });
-
-    // ── Theme ─────────────────────────────────────────────────────────────────
-    function applyThemeUI() {
-        var isLight = document.body.classList.contains('light');
-        document.getElementById('themeIconSun').classList.toggle('hidden', isLight);
-        document.getElementById('themeIconMoon').classList.toggle('hidden', !isLight);
-        document.getElementById('themeLabel').textContent = isLight ? 'Dark mode' : 'Light mode';
-    }
-
-    document.getElementById('themeToggle').addEventListener('click', function (e) {
-        e.stopPropagation();
-        var isLight = document.body.classList.toggle('light');
-        localStorage.setItem('centrikyTheme', isLight ? 'light' : 'dark');
-        applyThemeUI();
+    // ── Re-render lists when the shared header toggles the theme ───────────────
+    document.addEventListener('centryk:themechange', function () {
         loadCompanies();
         if (currentCompany) { loadMembers(currentCompany.id); }
-        if (window.lucide) { lucide.createIcons(); }
     });
-
-    applyThemeUI();
 
     // ── View helpers ──────────────────────────────────────────────────────────
     function showListView() {

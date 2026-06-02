@@ -148,60 +148,7 @@ $companyCount = count($myCompanies);
 <body class="min-h-screen bg-[#0d1117] font-sans antialiased text-white">
 <script>var _ct=localStorage.getItem('centrikyTheme');if(_ct==='light'){document.body.classList.add('light');}if(_ct==='dark'){document.body.classList.add('dark');}</script>
 
-<!-- Top accent bar -->
-<div class="h-[3px] w-full bg-gradient-to-r from-purple-600 via-blue-500 to-orange-500"></div>
-
-<!-- Header -->
-<header class="sticky top-0 z-40 border-b border-slate-200 bg-white shadow-sm">
-    <div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-3">
-        <div class="flex items-center gap-3">
-            <a href="index.php" class="flex shrink-0 items-center hover:opacity-80 transition-opacity">
-                <img src="../centryk_logo.png" alt="Centryk" class="h-12 w-auto">
-            </a>
-            <span class="text-slate-300">/</span>
-            <span class="text-sm font-bold text-slate-400">Profile</span>
-        </div>
-
-        <div class="flex items-center gap-3">
-            <?php $awAlign = 'right'; $awMode = 'launch'; $awCurrent = 'centryk'; include __DIR__ . '/partials/app_switcher.php'; ?>
-
-            <div class="relative" id="userMenuWrapper">
-                <button id="userMenuBtn" class="flex items-center gap-2.5 rounded-xl px-3 py-2 transition hover:bg-slate-100">
-                    <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[12px] font-black text-slate-700">
-                        <?= $initial ?>
-                    </div>
-                    <div class="text-left hidden sm:block">
-                        <p class="text-sm font-semibold text-slate-800 leading-tight" id="headerName"><?= $fullName ?></p>
-                        <p class="text-[10px] text-slate-400 leading-tight"><?= $email ?></p>
-                    </div>
-                    <i data-lucide="chevron-down" class="h-3.5 w-3.5 text-slate-400 shrink-0"></i>
-                </button>
-
-                <div id="userMenu" class="absolute right-0 top-full mt-2 w-60 hidden rounded-2xl border border-slate-200 bg-white shadow-xl z-50 overflow-hidden">
-                    <div class="px-4 py-3.5 border-b border-slate-100">
-                        <p class="text-sm font-bold text-slate-900 leading-tight" id="dropdownName"><?= $fullName ?></p>
-                        <p class="text-xs text-slate-400 mt-0.5"><?= $email ?></p>
-                    </div>
-                    <div class="p-2 space-y-0.5">
-                        <a href="profile.php" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition">
-                            <i data-lucide="user-cog" class="h-4 w-4 shrink-0"></i>
-                            Manage your Centryk Account
-                        </a>
-                        <button id="themeToggle" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition text-left">
-                            <i data-lucide="sun"  id="themeIconSun"  class="h-4 w-4 shrink-0"></i>
-                            <i data-lucide="moon" id="themeIconMoon" class="h-4 w-4 shrink-0 hidden"></i>
-                            <span id="themeLabel">Light mode</span>
-                        </button>
-                        <button id="logoutBtn" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-red-50 hover:text-red-600 transition text-left">
-                            <i data-lucide="log-out" class="h-4 w-4 shrink-0"></i>
-                            Sign out
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</header>
+<?php $pageTitle = 'Profile'; $headerMaxW = 'max-w-5xl'; include __DIR__ . '/partials/account_header.php'; ?>
 
 <!-- Page body -->
 <div class="mx-auto max-w-5xl px-6 py-5 space-y-4">
@@ -547,51 +494,8 @@ $companyCount = count($myCompanies);
 <script src="https://unpkg.com/lucide@latest"></script>
 <script>lucide.createIcons();</script>
 <script>
-// ── Theme ──────────────────────────────────────────────────────────────────
-(function () {
-    const sun  = document.getElementById('themeIconSun');
-    const moon = document.getElementById('themeIconMoon');
-    const lbl  = document.getElementById('themeLabel');
-    function apply(theme) {
-        document.body.classList.toggle('light', theme === 'light');
-        sun?.classList.toggle('hidden', theme === 'light');
-        moon?.classList.toggle('hidden', theme !== 'light');
-        if (lbl) lbl.textContent = theme === 'light' ? 'Dark mode' : 'Light mode';
-    }
-    apply(localStorage.getItem('centrikyTheme') || 'dark');
-    document.getElementById('themeToggle')?.addEventListener('click', () => {
-        const next = document.body.classList.contains('light') ? 'dark' : 'light';
-        localStorage.setItem('centrikyTheme', next);
-        apply(next);
-    });
-})();
-
-// ── User dropdown ──────────────────────────────────────────────────────────
-document.getElementById('userMenuBtn')?.addEventListener('click', e => {
-    e.stopPropagation();
-    document.getElementById('userMenu').classList.toggle('hidden');
-});
-document.addEventListener('click', () => document.getElementById('userMenu')?.classList.add('hidden'));
-
-// ── App switcher (waffle) ──────────────────────────────────────────────────
-(function () {
-    const b = document.getElementById('appSwitcherBtn');
-    const d = document.getElementById('appSwitcherDropdown');
-    if (b && d) {
-        b.addEventListener('click', e => { e.stopPropagation(); d.classList.toggle('hidden'); });
-        document.addEventListener('click', () => d.classList.add('hidden'));
-    }
-    document.querySelectorAll('.aw-app').forEach(tile => {
-        tile.addEventListener('click', () => {
-            if (d) d.classList.add('hidden');
-            window.location.href = 'switch.php?app=' + encodeURIComponent(tile.dataset.app);
-        });
-    });
-})();
-
-document.getElementById('logoutBtn')?.addEventListener('click', () => {
-    fetch('api/auth/logout.php', { method: 'POST' }).finally(() => { window.location.href = 'index.php'; });
-});
+// Header behaviour (waffle, account menu, theme, logout) is owned by
+// partials/account_header.php.
 
 // ── Show/hide password ─────────────────────────────────────────────────────
 function togglePw(inputId, iconId) {
@@ -677,11 +581,13 @@ document.getElementById('updateNameForm').addEventListener('submit', async funct
         if (data.success) {
             showAlert('nameAlert', 'Name updated successfully.', 'success');
             const full = data.full_name;
-            document.getElementById('heroName').textContent    = full;
-            document.getElementById('headerName').textContent  = full;
-            document.getElementById('dropdownName').textContent = full;
+            const heroName = document.getElementById('heroName');
+            if (heroName) heroName.textContent = full;
+            document.querySelectorAll('.js-hdr-name').forEach(el => { el.textContent = full; });
             const newInitial = firstName.charAt(0).toUpperCase();
-            document.getElementById('heroInitial').textContent = newInitial;
+            const heroInitial = document.getElementById('heroInitial');
+            if (heroInitial) heroInitial.textContent = newInitial;
+            document.querySelectorAll('.js-hdr-initial').forEach(el => { el.textContent = newInitial; });
         } else {
             showAlert('nameAlert', data.message || 'Something went wrong.', 'error');
         }
