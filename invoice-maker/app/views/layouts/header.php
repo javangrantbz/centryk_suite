@@ -56,28 +56,31 @@ $invCalQs    = $invHdrUuid !== '' ? '?company_uuid=' . urlencode($invHdrUuid) : 
 <div class="h-[3px] w-full bg-gradient-to-r from-purple-600 via-blue-500 to-orange-500"></div>
 
 <div class="flex overflow-hidden" style="height: calc(100vh - 3px)">
-    <!-- Slim Sidebar Navigation -->
-    <aside class="w-20 lg:w-24 bg-[#1a1a1a] flex flex-col items-center py-8 flex-shrink-0 z-50">
-        <div class="mb-10 text-emerald-500">
-            <i data-lucide="layout-grid" class="w-8 h-8"></i>
-        </div>
-        
-        <nav class="flex-1 flex flex-col space-y-6">
-            <a href="<?= BASE_URL ?>/?page=customers" class="p-4 rounded-2xl transition-all group <?= active('customers') ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/50' : 'text-gray-500 hover:text-white hover:bg-white/5' ?>" title="Customers">
-                <i data-lucide="users" class="w-6 h-6"></i>
+    <!-- Sidebar Navigation (labelled) -->
+    <aside class="w-24 lg:w-28 bg-[#1a1a1a] flex flex-col items-center py-6 flex-shrink-0 z-50">
+        <a href="<?= BASE_URL ?>/?page=dashboard" class="mb-7 text-emerald-500 hover:text-emerald-400 transition" title="Dashboard">
+            <i data-lucide="layout-grid" class="w-7 h-7"></i>
+        </a>
+
+        <nav class="flex-1 flex flex-col gap-2 w-full px-2">
+            <?php
+            $invCur = $_GET['page'] ?? 'dashboard';
+            $invNav = [
+                ['customers', 'users',          'Clients'],
+                ['quotes',    'clipboard-list', 'Quotes'],
+                ['invoices',  'receipt',        'Invoices'],
+                ['documents', 'folder',         'Files'],
+                ['settings',  'settings',       'Settings'],
+            ];
+            foreach ($invNav as [$pg, $ic, $lbl]):
+                $on = ($invCur === $pg) || str_starts_with($invCur, $pg . '-');
+            ?>
+            <a href="<?= BASE_URL ?>/?page=<?= $pg ?>"
+               class="flex flex-col items-center gap-1 rounded-2xl py-2.5 transition-all <?= $on ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/40' : 'text-gray-400 hover:text-white hover:bg-white/5' ?>">
+                <i data-lucide="<?= $ic ?>" class="w-5 h-5"></i>
+                <span class="text-[10px] font-bold tracking-wide"><?= $lbl ?></span>
             </a>
-            <a href="<?= BASE_URL ?>/?page=quotes" class="p-4 rounded-2xl transition-all group <?= active('quotes') ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/50' : 'text-gray-500 hover:text-white hover:bg-white/5' ?>" title="Quotes">
-                <i data-lucide="clipboard-list" class="w-6 h-6"></i>
-            </a>
-            <a href="<?= BASE_URL ?>/?page=invoices" class="p-4 rounded-2xl transition-all group <?= active('invoices') ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/50' : 'text-gray-500 hover:text-white hover:bg-white/5' ?>" title="Invoices">
-                <i data-lucide="receipt" class="w-6 h-6"></i>
-            </a>
-            <a href="<?= BASE_URL ?>/?page=documents" class="p-4 rounded-2xl transition-all group <?= active('documents') ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/50' : 'text-gray-500 hover:text-white hover:bg-white/5' ?>" title="Documents">
-                <i data-lucide="folder" class="w-6 h-6"></i>
-            </a>
-            <a href="<?= BASE_URL ?>/?page=settings" class="p-4 rounded-2xl transition-all group <?= active('settings') ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/50' : 'text-gray-500 hover:text-white hover:bg-white/5' ?>" title="Settings">
-                <i data-lucide="settings" class="w-6 h-6"></i>
-            </a>
+            <?php endforeach; ?>
         </nav>
     </aside>
 

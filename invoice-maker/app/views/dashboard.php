@@ -1,98 +1,88 @@
 <?php
 $companyId = current_company_id();
+function inv_scalar(PDO $pdo, string $sql, array $p) { $s = $pdo->prepare($sql); $s->execute($p); return $s->fetchColumn(); }
 
-$totalCustomers = $pdo->prepare("SELECT COUNT(*) FROM customers WHERE company_id = ?");
-$totalCustomers->execute([$companyId]);
+$cClients     = inv_scalar($pdo, "SELECT COUNT(*) FROM customers WHERE company_id = ?", [$companyId]);
+$cInvoices    = inv_scalar($pdo, "SELECT COUNT(*) FROM invoices  WHERE company_id = ?", [$companyId]);
+$cQuotes      = inv_scalar($pdo, "SELECT COUNT(*) FROM quotes    WHERE company_id = ?", [$companyId]);
+$outstanding  = inv_scalar($pdo, "SELECT COALESCE(SUM(total - amount_paid),0) FROM invoices WHERE company_id = ? AND status != 'paid'", [$companyId]);
 
-$totalInvoices = $pdo->prepare("SELECT COUNT(*) FROM invoices WHERE company_id = ?");
-$totalInvoices->execute([$companyId]);
-
-$totalQuotes = $pdo->prepare("SELECT COUNT(*) FROM quotes WHERE company_id = ?");
-$totalQuotes->execute([$companyId]);
-
-$outstanding = $pdo->prepare("
-    SELECT COALESCE(SUM(total - amount_paid), 0)
-    FROM invoices
-    WHERE company_id = ? AND status != 'paid'
+// Recent documents (quotes + invoices) for a small activity list.
+$recent = $pdo->prepare("
+    SELECT 'invoice' AS type, i.id, i.invoice_number AS number, i.status, i.total, i.created_at, c.name AS customer
+    FROM invoices i LEFT JOIN customers c ON c.id = i.customer_id WHERE i.company_id = :cid
+    UNION ALL
+    SELECT 'quote' AS type, q.id, q.quote_number AS number, q.status, q.total, q.created_at, c.name AS customer
+    FROM quotes q LEFT JOIN customers c ON c.id = q.customer_id WHERE q.company_id = :cid2
+    ORDER BY created_at DESC LIMIT 6
 ");
-$outstanding->execute([$companyId]);
+$recent->execute(['cid' => $companyId, 'cid2' => $companyId]);
+$recentRows = $recent->fetchAll(PDO::FETCH_ASSOC);
+
+$kpis = [
+    ['label' => 'Clients',     'value' => $cClients,            'icon' => 'users',          'tint' => 'emerald'],
+    ['label' => 'Invoices',    'value' => $cInvoices,           'icon' => 'file-text',      'tint' => 'blue'],
+    ['label' => 'Quotes',      'value' => $cQuotes,             'icon' => 'clipboard-list', 'tint' => 'amber'],
+    ['label' => 'Outstanding', 'value' => money($outstanding),  'icon' => 'dollar-sign',    'tint' => 'rose'],
+];
 ?>
 
-<div class="mb-8">
-    <h2 class="text-3xl font-extrabold text-slate-900 tracking-tight italic">Overview</h2>
-    <p class="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">Snapshot of your business performance</p>
-</div>
-
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-    <div class="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-emerald-900/5 transition-all group">
-        <div class="flex items-center justify-between mb-4">
-            <div class="p-3 rounded-2xl bg-emerald-50 text-emerald-600 transition-colors group-hover:bg-emerald-600 group-hover:text-white">
-                <i data-lucide="users" class="w-5 h-5"></i>
-            </div>
-        </div>
-        <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Clients</p>
-        <h3 class="text-3xl font-black text-slate-900 mt-1"><?= $totalCustomers->fetchColumn() ?></h3>
+<!-- Header + actions -->
+<div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+    <div>
+        <h2 class="text-xl font-black text-slate-900">Overview</h2>
+        <p class="text-xs font-semibold text-slate-400">Snapshot of your invoicing</p>
     </div>
-
-    <div class="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-blue-900/5 transition-all group">
-        <div class="flex items-center justify-between mb-4">
-            <div class="p-3 rounded-2xl bg-blue-50 text-blue-600 transition-colors group-hover:bg-blue-600 group-hover:text-white">
-                <i data-lucide="file-text" class="w-5 h-5"></i>
-            </div>
-        </div>
-        <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Invoices</p>
-        <h3 class="text-3xl font-black text-slate-900 mt-1"><?= $totalInvoices->fetchColumn() ?></h3>
-    </div>
-
-    <div class="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-amber-900/5 transition-all group">
-        <div class="flex items-center justify-between mb-4">
-            <div class="p-3 rounded-2xl bg-amber-50 text-amber-600 transition-colors group-hover:bg-amber-600 group-hover:text-white">
-                <i data-lucide="clipboard-list" class="w-5 h-5"></i>
-            </div>
-        </div>
-        <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Quotes</p>
-        <h3 class="text-3xl font-black text-slate-900 mt-1"><?= $totalQuotes->fetchColumn() ?></h3>
-    </div>
-
-    <div class="bg-[#1a1a1a] p-6 rounded-[2.5rem] border border-gray-800 shadow-2xl shadow-gray-200 transition-all hover:scale-[1.02]">
-        <div class="flex items-center justify-between mb-4">
-            <div class="p-3 rounded-2xl bg-emerald-500/10 text-emerald-400">
-                <i data-lucide="dollar-sign" class="w-5 h-5"></i>
-            </div>
-        </div>
-        <p class="text-[10px] font-black text-gray-500 uppercase tracking-widest">Balance</p>
-        <h3 class="text-2xl font-black text-white mt-1"><?= money($outstanding->fetchColumn()) ?></h3>
+    <div class="flex items-center gap-2">
+        <a href="<?= BASE_URL ?>/?page=quotes-create" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 transition">
+            <i data-lucide="plus" class="w-4 h-4"></i> New Quote
+        </a>
+        <a href="<?= BASE_URL ?>/?page=invoices-create" class="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-emerald-700 transition shadow-sm shadow-emerald-200">
+            <i data-lucide="plus" class="w-4 h-4"></i> New Invoice
+        </a>
     </div>
 </div>
 
-<div class="mt-12 grid grid-cols-1 lg:grid-cols-2 gap-8">
-    <div class="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-sm">
-        <div class="flex items-center justify-between mb-6">
-            <h3 class="text-lg font-black text-slate-900">Quick Actions</h3>
+<!-- Compact KPIs -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <?php foreach ($kpis as $k): ?>
+    <div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+        <div class="flex items-center gap-2">
+            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-<?= $k['tint'] ?>-50 text-<?= $k['tint'] ?>-600">
+                <i data-lucide="<?= $k['icon'] ?>" class="w-4 h-4"></i>
+            </span>
+            <span class="text-[10px] font-black uppercase tracking-widest text-gray-400"><?= $k['label'] ?></span>
         </div>
-        <div class="grid grid-cols-2 gap-4">
-            <a href="<?= BASE_URL ?>/?page=invoices-create" class="flex items-center p-4 rounded-3xl bg-gray-50 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 transition-all group">
-                <div class="p-2 rounded-xl bg-white shadow-sm mr-3 group-hover:bg-emerald-600 group-hover:text-white transition-all">
-                    <i data-lucide="plus" class="w-4 h-4"></i>
-                </div>
-                <span class="text-sm font-bold">New Invoice</span>
-            </a>
-            <a href="<?= BASE_URL ?>/?page=quotes-create" class="flex items-center p-4 rounded-3xl bg-gray-50 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 transition-all group">
-                <div class="p-2 rounded-xl bg-white shadow-sm mr-3 group-hover:bg-emerald-600 group-hover:text-white transition-all">
-                    <i data-lucide="plus" class="w-4 h-4"></i>
-                </div>
-                <span class="text-sm font-bold">New Quote</span>
-            </a>
-        </div>
+        <p class="mt-2 text-2xl font-black text-slate-900"><?= $k['value'] ?></p>
     </div>
-    
-    <div class="bg-emerald-600 p-8 rounded-[3rem] shadow-xl shadow-emerald-100 text-white flex flex-col justify-center">
-        <h3 class="text-2xl font-black mb-2">Welcome back, <?= explode(' ', e(current_user()['name']))[0] ?>!</h3>
-        <p class="text-emerald-100 text-sm leading-relaxed font-medium">Your business is growing. You have outstanding payments to collect today.</p>
-        <div class="mt-6">
-            <a href="<?= BASE_URL ?>/?page=invoices" class="inline-flex items-center bg-white text-emerald-600 px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-emerald-50 transition-colors">
-                View Invoices <i data-lucide="arrow-right" class="w-4 h-4 ml-2"></i>
-            </a>
-        </div>
+    <?php endforeach; ?>
+</div>
+
+<!-- Recent activity -->
+<div class="mt-6 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div class="flex items-center justify-between px-5 py-3 border-b border-gray-50">
+        <h3 class="text-sm font-black text-slate-900">Recent</h3>
+        <a href="<?= BASE_URL ?>/?page=invoices" class="text-xs font-bold text-emerald-600 hover:text-emerald-700">View all →</a>
     </div>
+    <?php if (empty($recentRows)): ?>
+    <p class="px-5 py-10 text-center text-sm text-slate-400">No invoices or quotes yet.</p>
+    <?php else: ?>
+    <div class="divide-y divide-gray-50">
+        <?php foreach ($recentRows as $r):
+            $isInv = $r['type'] === 'invoice';
+            $href  = BASE_URL . ($isInv ? '/?page=invoices-view&id=' : '/?page=quotes-view&id=') . (int)$r['id'];
+        ?>
+        <a href="<?= $href ?>" class="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition">
+            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg <?= $isInv ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600' ?>">
+                <i data-lucide="<?= $isInv ? 'file-text' : 'clipboard-list' ?>" class="w-4 h-4"></i>
+            </span>
+            <div class="min-w-0 flex-1">
+                <p class="text-sm font-bold text-slate-800 truncate"><?= e($r['number']) ?> <span class="text-slate-300">·</span> <?= e($r['customer'] ?: 'No customer') ?></p>
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400"><?= e($r['type']) ?> · <?= e($r['status']) ?></p>
+            </div>
+            <span class="shrink-0 text-sm font-black text-slate-900"><?= money($r['total']) ?></span>
+        </a>
+        <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
 </div>
