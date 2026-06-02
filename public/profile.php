@@ -245,8 +245,8 @@ $companyCount = count($myCompanies);
             </div>
 
         </div>
-        <div class="border-t border-white/6 bg-white/4 px-5 py-1.5 flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest text-white/20">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3 w-3 text-blue-500/50 shrink-0">
+        <div class="border-t border-white/6 bg-white/4 px-5 py-1.5 flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest text-white/50">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3 w-3 text-blue-400 shrink-0">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
             </svg>
             Credentials encrypted · Centryk never stores plain-text passwords
