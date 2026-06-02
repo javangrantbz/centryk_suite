@@ -20,34 +20,71 @@ $stmt = $pdo->prepare("
 $stmt->execute(['uid' => $user['id']]);
 $myCompanies = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// ── Connected Apps ────────────────────────────────────────────────────────────
-$onePayStores = [];
-try {
-    $s = $pdo->prepare("
-        SELECT s.name, s.status, sm.status AS membership_status
-        FROM onepay.stores s
-        JOIN onepay.store_memberships sm ON sm.store_id = s.id
-        WHERE sm.user_id = :uid AND sm.status = 'active'
-        ORDER BY s.name
-    ");
-    $s->execute(['uid' => $user['id']]);
-    $onePayStores = $s->fetchAll(PDO::FETCH_ASSOC);
-} catch (Exception $e) {}
+// ── Connected Apps (linked app access) ─────────────────────────────────────────
+// Locally every app DB shares one MySQL, so read them directly. On production
+// each app has its own isolated DB/user, so ask the app over HTTP instead
+// (server-to-server, shared secret). Both paths return identical row shapes.
 
-$myPayAccess = [];
-try {
-    $s = $pdo->prepare("
-        SELECT c.name, c.status AS company_status, r.name AS role_name, u.status AS user_status
-        FROM payroll.users u
-        JOIN payroll.user_company_assignments uca ON uca.user_id = u.id
-        JOIN payroll.companies c ON c.id = uca.company_id
-        LEFT JOIN payroll.roles r ON r.id = uca.role_id
-        WHERE u.email = :email
-        ORDER BY c.name
-    ");
-    $s->execute(['email' => $user['email']]);
-    $myPayAccess = $s->fetchAll(PDO::FETCH_ASSOC);
-} catch (Exception $e) {}
+/** Fetch a user's access rows from an app's account endpoint. */
+function sw_fetch_app_access(PDO $pdo, string $appKey, string $email, string $secret): array {
+    if ($secret === '' || $email === '') return [];
+    $stmt = $pdo->prepare("SELECT url_production FROM apps WHERE `key` = :k LIMIT 1");
+    $stmt->execute(['k' => $appKey]);
+    $url = (string)($stmt->fetchColumn() ?: '');
+    if ($url === '') return [];
+    $base = preg_replace('#/[^/]*$#', '', rtrim($url, '/')); // strip /sso.php
+    $ch = curl_init($base . '/api/account/access.php');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => json_encode(['secret' => $secret, 'email' => $email]),
+        CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+        CURLOPT_TIMEOUT        => 5,
+    ]);
+    $res  = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($res === false || $code >= 400) return [];
+    $data = json_decode($res, true);
+    return (is_array($data) && !empty($data['rows'])) ? $data['rows'] : [];
+}
+
+$onePayStores = [];
+$myPayAccess  = [];
+
+$_swHost    = $_SERVER['HTTP_HOST'] ?? '';
+$_swIsLocal = preg_match('/^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i', $_swHost) === 1;
+
+if ($_swIsLocal) {
+    try {
+        $s = $pdo->prepare("
+            SELECT s.name, s.status, sm.status AS membership_status
+            FROM onepay.stores s
+            JOIN onepay.store_memberships sm ON sm.store_id = s.id
+            JOIN onepay.users u ON u.id = sm.user_id
+            WHERE u.email = :email AND sm.status = 'active'
+            ORDER BY s.name
+        ");
+        $s->execute(['email' => $user['email']]);
+        $onePayStores = $s->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {}
+    try {
+        $s = $pdo->prepare("
+            SELECT c.name, c.status AS company_status, r.name AS role_name, u.status AS user_status
+            FROM payroll.users u
+            JOIN payroll.user_company_assignments uca ON uca.user_id = u.id
+            JOIN payroll.companies c ON c.id = uca.company_id
+            LEFT JOIN payroll.roles r ON r.id = uca.role_id
+            WHERE u.email = :email
+            ORDER BY c.name
+        ");
+        $s->execute(['email' => $user['email']]);
+        $myPayAccess = $s->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {}
+} else {
+    $onePayStores = sw_fetch_app_access($pdo, 'onepay', $user['email'], $_ENV['PROVISION_SECRET']    ?? '');
+    $myPayAccess  = sw_fetch_app_access($pdo, 'mypay',  $user['email'], $_ENV['MYPAY_WEBHOOK_SECRET'] ?? '');
+}
 // ─────────────────────────────────────────────────────────────────────────────
 
 $fullName     = htmlspecialchars($user['first_name'] . ' ' . $user['last_name']);
