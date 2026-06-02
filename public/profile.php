@@ -166,7 +166,7 @@ $companyDeepUuid = trim($_GET['company_uuid'] ?? '');
 <body class="min-h-screen bg-[#0d1117] font-sans antialiased text-white">
 <script>var _ct=localStorage.getItem('centrikyTheme');if(_ct==='light'){document.body.classList.add('light');}if(_ct==='dark'){document.body.classList.add('dark');}</script>
 
-<?php $pageTitle = 'Profile'; $headerMaxW = 'max-w-5xl'; include __DIR__ . '/partials/account_header.php'; ?>
+<?php $pageTitle = 'Profile'; $headerMaxW = 'max-w-5xl'; $awCurrent = 'account'; include __DIR__ . '/partials/account_header.php'; ?>
 
 <!-- Page body -->
 <div class="mx-auto max-w-5xl px-6 py-5 space-y-4">

@@ -55,19 +55,13 @@ $awTileIcon = function (string $key, string $color = '', string $label = '') {
         <p class="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Switch App</p>
         <div class="grid grid-cols-3 gap-2">
 
-            <!-- Centryk: current (highlighted) or a link back to the dashboard -->
-            <?php $awCentrykIcon = '<svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>'; ?>
-            <?php if ($awCurrent === 'centryk'): ?>
-            <div class="flex flex-col items-center gap-2 rounded-xl p-3 text-center bg-slate-100 ring-1 ring-slate-200 cursor-default">
+            <!-- Account: always opens the Centryk account hub (profile) -->
+            <?php $awCentrykIcon = '<svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>';
+            $awOnAccount = ($awCurrent === 'account'); ?>
+            <a href="profile.php" class="flex flex-col items-center gap-2 rounded-xl p-3 text-center transition <?= $awOnAccount ? 'bg-slate-100 ring-1 ring-slate-200' : 'hover:bg-slate-50' ?>">
                 <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-sm"><?= $awCentrykIcon ?></span>
-                <span class="text-xs font-semibold text-slate-700">Account</span>
-            </div>
-            <?php else: ?>
-            <a href="index.php" class="flex flex-col items-center gap-2 rounded-xl p-3 text-center transition hover:bg-slate-50">
-                <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-sm"><?= $awCentrykIcon ?></span>
-                <span class="text-xs font-medium text-slate-700">Account</span>
+                <span class="text-xs <?= $awOnAccount ? 'font-semibold' : 'font-medium' ?> text-slate-700">Account</span>
             </a>
-            <?php endif; ?>
 
             <?php if ($awMode === 'launch' && !empty($apps)): ?>
                 <?php foreach ($apps as $app):
