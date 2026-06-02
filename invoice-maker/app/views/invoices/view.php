@@ -23,6 +23,14 @@ $itemStmt = $pdo->prepare("SELECT * FROM invoice_items WHERE invoice_id = ?");
 $itemStmt->execute([$id]);
 $items = $itemStmt->fetchAll();
 
+// Paper trail: the quote this invoice was created from.
+$sourceQuote = null;
+if (!empty($invoice['quote_id'])) {
+    $sq = $pdo->prepare("SELECT id, quote_number FROM quotes WHERE id = ? AND company_id = ?");
+    $sq->execute([$invoice['quote_id'], current_company_id()]);
+    $sourceQuote = $sq->fetch();
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['mark_paid'])) {
         $stmt = $pdo->prepare("
@@ -63,7 +71,15 @@ function getStatusBadge($status) {
         <i data-lucide="chevron-right" class="w-4 h-4"></i>
         <span class="text-slate-900 font-medium"><?= e($invoice['invoice_number']) ?></span>
     </div>
-    
+
+    <?php if ($sourceQuote): ?>
+    <div class="mb-4 inline-flex items-center gap-2 rounded-xl bg-amber-50 border border-amber-100 px-3 py-1.5 text-xs font-bold text-amber-700">
+        <i data-lucide="git-merge" class="w-3.5 h-3.5"></i>
+        Created from quote
+        <a href="<?= BASE_URL ?>/?page=quotes-view&id=<?= (int)$sourceQuote['id'] ?>" class="font-mono underline hover:text-amber-900"><?= e($sourceQuote['quote_number']) ?></a>
+    </div>
+    <?php endif; ?>
+
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div class="flex items-center">
             <h2 class="text-4xl font-extrabold text-slate-900 tracking-tight mr-4"><?= e($invoice['invoice_number']) ?></h2>

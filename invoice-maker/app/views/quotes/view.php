@@ -23,7 +23,17 @@ $itemStmt = $pdo->prepare("SELECT * FROM quote_items WHERE quote_id = ?");
 $itemStmt->execute([$id]);
 $items = $itemStmt->fetchAll();
 
+// Paper trail: has this quote already been converted to an invoice?
+$ci = $pdo->prepare("SELECT id, invoice_number FROM invoices WHERE quote_id = ? AND company_id = ? LIMIT 1");
+$ci->execute([$id, current_company_id()]);
+$convertedInvoice = $ci->fetch() ?: null;
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Never create a second invoice from the same quote.
+    if (isset($_POST['convert']) && $convertedInvoice) {
+        header('Location: ' . BASE_URL . '/?page=invoices-view&id=' . (int)$convertedInvoice['id']);
+        exit;
+    }
     if (isset($_POST['accept'])) {
         $stmt = $pdo->prepare("UPDATE quotes SET status = 'accepted' WHERE id = ? AND company_id = ?");
         $stmt->execute([$id, current_company_id()]);
@@ -113,7 +123,15 @@ function getQuoteStatusBadge($status) {
         <i data-lucide="chevron-right" class="w-4 h-4"></i>
         <span class="text-slate-900 font-medium"><?= e($quote['quote_number']) ?></span>
     </div>
-    
+
+    <?php if ($convertedInvoice): ?>
+    <div class="mb-4 inline-flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-1.5 text-xs font-bold text-emerald-700">
+        <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i>
+        Converted to invoice
+        <a href="<?= BASE_URL ?>/?page=invoices-view&id=<?= (int)$convertedInvoice['id'] ?>" class="font-mono underline hover:text-emerald-900"><?= e($convertedInvoice['invoice_number']) ?></a>
+    </div>
+    <?php endif; ?>
+
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div class="flex items-center">
             <h2 class="text-4xl font-extrabold text-slate-900 tracking-tight mr-4"><?= e($quote['quote_number']) ?></h2>
@@ -230,11 +248,18 @@ function getQuoteStatusBadge($status) {
             </h3>
 
             <form method="POST" class="space-y-3">
+                <?php if ($convertedInvoice): ?>
+                <a href="<?= BASE_URL ?>/?page=invoices-view&id=<?= (int)$convertedInvoice['id'] ?>" class="w-full bg-emerald-500 hover:bg-emerald-600 text-[#1a1a1a] font-black py-4 rounded-2xl transition-all flex items-center justify-center">
+                    <i data-lucide="external-link" class="w-5 h-5 mr-2"></i>
+                    View Invoice <?= e($convertedInvoice['invoice_number']) ?>
+                </a>
+                <?php else: ?>
                 <button name="convert" value="1" class="w-full bg-emerald-500 hover:bg-emerald-600 text-[#1a1a1a] font-black py-4 rounded-2xl transition-all flex items-center justify-center">
                     <i data-lucide="file-check-2" class="w-5 h-5 mr-2"></i>
                     Convert to Invoice
                 </button>
-                
+                <?php endif; ?>
+
                 <div class="grid grid-cols-2 gap-3">
                     <?php if ($quote['status'] !== 'accepted'): ?>
                         <button name="accept" value="1" class="bg-gray-800 hover:bg-gray-700 text-emerald-400 font-bold py-3 rounded-2xl transition-all text-sm">
