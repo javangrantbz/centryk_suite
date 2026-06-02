@@ -76,7 +76,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
                         </span>
                         <span class="text-sm font-bold text-indigo-600 group-hover:text-indigo-700">Create a new Company Profile</span>
                     </button>
-                    <a href="companies.php" class="flex items-center justify-between px-3 py-2 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition border-t border-slate-50">
+                    <a href="profile.php#companies" class="flex items-center justify-between px-3 py-2 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition border-t border-slate-50">
                         <span>Manage all companies</span>
                         <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
                     </a>
@@ -134,7 +134,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
                         Manage your Centryk Account
                     </a>
                     <?php if (!empty($user['is_admin'])): ?>
-                    <a href="companies.php" class="flex sm:hidden items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition">
+                    <a href="profile.php#companies" class="flex sm:hidden items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition">
                         <i data-lucide="building-2" class="h-4 w-4 shrink-0"></i>
                         Companies
                     </a>
@@ -189,7 +189,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
                     </div>
                     <p class="mt-0.5 text-sm font-semibold text-slate-400">
                         Welcome back, <?= htmlspecialchars($user['first_name']) ?> &middot;
-                        <a id="coMemberLink" href="companies.php" class="transition hover:text-slate-700">
+                        <a id="coMemberLink" href="profile.php#companies" class="transition hover:text-slate-700">
                             <span id="coMemberCount">0</span> members
                         </a>
                     </p>
@@ -202,7 +202,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
                         <i data-lucide="user-plus" class="h-3.5 w-3.5"></i>
                         <span class="hidden sm:inline">Invite Member</span>
                     </button>
-                    <a href="companies.php"
+                    <a href="profile.php#companies"
                        class="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 transition hover:bg-slate-50 hover:border-slate-300">
                         <i data-lucide="building-2" class="h-3.5 w-3.5"></i>
                         <span class="hidden sm:inline">Manage</span>
@@ -631,7 +631,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
             var coMemberCount = document.getElementById('coMemberCount');
             if (coMemberCount) { coMemberCount.textContent = n; }
 
-            var companiesUrl = 'companies.php' + (selectedUuid ? ('?company_uuid=' + encodeURIComponent(selectedUuid)) : '');
+            var companiesUrl = 'profile.php' + (selectedUuid ? ('?company_uuid=' + encodeURIComponent(selectedUuid)) : '') + '#companies';
             var coMemberLink = document.getElementById('coMemberLink');
             if (coMemberLink) { coMemberLink.href = companiesUrl; }
 

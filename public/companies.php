@@ -7,13 +7,21 @@ if (!$user) {
     header('Location: login.php');
     exit;
 }
+
+// Companies now lives inside Profile → My Companies. This page is kept only as
+// the embedded engine (?embed=1); send any other visit to the account hub.
+$embed = (($_GET['embed'] ?? '') === '1');
+if (!$embed) {
+    $cu = trim($_GET['company_uuid'] ?? '');
+    header('Location: profile.php' . ($cu !== '' ? '?company_uuid=' . urlencode($cu) : '') . '#companies');
+    exit;
+}
+
 $userApps = AuthService::allAppsWithEnrollment((int)$user['id']);
 $fullName = htmlspecialchars($user['first_name'] . ' ' . $user['last_name']);
 $initial  = strtoupper(substr($user['first_name'], 0, 1));
 $email    = htmlspecialchars($user['email']);
 $requestedCompanyUuid = trim($_GET['company_uuid'] ?? '');
-// Embedded mode: rendered inside the Profile → My Companies panel (no chrome).
-$embed = (($_GET['embed'] ?? '') === '1');
 ?>
 <!doctype html>
 <html lang="en">

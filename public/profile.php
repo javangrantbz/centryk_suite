@@ -111,6 +111,8 @@ $initial      = strtoupper(substr($user['first_name'], 0, 1));
 $email        = htmlspecialchars($user['email']);
 $memberSince  = date('F Y', strtotime($user['created_at']));
 $companyCount = count($myCompanies);
+// Optional deep-link: open a specific company in the embedded companies manager.
+$companyDeepUuid = trim($_GET['company_uuid'] ?? '');
 ?>
 <!doctype html>
 <html lang="en">
@@ -421,11 +423,8 @@ $companyCount = count($myCompanies);
                         <p class="text-[10px] text-white/35"><?= $companyCount ?> <?= $companyCount === 1 ? 'company' : 'companies' ?> linked</p>
                     </div>
                 </div>
-                <a href="companies.php" target="_blank" rel="noopener" class="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-white/30 transition hover:text-white/60">
-                    <i data-lucide="external-link" class="h-3 w-3"></i> Open full page
-                </a>
             </div>
-            <iframe id="companiesFrame" data-src="companies.php?embed=1" title="My Companies"
+            <iframe id="companiesFrame" data-src="companies.php?embed=1<?= $companyDeepUuid !== '' ? '&amp;company_uuid=' . urlencode($companyDeepUuid) : '' ?>" title="My Companies"
                     class="block w-full" style="height:560px;border:0;background:transparent;" scrolling="no"></iframe>
         </section>
 
@@ -720,7 +719,8 @@ document.getElementById('updateNameForm').addEventListener('submit', async funct
 
     const hash = (location.hash || '').replace('#', '');
     let saved = null; try { saved = localStorage.getItem('centrykAccountTab'); } catch (e) {}
-    activate(valid.includes(hash) ? hash : (saved || 'personal'));
+    const hasCompanyParam = new URLSearchParams(location.search).has('company_uuid');
+    activate(valid.includes(hash) ? hash : (hasCompanyParam ? 'companies' : (saved || 'personal')));
 })();
 
 // ── Notification preferences (save each toggle) ────────────────────────────
