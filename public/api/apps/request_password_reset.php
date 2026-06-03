@@ -39,11 +39,17 @@ try {
     Response::error('Could not create the reset link.', 500);
 }
 
-$created = !empty($result['created']);
+$created    = !empty($result['created']);
+// 'sent' = relay accepted, 'logged' = driver != smtp, 'failed' = send error,
+// 'skipped' = we deliberately didn't email (no inbox), 'no_account' = unknown email.
+$mailStatus = $created ? ($result['mail_status'] ?? 'skipped') : 'no_account';
+$sentOk     = $mailStatus === 'sent';
 
 Response::ok([
-    'created'    => $created,
-    'email_sent' => $created && $send,
-    // Only hand back the link when we deliberately did NOT email it.
-    'reset_link' => (!$send && $created) ? ($result['reset_link'] ?? null) : null,
+    'created'     => $created,
+    'mail_status' => $mailStatus,
+    'email_sent'  => $sentOk,
+    // Hand back the link whenever no real email reached the user, so the
+    // caller can relay it (no inbox, log-mode, or a delivery failure).
+    'reset_link'  => ($created && !$sentOk) ? ($result['reset_link'] ?? null) : null,
 ]);

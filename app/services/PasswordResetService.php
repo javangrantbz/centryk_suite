@@ -63,6 +63,7 @@ class PasswordResetService
         $base      = rtrim($config['app_url'], '/');
         $resetLink = $base . '/reset-password.php?token=' . $token;
 
+        $mailStatus = 'skipped';
         if ($sendEmail) {
             $greeting = htmlspecialchars($user['first_name'] ?: 'there', ENT_QUOTES, 'UTF-8');
             $safeLink = htmlspecialchars($resetLink, ENT_QUOTES, 'UTF-8');
@@ -93,9 +94,12 @@ class PasswordResetService
                 . "If you did not request this, you can safely ignore this email.\n";
 
             try {
-                (new MailerService())->send($email, 'Reset your Centryk password', $html, $text);
+                $res        = (new MailerService())->send($email, 'Reset your Centryk password', $html, $text, 'password_reset');
+                $mailStatus = $res['status'] ?? 'sent'; // 'sent' (relay accepted) or 'logged' (driver != smtp)
             } catch (Throwable $e) {
-                // Don't leak mail errors to the caller.
+                // Don't leak mail errors to the caller, but record the failure.
+                $mailStatus = 'failed';
+                error_log('[password_reset] mail send failed for ' . $email . ': ' . $e->getMessage());
             }
         }
 
@@ -108,7 +112,7 @@ class PasswordResetService
             ]);
         } catch (Throwable $e) { /* audit is best-effort */ }
 
-        return ['created' => true, 'reset_link' => $resetLink];
+        return ['created' => true, 'reset_link' => $resetLink, 'mail_status' => $mailStatus];
     }
 
     /**
