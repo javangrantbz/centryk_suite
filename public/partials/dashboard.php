@@ -329,6 +329,18 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
                     </span>
                     <?php elseif ($app['key'] === 'mypay'): ?>
                     <img src="../myPay.png" alt="MyPay" class="h-12 w-12 rounded-xl object-contain shadow-sm">
+                    <?php elseif ($app['key'] === 'invoice'): ?>
+                    <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-100">
+                        <svg class="h-6 w-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2Z"/>
+                        </svg>
+                    </span>
+                    <?php elseif ($app['key'] === 'calendar'): ?>
+                    <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl shadow-sm" style="background:<?= htmlspecialchars($app['color']) ?>">
+                        <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                        </svg>
+                    </span>
                     <?php else: ?>
                     <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-2xl"
                           style="background:<?= htmlspecialchars($app['color']) ?>18">
@@ -338,9 +350,10 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
                     <div>
                         <div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
                             <?php
-                            if ($app['key'] === 'onepay')    echo 'Inventory &amp; POS';
-                            elseif ($app['key'] === 'mypay') echo 'HR &amp; Payroll';
-                            else                             echo htmlspecialchars($app['label']);
+                            if ($app['key'] === 'onepay')      echo 'Inventory &amp; POS';
+                            elseif ($app['key'] === 'mypay')   echo 'HR &amp; Payroll';
+                            elseif ($app['key'] === 'invoice') echo 'Quotes &amp; Invoicing';
+                            else                               echo htmlspecialchars($app['label']);
                             ?>
                         </div>
                         <div class="text-lg font-black tracking-tight text-slate-900"><?= htmlspecialchars($app['label']) ?></div>
@@ -380,33 +393,8 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         </button>
         <?php endforeach; ?>
 
-        <!-- Invoice Maker — coming soon (static, not in DB) -->
-        <div style="--i:<?= ($_appIdx ?? 0) + 1 ?>" class="dash-fade flex flex-col overflow-hidden rounded-2xl border border-emerald-200/70 bg-emerald-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
-            <div class="h-1.5 w-full bg-emerald-500/50"></div>
-            <div class="flex flex-1 flex-col p-5">
-                <div class="flex items-center gap-3">
-                    <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-100">
-                        <svg class="h-6 w-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2Z"/>
-                        </svg>
-                    </span>
-                    <div>
-                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600/80">Quotes &amp; Invoicing</div>
-                        <div class="text-lg font-black tracking-tight text-slate-800">Invoice Maker</div>
-                    </div>
-                </div>
-                <p class="mt-3 text-xs font-semibold leading-relaxed text-slate-500">
-                    A simplified way of making quotes, invoices, and sharing them with clients.
-                </p>
-                <div class="mt-4 flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] bg-emerald-100 text-emerald-700 border border-emerald-200">
-                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2m6-2a10 10 0 1 1-20 0 10 10 0 0 1 20 0Z"/></svg>
-                    Coming Soon
-                </div>
-            </div>
-        </div>
-
         <!-- Case Management — coming soon (static, not in DB) -->
-        <div style="--i:<?= ($_appIdx ?? 0) + 2 ?>" class="dash-fade flex flex-col overflow-hidden rounded-2xl border border-blue-200/70 bg-blue-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
+        <div style="--i:<?= ($_appIdx ?? 0) + 1 ?>" class="dash-fade flex flex-col overflow-hidden rounded-2xl border border-blue-200/70 bg-blue-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
             <div class="h-1.5 w-full bg-blue-500/50"></div>
             <div class="flex flex-1 flex-col p-5">
                 <div class="flex items-center gap-3">

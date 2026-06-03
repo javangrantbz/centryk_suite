@@ -236,24 +236,28 @@ if ($embed) {
         <div data-tab-panel="profile" class="hidden">
             <div id="profileError" class="hidden mx-6 mt-4 rounded-xl bg-red-500/15 px-4 py-2.5 text-xs font-semibold text-red-400"></div>
             <div id="profileReadonlyNote" class="hidden mx-6 mt-4 rounded-xl bg-white/5 px-4 py-2.5 text-[11px] font-semibold text-white/40">Only company admins can edit this profile.</div>
+            <div id="profileSuccess" class="hidden mx-6 mt-4 flex items-center gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/15 px-4 py-2.5 text-xs font-bold text-emerald-400">
+                <i data-lucide="check-circle" class="h-4 w-4"></i><span id="profileSuccessText">Business profile saved.</span>
+            </div>
 
-            <div class="grid gap-4 p-5 md:grid-cols-[auto_1fr]">
-                <!-- Logo -->
-                <div class="flex flex-col items-center gap-2.5">
-                    <div class="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/5">
-                        <img id="profileLogoImg" src="" alt="Logo" class="hidden h-full w-full object-contain p-2">
-                        <i data-lucide="image" id="profileLogoPlaceholder" class="h-8 w-8 text-white/20"></i>
+            <div class="space-y-4 p-5">
+                <!-- Logo + Email/TIN -->
+                <div class="flex flex-col gap-4 sm:flex-row sm:items-start">
+                    <!-- Logo -->
+                    <div class="flex shrink-0 flex-col items-center gap-2.5">
+                        <div class="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+                            <img id="profileLogoImg" src="" alt="Logo" class="hidden h-full w-full object-contain p-2">
+                            <i data-lucide="image" id="profileLogoPlaceholder" class="h-8 w-8 text-white/20"></i>
+                        </div>
+                        <label id="profileLogoLabel" class="hidden cursor-pointer rounded-lg border border-white/10 bg-white/6 px-3 py-1.5 text-[11px] font-bold text-white/70 transition hover:bg-white/10">
+                            Change logo
+                            <input type="file" id="profileLogoInput" accept="image/png,image/jpeg,image/webp,image/svg+xml" class="hidden">
+                        </label>
+                        <p class="max-w-[6rem] text-center text-[9px] text-white/25">PNG, JPG, WEBP or SVG · Max 2MB</p>
                     </div>
-                    <label id="profileLogoLabel" class="hidden cursor-pointer rounded-lg border border-white/10 bg-white/6 px-3 py-1.5 text-[11px] font-bold text-white/70 transition hover:bg-white/10">
-                        Change logo
-                        <input type="file" id="profileLogoInput" accept="image/png,image/jpeg,image/webp,image/svg+xml" class="hidden">
-                    </label>
-                    <p class="max-w-[6rem] text-center text-[9px] text-white/25">PNG, JPG, WEBP or SVG · Max 2MB</p>
-                </div>
 
-                <!-- Fields -->
-                <div class="space-y-3">
-                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <!-- Email + TIN (to the right of the logo) -->
+                    <div class="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2">
                         <div>
                             <label class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/35">Business Email</label>
                             <input id="profileEmail" type="email" class="profile-input w-full rounded-lg border border-white/10 bg-white/6 px-3 py-2 text-xs text-white placeholder-white/20 outline-none transition focus:border-emerald-500 focus:bg-white/8 disabled:opacity-60" placeholder="business@email.com">
@@ -263,7 +267,10 @@ if ($embed) {
                             <input id="profileTin" type="text" class="profile-input w-full rounded-lg border border-white/10 bg-white/6 px-3 py-2 text-xs text-white placeholder-white/20 outline-none transition focus:border-emerald-500 focus:bg-white/8 disabled:opacity-60" placeholder="Tax ID">
                         </div>
                     </div>
-                    <div class="flex flex-wrap items-end gap-3">
+                </div>
+
+                <!-- Phones -->
+                <div class="flex flex-wrap items-end gap-3">
                         <div class="min-w-[150px] flex-1">
                             <label class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/35">Phone 1</label>
                             <input id="profilePhone" type="tel" class="profile-input w-full rounded-lg border border-white/10 bg-white/6 px-3 py-2 text-xs text-white placeholder-white/20 outline-none transition focus:border-emerald-500 focus:bg-white/8 disabled:opacity-60" placeholder="+501 …">
@@ -292,7 +299,6 @@ if ($embed) {
             </div>
         </div>
     </div>
-</div>
 
 <!-- ─── New Company Modal ─── -->
 <div id="newCompanyModal" class="modal-backdrop fixed inset-0 z-50 hidden items-center justify-center p-4">
@@ -576,6 +582,7 @@ if ($embed) {
     function loadProfile(companyId) {
         profileLogoFile = null;
         document.getElementById('profileError').classList.add('hidden');
+        document.getElementById('profileSuccess').classList.add('hidden');
         fetch('api/companies/profile.php?company_id=' + companyId)
             .then(function (r) { return r.json(); })
             .then(function (data) {
@@ -614,6 +621,7 @@ if ($embed) {
         var btn = this;
         var err = document.getElementById('profileError');
         err.classList.add('hidden');
+        document.getElementById('profileSuccess').classList.add('hidden');
 
         var fd = new FormData();
         fd.append('company_id', currentCompany.id);
@@ -639,7 +647,10 @@ if ($embed) {
                 if (!data.success) { err.textContent = data.message || 'Could not save profile.'; err.classList.remove('hidden'); return; }
                 profileLogoFile = null;
                 if (data.logo) { setProfileLogo(data.logo); }
-                showToast('Business profile saved.', 'success');
+                var ok = document.getElementById('profileSuccess');
+                ok.classList.remove('hidden');
+                clearTimeout(window._profileOkTimer);
+                window._profileOkTimer = setTimeout(function () { ok.classList.add('hidden'); }, 4000);
             })
             .catch(function () {
                 btn.disabled = false;
