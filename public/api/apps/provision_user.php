@@ -87,15 +87,19 @@ if ($companyUuid !== '') {
     $companyRow->execute(['uuid' => $companyUuid]);
     $company = $companyRow->fetch();
     if ($company) {
+        // Provisioning may run repeatedly (re-syncs from the calling app), so it
+        // must never clobber an existing member's role — that would silently
+        // downgrade admins to the default 'employee'. On a duplicate we only
+        // re-activate access; role for existing members is managed deliberately
+        // through the company member UI (invite.php).
         $pdo->prepare('
             INSERT INTO company_members (company_id, user_id, role)
             VALUES (:cid, :uid, :role)
-            ON DUPLICATE KEY UPDATE role = :role2, status = "active"
+            ON DUPLICATE KEY UPDATE status = "active"
         ')->execute([
             'cid'   => (int)$company['id'],
             'uid'   => $userId,
             'role'  => $companyRole,
-            'role2' => $companyRole,
         ]);
     }
 }
