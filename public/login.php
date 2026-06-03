@@ -241,7 +241,7 @@ if (AuthService::me()['authenticated']) {
                     </button>
 
                     <div class="mt-4 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
-                        <a href="contact.php" class="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400 transition hover:text-slate-700">Forgot Password?</a>
+                        <a href="forgot-password.php" class="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400 transition hover:text-slate-700">Forgot Password?</a>
                         <a href="contact.php" class="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400 transition hover:text-slate-700">Need Help?</a>
                     </div>
                 </form>

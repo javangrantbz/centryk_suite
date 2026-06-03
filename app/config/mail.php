@@ -30,3 +30,4 @@ return [
         'encryption' => $_ENV['SMTP_ENCRYPTION'] ?? 'tls',
     ],
 ];
+*/
