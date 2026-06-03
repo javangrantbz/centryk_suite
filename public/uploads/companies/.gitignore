@@ -1,0 +1,4 @@
+# Ignore uploaded company logos (user content) but keep the folder in Git.
+*
+!.gitkeep
+!.gitignore
