@@ -209,18 +209,87 @@ if ($embed) {
                     <span id="detailMemberCount" class="text-xs text-white/40"></span>
                 </div>
             </div>
-            <button id="addMemberBtn" class="hidden flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-sm font-black text-white transition hover:bg-white/15">
-                <i data-lucide="user-plus" class="h-4 w-4"></i>
-                Add Member
-            </button>
+            <div class="flex items-center gap-2">
+                <button id="addMemberBtn" class="hidden flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-sm font-black text-white transition hover:bg-white/15">
+                    <i data-lucide="user-plus" class="h-4 w-4"></i>
+                    Add Member
+                </button>
+                <button id="saveProfileBtn" type="button" class="hidden flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-black text-white transition hover:bg-emerald-500">
+                    <i data-lucide="save" class="h-4 w-4"></i> Save
+                </button>
+            </div>
         </div>
 
-        <!-- Members list -->
-        <div id="membersList" class="divide-y divide-white/6"></div>
+        <!-- Tabs -->
+        <div class="flex items-center gap-1 border-b border-white/8 px-4">
+            <button type="button" class="co-tab px-4 py-3 text-xs font-black uppercase tracking-[0.1em] border-b-2 border-emerald-500 text-white" data-tab="members">Members</button>
+            <button type="button" class="co-tab px-4 py-3 text-xs font-black uppercase tracking-[0.1em] border-b-2 border-transparent text-white/40 transition hover:text-white/70" data-tab="profile">Business Profile</button>
+        </div>
 
-        <!-- Members loading -->
-        <div id="membersLoading" class="p-10 text-center text-sm text-white/30">
-            Loading members...
+        <!-- Members panel -->
+        <div data-tab-panel="members">
+            <div id="membersList" class="divide-y divide-white/6"></div>
+            <div id="membersLoading" class="p-10 text-center text-sm text-white/30">Loading members...</div>
+        </div>
+
+        <!-- Business profile panel (read by Invoice Maker & other apps) -->
+        <div data-tab-panel="profile" class="hidden">
+            <div id="profileError" class="hidden mx-6 mt-4 rounded-xl bg-red-500/15 px-4 py-2.5 text-xs font-semibold text-red-400"></div>
+            <div id="profileReadonlyNote" class="hidden mx-6 mt-4 rounded-xl bg-white/5 px-4 py-2.5 text-[11px] font-semibold text-white/40">Only company admins can edit this profile.</div>
+
+            <div class="grid gap-4 p-5 md:grid-cols-[auto_1fr]">
+                <!-- Logo -->
+                <div class="flex flex-col items-center gap-2.5">
+                    <div class="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+                        <img id="profileLogoImg" src="" alt="Logo" class="hidden h-full w-full object-contain p-2">
+                        <i data-lucide="image" id="profileLogoPlaceholder" class="h-8 w-8 text-white/20"></i>
+                    </div>
+                    <label id="profileLogoLabel" class="hidden cursor-pointer rounded-lg border border-white/10 bg-white/6 px-3 py-1.5 text-[11px] font-bold text-white/70 transition hover:bg-white/10">
+                        Change logo
+                        <input type="file" id="profileLogoInput" accept="image/png,image/jpeg,image/webp,image/svg+xml" class="hidden">
+                    </label>
+                    <p class="max-w-[6rem] text-center text-[9px] text-white/25">PNG, JPG, WEBP or SVG · Max 2MB</p>
+                </div>
+
+                <!-- Fields -->
+                <div class="space-y-3">
+                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div>
+                            <label class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/35">Business Email</label>
+                            <input id="profileEmail" type="email" class="profile-input w-full rounded-lg border border-white/10 bg-white/6 px-3 py-2 text-xs text-white placeholder-white/20 outline-none transition focus:border-emerald-500 focus:bg-white/8 disabled:opacity-60" placeholder="business@email.com">
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/35">TIN Number</label>
+                            <input id="profileTin" type="text" class="profile-input w-full rounded-lg border border-white/10 bg-white/6 px-3 py-2 text-xs text-white placeholder-white/20 outline-none transition focus:border-emerald-500 focus:bg-white/8 disabled:opacity-60" placeholder="Tax ID">
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap items-end gap-3">
+                        <div class="min-w-[150px] flex-1">
+                            <label class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/35">Phone 1</label>
+                            <input id="profilePhone" type="tel" class="profile-input w-full rounded-lg border border-white/10 bg-white/6 px-3 py-2 text-xs text-white placeholder-white/20 outline-none transition focus:border-emerald-500 focus:bg-white/8 disabled:opacity-60" placeholder="+501 …">
+                        </div>
+                        <div id="phoneField2" class="hidden min-w-[150px] flex-1">
+                            <label class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/35">Phone 2</label>
+                            <input id="profilePhone2" type="tel" class="profile-input w-full rounded-lg border border-white/10 bg-white/6 px-3 py-2 text-xs text-white placeholder-white/20 outline-none transition focus:border-emerald-500 focus:bg-white/8 disabled:opacity-60" placeholder="Optional">
+                        </div>
+                        <div id="phoneField3" class="hidden min-w-[150px] flex-1">
+                            <label class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/35">Phone 3</label>
+                            <input id="profilePhone3" type="tel" class="profile-input w-full rounded-lg border border-white/10 bg-white/6 px-3 py-2 text-xs text-white placeholder-white/20 outline-none transition focus:border-emerald-500 focus:bg-white/8 disabled:opacity-60" placeholder="Optional">
+                        </div>
+                        <button id="addPhoneBtn" type="button" title="Add another phone" class="hidden shrink-0 rounded-lg border border-white/10 bg-white/6 p-2 text-white/60 transition hover:bg-white/10 hover:text-white">
+                            <i data-lucide="plus" class="h-4 w-4"></i>
+                        </button>
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/35">Business Address</label>
+                        <textarea id="profileAddress" rows="2" class="profile-input w-full rounded-lg border border-white/10 bg-white/6 px-3 py-2 text-xs text-white placeholder-white/20 outline-none transition focus:border-emerald-500 focus:bg-white/8 disabled:opacity-60" placeholder="Street, City, Country"></textarea>
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/35">Opening Hours</label>
+                        <textarea id="profileHours" rows="2" class="profile-input w-full rounded-lg border border-white/10 bg-white/6 px-3 py-2 text-xs text-white placeholder-white/20 outline-none transition focus:border-emerald-500 focus:bg-white/8 disabled:opacity-60" placeholder="e.g. Mon–Fri 8:00am–5:00pm&#10;Sat 9:00am–1:00pm"></textarea>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -382,6 +451,7 @@ if ($embed) {
     var pendingRemove   = { companyId: null, userId: null };
     var selectedUuid    = null;
     var requestedCompanyUuid = <?= json_encode($requestedCompanyUuid, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
+    var currentUserEmail     = <?= json_encode($user['email'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
     var membersRequestSeq = 0;
 
     // ── Header company picker ─────────────────────────────────────────────────
@@ -434,16 +504,150 @@ if ($embed) {
         badge.className = 'rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] ' + (colors[company.role] || colors.employee);
 
         if (company.role === 'admin') {
-            document.getElementById('addMemberBtn').classList.remove('hidden');
             document.getElementById('renameCompanyBtn').classList.remove('hidden');
         } else {
-            document.getElementById('addMemberBtn').classList.add('hidden');
             document.getElementById('renameCompanyBtn').classList.add('hidden');
         }
 
         loadMembers(company.id);
+        loadProfile(company.id);
+        activateCompanyTab('members');
         if (window.lucide) { lucide.createIcons(); }
     }
+
+    // ── Detail tabs (Members / Business Profile) ──────────────────────────────
+    function activateCompanyTab(tab) {
+        document.querySelectorAll('.co-tab').forEach(function (b) {
+            var on = b.dataset.tab === tab;
+            b.classList.toggle('text-white', on);
+            b.classList.toggle('border-emerald-500', on);
+            b.classList.toggle('text-white/40', !on);
+            b.classList.toggle('border-transparent', !on);
+        });
+        document.querySelectorAll('[data-tab-panel]').forEach(function (p) {
+            p.classList.toggle('hidden', p.dataset.tabPanel !== tab);
+        });
+        var isAdmin = currentCompany && currentCompany.role === 'admin';
+        document.getElementById('addMemberBtn').classList.toggle('hidden', !(tab === 'members' && isAdmin));
+        document.getElementById('saveProfileBtn').classList.toggle('hidden', !(tab === 'profile' && isAdmin));
+    }
+    document.querySelectorAll('.co-tab').forEach(function (b) {
+        b.addEventListener('click', function () { activateCompanyTab(b.dataset.tab); });
+    });
+
+    // ── Company business profile ──────────────────────────────────────────────
+    var profileLogoFile = null;
+
+    function setProfileLogo(src) {
+        var img = document.getElementById('profileLogoImg');
+        var ph  = document.getElementById('profileLogoPlaceholder');
+        if (src) { img.src = src; img.classList.remove('hidden'); ph.classList.add('hidden'); }
+        else     { img.removeAttribute('src'); img.classList.add('hidden'); ph.classList.remove('hidden'); }
+    }
+
+    function setProfileEditable(canEdit) {
+        document.querySelectorAll('.profile-input').forEach(function (el) { el.disabled = !canEdit; });
+        document.getElementById('profileLogoLabel').classList.toggle('hidden', !canEdit);
+        document.getElementById('profileReadonlyNote').classList.toggle('hidden', canEdit);
+        updatePhoneAddBtn(canEdit);
+    }
+
+    // Phone 2 & 3 are hidden until needed; the "+" reveals the next one.
+    function phoneFieldEls() {
+        return [document.getElementById('phoneField2'), document.getElementById('phoneField3')];
+    }
+    function updatePhoneAddBtn(canEdit) {
+        var anyHidden = phoneFieldEls().some(function (el) { return el.classList.contains('hidden'); });
+        document.getElementById('addPhoneBtn').classList.toggle('hidden', !(canEdit && anyHidden));
+    }
+    function revealNextPhone() {
+        var els = phoneFieldEls();
+        for (var i = 0; i < els.length; i++) {
+            if (els[i].classList.contains('hidden')) { els[i].classList.remove('hidden'); return els[i]; }
+        }
+        return null;
+    }
+    document.getElementById('addPhoneBtn').addEventListener('click', function () {
+        var revealed = revealNextPhone();
+        updatePhoneAddBtn(true);
+        if (revealed) { var inp = revealed.querySelector('input'); if (inp) { inp.focus(); } }
+    });
+
+    function loadProfile(companyId) {
+        profileLogoFile = null;
+        document.getElementById('profileError').classList.add('hidden');
+        fetch('api/companies/profile.php?company_id=' + companyId)
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (!data.success) { return; }
+                var p = data.profile || {};
+                document.getElementById('profileEmail').value   = p.email || currentUserEmail || '';
+                document.getElementById('profilePhone').value   = p.phone || '';
+                document.getElementById('profilePhone2').value  = p.phone2 || '';
+                document.getElementById('profilePhone3').value  = p.phone3 || '';
+                document.getElementById('profileTin').value     = p.tax_number || '';
+                document.getElementById('profileAddress').value = p.address || '';
+                document.getElementById('profileHours').value   = p.opening_hours || '';
+                // Reveal phone 2/3 only when they already hold a value.
+                var has2 = !!(p.phone2 || '').trim() || !!(p.phone3 || '').trim();
+                var has3 = !!(p.phone3 || '').trim();
+                document.getElementById('phoneField2').classList.toggle('hidden', !has2);
+                document.getElementById('phoneField3').classList.toggle('hidden', !has3);
+                setProfileLogo(p.logo || '');
+                setProfileEditable(!!data.can_edit);
+                if (window.lucide) { lucide.createIcons(); }
+            })
+            .catch(function () {});
+    }
+
+    document.getElementById('profileLogoInput').addEventListener('change', function () {
+        var f = this.files && this.files[0];
+        if (!f) { return; }
+        profileLogoFile = f;
+        var reader = new FileReader();
+        reader.onload = function (e) { setProfileLogo(e.target.result); };
+        reader.readAsDataURL(f);
+    });
+
+    document.getElementById('saveProfileBtn').addEventListener('click', function () {
+        if (!currentCompany) { return; }
+        var btn = this;
+        var err = document.getElementById('profileError');
+        err.classList.add('hidden');
+
+        var fd = new FormData();
+        fd.append('company_id', currentCompany.id);
+        fd.append('email',         document.getElementById('profileEmail').value.trim());
+        fd.append('phone',         document.getElementById('profilePhone').value.trim());
+        fd.append('phone2',        document.getElementById('profilePhone2').value.trim());
+        fd.append('phone3',        document.getElementById('profilePhone3').value.trim());
+        fd.append('tax_number',    document.getElementById('profileTin').value.trim());
+        fd.append('address',       document.getElementById('profileAddress').value.trim());
+        fd.append('opening_hours', document.getElementById('profileHours').value.trim());
+        if (profileLogoFile) { fd.append('logo', profileLogoFile); }
+
+        var orig = btn.innerHTML;
+        btn.disabled = true;
+        btn.textContent = 'Saving…';
+
+        fetch('api/companies/update-profile.php', { method: 'POST', body: fd })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                btn.disabled = false;
+                btn.innerHTML = orig;
+                if (window.lucide) { lucide.createIcons(); }
+                if (!data.success) { err.textContent = data.message || 'Could not save profile.'; err.classList.remove('hidden'); return; }
+                profileLogoFile = null;
+                if (data.logo) { setProfileLogo(data.logo); }
+                showToast('Business profile saved.', 'success');
+            })
+            .catch(function () {
+                btn.disabled = false;
+                btn.innerHTML = orig;
+                err.textContent = 'Network error. Please try again.';
+                err.classList.remove('hidden');
+            });
+    });
 
     // ── Modal helpers ─────────────────────────────────────────────────────────
     function openModal(id) {
