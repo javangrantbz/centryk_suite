@@ -1,6 +1,10 @@
 <?php
 require_once __DIR__ . '/../../invoice-maker/bootstrap.php';
 
+// Buffer output so views can still issue header() redirects after a form POST
+// (the layout header is rendered before the view).
+ob_start();
+
 $page = $_GET['page'] ?? 'dashboard';
 $APP  = __DIR__ . '/../../invoice-maker/app';
 

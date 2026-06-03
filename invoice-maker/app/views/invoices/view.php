@@ -75,7 +75,7 @@ function getStatusBadge($status) {
 }
 ?>
 
-<div class="mb-10">
+<div class="mb-6">
     <div class="flex items-center space-x-2 text-sm text-gray-400 mb-4">
         <a href="<?= BASE_URL ?>/?page=invoices" class="hover:text-emerald-600 transition-colors">Invoices</a>
         <i data-lucide="chevron-right" class="w-4 h-4"></i>
@@ -90,22 +90,22 @@ function getStatusBadge($status) {
     </div>
     <?php endif; ?>
 
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div class="flex items-center">
-            <h2 class="text-4xl font-extrabold text-slate-900 tracking-tight mr-4"><?= e($invoice['invoice_number']) ?></h2>
+            <h2 class="text-3xl font-extrabold text-slate-900 tracking-tight mr-3"><?= e($invoice['invoice_number']) ?></h2>
             <span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border <?= getStatusBadge($invoice['status']) ?>">
                 <?= e($invoice['status']) ?>
             </span>
         </div>
 
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2.5">
             <a href="https://wa.me/?text=<?= rawurlencode($shareMsg) ?>" target="_blank" rel="noopener" title="Share via WhatsApp" class="flex items-center justify-center w-12 h-12 rounded-2xl bg-[#25D366] text-white hover:opacity-90 transition shadow-lg shadow-green-100">
                 <i data-lucide="message-circle" class="w-5 h-5"></i>
             </a>
             <a href="mailto:?subject=<?= rawurlencode('Invoice ' . $invoice['invoice_number']) ?>&body=<?= rawurlencode($shareMsg) ?>" title="Share via Email" class="flex items-center justify-center w-12 h-12 rounded-2xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
                 <i data-lucide="mail" class="w-5 h-5"></i>
             </a>
-            <a href="<?= BASE_URL ?>/pdf-invoice.php?id=<?= $invoice['id'] ?>" target="_blank" class="flex items-center bg-[#1a1a1a] hover:bg-emerald-600 text-white px-6 py-3 rounded-2xl font-bold transition-all shadow-lg shadow-gray-200">
+            <a href="<?= BASE_URL ?>/pdf-invoice.php?id=<?= $invoice['id'] ?>" target="_blank" class="flex items-center bg-[#1a1a1a] hover:bg-emerald-600 text-white px-5 py-2.5 rounded-2xl font-bold transition-all shadow-lg shadow-gray-200">
                 <i data-lucide="download" class="w-4 h-4 mr-2"></i>
                 Download PDF
             </a>
@@ -119,11 +119,11 @@ function getStatusBadge($status) {
     </div>
 </div>
 
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
     <!-- Invoice Content -->
-    <div class="lg:col-span-2 space-y-8">
-        <div class="bg-white p-10 rounded-3xl shadow-sm border border-gray-100">
-            <div class="flex justify-between items-start mb-12">
+    <div class="lg:col-span-2 space-y-5">
+        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+            <div class="flex justify-between items-start mb-8">
                 <div>
                     <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Client Information</h3>
                     <div class="text-xl font-black text-slate-900"><?= e($invoice['customer_name']) ?></div>
@@ -134,7 +134,7 @@ function getStatusBadge($status) {
                     </div>
                 </div>
 
-                <div class="text-right space-y-4">
+                <div class="text-right space-y-3">
                     <div>
                         <div class="text-xs font-bold text-gray-400 uppercase tracking-widest">Issue Date</div>
                         <div class="text-sm font-bold text-slate-900"><?= date('M d, Y', strtotime($invoice['issue_date'])) ?></div>
@@ -149,28 +149,28 @@ function getStatusBadge($status) {
             <table class="w-full text-left border-collapse">
                 <thead>
                     <tr class="border-b border-gray-100">
-                        <th class="py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Description</th>
-                        <th class="py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Qty</th>
-                        <th class="py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Unit Price</th>
-                        <th class="py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Amount</th>
+                        <th class="py-3 text-xs font-bold text-gray-400 uppercase tracking-widest">Description</th>
+                        <th class="py-3 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Qty</th>
+                        <th class="py-3 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Unit Price</th>
+                        <th class="py-3 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Amount</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-50">
                     <?php foreach ($items as $item): ?>
                         <tr>
-                            <td class="py-5">
+                            <td class="py-3.5">
                                 <div class="text-sm font-bold text-slate-800"><?= e($item['description']) ?></div>
                             </td>
-                            <td class="py-5 text-center text-sm text-gray-500"><?= e($item['quantity']) ?></td>
-                            <td class="py-5 text-right text-sm text-gray-500"><?= money($item['unit_price']) ?></td>
-                            <td class="py-5 text-right font-bold text-slate-900"><?= money($item['total']) ?></td>
+                            <td class="py-3.5 text-center text-sm text-gray-500"><?= e($item['quantity']) ?></td>
+                            <td class="py-3.5 text-right text-sm text-gray-500"><?= money($item['unit_price']) ?></td>
+                            <td class="py-3.5 text-right font-bold text-slate-900"><?= money($item['total']) ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>
 
             <?php if ($invoice['notes']): ?>
-                <div class="mt-12 p-6 bg-gray-50 rounded-2xl border border-gray-100">
+                <div class="mt-8 p-4 bg-gray-50 rounded-2xl border border-gray-100">
                     <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Notes & Terms</h4>
                     <p class="text-sm text-gray-600 leading-relaxed"><?= nl2br(e($invoice['notes'])) ?></p>
                 </div>
@@ -179,8 +179,8 @@ function getStatusBadge($status) {
     </div>
 
     <!-- Summary Sidebar -->
-    <div class="space-y-6">
-        <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 space-y-6">
+    <div class="space-y-5">
+        <div class="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 space-y-4">
             <h3 class="text-lg font-bold text-slate-900 flex items-center">
                 <i data-lucide="pie-chart" class="w-5 h-5 mr-3 text-emerald-600"></i>
                 Summary
@@ -200,14 +200,14 @@ function getStatusBadge($status) {
                     <span class="font-bold text-red-600">-<?= money($invoice['discount']) ?></span>
                 </div>
                 
-                <div class="pt-4 border-t border-gray-50 flex justify-between items-end">
+                <div class="pt-3 border-t border-gray-50 flex justify-between items-end">
                     <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Total Amount</span>
-                    <span class="text-3xl font-black text-slate-900"><?= money($invoice['total']) ?></span>
+                    <span class="text-2xl font-black text-slate-900"><?= money($invoice['total']) ?></span>
                 </div>
             </div>
         </div>
 
-        <div class="bg-[#1a1a1a] p-8 rounded-3xl shadow-xl shadow-gray-200 space-y-6 text-white">
+        <div class="bg-[#1a1a1a] p-5 rounded-3xl shadow-xl shadow-gray-200 space-y-4 text-white">
             <h3 class="text-lg font-bold flex items-center">
                 <i data-lucide="wallet" class="w-5 h-5 mr-3 text-emerald-400"></i>
                 Payment
@@ -225,8 +225,8 @@ function getStatusBadge($status) {
             </div>
 
             <?php if ($invoice['status'] !== 'paid'): ?>
-                <form method="POST" class="pt-4">
-                    <button name="mark_paid" value="1" class="w-full bg-emerald-500 hover:bg-emerald-600 text-[#1a1a1a] font-black py-4 rounded-2xl transition-all shadow-lg shadow-emerald-900/20 flex items-center justify-center">
+                <form method="POST" class="pt-2">
+                    <button name="mark_paid" value="1" class="w-full bg-emerald-500 hover:bg-emerald-600 text-[#1a1a1a] font-black py-3 rounded-2xl transition-all shadow-lg shadow-emerald-900/20 flex items-center justify-center">
                         <i data-lucide="check-circle-2" class="w-5 h-5 mr-2"></i>
                         Mark as Paid
                     </button>

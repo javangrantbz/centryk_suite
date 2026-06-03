@@ -32,8 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $delete->execute([$id, $companyId]);
         }
 
-        header('Location: ' . BASE_URL . '/?page=documents');
-        exit;
+        redirect_response(BASE_URL . '/?page=documents');
     }
 
     if (isset($_FILES['document']) && $_FILES['document']['error'] === UPLOAD_ERR_OK) {
@@ -80,8 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $fileType
                     ]);
 
-                    header('Location: ' . BASE_URL . '/?page=documents');
-                    exit;
+                    redirect_response(BASE_URL . '/?page=documents');
                 } else {
                     $uploadError = 'Upload failed.';
                 }
@@ -114,11 +112,6 @@ function getFileIcon($type) {
 }
 ?>
 
-<div class="mb-10">
-    <h2 class="text-4xl font-extrabold text-slate-900 tracking-tight">Documents</h2>
-    <p class="text-slate-500 mt-2">Manage files, agreements, and attachments.</p>
-</div>
-
 <?php if (!empty($uploadError)): ?>
     <div class="bg-red-50 text-red-600 p-4 rounded-2xl mb-8 flex items-center">
         <i data-lucide="alert-circle" class="w-5 h-5 mr-3"></i>
@@ -126,48 +119,54 @@ function getFileIcon($type) {
     </div>
 <?php endif; ?>
 
-<div class="grid grid-cols-1 lg:grid-cols-12 gap-10">
+<div class="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] gap-5 items-start">
     <!-- Upload Section -->
-    <div class="lg:col-span-4">
-        <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 sticky top-24">
-            <h3 class="text-xl font-bold mb-6 flex items-center">
-                <i data-lucide="upload-cloud" class="w-5 h-5 mr-3 text-emerald-600"></i>
-                Upload Document
-            </h3>
+    <div>
+        <div class="bg-white p-4 rounded-3xl shadow-sm border border-gray-100 sticky top-4">
+            <div class="mb-3 flex items-center justify-between gap-3">
+                <h3 class="text-base font-bold flex items-center">
+                    <i data-lucide="upload-cloud" class="w-4 h-4 mr-2 text-emerald-600"></i>
+                    Upload Document
+                </h3>
+                <button class="shrink-0 bg-[#1a1a1a] hover:bg-[#2a2a2a] text-white px-4 py-2 rounded-xl font-bold transition-all flex items-center justify-center text-xs">
+                    <i data-lucide="arrow-up" class="w-3.5 h-3.5 mr-1.5"></i>
+                    Upload
+                </button>
+            </div>
 
-            <form method="POST" enctype="multipart/form-data" class="space-y-5">
+            <form method="POST" enctype="multipart/form-data" class="space-y-3">
                 <div>
-                    <label class="block mb-2 text-sm font-bold text-gray-500 uppercase tracking-wider">Document Title</label>
-                    <input name="title" required class="w-full border-gray-200 rounded-xl p-3 focus:ring-emerald-500 focus:border-emerald-500" placeholder="e.g. Contract v1">
+                    <label class="block mb-2 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Document Title</label>
+                    <input name="title" required class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" placeholder="e.g. Contract v1">
                 </div>
 
                 <div>
-                    <label class="block mb-2 text-sm font-bold text-gray-500 uppercase tracking-wider">File Selection</label>
-                    <div class="border-2 border-dashed border-gray-100 rounded-2xl p-6 text-center hover:border-emerald-200 transition-colors bg-gray-50/30">
+                    <label class="block mb-2 text-[11px] font-bold text-gray-500 uppercase tracking-wider">File Selection</label>
+                    <div class="border-2 border-dashed border-gray-100 rounded-2xl p-3 text-center hover:border-emerald-200 transition-colors bg-gray-50/30">
                         <input type="file" name="document" required id="file-upload" class="hidden">
                         <label for="file-upload" class="cursor-pointer">
-                            <i data-lucide="paperclip" class="w-8 h-8 mx-auto text-gray-300 mb-2"></i>
-                            <span class="text-sm text-gray-400">Click to choose a file</span>
+                            <i data-lucide="paperclip" class="w-5 h-5 mx-auto text-gray-300 mb-1.5"></i>
+                            <span class="text-sm text-gray-400">Choose file</span>
                         </label>
                     </div>
                 </div>
 
                 <div>
-                    <label class="block mb-2 text-sm font-bold text-gray-500 uppercase tracking-wider">Reference</label>
-                    <div class="space-y-3">
-                        <select name="customer_id" class="w-full border-gray-200 rounded-xl p-3 text-sm focus:ring-emerald-500">
+                    <label class="block mb-2 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Reference</label>
+                    <div class="grid grid-cols-1 gap-2">
+                        <select name="customer_id" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100">
                             <option value="">Customer: None</option>
                             <?php foreach ($customers as $customer): ?>
                                 <option value="<?= $customer['id'] ?>"><?= e($customer['name']) ?></option>
                             <?php endforeach; ?>
                         </select>
-                        <select name="quote_id" class="w-full border-gray-200 rounded-xl p-3 text-sm focus:ring-emerald-500">
+                        <select name="quote_id" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100">
                             <option value="">Quote: None</option>
                             <?php foreach ($quotes as $quote): ?>
                                 <option value="<?= $quote['id'] ?>"><?= e($quote['quote_number']) ?></option>
                             <?php endforeach; ?>
                         </select>
-                        <select name="invoice_id" class="w-full border-gray-200 rounded-xl p-3 text-sm focus:ring-emerald-500">
+                        <select name="invoice_id" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100">
                             <option value="">Invoice: None</option>
                             <?php foreach ($invoices as $invoice): ?>
                                 <option value="<?= $invoice['id'] ?>"><?= e($invoice['invoice_number']) ?></option>
@@ -175,25 +174,23 @@ function getFileIcon($type) {
                         </select>
                     </div>
                 </div>
-
-                <button class="w-full bg-[#1a1a1a] hover:bg-[#2a2a2a] text-white px-5 py-4 rounded-2xl font-bold transition-all flex items-center justify-center">
-                    <i data-lucide="arrow-up" class="w-4 h-4 mr-2"></i>
-                    Upload
-                </button>
             </form>
         </div>
     </div>
 
     <!-- Documents List -->
-    <div class="lg:col-span-8">
+    <div class="min-w-0">
         <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="px-5 py-3 border-b border-gray-100 bg-slate-50/60">
+                <p class="text-sm font-semibold text-slate-500">Manage files, agreements, and attachments.</p>
+            </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-gray-50/50 border-b border-gray-100">
-                            <th class="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Document</th>
-                            <th class="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Linked To</th>
-                            <th class="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Actions</th>
+                            <th class="px-5 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-widest">Document</th>
+                            <th class="px-5 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-widest">Linked To</th>
+                            <th class="px-5 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-widest text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-50">
@@ -208,10 +205,10 @@ function getFileIcon($type) {
 
                         <?php foreach ($documents as $document): ?>
                             <tr class="hover:bg-gray-50/50 transition-colors">
-                                <td class="px-6 py-5">
+                                <td class="px-5 py-4">
                                     <div class="flex items-start">
-                                        <div class="p-3 bg-gray-50 rounded-xl text-emerald-600 mr-4">
-                                            <i data-lucide="<?= getFileIcon($document['file_type']) ?>" class="w-5 h-5"></i>
+                                        <div class="p-2.5 bg-gray-50 rounded-xl text-emerald-600 mr-3">
+                                            <i data-lucide="<?= getFileIcon($document['file_type']) ?>" class="w-4 h-4"></i>
                                         </div>
                                         <div>
                                             <div class="text-sm font-bold text-slate-900"><?= e($document['title']) ?></div>
@@ -222,7 +219,7 @@ function getFileIcon($type) {
                                         </div>
                                     </div>
                                 </td>
-                                <td class="px-6 py-5">
+                                <td class="px-5 py-4">
                                     <div class="space-y-1">
                                         <?php if ($document['customer_name']): ?>
                                             <div class="flex items-center text-xs text-slate-600">
@@ -247,7 +244,7 @@ function getFileIcon($type) {
                                         <?php endif; ?>
                                     </div>
                                 </td>
-                                <td class="px-6 py-5 text-right">
+                                <td class="px-5 py-4 text-right">
                                     <div class="flex justify-end space-x-1">
                                         <a href="<?= BASE_URL ?>/download.php?id=<?= $document['id'] ?>" class="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all" title="Download">
                                             <i data-lucide="download" class="w-4 h-4"></i>

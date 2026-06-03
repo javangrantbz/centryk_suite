@@ -31,48 +31,69 @@ function inv_status_badge($status) {
         'sent'                     => 'bg-blue-100 text-blue-700',
         'overdue', 'rejected'      => 'bg-rose-100 text-rose-700',
         'expired', 'cancelled'     => 'bg-slate-200 text-slate-600',
-        default                    => 'bg-gray-100 text-gray-600',  // draft
+        default                    => 'bg-gray-100 text-gray-600',
     };
 }
 }
+
 $tabs = ['all' => 'All', 'invoice' => 'Invoices', 'quote' => 'Quotes'];
+$invoiceCount = count(array_filter($rows, fn($row) => $row['doc_type'] === 'invoice'));
+$quoteCount = count(array_filter($rows, fn($row) => $row['doc_type'] === 'quote'));
+$outstandingTotal = array_reduce($rows, function ($carry, $row) {
+    if ($row['doc_type'] !== 'invoice') {
+        return $carry;
+    }
+    return $carry + max(0, ((float)$row['total']) - ((float)$row['amount_paid']));
+}, 0.0);
+$invoiceStats = [
+    ['label' => 'Docs', 'value' => count($rows), 'icon' => 'files', 'tint' => 'slate'],
+    ['label' => 'Invoices', 'value' => $invoiceCount, 'icon' => 'file-text', 'tint' => 'blue'],
+    ['label' => 'Quotes', 'value' => $quoteCount, 'icon' => 'clipboard-list', 'tint' => 'amber'],
+    ['label' => 'Open', 'value' => money($outstandingTotal), 'icon' => 'wallet', 'tint' => 'emerald'],
+];
 ?>
 
 <div class="h-full flex flex-col">
-    <!-- Header -->
-    <div class="flex flex-wrap items-center justify-between gap-3 mb-5 flex-shrink-0">
-        <div>
-            <h2 class="text-xl font-black text-slate-900">Invoices &amp; Quotes</h2>
-            <p class="text-xs font-semibold text-slate-400"><?= count($rows) ?> document<?= count($rows) === 1 ? '' : 's' ?></p>
-        </div>
-        <div class="flex items-center gap-2">
-            <a href="<?= BASE_URL ?>/?page=quotes-create" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 transition">
-                <i data-lucide="plus" class="w-4 h-4"></i> New Quote
-            </a>
-            <a href="<?= BASE_URL ?>/?page=invoices-create" class="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-emerald-700 transition shadow-sm shadow-emerald-200">
-                <i data-lucide="plus" class="w-4 h-4"></i> New Invoice
-            </a>
+    <div class="mb-4 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-sm flex-shrink-0">
+        <div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <?php foreach ($invoiceStats as $i => $stat): ?>
+                <?php if ($i > 0): ?><span class="hidden h-4 w-px bg-slate-200 sm:block"></span><?php endif; ?>
+                <div class="flex items-center gap-1.5">
+                    <i data-lucide="<?= $stat['icon'] ?>" class="w-4 h-4 text-<?= $stat['tint'] ?>-500"></i>
+                    <span class="text-sm font-black text-slate-900"><?= $stat['value'] ?></span>
+                    <span class="text-[11px] font-bold uppercase tracking-wide text-slate-400"><?= $stat['label'] ?></span>
+                </div>
+                <?php endforeach; ?>
+            </div>
+
+            <div class="flex shrink-0 items-center gap-2">
+                <a href="<?= BASE_URL ?>/?page=quotes-create" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 transition">
+                    <i data-lucide="plus" class="w-4 h-4"></i> New Quote
+                </a>
+                <a href="<?= BASE_URL ?>/?page=invoices-create" class="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-emerald-700 transition shadow-sm shadow-emerald-200">
+                    <i data-lucide="plus" class="w-4 h-4"></i> New Invoice
+                </a>
+            </div>
         </div>
     </div>
 
-    <!-- Filter tabs + search -->
-    <div class="flex flex-wrap items-center justify-between gap-3 mb-4 flex-shrink-0">
-        <div class="inline-flex rounded-xl border border-slate-200 bg-white p-1">
-            <?php foreach ($tabs as $key => $label): ?>
-            <a href="<?= BASE_URL ?>/?page=invoices&type=<?= $key ?>"
-               class="px-4 py-1.5 rounded-lg text-xs font-bold transition <?= $type === $key ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-800' ?>">
-                <?= $label ?>
-            </a>
-            <?php endforeach; ?>
-        </div>
-        <div class="relative">
-            <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-gray-400"></i>
-            <input type="text" id="doc-search" placeholder="Search…" class="w-56 pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-emerald-500 focus:border-emerald-500 transition">
-        </div>
-    </div>
-
-    <!-- Table -->
     <div class="flex-1 min-h-0 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
+        <!-- Toolbar: filters + search -->
+        <div class="flex flex-col gap-3 border-b border-gray-100 px-4 py-3 flex-shrink-0 sm:flex-row sm:items-center sm:justify-between">
+            <div class="inline-flex rounded-xl border border-slate-200 bg-white p-1">
+                <?php foreach ($tabs as $key => $label): ?>
+                <a href="<?= BASE_URL ?>/?page=invoices&type=<?= $key ?>"
+                   class="px-4 py-1.5 rounded-lg text-xs font-bold transition <?= $type === $key ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-800' ?>">
+                    <?= $label ?>
+                </a>
+                <?php endforeach; ?>
+            </div>
+            <div class="relative">
+                <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-gray-400"></i>
+                <input type="text" id="doc-search" placeholder="Search documents" class="w-full sm:w-56 pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-emerald-500 focus:border-emerald-500 transition">
+            </div>
+        </div>
         <div class="flex-1 overflow-y-auto custom-scrollbar">
             <?php if (empty($rows)): ?>
             <div class="py-20 text-center text-gray-400">
@@ -103,7 +124,7 @@ $tabs = ['all' => 'All', 'invoice' => 'Invoices', 'quote' => 'Quotes'];
                             </span>
                         </td>
                         <td class="px-3 py-3 font-mono font-bold text-slate-900"><?= e($r['number']) ?></td>
-                        <td class="px-3 py-3 font-semibold text-slate-600 truncate max-w-[180px]"><?= e($r['customer_name'] ?: '—') ?></td>
+                        <td class="px-3 py-3 font-semibold text-slate-600 truncate max-w-[180px]"><?= e($r['customer_name'] ?: '-') ?></td>
                         <td class="px-3 py-3 text-slate-400 hidden sm:table-cell"><?= $r['issue_date'] ? date('M j, Y', strtotime($r['issue_date'])) : '' ?></td>
                         <td class="px-3 py-3"><span class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider <?= inv_status_badge($r['status']) ?>"><?= e($r['status']) ?></span></td>
                         <td class="px-5 py-3 text-right font-black text-slate-900"><?= money($r['total']) ?></td>

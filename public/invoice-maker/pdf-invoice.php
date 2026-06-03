@@ -12,11 +12,9 @@ if (!isset($invShare)) {
 }
 // Share mode: share.php has already set $invShare, $pdo, $id, $companyId + autoload.
 
-$userStmt = $pdo->prepare("SELECT * FROM invoice_settings WHERE company_id = ?");
-$userStmt->execute([$companyId]);
-$business = $userStmt->fetch() ?: [];
-$business += ['business_logo'=>null,'logo_position'=>'left','business_name'=>'','business_address'=>'','business_email'=>'','business_phone'=>'','business_tax_number'=>'','currency_symbol'=>'$','invoice_terms'=>null,'quote_terms'=>null];
-
+// Business identity comes from the company (single source of truth);
+// terms/logo-position/currency come from the app's invoice_settings.
+$business = inv_business_profile($pdo, (int)$companyId);
 $_SESSION['currency_symbol'] = $business['currency_symbol'] ?: '$';
 
 $stmt = $pdo->prepare("
@@ -37,22 +35,25 @@ $itemStmt->execute([$id]);
 $items = $itemStmt->fetchAll();
 
 $logoHtml = '';
-if ($business['business_logo']) {
-    $logoPath = __DIR__ . '/' . $business['business_logo'];
-    if (file_exists($logoPath)) {
-        $type = pathinfo($logoPath, PATHINFO_EXTENSION);
-        $data = file_get_contents($logoPath);
-        $base64 = 'data:image/' . $type . ';base64,' . base64_encode($data);
-        
-        $alignment = $business['logo_position'] ?: 'left';
-        $margin = '0';
-        if ($alignment === 'center') $margin = '0 auto';
-        if ($alignment === 'right') $margin = '0 0 0 auto';
-        
-        $logoHtml = '<div style="margin-bottom: 20px; text-align: ' . $alignment . ';">
-            <img src="' . $base64 . '" style="max-height: 80px; display: block; margin: ' . $margin . ';">
-        </div>';
-    }
+$logoPath = inv_company_logo_path($business['business_logo']);
+if ($logoPath) {
+    $type = pathinfo($logoPath, PATHINFO_EXTENSION);
+    $data = file_get_contents($logoPath);
+    $base64 = 'data:image/' . $type . ';base64,' . base64_encode($data);
+
+    $alignment = $business['logo_position'] ?: 'left';
+    $margin = '0';
+    if ($alignment === 'center') $margin = '0 auto';
+    if ($alignment === 'right') $margin = '0 0 0 auto';
+
+    $logoHtml = '<div style="margin-bottom: 20px; text-align: ' . $alignment . ';">
+        <img src="' . $base64 . '" style="max-height: 80px; display: block; margin: ' . $margin . ';">
+    </div>';
+}
+
+$phonesHtml = '';
+foreach (inv_company_phones($business) as $ph) {
+    $phonesHtml .= '<p>' . e($ph) . '</p>';
 }
 
 $html = '
@@ -76,7 +77,7 @@ h1 { font-size: 28px; margin: 0; }
 		<h1>Invoice</h1>
 		<p><strong>' . e($business['business_name'] ?: APP_NAME) . '</strong></p>
 		<p>' . e($business['business_email']) . '</p>
-		<p>' . e($business['business_phone']) . '</p>
+		' . $phonesHtml . '
 		<p>' . nl2br(e($business['business_address'])) . '</p>
 		<p>' . e($business['business_tax_number']) . '</p>
 	</div>
