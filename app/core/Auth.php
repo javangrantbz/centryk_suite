@@ -143,6 +143,20 @@ class Auth
         $coStmt->execute(['uid' => $row['user_id']]);
         $user['companies'] = $coStmt->fetchAll(PDO::FETCH_ASSOC);
 
+        // Include the user's enrolled apps so receiving apps (OnePay, MyPay…) can
+        // render a dynamic app switcher instead of a hardcoded list. Only key,
+        // label and colour are needed — the launch URL is switch.php?app=<key>
+        // and the icon is mapped from the key in each app's header.
+        $appStmt = $pdo->prepare('
+            SELECT a.`key`, a.label, a.color
+            FROM apps a
+            JOIN user_app_access ua ON ua.app_id = a.id
+            WHERE ua.user_id = :uid AND a.status = "active"
+            ORDER BY a.sort_order ASC
+        ');
+        $appStmt->execute(['uid' => $row['user_id']]);
+        $user['apps'] = $appStmt->fetchAll(PDO::FETCH_ASSOC);
+
         return $user;
     }
 

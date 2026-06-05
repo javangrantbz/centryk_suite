@@ -214,7 +214,7 @@ if ($invHdrUuid !== '') {
                 </div>
 
                 <!-- Account -->
-                <div class="relative dropdown group">
+                <div class="relative dropdown group border-l border-slate-200 pl-2 ml-0.5">
                     <button class="flex items-center gap-2.5 hover:bg-gray-50 p-1.5 rounded-xl transition border border-transparent hover:border-gray-100">
                         <div class="w-9 h-9 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-black text-sm shadow shadow-emerald-100"><?= strtoupper(substr(current_user()['name'], 0, 1)) ?></div>
                         <div class="text-left hidden sm:block leading-none">
