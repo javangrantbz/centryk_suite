@@ -534,6 +534,23 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
 </div>
 <?php endif; ?>
 
+<!-- ── Choose company modal (first visit, multiple companies, no prior choice) ── -->
+<div id="chooseCompanyModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+    <div class="relative w-full max-w-md rounded-3xl bg-white shadow-2xl overflow-hidden">
+        <div class="h-[3px] w-full bg-gradient-to-r from-purple-600 via-blue-500 to-orange-500"></div>
+        <div class="px-7 py-7">
+            <div class="mb-5 text-center">
+                <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-white">
+                    <i data-lucide="building-2" class="h-6 w-6"></i>
+                </div>
+                <h2 class="text-xl font-black tracking-tight text-slate-900">Choose a company</h2>
+                <p class="mt-1 text-sm font-semibold text-slate-400">You belong to more than one company. Pick which one you'd like to work in.</p>
+            </div>
+            <div id="chooseCompanyList" class="max-h-72 space-y-2 overflow-y-auto"></div>
+        </div>
+    </div>
+</div>
+
 <!-- Launch overlay -->
 <div id="launchOverlay" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 backdrop-blur-sm">
     <div class="flex items-center gap-3 rounded-2xl bg-white px-8 py-5 shadow-2xl">
@@ -746,6 +763,8 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
             document.querySelectorAll('.app-card[data-enrolled="1"]').forEach(function (card) {
                 card.disabled = true;
             });
+            // Prompt explicitly so apps never launch under an arbitrary company.
+            openChooseCompanyModal();
         }
     }
 
@@ -759,6 +778,63 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         if (!uuid) return null;
         var match = companies.find(function (c) { return c.uuid === uuid; });
         return match ? match.id : null;
+    }
+
+    // ── First-visit company chooser ───────────────────────────────────────────
+    // Shown only when the user has multiple companies and no remembered choice,
+    // so an app is never launched under an arbitrary "first" company. Selecting
+    // one persists via selectCompany(), so this never reappears on this device.
+    var chooseModal = document.getElementById('chooseCompanyModal');
+    var chooseList  = document.getElementById('chooseCompanyList');
+
+    function openChooseCompanyModal() {
+        if (!chooseModal || !chooseList) { return; }
+        var _rc = { admin: '#7c3aed', manager: '#2563eb', employee: '#475569', owner: '#0ea5e9' };
+        chooseList.innerHTML = companies.map(function (c) {
+            var color   = _rc[c.role] || _rc.employee;
+            var initial = (c.name || '?').charAt(0).toUpperCase();
+            var n       = Number(c.member_count) || 0;
+            return '<button class="choose-co-opt w-full flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-left transition hover:border-slate-300 hover:bg-slate-50 active:scale-[0.98]"' +
+                ' data-id="' + c.id + '">' +
+                '<span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-base font-black" style="background:' + color + '18;color:' + color + '">' + esc(initial) + '</span>' +
+                '<div class="min-w-0 flex-1">' +
+                    '<div class="text-sm font-black text-slate-900 truncate">' + esc(c.name) + '</div>' +
+                    '<div class="mt-0.5 flex items-center gap-2">' +
+                        '<span class="rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] capitalize" style="background:' + color + '22;color:' + color + '">' + esc(c.role) + '</span>' +
+                        '<span class="text-[11px] font-semibold text-slate-400">' + n + ' member' + (n === 1 ? '' : 's') + '</span>' +
+                    '</div>' +
+                '</div>' +
+                '<i data-lucide="chevron-right" class="h-4 w-4 shrink-0 text-slate-300"></i>' +
+                '</button>';
+        }).join('');
+
+        chooseList.querySelectorAll('.choose-co-opt').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                selectCompany(btn.dataset.id);
+                closeChooseCompanyModal();
+            });
+        });
+
+        chooseModal.classList.remove('hidden');
+        chooseModal.classList.add('flex');
+        if (window.lucide) { lucide.createIcons(); }
+    }
+
+    function closeChooseCompanyModal() {
+        if (!chooseModal) { return; }
+        chooseModal.classList.add('hidden');
+        chooseModal.classList.remove('flex');
+    }
+
+    // Dismissable: clicking the backdrop or pressing Escape falls back to the
+    // header dropdown's "Select a company…" state rather than trapping the user.
+    if (chooseModal) {
+        chooseModal.addEventListener('click', function (e) {
+            if (e.target === chooseModal) { closeChooseCompanyModal(); }
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') { closeChooseCompanyModal(); }
+        });
     }
 
     function loadCompanies() {
