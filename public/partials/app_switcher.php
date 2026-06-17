@@ -89,16 +89,20 @@ $awTileIcon = function (string $key, string $color = '', string $label = '') {
                 <?php endif; ?>
                 <?php endforeach; ?>
             <?php elseif ($awMode === 'links'): ?>
-                <!-- OnePay (marketing) -->
-                <a href="about.php#onepay" class="flex flex-col items-center gap-2 rounded-xl p-3 text-center transition hover:bg-slate-50">
-                    <?= $awTileIcon('onepay') ?>
-                    <span class="text-xs font-medium text-slate-700">OnePay</span>
+                <?php
+                $awMarketingApps = [
+                    ['key' => 'onepay',   'label' => 'OnePay',   'href' => 'about.php#onepay'],
+                    ['key' => 'mypay',    'label' => 'MyPay',    'href' => 'about.php#mypay'],
+                    ['key' => 'calendar', 'label' => 'Calendar', 'href' => 'login.php#request', 'color' => '#14b8a6'],
+                    ['key' => 'invoice',  'label' => 'Invoices', 'href' => 'login.php#request', 'color' => '#10b981'],
+                ];
+                foreach ($awMarketingApps as $awApp):
+                ?>
+                <a href="<?= htmlspecialchars($awApp['href']) ?>" class="flex flex-col items-center gap-2 rounded-xl p-3 text-center transition hover:bg-slate-50">
+                    <?= $awTileIcon((string)$awApp['key'], (string)($awApp['color'] ?? ''), (string)$awApp['label']) ?>
+                    <span class="text-xs font-medium text-slate-700"><?= htmlspecialchars($awApp['label']) ?></span>
                 </a>
-                <!-- MyPay (marketing) -->
-                <a href="about.php#mypay" class="flex flex-col items-center gap-2 rounded-xl p-3 text-center transition hover:bg-slate-50">
-                    <?= $awTileIcon('mypay') ?>
-                    <span class="text-xs font-medium text-slate-700">MyPay</span>
-                </a>
+                <?php endforeach; ?>
             <?php endif; ?>
 
         </div>
