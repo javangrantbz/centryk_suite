@@ -3,6 +3,7 @@ header('Content-Type: application/json');
 
 require_once __DIR__ . '/../../../app/core/DB.php';
 require_once __DIR__ . '/../../../app/services/MailerService.php';
+require_once __DIR__ . '/../../../app/services/MyPayWebhook.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -89,6 +90,9 @@ try {
         ->execute(['cid' => $companyId, 'uid' => $userId]);
 
     $pdo->commit();
+
+    // Real-time roster sync to MyPay (fire-and-forget; never blocks signup).
+    MyPayWebhook::memberSynced($pdo, $companyId, $userId, 'centryk', 'added');
 
     // Send welcome email
     $config   = require __DIR__ . '/../../../app/config/mail.php';

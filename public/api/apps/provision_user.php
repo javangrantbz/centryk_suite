@@ -6,6 +6,7 @@
  */
 require_once __DIR__ . '/../../../app/core/DB.php';
 require_once __DIR__ . '/../../../app/core/Response.php';
+require_once __DIR__ . '/../../../app/services/MyPayWebhook.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     Response::error('Method not allowed.', 405);
@@ -101,6 +102,13 @@ if ($companyUuid !== '') {
             'uid'   => $userId,
             'role'  => $companyRole,
         ]);
+
+        // Real-time roster sync so payroll apps (MyPay) see the new member
+        // immediately. Skipped automatically when the source app is MyPay
+        // itself to avoid echoing a change back to its origin.
+        if ($appKey !== 'mypay') {
+            MyPayWebhook::memberSynced($pdo, (int)$company['id'], $userId, $appKey, $isNew ? 'added' : 'updated');
+        }
     }
 }
 

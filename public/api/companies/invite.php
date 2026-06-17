@@ -3,6 +3,7 @@ require_once __DIR__ . '/../../../app/core/Auth.php';
 require_once __DIR__ . '/../../../app/core/Audit.php';
 require_once __DIR__ . '/../../../app/core/DB.php';
 require_once __DIR__ . '/../../../app/core/Response.php';
+require_once __DIR__ . '/../../../app/services/MyPayWebhook.php';
 
 Auth::start();
 $user = Auth::user();
@@ -104,6 +105,10 @@ try {
             'is_new_user' => !$target ? 'yes' : 'no',
         ],
     ]);
+
+    // Real-time roster sync to MyPay (fire-and-forget; never blocks the response).
+    MyPayWebhook::memberSynced($pdo, $companyId, $targetId, 'centryk', $target ? 'updated' : 'added');
+
     Response::ok(['message' => 'Member added.', 'user_id' => $targetId, 'is_new' => !$target]);
 } catch (Throwable $e) {
     $pdo->rollBack();
