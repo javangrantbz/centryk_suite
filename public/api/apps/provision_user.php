@@ -109,8 +109,9 @@ if ($companyUuid !== '') {
         // job_title (e.g. the OnePay role label "Cashier") is relayed through
         // so MyPay can show it without Centryk needing to store it.
         if ($appKey !== 'mypay') {
-            $jobTitle = trim((string)($body['job_title'] ?? ''));
-            MyPayWebhook::memberSynced($pdo, (int)$company['id'], $userId, $appKey, $isNew ? 'added' : 'updated', $jobTitle);
+            $jobTitle  = trim((string)($body['job_title'] ?? ''));
+            $actorName = trim((string)($body['actor_name'] ?? ''));
+            MyPayWebhook::memberSynced($pdo, (int)$company['id'], $userId, $appKey, $isNew ? 'added' : 'updated', $jobTitle, $actorName);
         }
     }
 }
