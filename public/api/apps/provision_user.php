@@ -105,9 +105,12 @@ if ($companyUuid !== '') {
 
         // Real-time roster sync so payroll apps (MyPay) see the new member
         // immediately. Skipped automatically when the source app is MyPay
-        // itself to avoid echoing a change back to its origin.
+        // itself to avoid echoing a change back to its origin. The optional
+        // job_title (e.g. the OnePay role label "Cashier") is relayed through
+        // so MyPay can show it without Centryk needing to store it.
         if ($appKey !== 'mypay') {
-            MyPayWebhook::memberSynced($pdo, (int)$company['id'], $userId, $appKey, $isNew ? 'added' : 'updated');
+            $jobTitle = trim((string)($body['job_title'] ?? ''));
+            MyPayWebhook::memberSynced($pdo, (int)$company['id'], $userId, $appKey, $isNew ? 'added' : 'updated', $jobTitle);
         }
     }
 }

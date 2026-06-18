@@ -30,7 +30,8 @@ class MyPayWebhook
         int $companyId,
         int $userId,
         string $source = 'centryk',
-        string $changeType = 'added'
+        string $changeType = 'added',
+        string $jobTitle = ''
     ): void {
         try {
             $url    = trim((string)($_ENV['MYPAY_SYNC_URL'] ?? ''));
@@ -68,6 +69,7 @@ class MyPayWebhook
                     'first_name'     => $row['first_name'],
                     'last_name'      => $row['last_name'],
                     'email'          => $row['email'],
+                    'job_title'      => $jobTitle,
                     'role'           => $row['role'],
                     'member_status'  => $row['member_status'],
                     'account_status' => $row['account_status'],
