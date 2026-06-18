@@ -43,6 +43,7 @@ class MyPayWebhook
 
             $stmt = $pdo->prepare('
                 SELECT c.uuid AS company_uuid, c.name AS company_name,
+                       (SELECT ou.email FROM users ou WHERE ou.id = c.owner_id) AS owner_email,
                        u.uuid AS user_uuid, u.first_name, u.last_name, u.email,
                        u.status AS account_status,
                        cm.role, cm.status AS member_status
@@ -65,6 +66,7 @@ class MyPayWebhook
                 'actor_name'   => $actorName,
                 'company_uuid' => $row['company_uuid'],
                 'company_name' => $row['company_name'],
+                'company_owner_email' => $row['owner_email'] ?? '',
                 'member'       => [
                     'user_id'        => $userId,
                     'uuid'           => $row['user_uuid'],
