@@ -270,7 +270,7 @@ $companyDeepUuid = trim($_GET['company_uuid'] ?? '');
                         <input id="currentPassword" type="password" autocomplete="current-password"
                                class="w-full rounded-lg border border-white/10 bg-white/6 px-3 py-2 text-xs text-white placeholder-white/20 outline-none focus:border-blue-500 focus:bg-white/8 transition pr-8"
                                placeholder="Current password">
-                        <button type="button" data-password-toggle="currentPassword" data-password-icon="eyeCurrent" aria-label="Show current password" aria-pressed="false" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/25 hover:text-white/60 transition">
+                        <button type="button" data-password-toggle="currentPassword" data-password-icon="eyeCurrent" data-show-label="Show current password" data-hide-label="Hide current password" aria-controls="currentPassword" aria-label="Show current password" aria-pressed="false" title="Show current password" class="absolute right-1.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-white/25 transition hover:bg-white/8 hover:text-white/60">
                             <i data-lucide="eye" id="eyeCurrent" class="h-3.5 w-3.5"></i>
                         </button>
                     </div>
@@ -281,7 +281,7 @@ $companyDeepUuid = trim($_GET['company_uuid'] ?? '');
                         <input id="newPassword" type="password" autocomplete="new-password"
                                class="w-full rounded-lg border border-white/10 bg-white/6 px-3 py-2 text-xs text-white placeholder-white/20 outline-none focus:border-blue-500 focus:bg-white/8 transition pr-8"
                                placeholder="Min. 8 characters">
-                        <button type="button" data-password-toggle="newPassword" data-password-icon="eyeNew" aria-label="Show new password" aria-pressed="false" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/25 hover:text-white/60 transition">
+                        <button type="button" data-password-toggle="newPassword" data-password-icon="eyeNew" data-show-label="Show new password" data-hide-label="Hide new password" aria-controls="newPassword" aria-label="Show new password" aria-pressed="false" title="Show new password" class="absolute right-1.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-white/25 transition hover:bg-white/8 hover:text-white/60">
                             <i data-lucide="eye" id="eyeNew" class="h-3.5 w-3.5"></i>
                         </button>
                     </div>
@@ -292,7 +292,7 @@ $companyDeepUuid = trim($_GET['company_uuid'] ?? '');
                         <input id="confirmPassword" type="password" autocomplete="new-password"
                                class="w-full rounded-lg border border-white/10 bg-white/6 px-3 py-2 text-xs text-white placeholder-white/20 outline-none focus:border-blue-500 focus:bg-white/8 transition pr-8"
                                placeholder="Repeat password">
-                        <button type="button" data-password-toggle="confirmPassword" data-password-icon="eyeConfirm" aria-label="Show confirm password" aria-pressed="false" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/25 hover:text-white/60 transition">
+                        <button type="button" data-password-toggle="confirmPassword" data-password-icon="eyeConfirm" data-show-label="Show confirm password" data-hide-label="Hide confirm password" aria-controls="confirmPassword" aria-label="Show confirm password" aria-pressed="false" title="Show confirm password" class="absolute right-1.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-white/25 transition hover:bg-white/8 hover:text-white/60">
                             <i data-lucide="eye" id="eyeConfirm" class="h-3.5 w-3.5"></i>
                         </button>
                     </div>
@@ -543,24 +543,31 @@ $companyDeepUuid = trim($_GET['company_uuid'] ?? '');
 
 // ── Show/hide password ─────────────────────────────────────────────────────
 function setPasswordToggleState(button, showPassword) {
-    const input = document.getElementById(button.dataset.passwordToggle);
-    const icon  = document.getElementById(button.dataset.passwordIcon);
+    var input = document.getElementById(button.getAttribute('data-password-toggle'));
+    var icon  = document.getElementById(button.getAttribute('data-password-icon'));
     if (!input) return;
 
-    input.type = showPassword ? 'text' : 'password';
+    var selectionStart = input.selectionStart;
+    var selectionEnd = input.selectionEnd;
+    input.setAttribute('type', showPassword ? 'text' : 'password');
     button.setAttribute('aria-pressed', showPassword ? 'true' : 'false');
-    button.setAttribute('aria-label', showPassword ? 'Hide password' : 'Show password');
+    button.setAttribute('aria-label', showPassword ? button.getAttribute('data-hide-label') : button.getAttribute('data-show-label'));
+    button.setAttribute('title', showPassword ? button.getAttribute('data-hide-label') : button.getAttribute('data-show-label'));
 
     if (icon) {
         icon.setAttribute('data-lucide', showPassword ? 'eye-off' : 'eye');
         if (window.lucide) lucide.createIcons();
     }
+
+    try {
+        input.setSelectionRange(selectionStart, selectionEnd);
+    } catch (err) {}
 }
 
-document.querySelectorAll('[data-password-toggle]').forEach(function (button) {
+Array.prototype.forEach.call(document.querySelectorAll('[data-password-toggle]'), function (button) {
     button.addEventListener('click', function () {
-        const input = document.getElementById(button.dataset.passwordToggle);
-        setPasswordToggleState(button, input && input.type === 'password');
+        var input = document.getElementById(button.getAttribute('data-password-toggle'));
+        setPasswordToggleState(button, !!input && input.type === 'password');
     });
 });
 
@@ -601,7 +608,7 @@ document.getElementById('changePasswordForm').addEventListener('submit', async f
         if (data.success) {
             showAlert('pwAlert', 'Password updated successfully.', 'success');
             document.getElementById('changePasswordForm').reset();
-            document.querySelectorAll('[data-password-toggle]').forEach(function (button) {
+            Array.prototype.forEach.call(document.querySelectorAll('[data-password-toggle]'), function (button) {
                 setPasswordToggleState(button, false);
             });
         } else {
