@@ -270,7 +270,7 @@ $companyDeepUuid = trim($_GET['company_uuid'] ?? '');
                         <input id="currentPassword" type="password" autocomplete="current-password"
                                class="w-full rounded-lg border border-white/10 bg-white/6 px-3 py-2 text-xs text-white placeholder-white/20 outline-none focus:border-blue-500 focus:bg-white/8 transition pr-8"
                                placeholder="Current password">
-                        <button type="button" onclick="togglePw('currentPassword','eyeCurrent')" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/25 hover:text-white/60 transition">
+                        <button type="button" data-password-toggle="currentPassword" data-password-icon="eyeCurrent" aria-label="Show current password" aria-pressed="false" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/25 hover:text-white/60 transition">
                             <i data-lucide="eye" id="eyeCurrent" class="h-3.5 w-3.5"></i>
                         </button>
                     </div>
@@ -281,7 +281,7 @@ $companyDeepUuid = trim($_GET['company_uuid'] ?? '');
                         <input id="newPassword" type="password" autocomplete="new-password"
                                class="w-full rounded-lg border border-white/10 bg-white/6 px-3 py-2 text-xs text-white placeholder-white/20 outline-none focus:border-blue-500 focus:bg-white/8 transition pr-8"
                                placeholder="Min. 8 characters">
-                        <button type="button" onclick="togglePw('newPassword','eyeNew')" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/25 hover:text-white/60 transition">
+                        <button type="button" data-password-toggle="newPassword" data-password-icon="eyeNew" aria-label="Show new password" aria-pressed="false" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/25 hover:text-white/60 transition">
                             <i data-lucide="eye" id="eyeNew" class="h-3.5 w-3.5"></i>
                         </button>
                     </div>
@@ -292,7 +292,7 @@ $companyDeepUuid = trim($_GET['company_uuid'] ?? '');
                         <input id="confirmPassword" type="password" autocomplete="new-password"
                                class="w-full rounded-lg border border-white/10 bg-white/6 px-3 py-2 text-xs text-white placeholder-white/20 outline-none focus:border-blue-500 focus:bg-white/8 transition pr-8"
                                placeholder="Repeat password">
-                        <button type="button" onclick="togglePw('confirmPassword','eyeConfirm')" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/25 hover:text-white/60 transition">
+                        <button type="button" data-password-toggle="confirmPassword" data-password-icon="eyeConfirm" aria-label="Show confirm password" aria-pressed="false" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/25 hover:text-white/60 transition">
                             <i data-lucide="eye" id="eyeConfirm" class="h-3.5 w-3.5"></i>
                         </button>
                     </div>
@@ -536,21 +536,33 @@ $companyDeepUuid = trim($_GET['company_uuid'] ?? '');
 </div><!-- /page body -->
 
 <script src="https://unpkg.com/lucide@latest"></script>
-<script>lucide.createIcons();</script>
+<script>if (window.lucide) lucide.createIcons();</script>
 <script>
 // Header behaviour (waffle, account menu, theme, logout) is owned by
 // partials/account_header.php.
 
 // ── Show/hide password ─────────────────────────────────────────────────────
-function togglePw(inputId, iconId) {
-    const input = document.getElementById(inputId);
-    const icon  = document.getElementById(iconId);
+function setPasswordToggleState(button, showPassword) {
+    const input = document.getElementById(button.dataset.passwordToggle);
+    const icon  = document.getElementById(button.dataset.passwordIcon);
     if (!input) return;
-    const showing = input.type === 'text';
-    input.type = showing ? 'password' : 'text';
-    icon.setAttribute('data-lucide', showing ? 'eye' : 'eye-off');
-    lucide.createIcons();
+
+    input.type = showPassword ? 'text' : 'password';
+    button.setAttribute('aria-pressed', showPassword ? 'true' : 'false');
+    button.setAttribute('aria-label', showPassword ? 'Hide password' : 'Show password');
+
+    if (icon) {
+        icon.setAttribute('data-lucide', showPassword ? 'eye-off' : 'eye');
+        if (window.lucide) lucide.createIcons();
+    }
 }
+
+document.querySelectorAll('[data-password-toggle]').forEach(function (button) {
+    button.addEventListener('click', function () {
+        const input = document.getElementById(button.dataset.passwordToggle);
+        setPasswordToggleState(button, input && input.type === 'password');
+    });
+});
 
 // ── Alert helper ───────────────────────────────────────────────────────────
 function showAlert(containerId, message, type) {
@@ -589,6 +601,9 @@ document.getElementById('changePasswordForm').addEventListener('submit', async f
         if (data.success) {
             showAlert('pwAlert', 'Password updated successfully.', 'success');
             document.getElementById('changePasswordForm').reset();
+            document.querySelectorAll('[data-password-toggle]').forEach(function (button) {
+                setPasswordToggleState(button, false);
+            });
         } else {
             showAlert('pwAlert', data.message || 'Something went wrong.', 'error');
         }
@@ -597,7 +612,7 @@ document.getElementById('changePasswordForm').addEventListener('submit', async f
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<i data-lucide="lock" class="h-3.5 w-3.5"></i> Update Password';
-        lucide.createIcons();
+        if (window.lucide) lucide.createIcons();
     }
 });
 
