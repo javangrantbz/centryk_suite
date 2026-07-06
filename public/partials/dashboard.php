@@ -866,6 +866,11 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         var overlay = document.getElementById('launchOverlay');
         overlay.style.display = 'flex';
 
+        // Open the target tab synchronously, inside the click gesture, so popup
+        // blockers don't kill it. The real URL is set once the API responds; if
+        // the browser blocked it (newTab === null) we fall back to same-window.
+        var newTab = window.open('', '_blank');
+
         fetch('api/auth/launch.php', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -873,10 +878,15 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         })
         .then(function (r) { return r.json(); })
         .then(function (data) {
+            overlay.style.display = 'none';
             if (data.success && data.redirect_url) {
-                window.location.href = data.redirect_url;
+                if (newTab) {
+                    newTab.location.href = data.redirect_url;
+                } else {
+                    window.location.href = data.redirect_url;
+                }
             } else {
-                overlay.style.display = 'none';
+                if (newTab) { newTab.close(); }
                 var appLabel = appLabels[appKey] || appKey;
                 var co = companies.find(function (c) { return String(c.id) === String(selectedId); });
                 var msg = co
@@ -887,6 +897,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         })
         .catch(function () {
             overlay.style.display = 'none';
+            if (newTab) { newTab.close(); }
             showToast('Network error. Please try again.', 'error');
         });
     }
