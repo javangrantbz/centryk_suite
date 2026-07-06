@@ -154,6 +154,8 @@ $companyDeepUuid = trim($_GET['company_uuid'] ?? '');
         body.light input { background-color: #f8fafc !important; border-color: #e2e8f0 !important; color: #0f172a !important; }
         body.light input::placeholder { color: #94a3b8; }
         body.light input:focus { background-color: #f1f5f9 !important; border-color: #3b82f6 !important; }
+        body.light .password-toggle-btn { color: #475569; }
+        body.light .password-toggle-btn:hover { background-color: #e2e8f0; color: #0f172a; }
         body.light .identity-card { background: linear-gradient(135deg, #f8fafc 0%, #f0f4ff 100%) !important; border-color: #e2e8f0 !important; }
         body.light .identity-card .text-white\/50 { color: #64748b; }
 
@@ -270,7 +272,7 @@ $companyDeepUuid = trim($_GET['company_uuid'] ?? '');
                         <input id="currentPassword" type="password" autocomplete="current-password"
                                class="w-full rounded-lg border border-white/10 bg-white/6 px-3 py-2 text-xs text-white placeholder-white/20 outline-none focus:border-blue-500 focus:bg-white/8 transition pr-8"
                                placeholder="Current password">
-                        <button type="button" data-password-toggle="currentPassword" data-password-icon="eyeCurrent" data-show-label="Show current password" data-hide-label="Hide current password" aria-controls="currentPassword" aria-label="Show current password" aria-pressed="false" title="Show current password" class="absolute right-1.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-white/25 transition hover:bg-white/8 hover:text-white/60">
+                        <button type="button" data-password-toggle="currentPassword" data-password-icon="eyeCurrent" data-show-label="Show current password" data-hide-label="Hide current password" aria-controls="currentPassword" aria-label="Show current password" aria-pressed="false" title="Show current password" class="password-toggle-btn absolute right-1.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-slate-300 transition hover:bg-white/8 hover:text-white">
                             <i data-lucide="eye" id="eyeCurrent" class="h-3.5 w-3.5"></i>
                         </button>
                     </div>
@@ -281,7 +283,7 @@ $companyDeepUuid = trim($_GET['company_uuid'] ?? '');
                         <input id="newPassword" type="password" autocomplete="new-password"
                                class="w-full rounded-lg border border-white/10 bg-white/6 px-3 py-2 text-xs text-white placeholder-white/20 outline-none focus:border-blue-500 focus:bg-white/8 transition pr-8"
                                placeholder="Min. 8 characters">
-                        <button type="button" data-password-toggle="newPassword" data-password-icon="eyeNew" data-show-label="Show new password" data-hide-label="Hide new password" aria-controls="newPassword" aria-label="Show new password" aria-pressed="false" title="Show new password" class="absolute right-1.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-white/25 transition hover:bg-white/8 hover:text-white/60">
+                        <button type="button" data-password-toggle="newPassword" data-password-icon="eyeNew" data-show-label="Show new password" data-hide-label="Hide new password" aria-controls="newPassword" aria-label="Show new password" aria-pressed="false" title="Show new password" class="password-toggle-btn absolute right-1.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-slate-300 transition hover:bg-white/8 hover:text-white">
                             <i data-lucide="eye" id="eyeNew" class="h-3.5 w-3.5"></i>
                         </button>
                     </div>
@@ -292,7 +294,7 @@ $companyDeepUuid = trim($_GET['company_uuid'] ?? '');
                         <input id="confirmPassword" type="password" autocomplete="new-password"
                                class="w-full rounded-lg border border-white/10 bg-white/6 px-3 py-2 text-xs text-white placeholder-white/20 outline-none focus:border-blue-500 focus:bg-white/8 transition pr-8"
                                placeholder="Repeat password">
-                        <button type="button" data-password-toggle="confirmPassword" data-password-icon="eyeConfirm" data-show-label="Show confirm password" data-hide-label="Hide confirm password" aria-controls="confirmPassword" aria-label="Show confirm password" aria-pressed="false" title="Show confirm password" class="absolute right-1.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-white/25 transition hover:bg-white/8 hover:text-white/60">
+                        <button type="button" data-password-toggle="confirmPassword" data-password-icon="eyeConfirm" data-show-label="Show confirm password" data-hide-label="Hide confirm password" aria-controls="confirmPassword" aria-label="Show confirm password" aria-pressed="false" title="Show confirm password" class="password-toggle-btn absolute right-1.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-slate-300 transition hover:bg-white/8 hover:text-white">
                             <i data-lucide="eye" id="eyeConfirm" class="h-3.5 w-3.5"></i>
                         </button>
                     </div>
