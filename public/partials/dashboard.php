@@ -300,6 +300,34 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         </div>
     </div>
 
+    <?php
+    $_enrolledAppCount = 0;
+    $_otherAppCount = 0;
+    foreach ($apps as $_app) {
+        if (!empty($_app['enrolled'])) {
+            $_enrolledAppCount++;
+        } else {
+            $_otherAppCount++;
+        }
+    }
+    ?>
+
+    <div class="mb-4 flex items-end justify-between gap-4">
+        <div>
+            <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Launcher</p>
+            <h2 class="text-xl font-black tracking-tight text-slate-900">Your apps</h2>
+        </div>
+        <span class="rounded-full bg-white px-3 py-1 text-[11px] font-black text-slate-500 shadow-sm ring-1 ring-slate-200">
+            <?= $_enrolledAppCount ?> active
+        </span>
+    </div>
+
+    <?php if ($_enrolledAppCount === 0): ?>
+    <div class="mb-4 rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm font-semibold text-slate-500 shadow-sm">
+        You are not enrolled in any apps yet. Available apps are listed below.
+    </div>
+    <?php endif; ?>
+
     <!-- Apps grid -->
     <div id="appsGrid" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <?php $_appIdx = 0; foreach ($apps as $app):
@@ -307,7 +335,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
             $enrolled = !empty($app['enrolled']);
             $optIn    = !empty($app['opt_in']);
         ?>
-        <button style="--i:<?= $_appIdx ?>" class="dash-fade app-card group flex flex-col overflow-hidden rounded-2xl border text-left shadow-sm transition
+        <button style="--i:<?= $_appIdx ?>" class="dash-fade app-card group <?= $enrolled ? 'order-1' : 'order-3' ?> flex flex-col overflow-hidden rounded-2xl border text-left shadow-sm transition
                     <?= $enrolled
                         ? 'border-slate-200 bg-white hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-y-0 disabled:shadow-sm'
                         : ($optIn
@@ -393,8 +421,18 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         </button>
         <?php endforeach; ?>
 
+        <div style="--i:<?= ($_appIdx ?? 0) + 1 ?>" class="dash-fade order-2 sm:col-span-2 lg:col-span-3 mt-4 border-t border-slate-200 pt-6">
+            <div class="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                    <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Access</p>
+                    <h2 class="text-lg font-black tracking-tight text-slate-800">Other available apps</h2>
+                </div>
+                <p class="text-xs font-semibold text-slate-400">Contact an admin for access to apps marked not enrolled.</p>
+            </div>
+        </div>
+
         <!-- Case Management — coming soon (static, not in DB) -->
-        <div style="--i:<?= ($_appIdx ?? 0) + 1 ?>" class="dash-fade flex flex-col overflow-hidden rounded-2xl border border-blue-200/70 bg-blue-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
+        <div style="--i:<?= ($_appIdx ?? 0) + 2 ?>" class="dash-fade order-3 flex flex-col overflow-hidden rounded-2xl border border-blue-200/70 bg-blue-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
             <div class="h-1.5 w-full bg-blue-500/50"></div>
             <div class="flex flex-1 flex-col p-5">
                 <div class="flex items-center gap-3">
@@ -620,8 +658,27 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
 
             var coAvatar = document.getElementById('coAvatar');
             if (coAvatar) {
-                coAvatar.textContent = (c.name || '?').charAt(0).toUpperCase();
-                coAvatar.style.background = rColor;
+                var coLetter = (c.name || '?').charAt(0).toUpperCase();
+                if (c.logo) {
+                    // Show the business profile image instead of the letter.
+                    // c.logo is relative to the Centryk public root, which is also
+                    // where this dashboard is served from, so it resolves directly.
+                    coAvatar.textContent = '';
+                    coAvatar.style.background = '#fff';
+                    var coImg = document.createElement('img');
+                    coImg.src = c.logo;
+                    coImg.alt = c.name || '';
+                    coImg.className = 'h-full w-full rounded-2xl object-cover';
+                    // Fall back to the letter badge if the image fails to load.
+                    coImg.onerror = function () {
+                        coAvatar.textContent = coLetter;
+                        coAvatar.style.background = rColor;
+                    };
+                    coAvatar.appendChild(coImg);
+                } else {
+                    coAvatar.textContent = coLetter;
+                    coAvatar.style.background = rColor;
+                }
             }
             var coNameEl = document.getElementById('coName');
             if (coNameEl) { coNameEl.textContent = c.name || ''; }

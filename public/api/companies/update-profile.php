@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../../app/core/Auth.php';
 require_once __DIR__ . '/../../../app/core/DB.php';
 require_once __DIR__ . '/../../../app/core/Response.php';
+require_once __DIR__ . '/../../../app/services/OnePayWebhook.php';
 
 Auth::start();
 $user = Auth::user();
@@ -71,5 +72,9 @@ $stmt = $pdo->prepare("
     WHERE id = :id
 ");
 $stmt->execute($data);
+
+// Push the updated profile (name/logo) to OnePay so its branding refreshes
+// instantly. Fire-and-forget: never blocks or fails the save.
+OnePayWebhook::companyProfileSynced($pdo, $companyId);
 
 Response::ok(['message' => 'Company profile updated.', 'logo' => $logo]);

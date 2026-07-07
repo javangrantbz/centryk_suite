@@ -132,9 +132,11 @@ class Auth
             return null;
         }
 
-        // Include company memberships so apps can auto-provision company access
+        // Include company memberships so apps can auto-provision company access.
+        // c.logo is the business profile image (relative to the Centryk public
+        // root) so receiving apps can brand their own UI with the company logo.
         $coStmt = $pdo->prepare('
-            SELECT c.id, c.uuid, c.name, cm.role
+            SELECT c.id, c.uuid, c.name, c.logo, cm.role
             FROM company_members cm
             JOIN companies c ON c.id = cm.company_id
             WHERE cm.user_id = :uid AND cm.status = "active" AND c.status = "active"
