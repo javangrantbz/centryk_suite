@@ -104,10 +104,8 @@ foreach ($notifCatalog as $key => $meta) {
     $notifPrefs[$key] = $meta;
 }
 
-$fullName     = htmlspecialchars($user['first_name'] . ' ' . $user['last_name']);
 $firstName    = htmlspecialchars($user['first_name']);
 $lastName     = htmlspecialchars($user['last_name']);
-$initial      = strtoupper(substr($user['first_name'], 0, 1));
 $email        = htmlspecialchars($user['email']);
 $memberSince  = date('F Y', strtotime($user['created_at']));
 $companyCount = count($myCompanies);
@@ -156,12 +154,6 @@ $companyDeepUuid = trim($_GET['company_uuid'] ?? '');
         body.light input:focus { background-color: #f1f5f9 !important; border-color: #3b82f6 !important; }
         body.light .password-toggle-btn { color: #475569; }
         body.light .password-toggle-btn:hover { background-color: #e2e8f0; color: #0f172a; }
-        body.light .identity-card { background: linear-gradient(135deg, #f8fafc 0%, #f0f4ff 100%) !important; border-color: #e2e8f0 !important; }
-        body.light .identity-card .text-white\/50 { color: #64748b; }
-
-        .identity-card {
-            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
-        }
         @keyframes spin { to { transform: rotate(360deg); } }
         .animate-spin { animation: spin 1s linear infinite; }
     </style>
@@ -173,51 +165,6 @@ $companyDeepUuid = trim($_GET['company_uuid'] ?? '');
 
 <!-- Page body -->
 <div class="mx-auto max-w-5xl px-6 py-5 space-y-4">
-
-    <!-- Identity strip -->
-    <div class="identity-card rounded-xl border border-white/10 overflow-hidden">
-        <div class="flex items-center gap-4 px-5 py-3.5">
-
-            <!-- Avatar -->
-            <div class="relative shrink-0">
-                <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 via-purple-500 to-indigo-600 text-lg font-black text-white shadow-md shadow-purple-900/30" id="heroInitial">
-                    <?= $initial ?>
-                </div>
-                <div class="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 ring-2 ring-[#0f172a]">
-                    <svg viewBox="0 0 10 10" class="h-2 w-2"><path d="M1.5 5l2.5 2.5 4.5-4.5" stroke="white" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </div>
-            </div>
-
-            <!-- Identity -->
-            <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2.5 flex-wrap">
-                    <p class="text-base font-black text-white tracking-tight leading-tight" id="heroName"><?= $fullName ?></p>
-                    <span class="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-emerald-400">
-                        <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>Active
-                    </span>
-                </div>
-                <p class="text-xs text-white/40 mt-0.5"><?= $email ?> <span class="text-white/20 mx-1">·</span> Member since <?= $memberSince ?></p>
-            </div>
-
-            <!-- Security badge -->
-            <div class="shrink-0 hidden sm:flex items-center gap-2 border-l border-white/8 pl-5">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-4 w-4 text-blue-400 shrink-0">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                </svg>
-                <div>
-                    <p class="text-xs font-black text-white leading-tight">Secured by Centryk</p>
-                    <p class="text-[10px] text-white/35 leading-tight">Protecting Belizean businesses</p>
-                </div>
-            </div>
-
-        </div>
-        <div class="border-t border-white/6 bg-white/4 px-5 py-1.5 flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest text-white/50">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3 w-3 text-blue-400 shrink-0">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-            </svg>
-            Credentials encrypted · Centryk never stores plain-text passwords
-        </div>
-    </div>
 
     <!-- Account: left menu + panels -->
     <div class="grid gap-4 lg:grid-cols-[200px_1fr]">
@@ -400,6 +347,12 @@ $companyDeepUuid = trim($_GET['company_uuid'] ?? '');
                     <input type="email" value="<?= $email ?>" readonly
                            class="w-full rounded-lg border border-white/6 bg-white/4 px-3 py-2 text-xs text-white/40 cursor-default"
                            title="Contact your administrator to update your email.">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-white/35 mb-1 uppercase tracking-wider">Member since</label>
+                    <div class="w-full rounded-lg border border-white/6 bg-white/4 px-3 py-2 text-xs text-white/40">
+                        <?= $memberSince ?>
+                    </div>
                 </div>
                 <div class="pt-1 flex items-center gap-3">
                     <button type="submit" id="nameSubmitBtn"
@@ -649,12 +602,8 @@ document.getElementById('updateNameForm').addEventListener('submit', async funct
         if (data.success) {
             showAlert('nameAlert', 'Name updated successfully.', 'success');
             const full = data.full_name;
-            const heroName = document.getElementById('heroName');
-            if (heroName) heroName.textContent = full;
             document.querySelectorAll('.js-hdr-name').forEach(el => { el.textContent = full; });
             const newInitial = firstName.charAt(0).toUpperCase();
-            const heroInitial = document.getElementById('heroInitial');
-            if (heroInitial) heroInitial.textContent = newInitial;
             document.querySelectorAll('.js-hdr-initial').forEach(el => { el.textContent = newInitial; });
         } else {
             showAlert('nameAlert', data.message || 'Something went wrong.', 'error');
