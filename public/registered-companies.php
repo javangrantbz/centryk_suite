@@ -1,0 +1,208 @@
+<?php
+require_once __DIR__ . '/../app/core/Auth.php';
+require_once __DIR__ . '/../app/services/AuthService.php';
+
+Auth::start();
+$me = AuthService::me();
+
+if (!$me['authenticated'] || empty($me['user']['is_admin'])) {
+    header('Location: login.php');
+    exit;
+}
+
+$user = $me['user'];
+?>
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <title>Registered Companies - Centryk</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] } } } }</script>
+</head>
+<body class="min-h-screen bg-[#0d1117] text-white font-sans antialiased">
+<div class="mx-auto max-w-6xl px-4 py-8">
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <a href="index.php" class="flex items-center gap-2 text-sm font-semibold text-white/40 transition hover:text-white/80">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+                </svg>
+                Launcher
+            </a>
+            <span class="text-white/20">/</span>
+            <h1 class="text-xl font-black tracking-tight">Registered Companies</h1>
+        </div>
+        <div class="text-sm font-semibold text-white/40"><?= htmlspecialchars($user['first_name'] . ' ' . $user['last_name']) ?></div>
+    </div>
+
+    <div id="statsRow" class="mb-6 grid gap-3 sm:grid-cols-4"></div>
+    <div id="pageAlert" class="mb-4 hidden rounded-xl border p-3 text-sm font-semibold"></div>
+
+    <div class="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#111827] px-5 py-4">
+        <div>
+            <p class="text-sm font-black uppercase tracking-[0.14em] text-white/50">Company Registry</p>
+            <p class="mt-1 text-xs font-semibold text-white/25">All companies registered in Centryk and their admin activity.</p>
+        </div>
+        <button id="refreshBtn" class="rounded-xl bg-white/8 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-white/40 transition hover:bg-white/12 hover:text-white/80">Refresh</button>
+    </div>
+
+    <div id="companiesGrid" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div class="rounded-2xl border border-white/10 bg-[#111827] px-5 py-8 text-center text-sm text-white/30 sm:col-span-2 lg:col-span-3">Loading...</div>
+    </div>
+</div>
+
+<script>
+let allCompanies = [];
+
+document.getElementById('refreshBtn').addEventListener('click', loadCompanies);
+
+async function loadCompanies() {
+    try {
+        const res = await fetch('api/admin/companies.php');
+        const data = await res.json();
+        if (!data.success) {
+            throw new Error(data.message || 'Failed to load companies.');
+        }
+        allCompanies = data.companies || [];
+        renderStats(data.stats || {});
+        renderCompanies();
+    } catch (error) {
+        showAlert(error.message || 'Failed to load companies.', 'error');
+        document.getElementById('companiesGrid').innerHTML =
+            '<div class="rounded-2xl border border-red-500/20 bg-red-500/10 px-5 py-8 text-center text-sm font-semibold text-red-300 sm:col-span-2 lg:col-span-3">Failed to load companies.</div>';
+    }
+}
+
+function renderStats(stats) {
+    document.getElementById('statsRow').innerHTML = `
+        <div class="rounded-xl border border-white/8 bg-[#111827] px-4 py-3">
+            <div class="text-xl font-black">${Number(stats.total_companies || 0)}</div>
+            <div class="text-xs font-semibold text-white/40">Registered companies</div>
+        </div>
+        <div class="rounded-xl border border-white/8 bg-[#111827] px-4 py-3">
+            <div class="text-xl font-black">${Number(stats.total_employees || 0)}</div>
+            <div class="text-xs font-semibold text-white/40">Employees</div>
+        </div>
+        <div class="rounded-xl border border-emerald-400/15 bg-emerald-400/8 px-4 py-3">
+            <div class="text-xl font-black text-emerald-300">${Number(stats.active_companies || 0)}</div>
+            <div class="text-xs font-semibold text-emerald-200/50">Active</div>
+        </div>
+        <div class="rounded-xl border border-white/8 bg-[#111827] px-4 py-3">
+            <div class="text-xl font-black text-white/70">${Number(stats.inactive_companies || 0)}</div>
+            <div class="text-xs font-semibold text-white/40">Inactive</div>
+        </div>`;
+}
+
+function renderCompanies() {
+    const grid = document.getElementById('companiesGrid');
+    if (!allCompanies.length) {
+        grid.innerHTML = '<div class="rounded-2xl border border-white/10 bg-[#111827] px-5 py-12 text-center text-sm text-white/30 sm:col-span-2 lg:col-span-3">No registered companies found.</div>';
+        return;
+    }
+
+    grid.innerHTML = allCompanies.map(companyCard).join('');
+}
+
+function companyCard(company) {
+    const active = company.activity && company.activity.status === 'active';
+    const admin = company.admin || {};
+    return `
+        <article class="overflow-hidden rounded-2xl border border-white/10 bg-[#111827] shadow-lg shadow-black/10">
+            <div class="flex items-start gap-4 px-5 py-5">
+                ${avatar(company)}
+                <div class="min-w-0 flex-1">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <h2 class="truncate text-base font-black tracking-tight text-white">${esc(company.name)}</h2>
+                        ${statusBadge(active)}
+                    </div>
+                    <p class="mt-1 text-xs font-semibold text-white/35">Registered ${fmtDate(company.registered_at)}</p>
+                </div>
+            </div>
+            <div class="space-y-3 border-t border-white/8 px-5 py-4">
+                <div>
+                    <p class="text-[10px] font-black uppercase tracking-[0.16em] text-white/25">Admin</p>
+                    <p class="mt-1 truncate text-sm font-bold text-white/80">${esc(admin.name || 'Unnamed admin')}</p>
+                    <p class="mt-0.5 truncate text-xs font-semibold text-white/35">${esc(admin.email || '')}</p>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="rounded-xl border border-white/8 bg-white/5 px-3 py-2">
+                        <p class="text-lg font-black text-white">${Number(company.employee_count || 0)}</p>
+                        <p class="text-[10px] font-bold uppercase tracking-[0.12em] text-white/30">Employees</p>
+                    </div>
+                    <div class="rounded-xl border border-white/8 bg-white/5 px-3 py-2">
+                        <p class="truncate text-xs font-bold text-white/70">${fmtDate(admin.last_login_at) || 'Never'}</p>
+                        <p class="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white/30">Last login</p>
+                    </div>
+                </div>
+                ${active ? '' : '<div class="rounded-xl border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs font-bold text-amber-200">No active session for a month</div>'}
+            </div>
+        </article>`;
+}
+
+function avatar(company) {
+    const letter = esc((company.name || '?').charAt(0).toUpperCase() || '?');
+    if (company.logo) {
+        return `
+            <div class="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white">
+                <img src="${escAttr(company.logo)}" alt="" class="h-full w-full object-contain p-1.5"
+                    onerror="replaceBrokenLogo(this, '${escAttr(letter)}')">
+            </div>`;
+    }
+    return letterAvatarHtml(letter);
+}
+
+function letterAvatarHtml(letter) {
+    return `<div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-sky-500 text-xl font-black text-white">${letter}</div>`;
+}
+
+function replaceBrokenLogo(img, letter) {
+    if (!img || !img.parentElement) return;
+    img.parentElement.outerHTML = letterAvatarHtml(esc(letter || '?'));
+}
+
+function statusBadge(active) {
+    if (active) {
+        return '<span class="rounded-full border border-emerald-400/25 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-emerald-300">Active</span>';
+    }
+    return '<span class="rounded-full border border-white/10 bg-white/6 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-white/35">Inactive</span>';
+}
+
+function fmtDate(value) {
+    if (!value) return '';
+    return new Date(String(value).replace(' ', 'T')).toLocaleDateString('en-BZ', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+    });
+}
+
+function esc(value) {
+    return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function escAttr(value) {
+    return esc(value).replace(/'/g, '&#39;');
+}
+
+function showAlert(message, type) {
+    const el = document.getElementById('pageAlert');
+    el.textContent = message;
+    el.className = type === 'error'
+        ? 'mb-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm font-semibold text-red-300'
+        : 'mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm font-semibold text-emerald-300';
+    el.classList.remove('hidden');
+}
+
+loadCompanies();
+</script>
+</body>
+</html>
