@@ -33,7 +33,8 @@ class OnePayWebhook
             }
 
             $stmt = $pdo->prepare('
-                SELECT uuid, name, logo
+                SELECT uuid, name, logo,
+                       business_type, customer_noun_singular, customer_noun_plural
                 FROM companies
                 WHERE id = :id AND status = "active"
                 LIMIT 1
@@ -52,6 +53,12 @@ class OnePayWebhook
                 // uploads/companies/xxx.png); OnePay resolves it against
                 // CENTRYK_URL. Empty string means "no logo".
                 'logo'         => (string)($row['logo'] ?? ''),
+                // Business type + customer noun drive the invoicing UI wording in
+                // OnePay. Nulls are sent as empty strings → OnePay keeps its
+                // "Customer/Customers" default.
+                'business_type'          => (string)($row['business_type'] ?? ''),
+                'customer_noun_singular' => (string)($row['customer_noun_singular'] ?? ''),
+                'customer_noun_plural'   => (string)($row['customer_noun_plural'] ?? ''),
                 'sent_at'      => gmdate('c'),
             ];
 

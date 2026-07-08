@@ -9,6 +9,23 @@ $me = AuthService::me();
 if ($me['authenticated']) {
     $user = $me['user'];
     $apps = $me['apps'];
+
+    // First-login company setup: if this admin has a company that hasn't been
+    // through the setup wizard yet, send them there before the dashboard.
+    try {
+        $pend = DB::pdo()->prepare("
+            SELECT c.id FROM companies c
+            JOIN company_members cm ON cm.company_id = c.id
+            WHERE cm.user_id = :uid AND cm.role = 'admin' AND cm.status = 'active'
+              AND c.onboarded_at IS NULL
+            ORDER BY c.created_at ASC LIMIT 1");
+        $pend->execute(['uid' => (int)$user['id']]);
+        if ($pend->fetchColumn()) {
+            header('Location: onboarding.php');
+            exit;
+        }
+    } catch (Throwable $e) {}
+
     $showOnboarding     = false;
     $hasDefaultPassword = false;
     try {
