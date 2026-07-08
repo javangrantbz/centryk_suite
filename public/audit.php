@@ -11,6 +11,10 @@ if (!$me['authenticated'] || empty($me['user']['is_admin'])) {
 }
 
 $user = $me['user'];
+
+ob_start();
+include __DIR__ . '/partials/admin_tools_dropdown.php';
+$headerActionsHtml = ob_get_clean();
 ?>
 <!doctype html>
 <html lang="en">
@@ -25,20 +29,9 @@ $user = $me['user'];
     <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] } } } }</script>
 </head>
 <body class="min-h-screen bg-[#0d1117] text-white font-sans antialiased">
+<?php $pageTitle = 'Audit Trail'; $headerMaxW = 'max-w-6xl'; $awCurrent = 'centryk'; include __DIR__ . '/partials/account_header.php'; ?>
+
 <div class="mx-auto max-w-6xl px-4 py-8">
-    <div class="mb-6 flex items-center justify-between gap-4">
-        <div class="flex items-center gap-4">
-            <a href="index.php" class="flex items-center gap-2 text-sm font-semibold text-white/40 transition hover:text-white/80">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
-                </svg>
-                Launcher
-            </a>
-            <span class="text-white/20">/</span>
-            <h1 class="text-xl font-black tracking-tight">Audit Trail</h1>
-        </div>
-        <div class="text-sm font-semibold text-white/40"><?= htmlspecialchars($user['first_name'] . ' ' . $user['last_name']) ?></div>
-    </div>
 
     <div id="statsRow" class="mb-6 grid gap-3 sm:grid-cols-3"></div>
     <div id="pageAlert" class="mb-4 hidden rounded-xl border p-3 text-sm font-semibold"></div>
