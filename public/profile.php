@@ -154,6 +154,8 @@ $companyDeepUuid = trim($_GET['company_uuid'] ?? '');
         body.light input:focus { background-color: #f1f5f9 !important; border-color: #3b82f6 !important; }
         body.light .password-toggle-btn { color: #475569; }
         body.light .password-toggle-btn:hover { background-color: #e2e8f0; color: #0f172a; }
+        body.light .notif-toggle-track { background-color: #e2e8f0; border-color: #94a3b8; }
+        body.light .notif-toggle:checked + .notif-toggle-track { background-color: #3b82f6; border-color: #60a5fa; }
         @keyframes spin { to { transform: rotate(360deg); } }
         .animate-spin { animation: spin 1s linear infinite; }
     </style>
@@ -298,7 +300,7 @@ $companyDeepUuid = trim($_GET['company_uuid'] ?? '');
                         <p class="text-[11px] text-white/40"><?= htmlspecialchars($pref['desc']) ?></p>
                     </div>
                     <input type="checkbox" class="notif-toggle sr-only peer" data-key="<?= htmlspecialchars($key) ?>" <?= $pref['enabled'] ? 'checked' : '' ?>>
-                    <span class="relative h-5 w-9 shrink-0 rounded-full bg-white/15 transition-colors peer-checked:bg-blue-500 after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-transform peer-checked:after:translate-x-4"></span>
+                    <span class="notif-toggle-track relative h-5 w-9 shrink-0 rounded-full border border-white/30 bg-white/20 transition-colors peer-checked:border-blue-400 peer-checked:bg-blue-500 after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:after:translate-x-4"></span>
                 </label>
                 <?php endforeach; ?>
             </div>
