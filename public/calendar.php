@@ -156,17 +156,7 @@ function calLink(int $companyId, string $ym): string {
         </span>
         <?php endif; ?>
         <div class="flex-1"></div>
-        <?php if (!empty($user['is_admin'])): ?>
-        <a href="requests.php" class="hidden sm:flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
-            <i data-lucide="users" class="h-3.5 w-3.5"></i> New Users
-        </a>
-        <a href="registered-companies.php" class="hidden sm:flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
-            <i data-lucide="building-2" class="h-3.5 w-3.5"></i> Companies
-        </a>
-        <a href="audit.php" class="hidden sm:flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
-            <i data-lucide="history" class="h-3.5 w-3.5"></i> Audit Trail
-        </a>
-        <?php endif; ?>
+        <?php include __DIR__ . '/partials/admin_tools_dropdown.php'; ?>
         <div class="flex items-center gap-2 shrink-0">
             <i data-lucide="calendar" class="h-4 w-4 text-teal-500"></i>
             <span class="hidden text-sm font-bold text-slate-700 sm:inline">Calendar</span>
@@ -410,6 +400,15 @@ function calLink(int $companyId, string $ym): string {
     if (btn && menu) {
         btn.addEventListener('click', function (e) { e.stopPropagation(); menu.classList.toggle('hidden'); });
         document.addEventListener('click', function () { menu.classList.add('hidden'); });
+    }
+    var adminToolsBtn = document.getElementById('adminToolsBtn');
+    var adminToolsMenu = document.getElementById('adminToolsMenu');
+    if (adminToolsBtn && adminToolsMenu) {
+        adminToolsBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            adminToolsMenu.classList.toggle('hidden');
+        });
+        document.addEventListener('click', function () { adminToolsMenu.classList.add('hidden'); });
     }
     var logout = document.getElementById('logoutBtn');
     if (logout) {

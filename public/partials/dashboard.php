@@ -88,21 +88,8 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         <!-- Spacer -->
         <div class="flex-1"></div>
 
-        <!-- Admin links -->
-        <?php if (!empty($user['is_admin'])): ?>
-        <a href="requests.php" class="hidden sm:flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
-            <i data-lucide="users" class="h-3.5 w-3.5"></i>
-            New Users
-        </a>
-        <a href="registered-companies.php" class="hidden sm:flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
-            <i data-lucide="building-2" class="h-3.5 w-3.5"></i>
-            Companies
-        </a>
-        <a href="audit.php" class="hidden sm:flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
-            <i data-lucide="history" class="h-3.5 w-3.5"></i>
-            Audit Trail
-        </a>
-        <?php endif; ?>
+        <!-- Admin tools -->
+        <?php include __DIR__ . '/admin_tools_dropdown.php'; ?>
 
         <!-- Waffle app switcher -->
         <?php $awAlign = 'right'; $awMode = 'launch'; include __DIR__ . '/app_switcher.php'; ?>
@@ -150,6 +137,10 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
                     <a href="registered-companies.php" class="flex sm:hidden items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition">
                         <i data-lucide="building-2" class="h-4 w-4 shrink-0"></i>
                         Registered Companies
+                    </a>
+                    <a href="onelink-api-accounts.php" class="flex sm:hidden items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition">
+                        <i data-lucide="credit-card" class="h-4 w-4 shrink-0"></i>
+                        OneLink API Accounts
                     </a>
                     <a href="audit.php" class="flex sm:hidden items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition">
                         <i data-lucide="history" class="h-4 w-4 shrink-0"></i>
@@ -925,6 +916,15 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
     });
 
     var appLabels = { onepay: 'OnePay', mypay: 'MyPay', centryk: 'Centryk' };
+    var adminToolsBtn = document.getElementById('adminToolsBtn');
+    var adminToolsMenu = document.getElementById('adminToolsMenu');
+    if (adminToolsBtn && adminToolsMenu) {
+        adminToolsBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            adminToolsMenu.classList.toggle('hidden');
+            if (window.lucide) { lucide.createIcons(); }
+        });
+    }
 
     // ── App launch ────────────────────────────────────────────────────────────
     function launchApp(appKey) {
@@ -1029,6 +1029,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
     document.addEventListener('click', function () {
         document.getElementById('userMenu').classList.add('hidden');
         dropdown.classList.add('hidden');
+        if (adminToolsMenu) { adminToolsMenu.classList.add('hidden'); }
     });
 
     document.getElementById('logoutBtn').addEventListener('click', function () {

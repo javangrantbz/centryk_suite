@@ -155,6 +155,10 @@ $awCurrent = $awCurrent ?? 'centryk';
     const um = document.getElementById('userMenu');
     if (ub && um) ub.addEventListener('click', e => { e.stopPropagation(); um.classList.toggle('hidden'); });
 
+    const atb = document.getElementById('adminToolsBtn');
+    const atm = document.getElementById('adminToolsMenu');
+    if (atb && atm) atb.addEventListener('click', e => { e.stopPropagation(); atm.classList.toggle('hidden'); });
+
     // Calendar preview — lazy-loads the user's upcoming events on first open.
     const cb = document.getElementById('calPreviewBtn');
     const cd = document.getElementById('calPreviewDropdown');
@@ -199,6 +203,7 @@ $awCurrent = $awCurrent ?? 'centryk';
         if (ad) ad.classList.add('hidden');
         if (um) um.classList.add('hidden');
         if (cd) cd.classList.add('hidden');
+        if (atm) atm.classList.add('hidden');
     });
 
     document.getElementById('logoutBtn')?.addEventListener('click', () => {

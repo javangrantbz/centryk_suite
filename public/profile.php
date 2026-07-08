@@ -111,6 +111,10 @@ $memberSince  = date('F Y', strtotime($user['created_at']));
 $companyCount = count($myCompanies);
 // Optional deep-link: open a specific company in the embedded companies manager.
 $companyDeepUuid = trim($_GET['company_uuid'] ?? '');
+
+ob_start();
+include __DIR__ . '/partials/admin_tools_dropdown.php';
+$headerActionsHtml = ob_get_clean();
 ?>
 <!doctype html>
 <html lang="en">
