@@ -58,6 +58,7 @@ $user = $me['user'];
 
 <script>
 let allCompanies = [];
+const canDeleteCompanies = <?= strcasecmp((string)($user['email'] ?? ''), 'webdevelopment@bhilimited.com') === 0 ? 'true' : 'false' ?>;
 
 document.getElementById('refreshBtn').addEventListener('click', loadCompanies);
 
@@ -140,8 +141,42 @@ function companyCard(company) {
                     </div>
                 </div>
                 ${active ? '' : '<div class="rounded-xl border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs font-bold text-amber-200">No active session for a month</div>'}
+                ${canDeleteCompanies ? deleteButton(company) : ''}
             </div>
         </article>`;
+}
+
+function deleteButton(company) {
+    return `
+        <button type="button"
+            onclick="deleteCompany(${Number(company.id || 0)})"
+            class="w-full rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-red-300 transition hover:bg-red-500/15 hover:text-red-200">
+            Delete Company
+        </button>`;
+}
+
+async function deleteCompany(companyId) {
+    if (!canDeleteCompanies || !companyId) return;
+    const company = allCompanies.find(item => Number(item.id) === Number(companyId)) || {};
+    const companyName = company.name || 'this company';
+    const confirmed = confirm(`Delete ${companyName}? This will remove the company and related Centryk records.`);
+    if (!confirmed) return;
+
+    try {
+        const res = await fetch('api/admin/delete-company.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ company_id: companyId })
+        });
+        const data = await res.json();
+        if (!data.success) {
+            throw new Error(data.message || 'Could not delete company.');
+        }
+        showAlert(data.message || 'Company deleted.', 'success');
+        await loadCompanies();
+    } catch (error) {
+        showAlert(error.message || 'Could not delete company.', 'error');
+    }
 }
 
 function avatar(company) {
