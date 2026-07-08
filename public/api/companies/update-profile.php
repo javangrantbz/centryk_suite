@@ -53,6 +53,16 @@ if (isset($_FILES['logo']) && $_FILES['logo']['error'] === UPLOAD_ERR_OK) {
     $logo = 'uploads/companies/' . $safe;
 }
 
+// Business type + what the company calls its customers. The noun drives the
+// invoicing wording in OnePay; blank falls back there to Customer/Customers.
+$allowedTypes = ['school','gym','clinic','salon','services','property','retail','restaurant','other'];
+$businessType = strtolower(trim($_POST['business_type'] ?? ''));
+if ($businessType !== '' && !in_array($businessType, $allowedTypes, true)) {
+    $businessType = 'other';
+}
+$nounS = trim($_POST['customer_noun_singular'] ?? '');
+$nounP = trim($_POST['customer_noun_plural'] ?? '');
+
 $data = [
     'email'         => trim($_POST['email'] ?? ''),
     'phone'         => trim($_POST['phone'] ?? ''),
@@ -61,6 +71,9 @@ $data = [
     'address'       => trim($_POST['address'] ?? ''),
     'tax_number'    => trim($_POST['tax_number'] ?? ''),
     'opening_hours' => trim($_POST['opening_hours'] ?? ''),
+    'business_type' => $businessType !== '' ? $businessType : null,
+    'noun_s'        => $nounS !== '' ? $nounS : null,
+    'noun_p'        => $nounP !== '' ? $nounP : null,
     'logo'          => $logo,
     'id'            => $companyId,
 ];
@@ -68,7 +81,10 @@ $data = [
 $stmt = $pdo->prepare("
     UPDATE companies SET
         email = :email, phone = :phone, phone2 = :phone2, phone3 = :phone3,
-        address = :address, tax_number = :tax_number, opening_hours = :opening_hours, logo = :logo
+        address = :address, tax_number = :tax_number, opening_hours = :opening_hours,
+        business_type = :business_type,
+        customer_noun_singular = :noun_s, customer_noun_plural = :noun_p,
+        logo = :logo
     WHERE id = :id
 ");
 $stmt->execute($data);

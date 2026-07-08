@@ -295,6 +295,30 @@ if ($embed) {
                         <label class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/35">Opening Hours</label>
                         <textarea id="profileHours" rows="2" class="profile-input w-full rounded-lg border border-white/10 bg-white/6 px-3 py-2 text-xs text-white placeholder-white/20 outline-none transition focus:border-emerald-500 focus:bg-white/8 disabled:opacity-60" placeholder="e.g. Mon–Fri 8:00am–5:00pm&#10;Sat 9:00am–1:00pm"></textarea>
                     </div>
+                    <div>
+                        <label class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/35">Business Type</label>
+                        <select id="profileBusinessType" class="profile-input w-full rounded-lg border border-white/10 bg-white/6 px-3 py-2 text-xs text-white outline-none transition focus:border-emerald-500 focus:bg-white/8 disabled:opacity-60">
+                            <option value="">Not set</option>
+                            <option value="school">School / Education</option>
+                            <option value="gym">Gym / Fitness</option>
+                            <option value="clinic">Clinic / Health</option>
+                            <option value="salon">Salon / Spa</option>
+                            <option value="retail">Retail / Shop</option>
+                            <option value="restaurant">Restaurant / Food</option>
+                            <option value="services">Services</option>
+                            <option value="property">Property / Rentals</option>
+                            <option value="other">Something else</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/35">What you call your customers</label>
+                        <div class="flex items-center gap-2">
+                            <input id="profileNounS" type="text" class="profile-input w-full rounded-lg border border-white/10 bg-white/6 px-3 py-2 text-xs text-white placeholder-white/20 outline-none transition focus:border-emerald-500 focus:bg-white/8 disabled:opacity-60" placeholder="Customer">
+                            <span class="shrink-0 text-xs text-white/30">/</span>
+                            <input id="profileNounP" type="text" class="profile-input w-full rounded-lg border border-white/10 bg-white/6 px-3 py-2 text-xs text-white placeholder-white/20 outline-none transition focus:border-emerald-500 focus:bg-white/8 disabled:opacity-60" placeholder="Customers">
+                        </div>
+                        <p class="mt-1 text-[10px] text-white/30">Singular / plural. Labels invoicing in OnePay (e.g. “Batch Invoice Students”). Leave blank for Customer/Customers.</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -595,6 +619,9 @@ if ($embed) {
                 document.getElementById('profileTin').value     = p.tax_number || '';
                 document.getElementById('profileAddress').value = p.address || '';
                 document.getElementById('profileHours').value   = p.opening_hours || '';
+                document.getElementById('profileBusinessType').value = p.business_type || '';
+                document.getElementById('profileNounS').value   = p.customer_noun_singular || '';
+                document.getElementById('profileNounP').value   = p.customer_noun_plural || '';
                 // Reveal phone 2/3 only when they already hold a value.
                 var has2 = !!(p.phone2 || '').trim() || !!(p.phone3 || '').trim();
                 var has3 = !!(p.phone3 || '').trim();
@@ -616,6 +643,20 @@ if ($embed) {
         reader.readAsDataURL(f);
     });
 
+    // Changing the business type refreshes the recommended customer noun; the
+    // admin can still type a custom one afterwards.
+    var NOUN_DEFAULTS = {
+        school: ['Student', 'Students'], gym: ['Member', 'Members'], clinic: ['Patient', 'Patients'],
+        salon: ['Client', 'Clients'], services: ['Client', 'Clients'], property: ['Tenant', 'Tenants'],
+        retail: ['Customer', 'Customers'], restaurant: ['Customer', 'Customers'], other: ['Customer', 'Customers']
+    };
+    document.getElementById('profileBusinessType').addEventListener('change', function () {
+        var d = NOUN_DEFAULTS[this.value];
+        if (!d) { return; }
+        document.getElementById('profileNounS').value = d[0];
+        document.getElementById('profileNounP').value = d[1];
+    });
+
     document.getElementById('saveProfileBtn').addEventListener('click', function () {
         if (!currentCompany) { return; }
         var btn = this;
@@ -632,6 +673,9 @@ if ($embed) {
         fd.append('tax_number',    document.getElementById('profileTin').value.trim());
         fd.append('address',       document.getElementById('profileAddress').value.trim());
         fd.append('opening_hours', document.getElementById('profileHours').value.trim());
+        fd.append('business_type',          document.getElementById('profileBusinessType').value);
+        fd.append('customer_noun_singular', document.getElementById('profileNounS').value.trim());
+        fd.append('customer_noun_plural',   document.getElementById('profileNounP').value.trim());
         if (profileLogoFile) { fd.append('logo', profileLogoFile); }
 
         var orig = btn.innerHTML;

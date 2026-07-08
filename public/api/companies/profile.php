@@ -29,7 +29,8 @@ if ($role === false) {
 }
 
 $stmt = $pdo->prepare("
-    SELECT name, email, phone, phone2, phone3, address, tax_number, logo, opening_hours
+    SELECT name, email, phone, phone2, phone3, address, tax_number, logo, opening_hours,
+           business_type, customer_noun_singular, customer_noun_plural
     FROM companies WHERE id = :id LIMIT 1
 ");
 $stmt->execute(['id' => $companyId]);
