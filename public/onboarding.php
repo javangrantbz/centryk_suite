@@ -154,6 +154,7 @@ $firstName = trim((string)($user['first_name'] ?? '')) ?: 'there';
       </button>`).join('');
 
     function pickType(key){
+      const changed = (chosenType !== key);
       chosenType = key;
       const t = TYPES.find(x => x.key === key);
       document.querySelectorAll('.type-card').forEach(c => {
@@ -163,15 +164,16 @@ $firstName = trim((string)($user['first_name'] ?? '')) ?: 'there';
         c.classList.toggle('ring-1', on);
         c.classList.toggle('ring-violet-400', on);
       });
-      // Pre-fill the noun (only if the user hasn't typed their own).
-      const ns = document.getElementById('nounS'), np = document.getElementById('nounP');
-      if (!ns.dataset.touched) ns.value = t.noun[0];
-      if (!np.dataset.touched) np.value = t.noun[1];
+      // Switching to a DIFFERENT type refreshes the recommended noun. Any edits
+      // you make after selecting a type stick — re-clicking the same type won't
+      // wipe them.
+      if (changed) {
+        document.getElementById('nounS').value = t.noun[0];
+        document.getElementById('nounP').value = t.noun[1];
+      }
       document.getElementById('nounWrap').classList.remove('hidden');
       document.getElementById('toStep2').disabled = false;
     }
-    document.getElementById('nounS').addEventListener('input', e => e.target.dataset.touched = '1');
-    document.getElementById('nounP').addEventListener('input', e => e.target.dataset.touched = '1');
 
     // ── Step 2 rendering ──────────────────────────────────────────────────────
     document.getElementById('appList').innerHTML = APPS.map(a => `
