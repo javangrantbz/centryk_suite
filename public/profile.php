@@ -1035,6 +1035,8 @@ document.getElementById('updateNameForm').addEventListener('submit', async funct
     document.querySelector('.acct-nav-btn[data-target="banking"]')
         ?.addEventListener('click', () => { if (!loaded) { loaded = true; loadBanking(); } });
     sel.addEventListener('change', () => { loaded = true; loadBanking(); });
+    // If Banking is the active tab on page load (remembered/deep-linked), populate now.
+    if (panel && !panel.classList.contains('hidden')) { loaded = true; loadBanking(); }
 
     // Save settlement account
     acct.form.addEventListener('submit', async function (e) {
@@ -1049,7 +1051,7 @@ document.getElementById('updateNameForm').addEventListener('submit', async funct
             const res = await fetch('api/banking/save-account.php', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    company_id:     acct.companyId.value,
+                    company_id:     sel.value,
                     bank_name:      bankName,
                     account_holder: acct.holder.value.trim(),
                     account_number: acct.number.value.trim(),
@@ -1076,7 +1078,7 @@ document.getElementById('updateNameForm').addEventListener('submit', async funct
             const res = await fetch('api/banking/save.php', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    company_id:  gw.companyId.value,
+                    company_id:  sel.value,
                     base_url:    gw.baseUrl.value.trim(),
                     terminal_id: gw.terminal.value.trim(),
                     salt:        gw.salt.value,
