@@ -44,7 +44,7 @@ $headerMaxW = 'max-w-7xl';
 <body class="min-h-screen bg-slate-100 font-sans antialiased text-slate-900">
 <?php include __DIR__ . '/partials/account_header.php'; ?>
 
-<main class="mx-auto max-w-7xl px-6 py-8">
+<main class="mx-auto max-w-7xl px-6 pt-4 pb-8">
     <section id="onelinkIntroBanner" class="overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 text-white shadow-sm">
         <div class="grid gap-6 px-6 py-6 lg:grid-cols-[1.4fr_0.9fr] lg:px-8">
             <div>
@@ -158,10 +158,10 @@ $headerMaxW = 'max-w-7xl';
         </form>
     </section>
 
-    <section class="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <section class="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-950 px-5 py-5 text-white">
             <div>
-                <h2 class="text-xl font-black tracking-tight">OneLink Operations</h2>
+                <h2 class="text-xl font-black tracking-tight">OneLink Operations . Payment Ledger</h2>
                 <p class="mt-1 text-xs font-semibold text-white/55">Review payment movement and open gateway setup only when credentials need attention.</p>
             </div>
             <button id="toggleGatewaySetup" type="button" class="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/8 px-4 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-white/15" aria-expanded="false" aria-controls="gatewaySetupPanel">
@@ -170,11 +170,7 @@ $headerMaxW = 'max-w-7xl';
         </div>
 
         <div class="p-5">
-        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div>
-                <h2 class="text-lg font-black tracking-tight">Payment Ledger</h2>
-                <p class="mt-1 text-xs font-semibold text-slate-400">Design template only. API-backed data can be wired in later.</p>
-            </div>
+        <div class="mb-4 flex flex-wrap items-center justify-end gap-3">
             <button type="button" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-600 transition hover:bg-slate-50">
                 <i data-lucide="download" class="h-3.5 w-3.5"></i> Export
             </button>

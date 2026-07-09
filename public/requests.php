@@ -22,31 +22,30 @@ $headerActionsHtml = ob_get_clean();
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
-    <title>New Users — Centryk</title>
+    <title>All Signups - Centryk</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] } } } }</script>
 </head>
-<body class="min-h-screen bg-[#0d1117] text-white font-sans antialiased">
-<?php $pageTitle = 'New Users'; $headerMaxW = 'max-w-5xl'; $awCurrent = 'centryk'; include __DIR__ . '/partials/account_header.php'; ?>
+<body class="min-h-screen bg-slate-100 text-slate-900 font-sans antialiased">
+<?php $pageTitle = 'All Signups'; $headerMaxW = 'max-w-5xl'; $awCurrent = 'centryk'; include __DIR__ . '/partials/account_header.php'; ?>
 
-<div class="mx-auto max-w-5xl px-4 py-8">
+<div class="mx-auto max-w-5xl px-4 pt-4 pb-8">
 
-    <!-- Stats row -->
-    <div id="statsRow" class="mb-6 flex gap-3"></div>
-
-    <!-- Alert -->
     <div id="pageAlert" class="mb-4 hidden rounded-xl border p-3 text-sm font-semibold"></div>
 
-    <!-- Table -->
-    <div class="overflow-hidden rounded-2xl border border-white/10 bg-[#111827]">
-        <div class="flex items-center justify-between border-b border-white/8 px-5 py-4">
-            <span class="text-sm font-black uppercase tracking-[0.14em] text-white/50">All Signups</span>
-            <button onclick="loadUsers()" class="text-xs font-semibold text-white/30 hover:text-white/70 transition">Refresh</button>
+    <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-950 px-5 py-5 text-white">
+            <div>
+                <h1 class="text-xl font-black tracking-tight">All Signups</h1>
+                <p class="mt-1 text-xs font-semibold text-white/55">Review Centryk account signups and activate or deactivate user access.</p>
+            </div>
+            <button onclick="loadUsers()" class="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/8 px-4 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-white/15">Refresh</button>
         </div>
-        <div id="usersTable" class="divide-y divide-white/6">
-            <div class="px-5 py-8 text-center text-sm text-white/30">Loading…</div>
+        <div id="statsRow" class="px-5 pt-5 flex flex-wrap gap-3"></div>
+        <div id="usersTable" class="divide-y divide-slate-100">
+            <div class="px-5 py-8 text-center text-sm text-slate-400">Loading…</div>
         </div>
     </div>
 
@@ -72,27 +71,27 @@ function renderStats() {
     const active   = allUsers.filter(u => u.status === 'active').length;
     const inactive = allUsers.filter(u => u.status !== 'active').length;
     document.getElementById('statsRow').innerHTML = `
-        <div class="rounded-xl border border-white/8 bg-[#111827] px-4 py-3 flex items-center gap-2">
+        <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 flex items-center gap-2">
             <span class="text-sm font-black">${allUsers.length}</span>
-            <span class="text-xs text-white/40 font-semibold">Total</span>
+            <span class="text-xs text-slate-500 font-semibold">Total</span>
         </div>
-        <div class="rounded-xl border border-white/8 bg-[#111827] px-4 py-3 flex items-center gap-2">
+        <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 flex items-center gap-2">
             <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
             <span class="text-sm font-black">${active}</span>
-            <span class="text-xs text-white/40 font-semibold">Active</span>
+            <span class="text-xs text-slate-500 font-semibold">Active</span>
         </div>
-        <div class="rounded-xl border border-white/8 bg-[#111827] px-4 py-3 flex items-center gap-2">
-            <span class="h-2 w-2 rounded-full bg-white/20"></span>
+        <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 flex items-center gap-2">
+            <span class="h-2 w-2 rounded-full bg-slate-300"></span>
             <span class="text-sm font-black">${inactive}</span>
-            <span class="text-xs text-white/40 font-semibold">Inactive</span>
+            <span class="text-xs text-slate-500 font-semibold">Inactive</span>
         </div>`;
 }
 
 function statusBadge(status) {
     if (status === 'active') {
-        return '<span class="rounded-full border border-emerald-400/30 bg-emerald-400/15 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-emerald-300">Active</span>';
+        return '<span class="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-emerald-700">Active</span>';
     }
-    return '<span class="rounded-full border border-white/10 bg-white/6 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-white/30">Inactive</span>';
+    return '<span class="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-slate-500">Inactive</span>';
 }
 
 function initials(first, last) {
@@ -102,28 +101,28 @@ function initials(first, last) {
 function renderTable() {
     const tbody = document.getElementById('usersTable');
     if (!allUsers.length) {
-        tbody.innerHTML = '<div class="px-5 py-12 text-center text-sm text-white/30">No users yet.</div>';
+        tbody.innerHTML = '<div class="px-5 py-12 text-center text-sm text-slate-400">No users yet.</div>';
         return;
     }
     tbody.innerHTML = allUsers.map(u => {
         const name    = [u.first_name, u.last_name].filter(Boolean).join(' ') || '—';
         const isActive = u.status === 'active';
         return `
-        <div class="flex items-center gap-4 px-5 py-3.5 hover:bg-white/3 transition">
-            <div class="h-8 w-8 shrink-0 rounded-full bg-white/10 flex items-center justify-center text-xs font-black text-white/60">
+        <div class="flex items-center gap-4 px-5 py-3.5 hover:bg-slate-50 transition">
+            <div class="h-8 w-8 shrink-0 rounded-full bg-slate-100 flex items-center justify-center text-xs font-black text-slate-500">
                 ${esc(initials(u.first_name, u.last_name))}
             </div>
             <div class="min-w-0 flex-1">
-                <p class="text-sm font-semibold truncate">${esc(name)}</p>
-                <p class="text-xs text-white/40 mt-0.5 truncate">${esc(u.email)}</p>
+                <p class="text-sm font-semibold text-slate-900 truncate">${esc(name)}</p>
+                <p class="text-xs text-slate-500 mt-0.5 truncate">${esc(u.email)}</p>
             </div>
-            <div class="shrink-0 hidden sm:block text-xs text-white/30">${fmtDate(u.created_at)}</div>
+            <div class="shrink-0 hidden sm:block text-xs text-slate-400">${fmtDate(u.created_at)}</div>
             <div class="shrink-0">${statusBadge(u.status)}</div>
             <div class="shrink-0">
                 <button onclick="toggleUser(${u.id}, '${isActive ? 'inactive' : 'active'}')"
                     class="rounded-lg px-3 py-1.5 text-xs font-black transition ${isActive
-                        ? 'bg-white/8 text-white/50 hover:bg-red-500/15 hover:text-red-300'
-                        : 'bg-white/8 text-white/50 hover:bg-emerald-500/15 hover:text-emerald-300'}">
+                        ? 'bg-slate-100 text-slate-500 hover:bg-red-50 hover:text-red-600'
+                        : 'bg-slate-100 text-slate-500 hover:bg-emerald-50 hover:text-emerald-600'}">
                     ${isActive ? 'Deactivate' : 'Activate'}
                 </button>
             </div>
@@ -167,8 +166,8 @@ function showAlert(msg, type) {
     const el = document.getElementById('pageAlert');
     el.textContent = msg;
     el.className = type === 'error'
-        ? 'mb-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm font-semibold text-red-300'
-        : 'mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm font-semibold text-emerald-300';
+        ? 'mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700'
+        : 'mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-700';
     el.classList.remove('hidden');
     setTimeout(() => el.classList.add('hidden'), 4000);
 }
@@ -177,3 +176,6 @@ loadUsers();
 </script>
 </body>
 </html>
+
+
+
