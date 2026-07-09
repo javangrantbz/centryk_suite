@@ -673,9 +673,12 @@ function profile_app_stat_card(array $app, int $companyCount, int $userCount, st
                         <input id="blEnabled" name="enabled" type="checkbox" class="rounded border-white/20 bg-white/5 text-cyan-500 focus:ring-cyan-400">
                         <span class="text-xs font-bold text-white/70">Enable OneLink payments for this company</span>
                     </label>
-                    <div class="pt-1">
+                    <div class="pt-1 flex flex-wrap items-center gap-3">
                         <button id="bankingSubmitBtn" type="submit" class="inline-flex items-center gap-2 rounded-lg bg-cyan-500 px-4 py-2 text-xs font-black text-white transition hover:bg-cyan-400">
                             <i data-lucide="save" class="h-3.5 w-3.5"></i> Save Gateway Settings
+                        </button>
+                        <button id="bankingRemoveBtn" type="button" class="inline-flex items-center gap-2 rounded-lg border border-rose-400/30 bg-rose-500/10 px-4 py-2 text-xs font-black text-rose-300 transition hover:bg-rose-500/20">
+                            <i data-lucide="trash-2" class="h-3.5 w-3.5"></i> Remove
                         </button>
                     </div>
                 </form>
@@ -1093,6 +1096,29 @@ document.getElementById('updateNameForm').addEventListener('submit', async funct
                 gw.saltHint.textContent  = data.salt_set  ? 'Saved — leave blank to keep it.' : 'Not set yet.';
                 gw.tokenHint.textContent = data.token_set ? 'Saved — leave blank to keep it.' : 'Not set yet.';
             } else { bkAlert(data.message || 'Could not save.', false); }
+        } catch (_) { bkAlert('Network error. Please try again.', false); }
+        finally { btn.disabled = false; }
+    });
+
+    // Remove gateway (admin)
+    if (gw) document.getElementById('bankingRemoveBtn')?.addEventListener('click', async function () {
+        if (!confirm('Remove the OneLink terminal ID, salt and token for this company? Card payments will stop until it is set up again.')) return;
+        const btn = this;
+        btn.disabled = true;
+        try {
+            const res = await fetch('api/banking/remove.php', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ company_id: sel.value })
+            });
+            const data = await res.json();
+            if (data.success) {
+                bkAlert('OneLink gateway removed.', true);
+                gw.baseUrl.value = 'https://op.onelink.bz';
+                gw.terminal.value = ''; gw.salt.value = ''; gw.token.value = '';
+                gw.enabled.checked = false;
+                gw.saltHint.textContent = 'Not set yet.';
+                gw.tokenHint.textContent = 'Not set yet.';
+            } else { bkAlert(data.message || 'Could not remove.', false); }
         } catch (_) { bkAlert('Network error. Please try again.', false); }
         finally { btn.disabled = false; }
     });
