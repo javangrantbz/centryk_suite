@@ -54,8 +54,22 @@ if ($isPlatformAdmin) {
     $gateway['token_set']   = $gw ? ($gw['token'] !== '') : false;
 }
 
+// Card-acceptance intent for the "I want to accept payments via OneLink"
+// checkbox: on by default, unless the company enabled it (already on) or
+// explicitly withdrew a request (latest request dismissed).
+$wantsOnelink = true;
+if (!($gateway['enabled'] ?? false)) {
+    $reqStmt = $pdo->prepare("SELECT status FROM banking_requests WHERE company_id = :cid ORDER BY id DESC LIMIT 1");
+    $reqStmt->execute(['cid' => $companyId]);
+    $lastReq = $reqStmt->fetchColumn();
+    if ($lastReq === 'dismissed') {
+        $wantsOnelink = false;
+    }
+}
+
 Response::ok([
     'is_platform_admin' => $isPlatformAdmin,
+    'wants_onelink'     => $wantsOnelink,
     'account' => [
         'bank_name'      => (string)($acct['bank_name'] ?? ''),
         'account_holder' => (string)($acct['account_holder'] ?? ''),

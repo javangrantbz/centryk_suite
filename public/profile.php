@@ -248,6 +248,7 @@ function profile_app_stat_card(array $app, int $companyCount, int $userCount, st
         body.light .border-white\/8 { border-color: #e2e8f0; }
         body.light .text-white      { color: #0f172a; }
         body.light .text-white\/80  { color: #334155; }
+        body.light .text-white\/70  { color: #334155; }
         body.light .text-white\/60  { color: #64748b; }
         body.light .text-white\/45,
         body.light .text-white\/40  { color: #94a3b8; }
@@ -559,8 +560,8 @@ function profile_app_stat_card(array $app, int $companyCount, int $userCount, st
                     <i data-lucide="landmark" class="h-3.5 w-3.5 text-cyan-300"></i>
                 </div>
                 <div>
-                    <h2 class="text-xs font-black text-white">Banking</h2>
-                    <p class="text-[10px] text-white/35">Where your money settles, and card payment acceptance.</p>
+                    <h2 class="text-base font-black text-white">Banking</h2>
+                    <p class="text-xs text-white/45">Where your money settles, and card payment acceptance.</p>
                 </div>
             </div>
 
@@ -621,10 +622,16 @@ function profile_app_stat_card(array $app, int $companyCount, int $userCount, st
                                 class="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/25 focus:border-cyan-400 focus:outline-none">
                         </div>
                     </div>
-                    <div class="pt-1">
+                    <div class="pt-1 flex flex-wrap items-center gap-x-4 gap-y-2">
                         <button id="baSubmitBtn" type="submit" class="inline-flex items-center gap-2 rounded-lg bg-cyan-500 px-4 py-2 text-xs font-black text-white transition hover:bg-cyan-400">
                             <i data-lucide="save" class="h-3.5 w-3.5"></i> Save Banking Information
                         </button>
+                        <?php if (!$isPlatformAdmin): ?>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input id="baAcceptOnelink" name="accept_onelink" type="checkbox" checked class="rounded border-white/20 bg-white/5 text-cyan-500 focus:ring-cyan-400">
+                            <span class="text-xs font-bold text-white/70">I want to accept payments via OneLink</span>
+                        </label>
+                        <?php endif; ?>
                     </div>
                 </form>
             </div>
@@ -978,7 +985,8 @@ document.getElementById('updateNameForm').addEventListener('submit', async funct
         form:      document.getElementById('bankingForm'),
     } : null;
 
-    const cardStatus = document.getElementById('cardStatus'); // non-admin view
+    const cardStatus    = document.getElementById('cardStatus');      // non-admin status
+    const acceptOnelink = document.getElementById('baAcceptOnelink'); // non-admin checkbox
 
     function renderCardStatus(g) {
         if (!cardStatus) return;
@@ -987,10 +995,7 @@ document.getElementById('updateNameForm').addEventListener('submit', async funct
             cardStatus.innerHTML = '<i data-lucide="check-circle" class="inline h-4 w-4 -mt-0.5"></i> Card payments are active for this company.';
         } else {
             cardStatus.className = 'rounded-lg border border-white/10 bg-white/5 px-4 py-4 text-sm text-white/60';
-            cardStatus.innerHTML =
-                '<p class="mb-3">No banking setup exists to accept card payments.</p>' +
-                '<button type="button" id="cardRequestBtn" class="inline-flex items-center gap-2 rounded-lg bg-cyan-500 px-4 py-2 text-xs font-black text-white transition hover:bg-cyan-400">' +
-                '<i data-lucide="send" class="h-3.5 w-3.5"></i> Request this feature</button>';
+            cardStatus.textContent = 'Card payments are not set up yet. Keep "I want to accept payments via OneLink" checked and save your banking information to request it.';
         }
         if (window.lucide) lucide.createIcons();
     }
@@ -1018,6 +1023,7 @@ document.getElementById('updateNameForm').addEventListener('submit', async funct
                 gw.saltHint.textContent  = g.salt_set  ? 'Saved — leave blank to keep it.' : 'Not set yet.';
                 gw.tokenHint.textContent = g.token_set ? 'Saved — leave blank to keep it.' : 'Not set yet.';
             } else {
+                if (acceptOnelink) acceptOnelink.checked = (data.wants_onelink !== false);
                 renderCardStatus(g);
             }
         } catch (_) {
@@ -1047,11 +1053,16 @@ document.getElementById('updateNameForm').addEventListener('submit', async funct
                     bank_name:      bankName,
                     account_holder: acct.holder.value.trim(),
                     account_number: acct.number.value.trim(),
-                    branch:         acct.branch.value.trim()
+                    branch:         acct.branch.value.trim(),
+                    accept_onelink: acceptOnelink ? (acceptOnelink.checked ? 1 : 0) : 0
                 })
             });
             const data = await res.json();
             bkAlert(data.success ? 'Banking information saved.' : (data.message || 'Could not save.'), !!data.success);
+            if (data.success && cardStatus && data.requested) {
+                cardStatus.className = 'rounded-lg border border-cyan-400/20 bg-cyan-500/10 px-4 py-4 text-sm font-semibold text-cyan-200';
+                cardStatus.textContent = 'Your request to accept card payments via OneLink has been sent.';
+            }
         } catch (_) { bkAlert('Network error. Please try again.', false); }
         finally { btn.disabled = false; }
     });
@@ -1084,23 +1095,6 @@ document.getElementById('updateNameForm').addEventListener('submit', async funct
         finally { btn.disabled = false; }
     });
 
-    // Request card acceptance (non-admin)
-    if (cardStatus) cardStatus.addEventListener('click', async function (e) {
-        const btn = e.target.closest('#cardRequestBtn');
-        if (!btn) return;
-        btn.disabled = true;
-        try {
-            const res = await fetch('api/banking/request.php', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ company_id: acct.companyId.value })
-            });
-            const data = await res.json();
-            if (data.success) {
-                cardStatus.className = 'rounded-lg border border-cyan-400/20 bg-cyan-500/10 px-4 py-4 text-sm font-semibold text-cyan-200';
-                cardStatus.textContent = data.message || 'Request sent.';
-            } else { bkAlert(data.message || 'Could not send request.', false); btn.disabled = false; }
-        } catch (_) { bkAlert('Network error. Please try again.', false); btn.disabled = false; }
-    });
 })();
 </script>
 </body>
