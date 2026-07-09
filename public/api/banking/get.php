@@ -16,18 +16,21 @@ if (!$companyId) {
 
 $pdo = DB::pdo();
 
-// Any admin of this company may view the banking status + settlement account.
-$check = $pdo->prepare("
-    SELECT id FROM company_members
-    WHERE company_id = :cid AND user_id = :uid AND role = 'admin' AND status = 'active'
-    LIMIT 1
-");
-$check->execute(['cid' => $companyId, 'uid' => $user['id']]);
-if (!$check->fetch()) {
-    Response::error('Permission denied.', 403);
-}
-
 $isPlatformAdmin = !empty($user['is_admin']);
+
+// Platform admins may view any company (they manage OneLink for all of them);
+// otherwise the viewer must be an admin of this company.
+if (!$isPlatformAdmin) {
+    $check = $pdo->prepare("
+        SELECT id FROM company_members
+        WHERE company_id = :cid AND user_id = :uid AND role = 'admin' AND status = 'active'
+        LIMIT 1
+    ");
+    $check->execute(['cid' => $companyId, 'uid' => $user['id']]);
+    if (!$check->fetch()) {
+        Response::error('Permission denied.', 403);
+    }
+}
 
 // ── Settlement bank account (company self-service) ─────────────────────────
 $acctStmt = $pdo->prepare("SELECT bank_name, account_holder, account_number, branch FROM company_bank_accounts WHERE company_id = :cid LIMIT 1");

@@ -21,16 +21,18 @@ if (!$companyId) {
 
 $pdo = DB::pdo();
 
-// The company's own settlement account is self-service: any admin of the
-// company may set it.
-$check = $pdo->prepare("
-    SELECT id FROM company_members
-    WHERE company_id = :cid AND user_id = :uid AND role = 'admin' AND status = 'active'
-    LIMIT 1
-");
-$check->execute(['cid' => $companyId, 'uid' => $user['id']]);
-if (!$check->fetch()) {
-    Response::error('Permission denied.', 403);
+// The company's own settlement account is self-service for any admin of the
+// company; Centryk platform admins may also set it for any company.
+if (empty($user['is_admin'])) {
+    $check = $pdo->prepare("
+        SELECT id FROM company_members
+        WHERE company_id = :cid AND user_id = :uid AND role = 'admin' AND status = 'active'
+        LIMIT 1
+    ");
+    $check->execute(['cid' => $companyId, 'uid' => $user['id']]);
+    if (!$check->fetch()) {
+        Response::error('Permission denied.', 403);
+    }
 }
 
 $bankName      = trim((string)($in['bank_name'] ?? ''));

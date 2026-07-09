@@ -27,6 +27,17 @@ $onelinkCompanies = array_values(array_filter($myCompanies, static function (arr
 // regular company admins manage their settlement account and can request setup.
 $isPlatformAdmin = !empty($user['is_admin']);
 
+// Which companies appear in the Banking company selector:
+//  - Platform admins configure OneLink for EVERY company.
+//  - Regular company admins only see companies they administer.
+if ($isPlatformAdmin) {
+    $bankingCompanies = $pdo->query(
+        "SELECT id, name FROM companies WHERE status = 'active' ORDER BY name"
+    )->fetchAll(PDO::FETCH_ASSOC);
+} else {
+    $bankingCompanies = $onelinkCompanies;
+}
+
 // ── Connected Apps (linked app access) ─────────────────────────────────────────
 // Locally every app DB shares one MySQL, so read them directly. On production
 // each app has its own isolated DB/user, so ask the app over HTTP instead
@@ -288,7 +299,7 @@ function profile_app_stat_card(array $app, int $companyCount, int $userCount, st
                 <button type="button" data-target="apps" class="acct-nav-btn w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-bold text-white/60 transition hover:bg-white/8 text-left">
                     <i data-lucide="layout-grid" class="h-4 w-4 shrink-0"></i> Connected Apps
                 </button>
-                <?php if (!empty($onelinkCompanies)): ?>
+                <?php if (!empty($bankingCompanies)): ?>
                 <button type="button" data-target="banking" class="acct-nav-btn w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-bold text-white/60 transition hover:bg-white/8 text-left">
                     <i data-lucide="landmark" class="h-4 w-4 shrink-0"></i> Banking
                 </button>
@@ -557,7 +568,7 @@ function profile_app_stat_card(array $app, int $companyCount, int $userCount, st
 
             <label class="block text-[10px] font-bold text-white/35 mb-1 uppercase tracking-wider">Company</label>
             <select id="bankingCompany" class="w-full mb-5 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-white focus:border-cyan-400 focus:outline-none">
-                <?php foreach ($onelinkCompanies as $company): ?>
+                <?php foreach ($bankingCompanies as $company): ?>
                 <option value="<?= (int)$company['id'] ?>"><?= htmlspecialchars($company['name']) ?></option>
                 <?php endforeach; ?>
             </select>
