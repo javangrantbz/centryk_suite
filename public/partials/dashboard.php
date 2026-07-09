@@ -188,10 +188,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
                         <span id="coRoleBadge" class="rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em]">—</span>
                     </div>
                     <p class="mt-0.5 text-sm font-semibold text-slate-400">
-                        Welcome back, <?= htmlspecialchars($user['first_name']) ?> &middot;
-                        <a id="coMemberLink" href="profile.php#companies" class="transition hover:text-slate-700">
-                            <span id="coMemberCount">0</span> members
-                        </a>
+                        Welcome back, <?= htmlspecialchars($user['first_name']) ?>
                     </p>
                 </div>
 
@@ -201,18 +198,27 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
                        class="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 transition hover:bg-slate-50 hover:border-slate-300">
                         <i data-lucide="user-plus" class="h-3.5 w-3.5"></i>
                         <span class="hidden sm:inline">Invite Member</span>
+                        <span class="rounded-full bg-slate-50 px-1.5 py-0.5 text-[10px] text-slate-500 ring-1 ring-slate-200">
+                            <span id="coMemberCount">0</span> members
+                        </span>
                     </button>
-                    <a href="profile.php#companies"
-                       class="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 transition hover:bg-slate-50 hover:border-slate-300">
+                    <a id="coMemberLink" href="profile.php#companies"
+                       class="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-black text-slate-600 transition hover:bg-white hover:border-slate-300 hover:text-slate-900">
                         <i data-lucide="building-2" class="h-3.5 w-3.5"></i>
-                        <span class="hidden sm:inline">Manage</span>
+                        <span class="hidden sm:inline">Manage Company Profile</span>
                     </a>
-                    <button disabled title="Coming soon"
-                            class="flex items-center gap-1.5 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-xs font-black text-slate-400 cursor-not-allowed">
+                    <a id="coOnelinkPaymentsBtn" href="onelink-payments.php"
+                       class="flex items-center gap-1.5 rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs font-black text-cyan-700 transition hover:bg-cyan-100 hover:border-cyan-300">
+                        <i data-lucide="credit-card" class="h-3.5 w-3.5"></i>
+                        <span class="hidden sm:inline">OneLink Payments</span>
+                    </a>
+                    <?php if (strcasecmp((string)($user['email'] ?? ''), 'webdevelopment@bhilimited.com') === 0): ?>
+                    <a id="coAdvertiseBtn" href="advertise.php"
+                       class="flex items-center gap-1.5 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-black text-violet-700 transition hover:bg-violet-100 hover:border-violet-300">
                         <i data-lucide="share-2" class="h-3.5 w-3.5"></i>
                         <span class="hidden sm:inline">Advertise</span>
-                        <span class="rounded-full bg-violet-100 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] text-violet-500">Soon</span>
-                    </button>
+                    </a>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -420,7 +426,61 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         </button>
         <?php endforeach; ?>
 
-        <div style="--i:<?= ($_appIdx ?? 0) + 1 ?>" class="dash-fade order-2 sm:col-span-2 lg:col-span-3 mt-4 border-t border-slate-200 pt-6">
+        <button type="button" style="--i:<?= ($_appIdx ?? 0) + 1 ?>" id="onelinkPaymentsCard"
+                class="dash-fade order-1 group flex flex-col overflow-hidden rounded-2xl border border-cyan-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]">
+            <div class="h-1.5 w-full bg-cyan-500"></div>
+            <div class="flex flex-1 flex-col p-5">
+                <div class="flex items-center gap-3">
+                    <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-cyan-100 text-cyan-700">
+                        <i data-lucide="credit-card" class="h-6 w-6"></i>
+                    </span>
+                    <div>
+                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-600/80">Collections</div>
+                        <div class="text-lg font-black tracking-tight text-slate-900">OneLink Payments</div>
+                    </div>
+                </div>
+                <p class="mt-3 text-xs font-semibold leading-relaxed text-slate-500">
+                    View POS, invoice, and payment-form collections for the selected company.
+                </p>
+                <div class="mt-3 flex items-center gap-1.5">
+                    <span class="inline-block h-1.5 w-1.5 rounded-full bg-cyan-500"></span>
+                    <span class="text-[11px] font-bold text-cyan-700">Company-scoped ledger</span>
+                </div>
+            </div>
+            <div class="flex items-center justify-between border-t border-cyan-100 px-5 py-3 text-xs font-bold text-cyan-700 transition-colors group-hover:text-cyan-900">
+                <span>View payments</span>
+                <i data-lucide="arrow-right" class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"></i>
+            </div>
+        </button>
+
+        <a href="store.php" style="--i:<?= ($_appIdx ?? 0) + 2 ?>"
+           class="dash-fade order-1 group flex flex-col overflow-hidden rounded-2xl border border-violet-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]">
+            <div class="h-1.5 w-full bg-violet-600"></div>
+            <div class="flex flex-1 flex-col p-5">
+                <div class="flex items-center gap-3">
+                    <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-700">
+                        <i data-lucide="store" class="h-6 w-6"></i>
+                    </span>
+                    <div>
+                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-violet-600/80">Marketplace</div>
+                        <div class="text-lg font-black tracking-tight text-slate-900">Store</div>
+                    </div>
+                </div>
+                <p class="mt-3 text-xs font-semibold leading-relaxed text-slate-500">
+                    Browse employee offers and Centryk Market listings from participating companies.
+                </p>
+                <div class="mt-3 flex items-center gap-1.5">
+                    <span class="inline-block h-1.5 w-1.5 rounded-full bg-violet-500"></span>
+                    <span class="text-[11px] font-bold text-violet-700">Built-in Centryk tool</span>
+                </div>
+            </div>
+            <div class="flex items-center justify-between border-t border-violet-100 px-5 py-3 text-xs font-bold text-violet-700 transition-colors group-hover:text-violet-900">
+                <span>Open Store</span>
+                <i data-lucide="arrow-right" class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"></i>
+            </div>
+        </a>
+
+        <div style="--i:<?= ($_appIdx ?? 0) + 3 ?>" class="dash-fade order-2 sm:col-span-2 lg:col-span-3 mt-4 border-t border-slate-200 pt-6">
             <div class="flex flex-wrap items-end justify-between gap-3">
                 <div>
                     <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Access</p>
@@ -431,7 +491,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         </div>
 
         <!-- Case Management — coming soon (static, not in DB) -->
-        <div style="--i:<?= ($_appIdx ?? 0) + 2 ?>" class="dash-fade order-3 flex flex-col overflow-hidden rounded-2xl border border-blue-200/70 bg-blue-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
+        <div style="--i:<?= ($_appIdx ?? 0) + 4 ?>" class="dash-fade order-3 flex flex-col overflow-hidden rounded-2xl border border-blue-200/70 bg-blue-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
             <div class="h-1.5 w-full bg-blue-500/50"></div>
             <div class="flex flex-1 flex-col p-5">
                 <div class="flex items-center gap-3">
@@ -696,6 +756,14 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
             var companiesUrl = 'profile.php' + (selectedUuid ? ('?company_uuid=' + encodeURIComponent(selectedUuid)) : '') + '#companies';
             var coMemberLink = document.getElementById('coMemberLink');
             if (coMemberLink) { coMemberLink.href = companiesUrl; }
+
+            var onelinkUrl = 'onelink-payments.php' + (selectedUuid ? ('?company_uuid=' + encodeURIComponent(selectedUuid)) : '');
+            var coOnelinkBtn = document.getElementById('coOnelinkPaymentsBtn');
+            if (coOnelinkBtn) { coOnelinkBtn.href = onelinkUrl; }
+
+            var advertiseUrl = 'advertise.php' + (selectedUuid ? ('?company_uuid=' + encodeURIComponent(selectedUuid)) : '');
+            var coAdvertiseBtn = document.getElementById('coAdvertiseBtn');
+            if (coAdvertiseBtn) { coAdvertiseBtn.href = advertiseUrl; }
 
             // ── Setup progress ────────────────────────────────────────────
             var enrolledCount = document.querySelectorAll('.app-card[data-enrolled="1"]').length;
@@ -1005,6 +1073,19 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
             launchApp(card.dataset.app);
         });
     });
+
+    var onelinkPaymentsCard = document.getElementById('onelinkPaymentsCard');
+    if (onelinkPaymentsCard) {
+        onelinkPaymentsCard.addEventListener('click', function () {
+            if (!selectedId && companies.length > 1) {
+                pickerBtn.focus();
+                dropdown.classList.remove('hidden');
+                return;
+            }
+            var url = 'onelink-payments.php' + (selectedUuid ? ('?company_uuid=' + encodeURIComponent(selectedUuid)) : '');
+            window.location.href = url;
+        });
+    }
 
     // Waffle app tiles launch the same way as the app cards
     document.querySelectorAll('.aw-app').forEach(function (tile) {

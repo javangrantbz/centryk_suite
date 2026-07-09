@@ -44,6 +44,12 @@ $awTileIcon = function (string $key, string $color = '', string $label = '') {
              . '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/>'
              . '</svg></span>';
     }
+    if ($key === 'store') {
+        return '<span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-600 text-white shadow-sm">'
+             . '<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+             . '<path d="M3 9l1.5-5h15L21 9"/><path d="M5 9v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9"/><path d="M9 21v-7h6v7"/><path d="M3 9h18"/>'
+             . '</svg></span>';
+    }
     // Generic fallback — colored square with the first letter
     $bg     = htmlspecialchars($color ?: '#475569');
     $letter = htmlspecialchars(strtoupper(substr($label ?: $key, 0, 1)));
@@ -69,6 +75,19 @@ $awTileIcon = function (string $key, string $color = '', string $label = '') {
                 <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-sm" style="color:#fff"><?= $awCentrykIcon ?></span>
                 <span class="text-xs <?= $awOnAccount ? 'font-semibold' : 'font-medium' ?> text-slate-700">Account</span>
             </a>
+
+            <?php $awOnStore = ($awCurrent === 'store'); ?>
+            <?php if ($awOnStore): ?>
+            <div class="flex flex-col items-center gap-2 rounded-xl p-3 text-center bg-slate-100 ring-1 ring-slate-200 cursor-default">
+                <?= $awTileIcon('store', '#7c3aed', 'Store') ?>
+                <span class="text-xs font-semibold text-slate-700">Store</span>
+            </div>
+            <?php else: ?>
+            <a href="store.php" class="flex flex-col items-center gap-2 rounded-xl p-3 text-center transition hover:bg-slate-50">
+                <?= $awTileIcon('store', '#7c3aed', 'Store') ?>
+                <span class="text-xs font-medium text-slate-700">Store</span>
+            </a>
+            <?php endif; ?>
 
             <?php if ($awMode === 'launch' && !empty($apps)): ?>
                 <?php foreach ($apps as $app):

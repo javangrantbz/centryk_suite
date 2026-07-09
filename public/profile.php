@@ -289,7 +289,7 @@ function profile_app_stat_card(array $app, int $companyCount, int $userCount, st
                     <i data-lucide="layout-grid" class="h-4 w-4 shrink-0"></i> Connected Apps
                 </button>
                 <?php if (!empty($onelinkCompanies)): ?>
-                <button type="button" data-target="banking" class="acct-nav-btn w-full flex items-center gap-2.5 rounded-lg px-3 py-2 pl-8 text-xs font-bold text-white/60 transition hover:bg-white/8 text-left">
+                <button type="button" data-target="banking" class="acct-nav-btn w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-bold text-white/60 transition hover:bg-white/8 text-left">
                     <i data-lucide="landmark" class="h-4 w-4 shrink-0"></i> Banking
                 </button>
                 <?php endif; ?>
