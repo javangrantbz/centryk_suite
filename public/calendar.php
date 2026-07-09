@@ -253,7 +253,7 @@ function calLink(int $companyId, string $ym): string {
 </header>
 
 <!-- Main -->
-<main class="mx-auto max-w-7xl px-6 py-10">
+<main class="mx-auto max-w-7xl px-6 pb-10 pt-5">
 
     <!-- Title bar -->
     <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
