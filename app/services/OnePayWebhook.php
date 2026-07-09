@@ -73,6 +73,56 @@ class OnePayWebhook
     }
 
     /**
+     * Fire-and-forget push of a company's OneLink gateway credentials to OnePay
+     * so its POS can charge cards. Same rules as companyProfileSynced: never
+     * throws, and a no-op until ONEPAY_SYNC_URL + ONEPAY_WEBHOOK_SECRET are set.
+     *
+     * @param PDO $pdo
+     * @param int $companyId  Centryk companies.id
+     */
+    public static function onelinkCredentialsSynced(PDO $pdo, int $companyId): void
+    {
+        try {
+            $url    = trim((string)($_ENV['ONEPAY_SYNC_URL'] ?? ''));
+            $secret = (string)($_ENV['ONEPAY_WEBHOOK_SECRET'] ?? '');
+            if ($url === '' || $secret === '') {
+                return; // not configured — silently skip
+            }
+
+            $stmt = $pdo->prepare('
+                SELECT c.uuid, o.base_url, o.terminal_id, o.salt, o.token, o.enabled
+                FROM companies c
+                JOIN onelink_credentials o ON o.company_id = c.id
+                WHERE c.id = :id AND c.status = "active"
+                LIMIT 1
+            ');
+            $stmt->execute(['id' => $companyId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$row) {
+                return; // no credentials saved yet — nothing to push
+            }
+
+            $payload = [
+                'event'        => 'company.onelink.updated',
+                'company_uuid' => $row['uuid'],
+                'base_url'     => (string)$row['base_url'],
+                'terminal_id'  => (string)$row['terminal_id'],
+                'salt'         => (string)$row['salt'],
+                'token'        => (string)$row['token'],
+                'enabled'      => ((int)$row['enabled'] === 1),
+                'sent_at'      => gmdate('c'),
+            ];
+
+            $rawBody   = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            $signature = 'sha256=' . hash_hmac('sha256', $rawBody, $secret);
+
+            self::post($url, $rawBody, $signature);
+        } catch (Throwable $e) {
+            error_log('OnePayWebhook::onelinkCredentialsSynced failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Short-timeout POST. Errors are intentionally non-fatal.
      */
     private static function post(string $url, string $rawBody, string $signature): void

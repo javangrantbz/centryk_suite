@@ -12,7 +12,7 @@ if (!$user) {
 
 $pdo  = DB::pdo();
 $stmt = $pdo->prepare("
-    SELECT c.name, c.status, cm.role
+    SELECT c.id, c.name, c.status, cm.role
     FROM companies c
     JOIN company_members cm ON cm.company_id = c.id
     WHERE cm.user_id = :uid
@@ -20,6 +20,12 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute(['uid' => $user['id']]);
 $myCompanies = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$onelinkCompanies = array_values(array_filter($myCompanies, static function (array $company): bool {
+    return ($company['status'] ?? '') === 'active' && ($company['role'] ?? '') === 'admin';
+}));
+// OneLink gateway credentials are managed by Centryk platform admins only;
+// regular company admins manage their settlement account and can request setup.
+$isPlatformAdmin = !empty($user['is_admin']);
 
 // ── Connected Apps (linked app access) ─────────────────────────────────────────
 // Locally every app DB shares one MySQL, so read them directly. On production
@@ -52,6 +58,49 @@ function sw_fetch_app_access(PDO $pdo, string $appKey, string $email, string $se
 
 $onePayStores = [];
 $myPayAccess  = [];
+$connectedApps = [];
+
+try {
+    $connectedApps = AuthService::allAppsWithEnrollment((int)$user['id']);
+    $connectedApps = array_values(array_filter($connectedApps, static function (array $app): bool {
+        return !empty($app['enrolled']);
+    }));
+} catch (Throwable $e) {
+    $connectedApps = [];
+}
+$connectedAppKeys = array_fill_keys(array_map(static function (array $app): string {
+    return (string)$app['key'];
+}, $connectedApps), true);
+$hasOnePayAccess = isset($connectedAppKeys['onepay']);
+$hasMyPayAccess = isset($connectedAppKeys['mypay']);
+$appUserCounts = [];
+$activeCompanyIds = array_map(static function (array $company): int {
+    return (int)$company['id'];
+}, array_filter($myCompanies, static function (array $company): bool {
+    return ($company['status'] ?? '') === 'active';
+}));
+
+if ($activeCompanyIds) {
+    try {
+        $placeholders = implode(',', array_fill(0, count($activeCompanyIds), '?'));
+        $statsStmt = $pdo->prepare("
+            SELECT a.`key` AS app_key, COUNT(DISTINCT cm.user_id) AS user_count
+            FROM company_members cm
+            JOIN user_app_access uaa ON uaa.user_id = cm.user_id
+            JOIN apps a ON a.id = uaa.app_id
+            WHERE cm.company_id IN ($placeholders)
+              AND cm.status = 'active'
+              AND a.status = 'active'
+            GROUP BY a.`key`
+        ");
+        $statsStmt->execute($activeCompanyIds);
+        foreach ($statsStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $appUserCounts[(string)$row['app_key']] = (int)$row['user_count'];
+        }
+    } catch (Throwable $e) {
+        $appUserCounts = [];
+    }
+}
 
 $_swHost    = $_SERVER['HTTP_HOST'] ?? '';
 $_swIsLocal = preg_match('/^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i', $_swHost) === 1;
@@ -115,6 +164,49 @@ $companyDeepUuid = trim($_GET['company_uuid'] ?? '');
 ob_start();
 include __DIR__ . '/partials/admin_tools_dropdown.php';
 $headerActionsHtml = ob_get_clean();
+
+$activeCompanyCount = count($activeCompanyIds);
+$managedCompanyCount = count($onelinkCompanies);
+
+function profile_app_stat_card(array $app, int $companyCount, int $userCount, string $note, string $tone = 'slate'): string
+{
+    $colors = [
+        'indigo' => ['border-indigo-500/20', 'bg-indigo-500/5', 'bg-indigo-600', 'text-indigo-400/70'],
+        'orange' => ['border-orange-500/20', 'bg-orange-500/5', 'bg-orange-500', 'text-orange-400/70'],
+        'cyan' => ['border-cyan-500/20', 'bg-cyan-500/5', 'bg-cyan-600', 'text-cyan-400/70'],
+        'slate' => ['border-white/10', 'bg-white/4', 'bg-slate-600', 'text-white/35'],
+    ];
+    $c = $colors[$tone] ?? $colors['slate'];
+    $label = htmlspecialchars((string)($app['label'] ?? 'App'));
+    $desc = htmlspecialchars((string)($app['description'] ?? 'Connected Centryk app'));
+    $letter = htmlspecialchars(strtoupper(substr((string)($app['label'] ?? 'A'), 0, 1)));
+    $note = htmlspecialchars($note);
+
+    return '
+    <div class="rounded-lg border ' . $c[0] . ' ' . $c[1] . ' p-3">
+        <div class="flex items-center gap-2.5 mb-3">
+            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ' . $c[2] . ' text-sm font-black text-white shadow-sm">' . $letter . '</div>
+            <div class="min-w-0">
+                <p class="truncate text-xs font-black text-white">' . $label . '</p>
+                <p class="truncate text-[10px] ' . $c[3] . '">' . $desc . '</p>
+            </div>
+            <span class="ml-auto inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-emerald-400">
+                <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>Active
+            </span>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+            <div class="rounded-md bg-white/4 px-2.5 py-2">
+                <p class="text-sm font-black text-white">' . $companyCount . '</p>
+                <p class="text-[9px] font-bold uppercase tracking-wider text-white/30">Companies</p>
+            </div>
+            <div class="rounded-md bg-white/4 px-2.5 py-2">
+                <p class="text-sm font-black text-white">' . $userCount . '</p>
+                <p class="text-[9px] font-bold uppercase tracking-wider text-white/30">Users</p>
+            </div>
+        </div>
+        <p class="mt-2 text-[11px] text-white/35">' . $note . '</p>
+    </div>';
+}
 ?>
 <!doctype html>
 <html lang="en">
@@ -196,6 +288,11 @@ $headerActionsHtml = ob_get_clean();
                 <button type="button" data-target="apps" class="acct-nav-btn w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-bold text-white/60 transition hover:bg-white/8 text-left">
                     <i data-lucide="layout-grid" class="h-4 w-4 shrink-0"></i> Connected Apps
                 </button>
+                <?php if (!empty($onelinkCompanies)): ?>
+                <button type="button" data-target="banking" class="acct-nav-btn w-full flex items-center gap-2.5 rounded-lg px-3 py-2 pl-8 text-xs font-bold text-white/60 transition hover:bg-white/8 text-left">
+                    <i data-lucide="landmark" class="h-4 w-4 shrink-0"></i> Banking
+                </button>
+                <?php endif; ?>
             </nav>
         </aside>
 
@@ -407,88 +504,170 @@ $headerActionsHtml = ob_get_clean();
         </div>
 
         <div class="grid gap-3 sm:grid-cols-2">
+            <?php foreach ($connectedApps as $app): ?>
+                <?php
+                $key = (string)$app['key'];
+                if ($key === 'onepay') {
+                    $note = !empty($onePayStores)
+                        ? count($onePayStores) . ' store ' . (count($onePayStores) === 1 ? 'assignment' : 'assignments') . ' found.'
+                        : 'Access granted. Store assignment is still pending.';
+                    echo profile_app_stat_card($app, $activeCompanyCount, $appUserCounts[$key] ?? 0, $note, 'indigo');
+                    continue;
+                }
+                if ($key === 'mypay') {
+                    $note = !empty($myPayAccess)
+                        ? count($myPayAccess) . ' payroll ' . (count($myPayAccess) === 1 ? 'company' : 'companies') . ' found.'
+                        : 'Access granted. Payroll company assignment is still pending.';
+                    echo profile_app_stat_card($app, $activeCompanyCount, $appUserCounts[$key] ?? 0, $note, 'orange');
+                    continue;
+                }
+                echo profile_app_stat_card($app, $activeCompanyCount, $appUserCounts[$key] ?? 0, 'Access granted through your Centryk login.', 'slate');
+                ?>
+            <?php endforeach; ?>
 
-            <!-- OnePay -->
-            <div class="rounded-lg border border-indigo-500/20 bg-indigo-500/5 p-3">
-                <div class="flex items-center gap-2.5 mb-2.5">
-                    <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-600 shadow-sm shadow-indigo-900/40">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" class="h-4 w-4">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
-                        </svg>
-                    </div>
-                    <div>
-                        <p class="text-xs font-black text-white">OnePay</p>
-                        <p class="text-[10px] text-indigo-400/70">Point of Sale &amp; Payments</p>
-                    </div>
-                    <?php if (!empty($onePayStores)): ?>
-                    <span class="ml-auto inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-emerald-400">
-                        <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>Active
-                    </span>
-                    <?php else: ?>
-                    <span class="ml-auto inline-flex items-center gap-1 rounded-full bg-white/8 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-white/30">
-                        No Access
-                    </span>
-                    <?php endif; ?>
-                </div>
-
-                <?php if (!empty($onePayStores)): ?>
-                <div class="space-y-1">
-                    <?php foreach ($onePayStores as $st): ?>
-                    <div class="flex items-center justify-between rounded-md bg-white/4 px-2.5 py-1.5">
-                        <span class="text-[11px] font-semibold text-white/80 truncate"><?= htmlspecialchars($st['name']) ?></span>
-                        <span class="shrink-0 ml-2 text-[9px] font-black uppercase tracking-wider <?= strtolower($st['status']) === 'active' ? 'text-emerald-500' : 'text-white/25' ?>">
-                            <?= htmlspecialchars($st['status']) ?>
-                        </span>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
-                <?php else: ?>
-                <p class="text-[11px] text-white/25 italic">No stores assigned.</p>
-                <?php endif; ?>
-            </div>
-
-            <!-- MyPay -->
-            <div class="rounded-lg border border-orange-500/20 bg-orange-500/5 p-3">
-                <div class="flex items-center gap-2.5 mb-2.5">
-                    <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-orange-500 shadow-sm shadow-orange-900/40">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" class="h-4 w-4">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
-                        </svg>
-                    </div>
-                    <div>
-                        <p class="text-xs font-black text-white">MyPay</p>
-                        <p class="text-[10px] text-orange-400/70">Payroll &amp; HR</p>
-                    </div>
-                    <?php if (!empty($myPayAccess)): ?>
-                    <span class="ml-auto inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-emerald-400">
-                        <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>Active
-                    </span>
-                    <?php else: ?>
-                    <span class="ml-auto inline-flex items-center gap-1 rounded-full bg-white/8 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-white/30">
-                        No Access
-                    </span>
-                    <?php endif; ?>
-                </div>
-
-                <?php if (!empty($myPayAccess)): ?>
-                <div class="space-y-1">
-                    <?php foreach ($myPayAccess as $mp): ?>
-                    <div class="flex items-center justify-between rounded-md bg-white/4 px-2.5 py-1.5">
-                        <span class="text-[11px] font-semibold text-white/80 truncate"><?= htmlspecialchars($mp['name']) ?></span>
-                        <?php if ($mp['role_name']): ?>
-                        <span class="shrink-0 ml-2 rounded-full bg-orange-500/15 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-orange-400">
-                            <?= htmlspecialchars($mp['role_name']) ?>
-                        </span>
-                        <?php endif; ?>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
-                <?php else: ?>
-                <p class="text-[11px] text-white/25 italic">No companies assigned.</p>
-                <?php endif; ?>
-            </div>
+            <?php if (!empty($onelinkCompanies)): ?>
+                <?php
+                echo profile_app_stat_card(
+                    ['label' => 'OneLink Payments', 'description' => 'Company payment collections'],
+                    $managedCompanyCount,
+                    $managedCompanyCount,
+                    'Available for ' . $managedCompanyCount . ' ' . ($managedCompanyCount === 1 ? 'company' : 'companies') . ' you manage.',
+                    'cyan'
+                );
+                ?>
+            <?php endif; ?>
 
         </div>
+        </section>
+
+        <!-- Banking (settlement account + OneLink card acceptance, per company) -->
+        <section data-panel="banking" class="acct-panel hidden rounded-xl border border-white/10 bg-[#111827] p-4 max-w-2xl"
+                 data-platform-admin="<?= $isPlatformAdmin ? '1' : '0' ?>">
+            <div class="flex items-center gap-2 mb-4">
+                <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-cyan-500/15">
+                    <i data-lucide="landmark" class="h-3.5 w-3.5 text-cyan-300"></i>
+                </div>
+                <div>
+                    <h2 class="text-xs font-black text-white">Banking</h2>
+                    <p class="text-[10px] text-white/35">Where your money settles, and card payment acceptance.</p>
+                </div>
+            </div>
+
+            <div id="bankingAlert" class="hidden mb-3 rounded-lg px-3 py-2 text-xs font-semibold"></div>
+
+            <label class="block text-[10px] font-bold text-white/35 mb-1 uppercase tracking-wider">Company</label>
+            <select id="bankingCompany" class="w-full mb-5 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-white focus:border-cyan-400 focus:outline-none">
+                <?php foreach ($onelinkCompanies as $company): ?>
+                <option value="<?= (int)$company['id'] ?>"><?= htmlspecialchars($company['name']) ?></option>
+                <?php endforeach; ?>
+            </select>
+
+            <!-- Part A: Settlement bank account (self-service for any company admin) -->
+            <div class="mb-6">
+                <h3 class="text-[11px] font-black text-white mb-0.5">Your Banking Information</h3>
+                <p class="text-[10px] text-white/35 mb-3">The bank account where your settled money is deposited.</p>
+
+                <form id="bankAccountForm" class="space-y-3" novalidate>
+                    <input type="hidden" id="baCompanyId" name="company_id" value="">
+                    <div>
+                        <label class="block text-[10px] font-bold text-white/35 mb-1 uppercase tracking-wider">Bank / Credit Union</label>
+                        <select id="baBankName" name="bank_name" class="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-cyan-400 focus:outline-none">
+                            <option value="">Select a bank…</option>
+                            <optgroup label="Banks">
+                                <option>Belize Bank</option>
+                                <option>Atlantic Bank</option>
+                                <option>Heritage Bank</option>
+                                <option>National Bank of Belize</option>
+                            </optgroup>
+                            <optgroup label="Credit Unions">
+                                <option>Holy Redeemer Credit Union</option>
+                                <option>St. John's Credit Union</option>
+                                <option>La Inmaculada Credit Union</option>
+                                <option>Toledo Teachers' Credit Union</option>
+                                <option>Citrus Growers &amp; Workers Credit Union</option>
+                                <option>Blue Creek Credit Union</option>
+                                <option>Belize Credit Union League</option>
+                            </optgroup>
+                            <option value="__other__">Other…</option>
+                        </select>
+                        <input id="baBankOther" name="bank_name_other" type="text" placeholder="Enter bank / credit union name"
+                            class="hidden mt-2 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/25 focus:border-cyan-400 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-white/35 mb-1 uppercase tracking-wider">Account Holder Name</label>
+                        <input id="baHolder" name="account_holder" type="text"
+                            class="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/25 focus:border-cyan-400 focus:outline-none">
+                    </div>
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        <div>
+                            <label class="block text-[10px] font-bold text-white/35 mb-1 uppercase tracking-wider">Account Number</label>
+                            <input id="baNumber" name="account_number" type="text" autocomplete="off"
+                                class="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/25 focus:border-cyan-400 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-white/35 mb-1 uppercase tracking-wider">Branch <span class="text-white/20 normal-case">(optional)</span></label>
+                            <input id="baBranch" name="branch" type="text"
+                                class="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/25 focus:border-cyan-400 focus:outline-none">
+                        </div>
+                    </div>
+                    <div class="pt-1">
+                        <button id="baSubmitBtn" type="submit" class="inline-flex items-center gap-2 rounded-lg bg-cyan-500 px-4 py-2 text-xs font-black text-white transition hover:bg-cyan-400">
+                            <i data-lucide="save" class="h-3.5 w-3.5"></i> Save Banking Information
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Part B: Card payment acceptance (OneLink) -->
+            <div class="border-t border-white/10 pt-5">
+                <h3 class="text-[11px] font-black text-white mb-0.5">Card Payments</h3>
+                <p class="text-[10px] text-white/35 mb-3">Accept card payments through OneLink.</p>
+
+                <?php if ($isPlatformAdmin): ?>
+                <!-- Platform admin: manage the OneLink gateway credentials. -->
+                <form id="bankingForm" class="space-y-3" novalidate>
+                    <input type="hidden" id="bankingCompanyId" name="company_id" value="">
+                    <div>
+                        <label class="block text-[10px] font-bold text-white/35 mb-1 uppercase tracking-wider">API Base URL</label>
+                        <input id="blBaseUrl" name="base_url" type="text" placeholder="https://op.onelink.bz"
+                            class="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/25 focus:border-cyan-400 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-white/35 mb-1 uppercase tracking-wider">Terminal ID</label>
+                        <input id="blTerminalId" name="terminal_id" type="text" autocomplete="off"
+                            class="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/25 focus:border-cyan-400 focus:outline-none">
+                    </div>
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        <div>
+                            <label class="block text-[10px] font-bold text-white/35 mb-1 uppercase tracking-wider">Salt</label>
+                            <input id="blSalt" name="salt" type="password" autocomplete="new-password" placeholder="••••••••"
+                                class="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/25 focus:border-cyan-400 focus:outline-none">
+                            <p id="blSaltHint" class="mt-1 text-[10px] text-white/30"></p>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-white/35 mb-1 uppercase tracking-wider">Token</label>
+                            <input id="blToken" name="token" type="password" autocomplete="new-password" placeholder="••••••••"
+                                class="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/25 focus:border-cyan-400 focus:outline-none">
+                            <p id="blTokenHint" class="mt-1 text-[10px] text-white/30"></p>
+                        </div>
+                    </div>
+                    <label class="flex items-center gap-2 pt-1 cursor-pointer">
+                        <input id="blEnabled" name="enabled" type="checkbox" class="rounded border-white/20 bg-white/5 text-cyan-500 focus:ring-cyan-400">
+                        <span class="text-xs font-bold text-white/70">Enable OneLink payments for this company</span>
+                    </label>
+                    <div class="pt-1">
+                        <button id="bankingSubmitBtn" type="submit" class="inline-flex items-center gap-2 rounded-lg bg-cyan-500 px-4 py-2 text-xs font-black text-white transition hover:bg-cyan-400">
+                            <i data-lucide="save" class="h-3.5 w-3.5"></i> Save Gateway Settings
+                        </button>
+                    </div>
+                </form>
+                <?php else: ?>
+                <!-- Company admin: read-only status + request setup. -->
+                <div id="cardStatus" class="rounded-lg border border-white/10 bg-white/5 px-4 py-4 text-sm text-white/60">
+                    Checking…
+                </div>
+                <?php endif; ?>
+            </div>
         </section>
 
         </div><!-- /panels -->
@@ -730,6 +909,186 @@ document.getElementById('updateNameForm').addEventListener('submit', async funct
             .catch(() => { cb.checked = !enabled; flash('Network error', false); })
             .finally(() => { cb.disabled = false; });
         });
+    });
+})();
+
+// ── Banking (settlement account + OneLink card acceptance) ─────────────────
+(function () {
+    const sel = document.getElementById('bankingCompany');
+    if (!sel) return; // panel only rendered when the user manages companies
+
+    const panel   = document.querySelector('[data-panel="banking"]');
+    const isAdmin = panel && panel.dataset.platformAdmin === '1';
+    const alertEl = document.getElementById('bankingAlert');
+
+    function bkAlert(msg, ok) {
+        alertEl.textContent = msg;
+        alertEl.className = 'mb-3 rounded-lg px-3 py-2 text-xs font-semibold ' +
+            (ok ? 'bg-emerald-500/15 text-emerald-300' : 'bg-rose-500/15 text-rose-300');
+    }
+
+    // Settlement account (every company admin)
+    const acct = {
+        companyId: document.getElementById('baCompanyId'),
+        bank:      document.getElementById('baBankName'),
+        bankOther: document.getElementById('baBankOther'),
+        holder:    document.getElementById('baHolder'),
+        number:    document.getElementById('baNumber'),
+        branch:    document.getElementById('baBranch'),
+        form:      document.getElementById('bankAccountForm'),
+    };
+    acct.bank.addEventListener('change', function () {
+        const other = this.value === '__other__';
+        acct.bankOther.classList.toggle('hidden', !other);
+        if (other) acct.bankOther.focus();
+    });
+    function setBank(value) {
+        if (!value) { acct.bank.value = ''; acct.bankOther.classList.add('hidden'); acct.bankOther.value = ''; return; }
+        const opt = Array.from(acct.bank.options).find(o => (o.value || o.text) === value && o.value !== '__other__');
+        if (opt) {
+            acct.bank.value = opt.value || opt.text;
+            acct.bankOther.classList.add('hidden'); acct.bankOther.value = '';
+        } else {
+            acct.bank.value = '__other__';
+            acct.bankOther.classList.remove('hidden'); acct.bankOther.value = value;
+        }
+    }
+
+    // Gateway (platform admin only)
+    const gw = isAdmin ? {
+        companyId: document.getElementById('bankingCompanyId'),
+        baseUrl:   document.getElementById('blBaseUrl'),
+        terminal:  document.getElementById('blTerminalId'),
+        salt:      document.getElementById('blSalt'),
+        token:     document.getElementById('blToken'),
+        saltHint:  document.getElementById('blSaltHint'),
+        tokenHint: document.getElementById('blTokenHint'),
+        enabled:   document.getElementById('blEnabled'),
+        form:      document.getElementById('bankingForm'),
+    } : null;
+
+    const cardStatus = document.getElementById('cardStatus'); // non-admin view
+
+    function renderCardStatus(g) {
+        if (!cardStatus) return;
+        if (g && g.enabled) {
+            cardStatus.className = 'rounded-lg border border-emerald-400/20 bg-emerald-500/10 px-4 py-4 text-sm font-semibold text-emerald-300';
+            cardStatus.innerHTML = '<i data-lucide="check-circle" class="inline h-4 w-4 -mt-0.5"></i> Card payments are active for this company.';
+        } else {
+            cardStatus.className = 'rounded-lg border border-white/10 bg-white/5 px-4 py-4 text-sm text-white/60';
+            cardStatus.innerHTML =
+                '<p class="mb-3">No banking setup exists to accept card payments.</p>' +
+                '<button type="button" id="cardRequestBtn" class="inline-flex items-center gap-2 rounded-lg bg-cyan-500 px-4 py-2 text-xs font-black text-white transition hover:bg-cyan-400">' +
+                '<i data-lucide="send" class="h-3.5 w-3.5"></i> Request this feature</button>';
+        }
+        if (window.lucide) lucide.createIcons();
+    }
+
+    async function loadBanking() {
+        const cid = sel.value;
+        acct.companyId.value = cid;
+        if (gw) gw.companyId.value = cid;
+        alertEl.className = 'hidden';
+        try {
+            const res  = await fetch('api/banking/get.php?company_id=' + encodeURIComponent(cid));
+            const data = await res.json();
+            if (!data.success) { bkAlert(data.message || 'Could not load banking.', false); return; }
+            const a = data.account || {};
+            setBank(a.bank_name || '');
+            acct.holder.value = a.account_holder || '';
+            acct.number.value = a.account_number || '';
+            acct.branch.value = a.branch || '';
+            const g = data.gateway || {};
+            if (gw) {
+                gw.baseUrl.value  = g.base_url || 'https://op.onelink.bz';
+                gw.terminal.value = g.terminal_id || '';
+                gw.salt.value = ''; gw.token.value = '';
+                gw.enabled.checked = !!g.enabled;
+                gw.saltHint.textContent  = g.salt_set  ? 'Saved — leave blank to keep it.' : 'Not set yet.';
+                gw.tokenHint.textContent = g.token_set ? 'Saved — leave blank to keep it.' : 'Not set yet.';
+            } else {
+                renderCardStatus(g);
+            }
+        } catch (_) {
+            bkAlert('Network error while loading banking.', false);
+        }
+    }
+
+    let loaded = false;
+    document.querySelector('.acct-nav-btn[data-target="banking"]')
+        ?.addEventListener('click', () => { if (!loaded) { loaded = true; loadBanking(); } });
+    sel.addEventListener('change', () => { loaded = true; loadBanking(); });
+
+    // Save settlement account
+    acct.form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const btn = document.getElementById('baSubmitBtn');
+        const bankName = acct.bank.value === '__other__' ? acct.bankOther.value.trim() : acct.bank.value;
+        if (!bankName || !acct.holder.value.trim() || !acct.number.value.trim()) {
+            return bkAlert('Bank, account holder and account number are required.', false);
+        }
+        btn.disabled = true;
+        try {
+            const res = await fetch('api/banking/save-account.php', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    company_id:     acct.companyId.value,
+                    bank_name:      bankName,
+                    account_holder: acct.holder.value.trim(),
+                    account_number: acct.number.value.trim(),
+                    branch:         acct.branch.value.trim()
+                })
+            });
+            const data = await res.json();
+            bkAlert(data.success ? 'Banking information saved.' : (data.message || 'Could not save.'), !!data.success);
+        } catch (_) { bkAlert('Network error. Please try again.', false); }
+        finally { btn.disabled = false; }
+    });
+
+    // Save gateway (admin)
+    if (gw) gw.form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const btn = document.getElementById('bankingSubmitBtn');
+        btn.disabled = true;
+        try {
+            const res = await fetch('api/banking/save.php', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    company_id:  gw.companyId.value,
+                    base_url:    gw.baseUrl.value.trim(),
+                    terminal_id: gw.terminal.value.trim(),
+                    salt:        gw.salt.value,
+                    token:       gw.token.value,
+                    enabled:     gw.enabled.checked ? 1 : 0
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                bkAlert('Gateway settings saved.', true);
+                gw.salt.value = ''; gw.token.value = '';
+                gw.saltHint.textContent  = data.salt_set  ? 'Saved — leave blank to keep it.' : 'Not set yet.';
+                gw.tokenHint.textContent = data.token_set ? 'Saved — leave blank to keep it.' : 'Not set yet.';
+            } else { bkAlert(data.message || 'Could not save.', false); }
+        } catch (_) { bkAlert('Network error. Please try again.', false); }
+        finally { btn.disabled = false; }
+    });
+
+    // Request card acceptance (non-admin)
+    if (cardStatus) cardStatus.addEventListener('click', async function (e) {
+        const btn = e.target.closest('#cardRequestBtn');
+        if (!btn) return;
+        btn.disabled = true;
+        try {
+            const res = await fetch('api/banking/request.php', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ company_id: acct.companyId.value })
+            });
+            const data = await res.json();
+            if (data.success) {
+                cardStatus.className = 'rounded-lg border border-cyan-400/20 bg-cyan-500/10 px-4 py-4 text-sm font-semibold text-cyan-200';
+                cardStatus.textContent = data.message || 'Request sent.';
+            } else { bkAlert(data.message || 'Could not send request.', false); btn.disabled = false; }
+        } catch (_) { bkAlert('Network error. Please try again.', false); btn.disabled = false; }
     });
 })();
 </script>
