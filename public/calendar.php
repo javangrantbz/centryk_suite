@@ -51,6 +51,22 @@ if (!empty($companies)) {
 }
 $isAdmin = ($activeRole === 'admin');
 
+// Active members for attendee selection.
+$companyMembers = [];
+if ($activeCompanyId) {
+    $memStmt = $pdo->prepare("
+        SELECT u.id, u.first_name, u.last_name, u.email, cm.role
+        FROM company_members cm
+        JOIN users u ON u.id = cm.user_id
+        WHERE cm.company_id = :cid
+          AND cm.status = 'active'
+          AND u.status = 'active'
+        ORDER BY FIELD(cm.role, 'admin', 'manager', 'employee'), u.first_name ASC, u.last_name ASC
+    ");
+    $memStmt->execute(['cid' => $activeCompanyId]);
+    $companyMembers = $memStmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
 // ── Month ───────────────────────────────────────────────────────────────────
 $ym = $_GET['ym'] ?? '';
 if (!preg_match('/^\d{4}-\d{2}$/', $ym)) {
@@ -73,13 +89,33 @@ $lastDate      = date('Y-m-t', $firstOfMonth);
 $eventsByDay = [];
 if ($activeCompanyId) {
     $eStmt = $pdo->prepare("
-        SELECT id, company_id, title, description, event_date, event_type, color, created_by
-        FROM events
-        WHERE company_id = :cid AND event_date BETWEEN :start AND :end
-        ORDER BY event_date ASC, id ASC
+        SELECT e.id, e.company_id, e.title, e.description, e.event_date, e.event_type, e.color, e.created_by,
+               COALESCE(GROUP_CONCAT(ea.user_id ORDER BY u.first_name ASC, u.last_name ASC SEPARATOR ','), '') AS attendee_ids,
+               COALESCE(GROUP_CONCAT(TRIM(CONCAT(u.first_name, ' ', u.last_name)) ORDER BY u.first_name ASC, u.last_name ASC SEPARATOR ', '), '') AS attendee_names
+        FROM events e
+        LEFT JOIN event_attendees ea ON ea.event_id = e.id
+        LEFT JOIN users u ON u.id = ea.user_id
+        WHERE e.company_id = :cid
+          AND e.event_date BETWEEN :start AND :end
+          AND (
+              :is_admin = 1
+              OR e.created_by = :uid_creator
+              OR NOT EXISTS (SELECT 1 FROM event_attendees ea0 WHERE ea0.event_id = e.id)
+              OR EXISTS (SELECT 1 FROM event_attendees ea1 WHERE ea1.event_id = e.id AND ea1.user_id = :uid_attendee)
+          )
+        GROUP BY e.id
+        ORDER BY e.event_date ASC, e.id ASC
     ");
-    $eStmt->execute(['cid' => $activeCompanyId, 'start' => $firstDate, 'end' => $lastDate]);
+    $eStmt->execute([
+        'cid' => $activeCompanyId,
+        'start' => $firstDate,
+        'end' => $lastDate,
+        'is_admin' => $isAdmin ? 1 : 0,
+        'uid_creator' => (int)$user['id'],
+        'uid_attendee' => (int)$user['id'],
+    ]);
     foreach ($eStmt->fetchAll(PDO::FETCH_ASSOC) as $ev) {
+        $ev['attendee_ids'] = $ev['attendee_ids'] !== '' ? array_map('intval', explode(',', $ev['attendee_ids'])) : [];
         $day = (int)date('j', strtotime($ev['event_date']));
         $eventsByDay[$day][] = $ev;
     }
@@ -157,6 +193,22 @@ function calLink(int $companyId, string $ym): string {
         <?php endif; ?>
         <div class="flex-1"></div>
         <?php include __DIR__ . '/partials/admin_tools_dropdown.php'; ?>
+        <div class="relative shrink-0" id="notifWrap">
+            <button id="notifBtn" type="button" title="Notifications"
+                    class="relative flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition hover:bg-orange-50 hover:text-orange-600">
+                <i data-lucide="bell" class="h-5 w-5"></i>
+                <span id="notifBadge" class="hidden absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">0</span>
+            </button>
+            <div id="notifDropdown" class="absolute right-0 top-full z-50 mt-1.5 hidden w-80 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+                <div class="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+                    <span class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Notifications</span>
+                    <a href="notifications.php" class="text-[11px] font-bold text-orange-600 hover:text-orange-700">View all &rarr;</a>
+                </div>
+                <div id="notifBody" class="max-h-96 overflow-y-auto p-2">
+                    <p class="px-3 py-6 text-center text-xs text-slate-400">Loading...</p>
+                </div>
+            </div>
+        </div>
         <div class="flex items-center gap-2 shrink-0">
             <i data-lucide="calendar" class="h-4 w-4 text-teal-500"></i>
             <span class="hidden text-sm font-bold text-slate-700 sm:inline">Calendar</span>
@@ -201,7 +253,7 @@ function calLink(int $companyId, string $ym): string {
 </header>
 
 <!-- Main -->
-<main class="mx-auto max-w-6xl px-6 py-10">
+<main class="mx-auto max-w-7xl px-6 py-10">
 
     <!-- Title bar -->
     <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -235,8 +287,10 @@ function calLink(int $companyId, string $ym): string {
     </div>
     <?php else: ?>
 
+    <div id="calendarWorkspace" class="items-start gap-4 lg:flex">
+
     <!-- Calendar card -->
-    <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div id="calendarCard" class="min-w-0 flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
 
         <!-- Weekday header -->
         <div class="grid grid-cols-7 border-b border-slate-100 bg-slate-50">
@@ -293,6 +347,8 @@ function calLink(int $companyId, string $ym): string {
         </div>
     </div>
 
+    </div>
+
     <p class="mt-10 text-center text-[11px] font-bold uppercase tracking-[0.18em] text-slate-300">
         Calendar &middot; Centryk &copy; <?= date('Y') ?>
     </p>
@@ -302,8 +358,8 @@ function calLink(int $companyId, string $ym): string {
 </main>
 
 <!-- ── Event modal ─────────────────────────────────────────────────────────── -->
-<div id="eventModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-    <div class="relative w-full max-w-md rounded-3xl bg-white shadow-2xl overflow-hidden">
+<div id="eventPanel" class="mt-4 hidden w-full shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:mt-0 lg:w-[360px]">
+    <div class="relative w-full">
         <div class="h-[3px] w-full bg-gradient-to-r from-purple-600 via-blue-500 to-orange-500"></div>
         <div class="px-6 py-5">
 
@@ -372,6 +428,27 @@ function calLink(int $companyId, string $ym): string {
                     </div>
                 </div>
 
+                <div>
+                    <label class="mb-1.5 block text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Employees</label>
+                    <div id="evtAttendees" class="max-h-40 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-2">
+                        <?php foreach ($companyMembers as $member):
+                            $memberId = (int)$member['id'];
+                            $memberName = trim(($member['first_name'] ?? '') . ' ' . ($member['last_name'] ?? ''));
+                            if ($memberName === '') $memberName = $member['email'] ?? 'Employee';
+                            $initials = strtoupper(substr($member['first_name'] ?: $memberName, 0, 1) . substr($member['last_name'] ?: '', 0, 1));
+                        ?>
+                        <label class="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 transition hover:bg-white">
+                            <input type="checkbox" class="attendee-check h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500" value="<?= $memberId ?>">
+                            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-[10px] font-black text-slate-500 shadow-sm"><?= htmlspecialchars($initials) ?></span>
+                            <span class="min-w-0 flex-1">
+                                <span class="block truncate text-xs font-bold text-slate-800"><?= htmlspecialchars($memberName) ?><?= $memberId === (int)$user['id'] ? ' (you)' : '' ?></span>
+                                <span class="block truncate text-[10px] font-semibold text-slate-400"><?= htmlspecialchars($member['email'] ?? '') ?></span>
+                            </span>
+                        </label>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+
                 <div class="flex items-center justify-between gap-2 pt-2">
                     <button id="evtDeleteBtn" type="button" class="hidden rounded-xl border border-red-200 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-red-600 transition hover:bg-red-50">
                         Delete
@@ -418,6 +495,93 @@ function calLink(int $companyId, string $ym): string {
     }
 
     // ── Company switcher dropdown (rows are links that reload) ────────────────
+    var notifBtn = document.getElementById('notifBtn');
+    var notifDropdown = document.getElementById('notifDropdown');
+    var notifBadge = document.getElementById('notifBadge');
+    var notifBody = document.getElementById('notifBody');
+    function notifEsc(value) {
+        return String(value == null ? '' : value).replace(/[&<>"]/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+        });
+    }
+    function notifSetBadge(count) {
+        count = parseInt(count, 10) || 0;
+        if (count > 0) {
+            notifBadge.textContent = count > 99 ? '99+' : String(count);
+            notifBadge.classList.remove('hidden');
+        } else {
+            notifBadge.classList.add('hidden');
+        }
+    }
+    function notifTimeAgo(ts) {
+        var d = new Date(String(ts || '').replace(' ', 'T'));
+        if (isNaN(d.getTime())) return '';
+        var seconds = Math.max(1, Math.floor((Date.now() - d.getTime()) / 1000));
+        if (seconds < 60) return seconds + 's ago';
+        var minutes = Math.floor(seconds / 60);
+        if (minutes < 60) return minutes + 'm ago';
+        var hours = Math.floor(minutes / 60);
+        if (hours < 24) return hours + 'h ago';
+        var days = Math.floor(hours / 24);
+        if (days < 7) return days + 'd ago';
+        return d.toLocaleDateString();
+    }
+    function notifRow(n) {
+        var unread = !n.read_at;
+        var accent = n.color && /^#/.test(n.color) ? n.color : '#f97316';
+        var href = n.url ? notifEsc(n.url) : 'notifications.php';
+        return '<a href="' + href + '" class="flex gap-3 rounded-lg px-3 py-2.5 hover:bg-slate-50 ' + (unread ? 'bg-orange-50/40' : '') + '">' +
+            '<span class="mt-1 h-2 w-2 shrink-0 rounded-full" style="background:' + (unread ? accent : 'transparent') + '"></span>' +
+            '<span class="min-w-0 flex-1">' +
+                '<span class="block truncate text-sm font-semibold text-slate-800">' + notifEsc(n.title) + '</span>' +
+                (n.body ? '<span class="block text-[11px] text-slate-500">' + notifEsc(n.body) + '</span>' : '') +
+                '<span class="mt-0.5 block text-[10px] font-semibold uppercase tracking-wide text-slate-400">' + notifEsc(n.app_key || '') + ' · ' + notifTimeAgo(n.created_at) + '</span>' +
+            '</span>' +
+        '</a>';
+    }
+    function notifRefreshCount() {
+        if (!notifBtn || !notifBadge) return;
+        fetch('api/notifications/count.php', { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (d) { if (d && d.success) notifSetBadge(d.unread_count); })
+            .catch(function () {});
+    }
+    function notifLoadList() {
+        notifBody.innerHTML = '<p class="px-3 py-6 text-center text-xs text-slate-400">Loading...</p>';
+        fetch('api/notifications/list.php', { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                var items = (d && d.notifications) || [];
+                notifBody.innerHTML = items.length
+                    ? items.map(notifRow).join('')
+                    : "<p class=\"px-3 py-6 text-center text-xs text-slate-400\">You're all caught up.</p>";
+                if (d && d.unread_count > 0) {
+                    fetch('api/notifications/read.php', { method: 'POST', credentials: 'same-origin' })
+                        .then(function () { notifSetBadge(0); })
+                        .catch(function () {});
+                } else {
+                    notifSetBadge(0);
+                }
+            })
+            .catch(function () {
+                notifBody.innerHTML = '<p class="px-3 py-6 text-center text-xs text-slate-400">Could not load notifications.</p>';
+            });
+    }
+    if (notifBtn && notifDropdown && notifBadge && notifBody) {
+        notifBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var opening = notifDropdown.classList.contains('hidden');
+            notifDropdown.classList.add('hidden');
+            if (opening) {
+                notifDropdown.classList.remove('hidden');
+                notifLoadList();
+            }
+        });
+        document.addEventListener('click', function () { notifDropdown.classList.add('hidden'); });
+        notifRefreshCount();
+        setInterval(notifRefreshCount, 60000);
+    }
+
     var coBtn = document.getElementById('companySwitcherBtn');
     var coDd  = document.getElementById('companySwitcherDropdown');
     if (coBtn && coDd) {
@@ -446,7 +610,8 @@ function calLink(int $companyId, string $ym): string {
     var isAdmin         = <?= $isAdmin ? 'true' : 'false' ?>;
     if (!activeCompanyId) return; // nothing more to wire up
 
-    var modal       = document.getElementById('eventModal');
+    var modal       = document.getElementById('eventPanel');
+    var workspace   = document.getElementById('calendarWorkspace');
     var form        = document.getElementById('eventForm');
     var modalTitle  = document.getElementById('eventModalTitle');
     var alertBox    = document.getElementById('evtAlert');
@@ -461,8 +626,13 @@ function calLink(int $companyId, string $ym): string {
     var saveBtn     = document.getElementById('evtSaveBtn');
     var newBtn      = document.getElementById('newEventBtn');
     var colorPicker = document.getElementById('evtColorPicker');
+    var attendeeChecks = Array.prototype.slice.call(document.querySelectorAll('.attendee-check'));
 
     var selectedColor = 'slate';
+    var currentCanEdit = true;
+    if (workspace && modal) {
+        workspace.appendChild(modal);
+    }
 
     function refreshColorUI() {
         colorPicker.querySelectorAll('.color-swatch').forEach(function (sw) {
@@ -475,8 +645,25 @@ function calLink(int $companyId, string $ym): string {
         });
     }
 
-    function openModal(mode, prefill, canDelete) {
-        modalTitle.textContent = mode === 'edit' ? 'Edit Event' : 'New Event';
+    function setReadOnly(readOnly) {
+        [titleField, descField, dateField, typeField].forEach(function (field) {
+            field.disabled = readOnly;
+            field.classList.toggle('bg-slate-50', readOnly);
+            field.classList.toggle('text-slate-500', readOnly);
+        });
+        attendeeChecks.forEach(function (check) { check.disabled = readOnly; });
+        colorPicker.querySelectorAll('.color-swatch').forEach(function (sw) {
+            sw.disabled = readOnly;
+            sw.classList.toggle('opacity-60', readOnly);
+            sw.classList.toggle('cursor-not-allowed', readOnly);
+        });
+        saveBtn.classList.toggle('hidden', readOnly);
+    }
+
+    function openModal(mode, prefill, canEdit) {
+        var attendeeIds = Array.isArray(prefill.attendee_ids) ? prefill.attendee_ids.map(Number) : [];
+        currentCanEdit = !!canEdit;
+        modalTitle.textContent = mode === 'edit' ? (currentCanEdit ? 'Edit Event' : 'Event Details') : 'New Event';
         alertBox.classList.add('hidden');
         idField.value     = prefill.id || '';
         titleField.value  = prefill.title || '';
@@ -485,17 +672,19 @@ function calLink(int $companyId, string $ym): string {
         typeField.value   = prefill.event_type || 'meeting';
         selectedColor     = prefill.color || 'slate';
         refreshColorUI();
-        deleteBtn.classList.toggle('hidden', !canDelete);
+        attendeeChecks.forEach(function (check) {
+            check.checked = attendeeIds.indexOf(Number(check.value)) !== -1;
+        });
+        setReadOnly(!currentCanEdit);
+        deleteBtn.classList.toggle('hidden', !(mode === 'edit' && currentCanEdit));
         saveBtn.textContent = mode === 'edit' ? 'Save Changes' : 'Save Event';
         saveBtn.disabled    = false;
         modal.classList.remove('hidden');
-        modal.classList.add('flex');
         if (window.lucide) lucide.createIcons();
         setTimeout(function () { titleField.focus(); }, 30);
     }
     function closeModal() {
         modal.classList.add('hidden');
-        modal.classList.remove('flex');
     }
 
     // Color picker
@@ -509,7 +698,7 @@ function calLink(int $companyId, string $ym): string {
     // Click a day cell → open Create
     document.querySelectorAll('.day-cell').forEach(function (cell) {
         cell.addEventListener('click', function () {
-            openModal('create', { event_date: cell.dataset.date }, false);
+            openModal('create', { event_date: cell.dataset.date }, true);
         });
     });
 
@@ -518,28 +707,28 @@ function calLink(int $companyId, string $ym): string {
         pill.addEventListener('click', function (e) {
             e.stopPropagation();
             var ev = JSON.parse(pill.dataset.event);
-            var canDelete = isAdmin || (Number(ev.created_by) === currentUserId);
-            openModal('edit', ev, canDelete);
+            var canEdit = Number(ev.created_by) === currentUserId;
+            openModal('edit', ev, canEdit);
         });
     });
 
     // "+ New Event" header button
     if (newBtn) {
         newBtn.addEventListener('click', function () {
-            openModal('create', { event_date: (new Date()).toISOString().slice(0, 10) }, false);
+            openModal('create', { event_date: (new Date()).toISOString().slice(0, 10) }, true);
         });
     }
 
     cancelBtn.addEventListener('click', closeModal);
     closeBtn.addEventListener('click', closeModal);
-    modal.addEventListener('click', function (e) {
-        if (e.target === modal) closeModal();
-    });
-
     // Submit (create or update)
     form.addEventListener('submit', function (e) {
         e.preventDefault();
         var id = idField.value;
+        if (id && !currentCanEdit) {
+            showAlert('Only the creator can edit this event.');
+            return;
+        }
         var payload = {
             company_id:  activeCompanyId,
             title:       titleField.value.trim(),
@@ -547,6 +736,7 @@ function calLink(int $companyId, string $ym): string {
             event_date:  dateField.value,
             event_type:  typeField.value,
             color:       selectedColor,
+            attendee_ids: attendeeChecks.filter(function (check) { return check.checked; }).map(function (check) { return Number(check.value); }),
         };
         if (id) payload.id = Number(id);
 

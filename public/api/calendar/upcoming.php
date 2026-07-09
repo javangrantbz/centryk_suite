@@ -51,29 +51,58 @@ if (!$companyId) {
 }
 
 // If an email is supplied, make sure that user actually belongs to the company.
+$memberUserId = 0;
+$memberRole = '';
 if ($email !== '') {
     $memStmt = $pdo->prepare(
-        'SELECT 1
+        'SELECT u.id, cm.role
          FROM company_members cm
          JOIN users u ON u.id = cm.user_id
          WHERE cm.company_id = :cid AND u.email = :email AND cm.status = "active"
          LIMIT 1'
     );
     $memStmt->execute(['cid' => $companyId, 'email' => strtolower($email)]);
-    if (!$memStmt->fetchColumn()) {
+    $member = $memStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$member) {
         Response::error('Not a member of this company.', 403);
     }
+    $memberUserId = (int)$member['id'];
+    $memberRole = (string)$member['role'];
 }
 
-$evStmt = $pdo->prepare(
-    'SELECT title, event_date, event_type, color
-     FROM events
-     WHERE company_id = :cid
-       AND event_date >= CURDATE()
-       AND event_date <= DATE_ADD(CURDATE(), INTERVAL 30 DAY)
-     ORDER BY event_date ASC, id ASC
-     LIMIT 5'
-);
-$evStmt->execute(['cid' => $companyId]);
+if ($memberUserId > 0) {
+    $evStmt = $pdo->prepare(
+        'SELECT title, event_date, event_type, color
+         FROM events
+         WHERE company_id = :cid
+           AND event_date >= CURDATE()
+           AND event_date <= DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+           AND (
+               :is_admin = 1
+               OR created_by = :uid_creator
+               OR NOT EXISTS (SELECT 1 FROM event_attendees ea0 WHERE ea0.event_id = events.id)
+               OR EXISTS (SELECT 1 FROM event_attendees ea1 WHERE ea1.event_id = events.id AND ea1.user_id = :uid_attendee)
+           )
+         ORDER BY event_date ASC, id ASC
+         LIMIT 5'
+    );
+    $evStmt->execute([
+        'cid' => $companyId,
+        'uid_creator' => $memberUserId,
+        'uid_attendee' => $memberUserId,
+        'is_admin' => $memberRole === 'admin' ? 1 : 0,
+    ]);
+} else {
+    $evStmt = $pdo->prepare(
+        'SELECT title, event_date, event_type, color
+         FROM events
+         WHERE company_id = :cid
+           AND event_date >= CURDATE()
+           AND event_date <= DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+         ORDER BY event_date ASC, id ASC
+         LIMIT 5'
+    );
+    $evStmt->execute(['cid' => $companyId]);
+}
 
 Response::ok(['events' => $evStmt->fetchAll()]);

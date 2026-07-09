@@ -27,9 +27,19 @@ $stmt = $pdo->prepare(
       AND cm.status = "active"
      WHERE e.event_date >= CURDATE()
        AND e.event_date <= DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+       AND (
+           e.created_by = :uid_creator
+           OR cm.role = "admin"
+           OR NOT EXISTS (SELECT 1 FROM event_attendees ea0 WHERE ea0.event_id = e.id)
+           OR EXISTS (SELECT 1 FROM event_attendees ea1 WHERE ea1.event_id = e.id AND ea1.user_id = :uid_attendee)
+       )
      ORDER BY e.event_date ASC, e.id ASC
      LIMIT 5'
 );
-$stmt->execute(['uid' => (int)$user['id']]);
+$stmt->execute([
+    'uid' => (int)$user['id'],
+    'uid_creator' => (int)$user['id'],
+    'uid_attendee' => (int)$user['id'],
+]);
 
 Response::ok(['events' => $stmt->fetchAll()]);

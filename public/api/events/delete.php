@@ -2,7 +2,7 @@
 /**
  * Delete a calendar event.
  * POST { id }
- * Caller must be the event creator OR a company admin.
+ * Caller must be the event creator.
  */
 require_once __DIR__ . '/../../../app/core/Auth.php';
 require_once __DIR__ . '/../../../app/core/DB.php';
@@ -32,13 +32,7 @@ if (!$existing) {
 
 $canDelete = ((int)$existing['created_by'] === (int)$user['id']);
 if (!$canDelete) {
-    $mStmt = $pdo->prepare('SELECT role FROM company_members WHERE user_id = :uid AND company_id = :cid AND status = "active" LIMIT 1');
-    $mStmt->execute(['uid' => (int)$user['id'], 'cid' => (int)$existing['company_id']]);
-    $row = $mStmt->fetch(PDO::FETCH_ASSOC);
-    $canDelete = $row && $row['role'] === 'admin';
-}
-if (!$canDelete) {
-    Response::error('Only the creator or a company admin can delete this event.', 403);
+    Response::error('Only the creator can delete this event.', 403);
 }
 
 $pdo->prepare('DELETE FROM events WHERE id = :id')->execute(['id' => $id]);
