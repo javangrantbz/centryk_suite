@@ -2,6 +2,14 @@
 require_once __DIR__ . '/../app/core/Auth.php';
 Auth::start();
 $user = Auth::user();
+if (!$user) {
+    header('Location: login.php');
+    exit;
+}
+if (empty($user['is_admin'])) {
+    header('Location: index.php');
+    exit;
+}
 ?>
 <!doctype html>
 <html lang="en">
@@ -17,16 +25,7 @@ $user = Auth::user();
 </head>
 <body class="min-h-screen bg-slate-100 font-sans antialiased text-slate-900">
 <div class="h-[3px] w-full bg-gradient-to-r from-purple-600 via-blue-500 to-orange-500"></div>
-<?php if ($user): ?>
 <?php $pageTitle = 'Store'; $headerMaxW = 'max-w-7xl'; $awCurrent = 'store'; require_once __DIR__ . '/../app/services/AuthService.php'; include __DIR__ . '/partials/account_header.php'; ?>
-<?php else: ?>
-<header class="border-b border-slate-200 bg-white">
-    <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-        <a href="index.php" class="flex items-center"><img src="../centryk_logo.png" alt="Centryk" class="h-12 w-auto"></a>
-        <a href="login.php" class="rounded-xl bg-slate-950 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-slate-800">Sign In</a>
-    </div>
-</header>
-<?php endif; ?>
 
 <main class="mx-auto max-w-7xl px-6 py-8">
     <div class="mb-6 flex flex-wrap items-end justify-between gap-3">

@@ -12,6 +12,12 @@ $awAlign   = $awAlign   ?? 'left';
 $awMode    = $awMode    ?? 'links';
 $awCurrent = $awCurrent ?? 'centryk'; // which app key is the current page
 $awPos     = $awAlign === 'right' ? 'right-0' : 'left-0';
+$awCanSeeStore = !empty($user['is_admin']);
+
+if (!$awCanSeeStore && class_exists('Auth')) {
+    $_awUser = Auth::user();
+    $awCanSeeStore = !empty($_awUser['is_admin']);
+}
 
 if ($awMode === 'launch' && !isset($apps)) {
     if (class_exists('Auth') && class_exists('AuthService')) {
@@ -77,6 +83,7 @@ $awTileIcon = function (string $key, string $color = '', string $label = '') {
             </a>
 
             <?php $awOnStore = ($awCurrent === 'store'); ?>
+            <?php if ($awCanSeeStore): ?>
             <?php if ($awOnStore): ?>
             <div class="flex flex-col items-center gap-2 rounded-xl p-3 text-center bg-slate-100 ring-1 ring-slate-200 cursor-default">
                 <?= $awTileIcon('store', '#7c3aed', 'Store') ?>
@@ -87,6 +94,7 @@ $awTileIcon = function (string $key, string $color = '', string $label = '') {
                 <?= $awTileIcon('store', '#7c3aed', 'Store') ?>
                 <span class="text-xs font-medium text-slate-700">Store</span>
             </a>
+            <?php endif; ?>
             <?php endif; ?>
 
             <?php if ($awMode === 'launch' && !empty($apps)): ?>

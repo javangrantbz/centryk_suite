@@ -453,6 +453,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
             </div>
         </button>
 
+        <?php if (!empty($user['is_admin'])): ?>
         <a href="store.php" style="--i:<?= ($_appIdx ?? 0) + 2 ?>"
            class="dash-fade order-1 group flex flex-col overflow-hidden rounded-2xl border border-violet-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]">
             <div class="h-1.5 w-full bg-violet-600"></div>
@@ -479,6 +480,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
                 <i data-lucide="arrow-right" class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"></i>
             </div>
         </a>
+        <?php endif; ?>
 
         <div style="--i:<?= ($_appIdx ?? 0) + 3 ?>" class="dash-fade order-2 sm:col-span-2 lg:col-span-3 mt-4 border-t border-slate-200 pt-6">
             <div class="flex flex-wrap items-end justify-between gap-3">
