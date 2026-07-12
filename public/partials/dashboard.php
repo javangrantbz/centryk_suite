@@ -338,7 +338,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
     <?php endif; ?>
 
     <!-- Apps grid -->
-    <div id="appsGrid" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div id="appsGrid" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <?php $_appIdx = 0; foreach ($apps as $app):
             if (isset($_comingSoonAppKeys[(string)($app['key'] ?? '')])) {
                 continue;
@@ -358,31 +358,31 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
                 data-opt-in="<?= $optIn ? '1' : '0' ?>"
                 <?= ($enrolled || $optIn) ? '' : 'disabled' ?>>
             <div class="h-1.5 w-full" style="background:<?= htmlspecialchars($app['color']) . ($enrolled ? '' : ';opacity:.4') ?>"></div>
-            <div class="flex flex-1 flex-col p-5">
+            <div class="flex flex-1 flex-col p-4">
                 <div class="flex items-center gap-3">
                     <?php if ($app['key'] === 'onepay'): ?>
-                    <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full shadow-sm"
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full shadow-sm"
                           style="background:<?= htmlspecialchars($app['color']) ?>">
-                        <svg viewBox="0 0 24 24" fill="white" class="h-6 w-6">
+                        <svg viewBox="0 0 24 24" fill="white" class="h-5 w-5">
                             <path d="M12 2.5c.72 5.08 2.42 6.78 7.5 7.5-5.08.72-6.78 2.42-7.5 7.5-.72-5.08-2.42-6.78-7.5-7.5 5.08-.72 6.78-2.42 7.5-7.5Z"/>
                         </svg>
                     </span>
                     <?php elseif ($app['key'] === 'mypay'): ?>
-                    <img src="../myPay.png" alt="MyPay" class="h-12 w-12 rounded-xl object-contain shadow-sm">
+                    <img src="../myPay.png" alt="MyPay" class="h-10 w-10 rounded-xl object-contain shadow-sm">
                     <?php elseif ($app['key'] === 'invoice'): ?>
-                    <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-100">
-                        <svg class="h-6 w-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100">
+                        <svg class="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2Z"/>
                         </svg>
                     </span>
                     <?php elseif ($app['key'] === 'calendar'): ?>
-                    <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl shadow-sm" style="background:<?= htmlspecialchars($app['color']) ?>">
-                        <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm" style="background:<?= htmlspecialchars($app['color']) ?>">
+                        <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
                             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
                         </svg>
                     </span>
                     <?php else: ?>
-                    <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-2xl"
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xl"
                           style="background:<?= htmlspecialchars($app['color']) ?>18">
                         <?= htmlspecialchars($app['icon'] ?? '') ?>
                     </span>
@@ -396,7 +396,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
                             else                               echo htmlspecialchars($app['label']);
                             ?>
                         </div>
-                        <div class="text-lg font-black tracking-tight text-slate-900"><?= htmlspecialchars($app['label']) ?></div>
+                        <div class="text-base font-black tracking-tight text-slate-900"><?= htmlspecialchars($app['label']) ?></div>
                     </div>
                 </div>
                 <p class="mt-3 text-xs font-semibold leading-relaxed text-slate-500">
@@ -420,12 +420,12 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
                 <?php endif; ?>
             </div>
             <?php if ($enrolled): ?>
-            <div class="flex items-center justify-between border-t border-slate-100 px-5 py-3 text-xs font-bold text-slate-500 transition-colors group-hover:text-slate-800">
+            <div class="flex items-center justify-between border-t border-slate-100 px-4 py-3 text-xs font-bold text-slate-500 transition-colors group-hover:text-slate-800">
                 <span>Launch <?= htmlspecialchars($app['label']) ?></span>
                 <i data-lucide="arrow-right" class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"></i>
             </div>
             <?php elseif ($optIn): ?>
-            <div class="flex items-center justify-between border-t border-dashed border-slate-200 px-5 py-3 text-xs font-bold text-slate-600 transition-colors group-hover:text-slate-900">
+            <div class="flex items-center justify-between border-t border-dashed border-slate-200 px-4 py-3 text-xs font-bold text-slate-600 transition-colors group-hover:text-slate-900">
                 <span>Enable <?= htmlspecialchars($app['label']) ?></span>
                 <i data-lucide="plus" class="h-3.5 w-3.5"></i>
             </div>
@@ -436,14 +436,14 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         <button type="button" style="--i:<?= ($_appIdx ?? 0) + 1 ?>" id="onelinkPaymentsCard"
                 class="dash-fade order-1 group flex flex-col overflow-hidden rounded-2xl border border-cyan-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]">
             <div class="h-1.5 w-full bg-cyan-500"></div>
-            <div class="flex flex-1 flex-col p-5">
+            <div class="flex flex-1 flex-col p-4">
                 <div class="flex items-center gap-3">
-                    <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-cyan-100 text-cyan-700">
-                        <i data-lucide="credit-card" class="h-6 w-6"></i>
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-100 text-cyan-700">
+                        <i data-lucide="credit-card" class="h-5 w-5"></i>
                     </span>
                     <div>
                         <div class="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-600/80">Collections</div>
-                        <div class="text-lg font-black tracking-tight text-slate-900">OneLink Payments</div>
+                        <div class="text-base font-black tracking-tight text-slate-900">OneLink Payments</div>
                     </div>
                 </div>
                 <p class="mt-3 text-xs font-semibold leading-relaxed text-slate-500">
@@ -454,13 +454,13 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
                     <span class="text-[11px] font-bold text-cyan-700">Company-scoped ledger</span>
                 </div>
             </div>
-            <div class="flex items-center justify-between border-t border-cyan-100 px-5 py-3 text-xs font-bold text-cyan-700 transition-colors group-hover:text-cyan-900">
+            <div class="flex items-center justify-between border-t border-cyan-100 px-4 py-3 text-xs font-bold text-cyan-700 transition-colors group-hover:text-cyan-900">
                 <span>View payments</span>
                 <i data-lucide="arrow-right" class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"></i>
             </div>
         </button>
 
-        <div style="--i:<?= ($_appIdx ?? 0) + 3 ?>" class="dash-fade order-2 sm:col-span-2 lg:col-span-3 mt-4 border-t border-slate-200 pt-6">
+        <div style="--i:<?= ($_appIdx ?? 0) + 3 ?>" class="dash-fade order-2 sm:col-span-2 lg:col-span-4 mt-4 border-t border-slate-200 pt-6">
             <div class="flex flex-wrap items-end justify-between gap-3">
                 <div>
                     <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Access</p>
@@ -473,14 +473,14 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         <!-- Store — coming soon (static, not launchable) -->
         <div style="--i:<?= ($_appIdx ?? 0) + 4 ?>" class="dash-fade order-3 flex flex-col overflow-hidden rounded-2xl border border-violet-200/70 bg-violet-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
             <div class="h-1.5 w-full bg-violet-500/50"></div>
-            <div class="flex flex-1 flex-col p-5">
+            <div class="flex flex-1 flex-col p-4">
                 <div class="flex items-center gap-3">
-                    <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-700">
-                        <i data-lucide="store" class="h-6 w-6"></i>
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-700">
+                        <i data-lucide="store" class="h-5 w-5"></i>
                     </span>
                     <div>
                         <div class="text-[10px] font-black uppercase tracking-[0.16em] text-violet-600/80">Marketplace</div>
-                        <div class="text-lg font-black tracking-tight text-slate-800">Store</div>
+                        <div class="text-base font-black tracking-tight text-slate-800">Store</div>
                     </div>
                 </div>
                 <p class="mt-3 text-xs font-semibold leading-relaxed text-slate-500">
@@ -496,14 +496,14 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         <!-- Vision Board — coming soon (static, not launchable) -->
         <div style="--i:<?= ($_appIdx ?? 0) + 5 ?>" class="dash-fade order-3 flex flex-col overflow-hidden rounded-2xl border border-rose-200/70 bg-rose-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
             <div class="h-1.5 w-full bg-rose-500/50"></div>
-            <div class="flex flex-1 flex-col p-5">
+            <div class="flex flex-1 flex-col p-4">
                 <div class="flex items-center gap-3">
-                    <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-700">
-                        <i data-lucide="monitor-play" class="h-6 w-6"></i>
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-700">
+                        <i data-lucide="monitor-play" class="h-5 w-5"></i>
                     </span>
                     <div>
                         <div class="text-[10px] font-black uppercase tracking-[0.16em] text-rose-600/80">Digital Signage</div>
-                        <div class="text-lg font-black tracking-tight text-slate-800">Vision Board</div>
+                        <div class="text-base font-black tracking-tight text-slate-800">Vision Board</div>
                     </div>
                 </div>
                 <p class="mt-3 text-xs font-semibold leading-relaxed text-slate-500">
@@ -519,16 +519,16 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         <!-- Case Management — coming soon (static, not in DB) -->
         <div style="--i:<?= ($_appIdx ?? 0) + 6 ?>" class="dash-fade order-3 flex flex-col overflow-hidden rounded-2xl border border-blue-200/70 bg-blue-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
             <div class="h-1.5 w-full bg-blue-500/50"></div>
-            <div class="flex flex-1 flex-col p-5">
+            <div class="flex flex-1 flex-col p-4">
                 <div class="flex items-center gap-3">
-                    <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-100">
-                        <svg class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100">
+                        <svg class="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 14.15v4.073a2.25 2.25 0 01-2.25 2.25H5.904a2.25 2.25 0 01-2.25-2.25V14.15M16.5 6.75V5.625a2.25 2.25 0 00-2.25-2.25h-2.25a2.25 2.25 0 00-2.25 2.25V6.75M3.375 6.75h17.25a1.125 1.125 0 011.125 1.125v3.026a48.34 48.34 0 01-10.5 1.299 48.34 48.34 0 01-10.5-1.299V7.875A1.125 1.125 0 013.375 6.75z"/>
                         </svg>
                     </span>
                     <div>
                         <div class="text-[10px] font-black uppercase tracking-[0.16em] text-blue-600/80">Cases &amp; Workflows</div>
-                        <div class="text-lg font-black tracking-tight text-slate-800">Case Management</div>
+                        <div class="text-base font-black tracking-tight text-slate-800">Case Management</div>
                     </div>
                 </div>
                 <p class="mt-3 text-xs font-semibold leading-relaxed text-slate-500">
