@@ -8,6 +8,10 @@ if (!$user) {
     header('Location: login.php');
     exit;
 }
+if (empty($user['is_admin'])) {
+    header('Location: index.php');
+    exit;
+}
 
 $pdo = DB::pdo();
 $isCentrykAdmin = !empty($user['is_admin']);

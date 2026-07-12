@@ -207,11 +207,13 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
                         <i data-lucide="building-2" class="h-3.5 w-3.5"></i>
                         <span class="hidden sm:inline">Manage Company Profile</span>
                     </a>
+                    <?php if (!empty($user['is_admin'])): ?>
                     <a id="coOnelinkPaymentsBtn" href="onelink-payments.php"
                        class="flex items-center gap-1.5 rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs font-black text-cyan-700 transition hover:bg-cyan-100 hover:border-cyan-300">
                         <i data-lucide="credit-card" class="h-3.5 w-3.5"></i>
                         <span class="hidden sm:inline">OneLink Payments</span>
                     </a>
+                    <?php endif; ?>
                     <?php if (strcasecmp((string)($user['email'] ?? ''), 'webdevelopment@bhilimited.com') === 0): ?>
                     <a id="coAdvertiseBtn" href="advertise.php"
                        class="flex items-center gap-1.5 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-black text-violet-700 transition hover:bg-violet-100 hover:border-violet-300">
@@ -433,6 +435,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         </button>
         <?php endforeach; ?>
 
+        <?php if (!empty($user['is_admin'])): ?>
         <button type="button" style="--i:<?= ($_appIdx ?? 0) + 1 ?>" id="onelinkPaymentsCard"
                 class="dash-fade order-1 group flex flex-col overflow-hidden rounded-2xl border border-cyan-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]">
             <div class="h-1.5 w-full bg-cyan-500"></div>
@@ -459,6 +462,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
                 <i data-lucide="arrow-right" class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"></i>
             </div>
         </button>
+        <?php endif; ?>
 
         <div style="--i:<?= ($_appIdx ?? 0) + 3 ?>" class="dash-fade order-2 sm:col-span-2 lg:col-span-4 mt-4 border-t border-slate-200 pt-6">
             <div class="flex flex-wrap items-end justify-between gap-3">
@@ -470,8 +474,33 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
             </div>
         </div>
 
+        <?php if (empty($user['is_admin'])): ?>
+        <!-- OneLink Payments — coming soon for non-Centryk admins -->
+        <div style="--i:<?= ($_appIdx ?? 0) + 4 ?>" class="dash-fade order-3 flex flex-col overflow-hidden rounded-2xl border border-cyan-200/70 bg-cyan-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
+            <div class="h-1.5 w-full bg-cyan-500/50"></div>
+            <div class="flex flex-1 flex-col p-4">
+                <div class="flex items-center gap-3">
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-100 text-cyan-700">
+                        <i data-lucide="credit-card" class="h-5 w-5"></i>
+                    </span>
+                    <div>
+                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-600/80">Collections</div>
+                        <div class="text-base font-black tracking-tight text-slate-800">OneLink Payments</div>
+                    </div>
+                </div>
+                <p class="mt-3 text-xs font-semibold leading-relaxed text-slate-500">
+                    Track POS, invoice, and payment-form collections once live payment data is available.
+                </p>
+                <div class="mt-4 flex items-center justify-center gap-1.5 rounded-xl border border-cyan-200 bg-cyan-100 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-cyan-700">
+                    <i data-lucide="clock-3" class="h-3 w-3"></i>
+                    Coming Soon
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <!-- Store — coming soon (static, not launchable) -->
-        <div style="--i:<?= ($_appIdx ?? 0) + 4 ?>" class="dash-fade order-3 flex flex-col overflow-hidden rounded-2xl border border-violet-200/70 bg-violet-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
+        <div style="--i:<?= ($_appIdx ?? 0) + 5 ?>" class="dash-fade order-3 flex flex-col overflow-hidden rounded-2xl border border-violet-200/70 bg-violet-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
             <div class="h-1.5 w-full bg-violet-500/50"></div>
             <div class="flex flex-1 flex-col p-4">
                 <div class="flex items-center gap-3">
@@ -494,7 +523,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         </div>
 
         <!-- Vision Board — coming soon (static, not launchable) -->
-        <div style="--i:<?= ($_appIdx ?? 0) + 5 ?>" class="dash-fade order-3 flex flex-col overflow-hidden rounded-2xl border border-rose-200/70 bg-rose-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
+        <div style="--i:<?= ($_appIdx ?? 0) + 6 ?>" class="dash-fade order-3 flex flex-col overflow-hidden rounded-2xl border border-rose-200/70 bg-rose-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
             <div class="h-1.5 w-full bg-rose-500/50"></div>
             <div class="flex flex-1 flex-col p-4">
                 <div class="flex items-center gap-3">
@@ -517,7 +546,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         </div>
 
         <!-- Case Management — coming soon (static, not in DB) -->
-        <div style="--i:<?= ($_appIdx ?? 0) + 6 ?>" class="dash-fade order-3 flex flex-col overflow-hidden rounded-2xl border border-blue-200/70 bg-blue-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
+        <div style="--i:<?= ($_appIdx ?? 0) + 7 ?>" class="dash-fade order-3 flex flex-col overflow-hidden rounded-2xl border border-blue-200/70 bg-blue-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
             <div class="h-1.5 w-full bg-blue-500/50"></div>
             <div class="flex flex-1 flex-col p-4">
                 <div class="flex items-center gap-3">
