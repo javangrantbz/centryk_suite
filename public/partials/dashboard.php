@@ -306,9 +306,13 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
     </div>
 
     <?php
+    $_comingSoonAppKeys = ['store' => true, 'visionboard' => true];
     $_enrolledAppCount = 0;
     $_otherAppCount = 0;
     foreach ($apps as $_app) {
+        if (isset($_comingSoonAppKeys[(string)($_app['key'] ?? '')])) {
+            continue;
+        }
         if (!empty($_app['enrolled'])) {
             $_enrolledAppCount++;
         } else {
@@ -336,6 +340,9 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
     <!-- Apps grid -->
     <div id="appsGrid" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <?php $_appIdx = 0; foreach ($apps as $app):
+            if (isset($_comingSoonAppKeys[(string)($app['key'] ?? '')])) {
+                continue;
+            }
             $_appIdx++;
             $enrolled = !empty($app['enrolled']);
             $optIn    = !empty($app['opt_in']);
@@ -453,35 +460,6 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
             </div>
         </button>
 
-        <?php if (!empty($user['is_admin'])): ?>
-        <a href="store.php" style="--i:<?= ($_appIdx ?? 0) + 2 ?>"
-           class="dash-fade order-1 group flex flex-col overflow-hidden rounded-2xl border border-violet-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]">
-            <div class="h-1.5 w-full bg-violet-600"></div>
-            <div class="flex flex-1 flex-col p-5">
-                <div class="flex items-center gap-3">
-                    <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-700">
-                        <i data-lucide="store" class="h-6 w-6"></i>
-                    </span>
-                    <div>
-                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-violet-600/80">Marketplace</div>
-                        <div class="text-lg font-black tracking-tight text-slate-900">Store</div>
-                    </div>
-                </div>
-                <p class="mt-3 text-xs font-semibold leading-relaxed text-slate-500">
-                    Browse employee offers and Centryk Market listings from participating companies.
-                </p>
-                <div class="mt-3 flex items-center gap-1.5">
-                    <span class="inline-block h-1.5 w-1.5 rounded-full bg-violet-500"></span>
-                    <span class="text-[11px] font-bold text-violet-700">Built-in Centryk tool</span>
-                </div>
-            </div>
-            <div class="flex items-center justify-between border-t border-violet-100 px-5 py-3 text-xs font-bold text-violet-700 transition-colors group-hover:text-violet-900">
-                <span>Open Store</span>
-                <i data-lucide="arrow-right" class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"></i>
-            </div>
-        </a>
-        <?php endif; ?>
-
         <div style="--i:<?= ($_appIdx ?? 0) + 3 ?>" class="dash-fade order-2 sm:col-span-2 lg:col-span-3 mt-4 border-t border-slate-200 pt-6">
             <div class="flex flex-wrap items-end justify-between gap-3">
                 <div>
@@ -492,8 +470,54 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
             </div>
         </div>
 
+        <!-- Store — coming soon (static, not launchable) -->
+        <div style="--i:<?= ($_appIdx ?? 0) + 4 ?>" class="dash-fade order-3 flex flex-col overflow-hidden rounded-2xl border border-violet-200/70 bg-violet-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
+            <div class="h-1.5 w-full bg-violet-500/50"></div>
+            <div class="flex flex-1 flex-col p-5">
+                <div class="flex items-center gap-3">
+                    <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-700">
+                        <i data-lucide="store" class="h-6 w-6"></i>
+                    </span>
+                    <div>
+                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-violet-600/80">Marketplace</div>
+                        <div class="text-lg font-black tracking-tight text-slate-800">Store</div>
+                    </div>
+                </div>
+                <p class="mt-3 text-xs font-semibold leading-relaxed text-slate-500">
+                    Browse employee offers and Centryk Market listings from participating companies.
+                </p>
+                <div class="mt-4 flex items-center justify-center gap-1.5 rounded-xl border border-violet-200 bg-violet-100 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-violet-700">
+                    <i data-lucide="clock-3" class="h-3 w-3"></i>
+                    Coming Soon
+                </div>
+            </div>
+        </div>
+
+        <!-- Vision Board — coming soon (static, not launchable) -->
+        <div style="--i:<?= ($_appIdx ?? 0) + 5 ?>" class="dash-fade order-3 flex flex-col overflow-hidden rounded-2xl border border-rose-200/70 bg-rose-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
+            <div class="h-1.5 w-full bg-rose-500/50"></div>
+            <div class="flex flex-1 flex-col p-5">
+                <div class="flex items-center gap-3">
+                    <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-700">
+                        <i data-lucide="monitor-play" class="h-6 w-6"></i>
+                    </span>
+                    <div>
+                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-rose-600/80">Digital Signage</div>
+                        <div class="text-lg font-black tracking-tight text-slate-800">Vision Board</div>
+                    </div>
+                </div>
+                <p class="mt-3 text-xs font-semibold leading-relaxed text-slate-500">
+                    Create and schedule branded content for on-site TV screens and displays.
+                </p>
+                <div class="mt-4 flex items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-100 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-rose-700">
+                    <i data-lucide="clock-3" class="h-3 w-3"></i>
+                    Coming Soon
+                </div>
+            </div>
+        </div>
+
         <!-- Case Management — coming soon (static, not in DB) -->
-        <div style="--i:<?= ($_appIdx ?? 0) + 4 ?>" class="dash-fade order-3 flex flex-col overflow-hidden rounded-2xl border border-blue-200/70 bg-blue-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
+        <div style="--i:<?= ($_appIdx ?? 0) + 6 ?>" class="dash-fade order-3 flex flex-col overflow-hidden rounded-2xl border border-blue-200/70 bg-blue-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
             <div class="h-1.5 w-full bg-blue-500/50"></div>
             <div class="flex flex-1 flex-col p-5">
                 <div class="flex items-center gap-3">
