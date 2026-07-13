@@ -80,13 +80,35 @@ $safeGreeting = htmlspecialchars($greeting, ENT_QUOTES, 'UTF-8');
 
                 <div>
                     <label class="mb-1.5 block text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">New Password</label>
-                    <input id="password" type="password" required minlength="8" placeholder="At least 8 characters"
-                        class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100">
+                    <div class="relative">
+                        <input id="password" type="password" required minlength="8" placeholder="At least 8 characters"
+                            class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-11 text-sm font-semibold text-slate-900 outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100">
+                        <button type="button" class="pwToggle absolute inset-y-0 right-0 flex items-center px-3.5 text-slate-400 hover:text-slate-700" data-target="password" tabindex="-1">
+                            <svg class="eyeIcon h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                            <svg class="eyeOffIcon h-4 w-4 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7a9.97 9.97 0 012.5-4.1M9.88 9.88a3 3 0 104.243 4.243M3 3l18 18"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 <div>
                     <label class="mb-1.5 block text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Confirm Password</label>
-                    <input id="confirmPassword" type="password" required minlength="8" placeholder="Repeat your password"
-                        class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100">
+                    <div class="relative">
+                        <input id="confirmPassword" type="password" required minlength="8" placeholder="Repeat your password"
+                            class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-11 text-sm font-semibold text-slate-900 outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100">
+                        <button type="button" class="pwToggle absolute inset-y-0 right-0 flex items-center px-3.5 text-slate-400 hover:text-slate-700" data-target="confirmPassword" tabindex="-1">
+                            <svg class="eyeIcon h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                            <svg class="eyeOffIcon h-4 w-4 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7a9.97 9.97 0 012.5-4.1M9.88 9.88a3 3 0 104.243 4.243M3 3l18 18"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Strength bar -->
@@ -135,6 +157,17 @@ $safeGreeting = htmlspecialchars($greeting, ENT_QUOTES, 'UTF-8');
     var pwInput       = document.getElementById('password');
     var strengthBar   = document.getElementById('strengthBar');
     var strengthLabel = document.getElementById('strengthLabel');
+
+    // ── Show / hide password toggles ────────────────────────────────────────
+    Array.prototype.forEach.call(document.querySelectorAll('.pwToggle'), function (btn) {
+        btn.addEventListener('click', function () {
+            var input  = document.getElementById(btn.getAttribute('data-target'));
+            var hidden = input.type === 'password';
+            input.type = hidden ? 'text' : 'password';
+            btn.querySelector('.eyeIcon').classList.toggle('hidden', hidden);
+            btn.querySelector('.eyeOffIcon').classList.toggle('hidden', !hidden);
+        });
+    });
 
     function scorePassword(p) {
         var s = 0;
