@@ -91,6 +91,12 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         <!-- Admin tools -->
         <?php include __DIR__ . '/admin_tools_dropdown.php'; ?>
 
+        <!-- Notifications (shared cross-app bell) -->
+        <?php include __DIR__ . '/notification_bell.php'; ?>
+
+        <!-- Calendar preview -->
+        <?php include __DIR__ . '/calendar_preview.php'; ?>
+
         <!-- Waffle app switcher -->
         <?php $awAlign = 'right'; $awMode = 'launch'; include __DIR__ . '/app_switcher.php'; ?>
 
