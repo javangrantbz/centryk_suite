@@ -45,7 +45,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
 
 <!-- Header -->
 <header class="sticky top-[3px] z-40 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
-    <div class="mx-auto flex max-w-6xl items-center gap-4 px-6 py-3">
+    <div class="mx-auto flex max-w-6xl items-center gap-4 px-6 py-2.5">
 
         <!-- Logo -->
         <a href="index.php" class="flex shrink-0 items-center">
@@ -165,13 +165,13 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
 </header>
 
 <!-- Main -->
-<main class="mx-auto max-w-6xl px-6 py-10">
+<main class="mx-auto max-w-6xl px-6 py-8">
 
     <!-- Company profile card -->
-    <div style="--i:0" class="dash-fade mb-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div style="--i:0" class="dash-fade mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white shadow-sm">
 
         <!-- Empty state (no company selected) -->
-        <div id="coCardEmpty" class="px-6 py-5">
+        <div id="coCardEmpty" class="px-6 py-4">
             <h1 class="text-2xl font-black tracking-tight text-slate-900">
                 Welcome back, <?= htmlspecialchars($user['first_name']) ?>
             </h1>
@@ -182,7 +182,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         <div id="coCardFilled" class="hidden">
 
             <!-- Main row -->
-            <div class="flex flex-wrap items-center gap-4 px-6 py-5">
+            <div class="flex flex-wrap items-center gap-4 px-6 py-4">
 
                 <!-- Avatar -->
                 <div id="coAvatar" class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-xl font-black text-white select-none">?</div>
@@ -329,24 +329,25 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
     }
     ?>
 
+    <section class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
     <div class="mb-4 flex items-end justify-between gap-4">
         <div>
             <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Launcher</p>
             <h2 class="text-xl font-black tracking-tight text-slate-900">Your apps</h2>
         </div>
-        <span class="rounded-full bg-white px-3 py-1 text-[11px] font-black text-slate-500 shadow-sm ring-1 ring-slate-200">
+        <span class="rounded-full bg-slate-50 px-3 py-1 text-[11px] font-black text-slate-500 ring-1 ring-slate-200">
             <?= $_enrolledAppCount ?> active
         </span>
     </div>
 
     <?php if ($_enrolledAppCount === 0): ?>
-    <div class="mb-4 rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm font-semibold text-slate-500 shadow-sm">
+    <div class="mb-4 rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-semibold text-slate-500">
         You are not enrolled in any apps yet. Available apps are listed below.
     </div>
     <?php endif; ?>
 
     <!-- Apps grid -->
-    <div id="appsGrid" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div id="appsGrid" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <?php $_appIdx = 0; foreach ($apps as $app):
             if (isset($_comingSoonAppKeys[(string)($app['key'] ?? '')])) {
                 continue;
@@ -407,16 +408,16 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
                         <div class="text-base font-black tracking-tight text-slate-900"><?= htmlspecialchars($app['label']) ?></div>
                     </div>
                 </div>
-                <p class="mt-3 text-xs font-semibold leading-relaxed text-slate-500">
+                <p class="mt-2 text-xs font-semibold leading-relaxed text-slate-500">
                     <?= htmlspecialchars($app['description']) ?>
                 </p>
                 <?php if ($enrolled): ?>
-                <div id="app-count-<?= htmlspecialchars($app['key']) ?>" class="app-count-badge mt-3 flex items-center gap-1.5">
+                <div id="app-count-<?= htmlspecialchars($app['key']) ?>" class="app-count-badge mt-2.5 flex items-center gap-1.5">
                     <span class="app-count-dot inline-block h-1.5 w-1.5 rounded-full bg-slate-300"></span>
                     <span class="app-count-num text-[11px] font-bold text-slate-400">0 active users</span>
                 </div>
                 <?php elseif ($optIn): ?>
-                <div class="mt-3 flex items-center gap-1.5">
+                <div class="mt-2.5 flex items-center gap-1.5">
                     <span class="inline-block h-1.5 w-1.5 rounded-full" style="background:<?= htmlspecialchars($app['color']) ?>"></span>
                     <span class="text-[11px] font-bold" style="color:<?= htmlspecialchars($app['color']) ?>">Available — tap to enable</span>
                 </div>
@@ -455,10 +456,10 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
                         <div class="text-base font-black tracking-tight text-slate-900">OneLink Payments</div>
                     </div>
                 </div>
-                <p class="mt-3 text-xs font-semibold leading-relaxed text-slate-500">
+                <p class="mt-2 text-xs font-semibold leading-relaxed text-slate-500">
                     View POS, invoice, and payment-form collections for the selected company.
                 </p>
-                <div class="mt-3 flex items-center gap-1.5">
+                <div class="mt-2.5 flex items-center gap-1.5">
                     <span class="inline-block h-1.5 w-1.5 rounded-full bg-cyan-500"></span>
                     <span class="text-[11px] font-bold text-cyan-700">Company-scoped ledger</span>
                 </div>
@@ -470,7 +471,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         </button>
         <?php endif; ?>
 
-        <div style="--i:<?= ($_appIdx ?? 0) + 3 ?>" class="dash-fade order-2 sm:col-span-2 lg:col-span-4 mt-4 border-t border-slate-200 pt-6">
+        <div style="--i:<?= ($_appIdx ?? 0) + 3 ?>" class="dash-fade order-2 sm:col-span-2 lg:col-span-4 mt-1 border-t border-slate-200 pt-4">
             <div class="flex flex-wrap items-end justify-between gap-3">
                 <div>
                     <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Access</p>
@@ -494,7 +495,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
                         <div class="text-base font-black tracking-tight text-slate-800">OneLink Payments</div>
                     </div>
                 </div>
-                <p class="mt-3 text-xs font-semibold leading-relaxed text-slate-500">
+                <p class="mt-2 text-xs font-semibold leading-relaxed text-slate-500">
                     Track POS, invoice, and payment-form collections once live payment data is available.
                 </p>
                 <div class="mt-4 flex items-center justify-center gap-1.5 rounded-xl border border-cyan-200 bg-cyan-100 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-cyan-700">
@@ -518,7 +519,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
                         <div class="text-base font-black tracking-tight text-slate-800">Store</div>
                     </div>
                 </div>
-                <p class="mt-3 text-xs font-semibold leading-relaxed text-slate-500">
+                <p class="mt-2 text-xs font-semibold leading-relaxed text-slate-500">
                     Browse employee offers and Centryk Market listings from participating companies.
                 </p>
                 <div class="mt-4 flex items-center justify-center gap-1.5 rounded-xl border border-violet-200 bg-violet-100 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-violet-700">
@@ -541,7 +542,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
                         <div class="text-base font-black tracking-tight text-slate-800">Vision Board</div>
                     </div>
                 </div>
-                <p class="mt-3 text-xs font-semibold leading-relaxed text-slate-500">
+                <p class="mt-2 text-xs font-semibold leading-relaxed text-slate-500">
                     Create and schedule branded content for on-site TV screens and displays.
                 </p>
                 <div class="mt-4 flex items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-100 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-rose-700">
@@ -566,7 +567,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
                         <div class="text-base font-black tracking-tight text-slate-800">Case Management</div>
                     </div>
                 </div>
-                <p class="mt-3 text-xs font-semibold leading-relaxed text-slate-500">
+                <p class="mt-2 text-xs font-semibold leading-relaxed text-slate-500">
                     Track and resolve cases across your team — from intake to outcome — all in one place.
                 </p>
                 <div class="mt-4 flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] bg-blue-100 text-blue-700 border border-blue-200">
@@ -581,6 +582,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
     <div id="noCompanyNotice" class="hidden mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">
         You're not part of any company yet. Contact your admin to be added.
     </div>
+    </section>
 
 
 </main>

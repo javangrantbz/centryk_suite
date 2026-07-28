@@ -129,8 +129,8 @@ if ($me['authenticated']) {
 <div class="h-[3px] w-full bg-gradient-to-r from-purple-600 via-blue-500 to-orange-500 sticky top-0 z-50"></div>
 
 <!-- ── NAV ─────────────────────────────────────────────────────────────────── -->
-<nav class="sticky top-[3px] z-40 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
-    <div class="mx-auto flex max-w-6xl items-center gap-4 px-6 py-3">
+<nav class="sticky top-[3px] z-40 border-b border-slate-200 bg-gradient-to-b from-white to-slate-50/80 shadow-sm shadow-slate-200/70 backdrop-blur-sm">
+    <div class="mx-auto flex max-w-6xl items-center gap-4 px-6 py-2.5">
         <a href="index.php" class="flex items-center">
             <img src="../centryk_logo.png" alt="Centryk" class="h-14 w-auto">
         </a>
@@ -145,7 +145,7 @@ if ($me['authenticated']) {
         </div>
 
         <a href="login.php"
-           class="ml-3 rounded-xl bg-slate-900 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-slate-700">
+           class="ml-3 rounded-lg bg-slate-900 px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-white shadow-sm shadow-slate-900/20 transition hover:bg-slate-700">
             Sign In
         </a>
     </div>
@@ -153,13 +153,13 @@ if ($me['authenticated']) {
 
 
 <!-- ── HERO ───────────────────────────────────────────────────────────────── -->
-<section class="relative overflow-hidden bg-[linear-gradient(135deg,#0d1117_0%,#0f1928_50%,#111d35_100%)] px-6 py-24 text-white">
+<section class="relative overflow-hidden bg-[linear-gradient(135deg,#0d1117_0%,#0f1928_50%,#111d35_100%)] px-6 py-16 text-white md:py-20">
     <div class="absolute inset-x-0 top-0 h-px bg-white/10"></div>
     <div class="orb-a absolute left-0 top-0 h-[500px] w-[500px] rounded-full bg-purple-700/10 blur-3xl -translate-x-1/2 -translate-y-1/4"></div>
     <div class="orb-b absolute right-0 bottom-0 h-[400px] w-[400px] rounded-full bg-blue-700/10 blur-3xl translate-x-1/3 translate-y-1/4"></div>
 
     <div class="relative mx-auto max-w-4xl text-center">
-        <h1 class="hero-fade d1 text-5xl font-black leading-[1.05] tracking-tight md:text-6xl">
+        <h1 class="hero-fade d1 text-4xl font-black leading-[1.05] tracking-tight md:text-5xl">
             Run your business.<br>
             <span class="gradient-text">All in one place.</span>
         </h1>
@@ -168,9 +168,9 @@ if ($me['authenticated']) {
             powerful tools for inventory, point of sale, HR, payroll, and cashless payments.
         </p>
 
-        <div class="hero-fade d3 mx-auto mt-12 max-w-5xl rounded-[28px] border border-white/10 bg-white/5 p-6 text-left backdrop-blur-sm">
+        <div class="hero-fade d3 mx-auto mt-8 max-w-5xl rounded-2xl border border-white/10 bg-white/5 p-4 text-left backdrop-blur-sm md:p-5">
             <div class="grid gap-4 md:grid-cols-3">
-                <div class="step-card sc1 rounded-3xl border border-white/10 bg-white/5 p-5">
+                <div class="step-card sc1 rounded-2xl border border-white/10 bg-white/5 p-4">
                     <span class="flex h-10 w-10 items-center justify-center rounded-full bg-white text-sm font-black text-slate-900">1</span>
                     <h3 class="mt-4 text-lg font-black tracking-tight text-white">Create your account</h3>
                     <p class="mt-2 text-sm font-semibold leading-relaxed text-white/60">
@@ -178,7 +178,7 @@ if ($me['authenticated']) {
                     </p>
                 </div>
 
-                <div class="step-card sc2 rounded-3xl border border-white/10 bg-white/5 p-5">
+                <div class="step-card sc2 rounded-2xl border border-white/10 bg-white/5 p-4">
                     <span class="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-sm font-black text-white ring-1 ring-white/15">2</span>
                     <h3 class="mt-4 text-lg font-black tracking-tight text-white">Set up your business</h3>
                     <p class="mt-2 text-sm font-semibold leading-relaxed text-white/60">
@@ -186,12 +186,42 @@ if ($me['authenticated']) {
                     </p>
                 </div>
 
-                <div class="step-card sc3 rounded-3xl border border-white/10 bg-white/5 p-5">
+                <div class="step-card sc3 rounded-2xl border border-white/10 bg-white/5 p-4">
                     <span class="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-sm font-black text-white ring-1 ring-white/15">3</span>
                     <h3 class="mt-4 text-lg font-black tracking-tight text-white">Start using your tools</h3>
                     <p class="mt-2 text-sm font-semibold leading-relaxed text-white/60">
                         Access OnePay for inventory and POS or MyPay for payroll and HR management.
                     </p>
+                </div>
+            </div>
+
+            <div class="mt-5 border-t border-white/10 pt-5">
+                <div class="flex flex-wrap items-center justify-center gap-2 md:justify-start">
+                    <span class="text-[10px] font-black uppercase tracking-[0.18em] text-white/35">Included Apps</span>
+                    <a href="about.php#onepay" class="inline-flex items-center gap-2 rounded-full border border-purple-200/15 bg-purple-50/10 px-3 py-1.5 text-xs font-black text-purple-100 transition hover:bg-purple-50/15">
+                        <span class="flex h-5 w-5 items-center justify-center rounded-full bg-purple-100 text-purple-700">
+                            <svg viewBox="0 0 32 32" class="h-3.5 w-3.5"><path d="M16 8l2.5 7.5H26l-6 4.5 2.5 7.5-6-4.5-6 4.5 2.5-7.5-6-4.5h7.5L16 8z" fill="currentColor"/></svg>
+                        </span>
+                        OnePay
+                    </a>
+                    <a href="about.php#mypay" class="inline-flex items-center gap-2 rounded-full border border-orange-200/15 bg-orange-50/10 px-3 py-1.5 text-xs font-black text-orange-100 transition hover:bg-orange-50/15">
+                        <span class="flex h-5 w-5 items-center justify-center rounded-full bg-orange-100">
+                            <img src="assets/myPay.png" alt="" class="h-3.5 w-3.5 object-contain">
+                        </span>
+                        MyPay
+                    </a>
+                    <a href="login.php#request" class="inline-flex items-center gap-2 rounded-full border border-teal-200/15 bg-teal-50/10 px-3 py-1.5 text-xs font-black text-teal-100 transition hover:bg-teal-50/15">
+                        <span class="flex h-5 w-5 items-center justify-center rounded-full bg-teal-100 text-teal-700">
+                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        </span>
+                        Calendar
+                    </a>
+                    <a href="login.php#request" class="inline-flex items-center gap-2 rounded-full border border-emerald-200/15 bg-emerald-50/10 px-3 py-1.5 text-xs font-black text-emerald-100 transition hover:bg-emerald-50/15">
+                        <span class="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>
+                        </span>
+                        Invoices
+                    </a>
                 </div>
             </div>
             <div class="mt-6 flex justify-center md:justify-start">
