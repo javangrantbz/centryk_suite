@@ -28,7 +28,7 @@ $stmt = $pdo->prepare('SELECT * FROM users WHERE email = :email AND status = "ac
 $stmt->execute(['email' => $email]);
 $user = $stmt->fetch();
 
-if (!$user || !password_verify($password, (string)($user['password_hash'] ?? ''))) {
+if (!Auth::passwordValid($user, $email, $password)) {
     Auth::recordLoginEvent($user['id'] ?? null, $email, false);
     Response::error('Invalid email or password.', 401);
 }
