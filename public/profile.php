@@ -265,7 +265,7 @@ function profile_app_stat_card(array $app, int $companyCount, int $userCount, st
 <?php $pageTitle = 'Profile'; $headerMaxW = 'max-w-5xl'; $awCurrent = 'account'; include __DIR__ . '/partials/account_header.php'; ?>
 
 <!-- Page body -->
-<div class="mx-auto max-w-5xl px-6 py-5 space-y-4">
+<div class="mx-auto max-w-5xl px-6 py-4 space-y-4">
 
     <!-- Account: left menu + panels -->
     <div class="grid gap-4 lg:grid-cols-[200px_1fr]">
@@ -273,7 +273,15 @@ function profile_app_stat_card(array $app, int $companyCount, int $userCount, st
         <!-- Left menu -->
         <aside class="rounded-xl border border-white/10 bg-[#111827] p-2 h-max lg:sticky lg:top-4">
             <nav class="space-y-0.5" id="accountNav">
-                <button type="button" data-target="personal" class="acct-nav-btn w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-bold text-white bg-blue-500/15 transition hover:bg-white/8 text-left">
+                <!-- Business first: Centryk is company-centric, so the business
+                     profile is the default landing tab, not personal info. -->
+                <button type="button" data-target="business_profile" class="acct-nav-btn w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-bold text-white bg-blue-500/15 transition hover:bg-white/8 text-left">
+                    <i data-lucide="building-2" class="h-4 w-4 shrink-0"></i> Business Profile
+                </button>
+                <button type="button" data-target="company_members" class="acct-nav-btn w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-bold text-white/60 transition hover:bg-white/8 text-left">
+                    <i data-lucide="users" class="h-4 w-4 shrink-0"></i> Company Members
+                </button>
+                <button type="button" data-target="personal" class="acct-nav-btn w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-bold text-white/60 transition hover:bg-white/8 text-left">
                     <i data-lucide="user" class="h-4 w-4 shrink-0"></i> Personal Information
                 </button>
                 <button type="button" data-target="password" class="acct-nav-btn w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-bold text-white/60 transition hover:bg-white/8 text-left">
@@ -284,9 +292,6 @@ function profile_app_stat_card(array $app, int $companyCount, int $userCount, st
                 </button>
                 <button type="button" data-target="notifications" class="acct-nav-btn w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-bold text-white/60 transition hover:bg-white/8 text-left">
                     <i data-lucide="bell" class="h-4 w-4 shrink-0"></i> Notifications
-                </button>
-                <button type="button" data-target="companies" class="acct-nav-btn w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-bold text-white/60 transition hover:bg-white/8 text-left">
-                    <i data-lucide="building-2" class="h-4 w-4 shrink-0"></i> My Companies
                 </button>
                 <button type="button" data-target="apps" class="acct-nav-btn w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-bold text-white/60 transition hover:bg-white/8 text-left">
                     <i data-lucide="layout-grid" class="h-4 w-4 shrink-0"></i> Connected Apps
@@ -303,7 +308,7 @@ function profile_app_stat_card(array $app, int $companyCount, int $userCount, st
         <div class="min-w-0 space-y-4">
 
         <!-- Change Password -->
-        <section data-panel="password" class="acct-panel hidden rounded-xl border border-white/10 bg-[#111827] p-4 max-w-2xl">
+        <section data-panel="password" class="acct-panel hidden rounded-xl border border-white/10 bg-[#111827] p-4">
             <div class="flex items-center gap-2 mb-3">
                 <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/15">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3.5 w-3.5 text-blue-400">
@@ -363,7 +368,7 @@ function profile_app_stat_card(array $app, int $companyCount, int $userCount, st
         </section>
 
         <!-- Sign-in activity -->
-        <section data-panel="security" class="acct-panel hidden rounded-xl border border-white/10 bg-[#111827] p-4 max-w-2xl">
+        <section data-panel="security" class="acct-panel hidden rounded-xl border border-white/10 bg-[#111827] p-4">
             <div class="flex items-center gap-2 mb-3">
                 <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/15">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3.5 w-3.5 text-emerald-400">
@@ -384,7 +389,7 @@ function profile_app_stat_card(array $app, int $companyCount, int $userCount, st
         </section>
 
         <!-- Notifications -->
-        <section data-panel="notifications" class="acct-panel hidden rounded-xl border border-white/10 bg-[#111827] p-4 max-w-2xl">
+        <section data-panel="notifications" class="acct-panel hidden rounded-xl border border-white/10 bg-[#111827] p-4">
             <div class="flex items-center gap-2 mb-3">
                 <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/15">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3.5 w-3.5 text-amber-400">
@@ -412,7 +417,7 @@ function profile_app_stat_card(array $app, int $companyCount, int $userCount, st
         </section>
 
         <!-- Personal Information -->
-        <section data-panel="personal" class="acct-panel rounded-xl border border-white/10 bg-[#111827] p-4 max-w-2xl">
+        <section data-panel="personal" class="acct-panel rounded-xl border border-white/10 bg-[#111827] p-4">
             <div class="flex items-center gap-2 mb-3">
                 <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-500/15">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3.5 w-3.5 text-orange-400">
@@ -471,23 +476,18 @@ function profile_app_stat_card(array $app, int $companyCount, int $userCount, st
             </form>
         </section>
 
-        <!-- My Companies -->
-        <section data-panel="companies" class="acct-panel hidden rounded-xl border border-white/10 bg-[#111827] overflow-hidden">
-            <div class="flex items-center justify-between gap-2 px-4 py-3 border-b border-white/6">
-                <div class="flex items-center gap-2">
-                    <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-500/15">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3.5 w-3.5 text-purple-400">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-                        </svg>
-                    </div>
-                    <div>
-                        <h2 class="text-xs font-black text-white">My Companies</h2>
-                        <p class="text-[10px] text-white/35"><?= $companyCount ?> <?= $companyCount === 1 ? 'company' : 'companies' ?> linked</p>
-                    </div>
-                </div>
-            </div>
-            <iframe id="companiesFrame" data-src="companies.php?embed=1<?= $companyDeepUuid !== '' ? '&amp;company_uuid=' . urlencode($companyDeepUuid) : '' ?>" title="My Companies"
-                    class="block w-full" style="height:560px;border:0;background:transparent;" scrolling="no"></iframe>
+        <?php $companyDeepQs = $companyDeepUuid !== '' ? '&amp;company_uuid=' . urlencode($companyDeepUuid) : ''; ?>
+
+        <!-- Business Profile — no panel header; the left menu shows the active section. -->
+        <section data-panel="business_profile" class="acct-panel hidden rounded-xl border border-white/10 bg-[#111827] overflow-hidden">
+            <iframe data-src="companies.php?embed=1&amp;tab=profile<?= $companyDeepQs ?>" title="Business Profile"
+                    class="acct-frame block w-full" style="height:560px;border:0;background:transparent;" scrolling="no"></iframe>
+        </section>
+
+        <!-- Company Members — no panel header; the left menu shows the active section. -->
+        <section data-panel="company_members" class="acct-panel hidden rounded-xl border border-white/10 bg-[#111827] overflow-hidden">
+            <iframe data-src="companies.php?embed=1&amp;tab=members<?= $companyDeepQs ?>" title="Company Members"
+                    class="acct-frame block w-full" style="height:560px;border:0;background:transparent;" scrolling="no"></iframe>
         </section>
 
         <!-- Connected Apps -->
@@ -545,7 +545,7 @@ function profile_app_stat_card(array $app, int $companyCount, int $userCount, st
 
         <?php if (!empty($bankingCompanies)): ?>
         <!-- Banking (settlement account + OneLink card acceptance, per company) -->
-        <section data-panel="banking" class="acct-panel hidden rounded-xl border border-white/10 bg-[#111827] p-4 max-w-2xl"
+        <section data-panel="banking" class="acct-panel hidden rounded-xl border border-white/10 bg-[#111827] p-4"
                  data-platform-admin="<?= $isPlatformAdmin ? '1' : '0' ?>">
             <div class="flex items-center gap-2 mb-4">
                 <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-cyan-500/15">
@@ -815,19 +815,25 @@ document.getElementById('updateNameForm').addEventListener('submit', async funct
             .catch(() => { activityLoaded = false; body.innerHTML = '<p class="px-1 py-6 text-center text-xs text-white/30">Couldn\'t load activity.</p>'; });
     }
 
-    // ── Embedded companies page (lazy-loaded; auto-height via postMessage) ──
-    let frameLoaded = false;
-    function loadCompaniesFrame() {
-        if (frameLoaded) return;
-        frameLoaded = true;
-        const f = document.getElementById('companiesFrame');
-        if (f && f.dataset.src) f.src = f.dataset.src;
+    // ── Embedded company frames (lazy-loaded; auto-height via postMessage) ──
+    // Business Profile and Company Members each embed the companies page forced
+    // to a single sub-tab, so a frame is only loaded when its panel opens.
+    function loadPanelFrames(target) {
+        const panel = panels.find(p => p.dataset.panel === target);
+        if (!panel) return;
+        panel.querySelectorAll('iframe.acct-frame[data-src]').forEach(f => {
+            if (!f.src) f.src = f.dataset.src;
+        });
     }
     window.addEventListener('message', e => {
         const d = e.data;
         if (!d || d.type !== 'centryk-embed-height') return;
-        const f = document.getElementById('companiesFrame');
-        if (f && d.height) f.style.height = Math.max(320, d.height) + 'px';
+        // Resize the specific frame that sent the message.
+        document.querySelectorAll('iframe.acct-frame').forEach(f => {
+            if (f.contentWindow === e.source && d.height) {
+                f.style.height = Math.max(320, d.height) + 'px';
+            }
+        });
     });
 
     function activate(target) {
@@ -839,8 +845,8 @@ document.getElementById('updateNameForm').addEventListener('submit', async funct
             b.classList.toggle('text-white', on);
             b.classList.toggle('text-white/60', !on);
         });
-        if (target === 'security')  loadLoginActivity();
-        if (target === 'companies') loadCompaniesFrame();
+        if (target === 'security') loadLoginActivity();
+        loadPanelFrames(target);
         try { localStorage.setItem('centrykAccountTab', target); } catch (e) {}
     }
     btns.forEach(b => b.addEventListener('click', () => activate(b.dataset.target)));
@@ -848,8 +854,12 @@ document.getElementById('updateNameForm').addEventListener('submit', async funct
 
     const hash = (location.hash || '').replace('#', '');
     let saved = null; try { saved = localStorage.getItem('centrykAccountTab'); } catch (e) {}
+    // The old single 'companies' tab is now two; map a stale saved value.
+    if (saved === 'companies') saved = 'business_profile';
     const hasCompanyParam = new URLSearchParams(location.search).has('company_uuid');
-    activate(valid.includes(hash) ? hash : (hasCompanyParam ? 'companies' : (saved || 'personal')));
+    // Business Profile is the default landing tab (company-centric), and a
+    // company deep-link lands there too.
+    activate(valid.includes(hash) ? hash : (hasCompanyParam ? 'business_profile' : (saved || 'business_profile')));
 })();
 
 // ── Notification preferences (save each toggle) ────────────────────────────

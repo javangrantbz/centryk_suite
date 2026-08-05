@@ -13,9 +13,14 @@ if (!$user) {
 $embed = (($_GET['embed'] ?? '') === '1');
 if (!$embed) {
     $cu = trim($_GET['company_uuid'] ?? '');
-    header('Location: profile.php' . ($cu !== '' ? '?company_uuid=' . urlencode($cu) : '') . '#companies');
+    header('Location: profile.php' . ($cu !== '' ? '?company_uuid=' . urlencode($cu) : '') . '#business_profile');
     exit;
 }
+
+// Profile embeds this once per sub-tab (Business Profile / Company Members),
+// forcing a single view. When forced, the internal Members/Profile tab strip
+// is redundant and hidden — the parent's account nav does that switching.
+$forceTab = in_array($_GET['tab'] ?? '', ['members', 'profile'], true) ? $_GET['tab'] : '';
 
 $userApps = AuthService::allAppsWithEnrollment((int)$user['id']);
 $fullName = htmlspecialchars($user['first_name'] . ' ' . $user['last_name']);
@@ -170,19 +175,16 @@ if ($embed) {
 
 <!-- Company Detail View (hidden initially) -->
 <div id="detailView" class="hidden mx-auto max-w-5xl px-6 <?= $embed ? 'pt-2 pb-6' : 'py-10' ?>">
+    <?php if (!$embed): ?>
+    <!-- Standalone only. Embedded in Profile there is no separate "Companies"
+         page to go back to — the account nav switches sections instead. -->
     <div class="mb-6 flex items-center gap-3">
-        <?php if ($embed): ?>
-        <button type="button" id="detailBackEmbed" class="flex items-center gap-1.5 text-xs font-black uppercase tracking-[0.12em] text-white/35 transition hover:text-white/80">
-            <i data-lucide="arrow-left" class="h-3.5 w-3.5"></i>
-            Back to companies
-        </button>
-        <?php else: ?>
         <a href="index.php" class="flex items-center gap-1.5 text-xs font-black uppercase tracking-[0.12em] text-white/35 transition hover:text-white/80">
             <i data-lucide="arrow-left" class="h-3.5 w-3.5"></i>
             Back to Dashboard
         </a>
-        <?php endif; ?>
     </div>
+    <?php endif; ?>
 
     <div class="overflow-hidden rounded-[24px] border border-white/10 bg-[#111827]">
         <!-- Detail header -->
@@ -190,6 +192,21 @@ if ($embed) {
             <div>
                 <div class="flex items-center gap-2">
                     <h2 id="detailName" class="text-xl font-black tracking-tight text-white"></h2>
+                    <span class="text-white/20 font-light mx-1">|</span>
+                    <select id="profileBusinessType" class="profile-input rounded-lg border border-white/10 bg-white/6 px-2 py-1 text-[11px] font-bold text-white outline-none transition focus:border-emerald-500 focus:bg-white/8 disabled:opacity-60">
+                        <option value="">Not set</option>
+                        <option value="school">School / Education</option>
+                        <option value="gym">Gym / Fitness</option>
+                        <option value="clinic">Clinic / Health</option>
+                        <option value="salon">Salon / Spa</option>
+                        <option value="retail">Retail / Shop</option>
+                        <option value="restaurant">Restaurant / Food</option>
+                        <option value="auto_sales">Auto Sales</option>
+                        <option value="auto_rental">Auto Rental</option>
+                        <option value="services">Services</option>
+                        <option value="property">Property / Rentals</option>
+                        <option value="other">Something else</option>
+                    </select>
                     <button id="renameCompanyBtn" title="Rename company"
                             class="hidden flex items-center justify-center rounded-lg p-1 text-white/25 transition hover:bg-white/10 hover:text-white/70">
                         <i data-lucide="pencil" class="h-3.5 w-3.5"></i>
@@ -211,11 +228,13 @@ if ($embed) {
             </div>
         </div>
 
-        <!-- Tabs -->
+        <!-- Tabs (hidden when the parent forces a single sub-tab) -->
+        <?php if ($forceTab === ''): ?>
         <div class="flex items-center gap-1 border-b border-white/8 px-4">
             <button type="button" class="co-tab px-4 py-3 text-xs font-black uppercase tracking-[0.1em] border-b-2 border-emerald-500 text-white" data-tab="members">Members</button>
             <button type="button" class="co-tab px-4 py-3 text-xs font-black uppercase tracking-[0.1em] border-b-2 border-transparent text-white/40 transition hover:text-white/70" data-tab="profile">Business Profile</button>
         </div>
+        <?php endif; ?>
 
         <!-- Members panel -->
         <div data-tab-panel="members">
@@ -231,91 +250,84 @@ if ($embed) {
                 <i data-lucide="check-circle" class="h-4 w-4"></i><span id="profileSuccessText">Business profile saved.</span>
             </div>
 
-            <div class="space-y-4 p-5">
-                <!-- Logo + Email/TIN -->
-                <div class="flex flex-col gap-4 sm:flex-row sm:items-start">
-                    <!-- Logo -->
-                    <div class="flex shrink-0 flex-col items-center gap-2.5">
-                        <div class="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/5">
-                            <img id="profileLogoImg" src="" alt="Logo" class="hidden h-full w-full object-contain p-2">
-                            <i data-lucide="image" id="profileLogoPlaceholder" class="h-8 w-8 text-white/20"></i>
+            <div class="space-y-8 p-6">
+                <!-- Logo docked left, primary info docked right. The low
+                     breakpoint keeps them side-by-side inside the narrow
+                     Business Profile embed instead of stacking. -->
+                <div class="flex flex-col gap-5 min-[480px]:flex-row min-[480px]:items-start">
+                    <!-- Logo Preview (left) -->
+                    <div class="flex shrink-0 flex-col items-center min-[480px]:items-start gap-3">
+                        <!-- Larger logo: the three short fields beside it don't
+                             need much width, so the logo takes the space. -->
+                        <div class="relative flex aspect-square w-56 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/5 sm:w-64">
+                            <img id="profileLogoImg" src="" alt="Logo" class="hidden h-full w-full object-contain p-6">
+                            <i data-lucide="image" id="profileLogoPlaceholder" class="h-16 w-16 text-white/10"></i>
                         </div>
-                        <label id="profileLogoLabel" class="hidden cursor-pointer rounded-lg border border-white/10 bg-white/6 px-3 py-1.5 text-[11px] font-bold text-white/70 transition hover:bg-white/10">
-                            Change logo
-                            <input type="file" id="profileLogoInput" accept="image/png,image/jpeg,image/webp,image/svg+xml" class="hidden">
-                        </label>
-                        <p class="max-w-[6rem] text-center text-[9px] text-white/25">PNG, JPG, WEBP or SVG · Max 2MB</p>
+                        <div class="flex flex-col items-center min-[480px]:items-start gap-1.5">
+                            <label id="profileLogoLabel" class="hidden cursor-pointer rounded-xl border border-white/10 bg-white/6 px-4 py-2 text-xs font-black text-white transition hover:bg-white/10">
+                                Change logo
+                                <input type="file" id="profileLogoInput" accept="image/png,image/jpeg,image/webp,image/svg+xml" class="hidden">
+                            </label>
+                            <p class="text-[9px] font-bold text-white/20 uppercase tracking-wider">PNG, JPG, WEBP or SVG · Max 2MB</p>
+                        </div>
                     </div>
 
-                    <!-- Email + TIN (to the right of the logo) -->
-                    <div class="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2">
+                    <!-- Primary Fields (right of the logo) -->
+                    <div class="grid flex-1 grid-cols-1 gap-4">
                         <div>
-                            <label class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/35">Business Email</label>
-                            <input id="profileEmail" type="email" class="profile-input w-full rounded-lg border border-white/10 bg-white/6 px-3 py-2 text-xs text-white placeholder-white/20 outline-none transition focus:border-emerald-500 focus:bg-white/8 disabled:opacity-60" placeholder="business@email.com">
+                            <label class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-white/35">TIN Number</label>
+                            <input id="profileTin" type="text" class="profile-input w-full rounded-xl border border-white/10 bg-white/6 px-4 py-3 text-sm text-white placeholder-white/20 outline-none transition focus:border-emerald-500 focus:bg-white/8 disabled:opacity-60" placeholder="Tax ID">
                         </div>
                         <div>
-                            <label class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/35">TIN Number</label>
-                            <input id="profileTin" type="text" class="profile-input w-full rounded-lg border border-white/10 bg-white/6 px-3 py-2 text-xs text-white placeholder-white/20 outline-none transition focus:border-emerald-500 focus:bg-white/8 disabled:opacity-60" placeholder="Tax ID">
+                            <label class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-white/35">Business Email</label>
+                            <input id="profileEmail" type="email" class="profile-input w-full rounded-xl border border-white/10 bg-white/6 px-4 py-3 text-sm text-white placeholder-white/20 outline-none transition focus:border-emerald-500 focus:bg-white/8 disabled:opacity-60" placeholder="business@email.com">
+                        </div>
+                        <div>
+                            <label class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-white/35">Phone 1</label>
+                            <input id="profilePhone" type="tel" class="profile-input w-full rounded-xl border border-white/10 bg-white/6 px-4 py-3 text-sm text-white placeholder-white/20 outline-none transition focus:border-emerald-500 focus:bg-white/8 disabled:opacity-60" placeholder="+501 …">
                         </div>
                     </div>
                 </div>
 
-                <!-- Phones -->
-                <div class="flex flex-wrap items-end gap-3">
-                        <div class="min-w-[150px] flex-1">
-                            <label class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/35">Phone 1</label>
-                            <input id="profilePhone" type="tel" class="profile-input w-full rounded-lg border border-white/10 bg-white/6 px-3 py-2 text-xs text-white placeholder-white/20 outline-none transition focus:border-emerald-500 focus:bg-white/8 disabled:opacity-60" placeholder="+501 …">
+                <!-- Secondary Fields -->
+                <div class="space-y-4">
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div id="phoneField2" class="hidden">
+                            <label class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-white/35">Phone 2</label>
+                            <input id="profilePhone2" type="tel" class="profile-input w-full rounded-xl border border-white/10 bg-white/6 px-4 py-3 text-sm text-white placeholder-white/20 outline-none transition focus:border-emerald-500 focus:bg-white/8 disabled:opacity-60" placeholder="Optional">
                         </div>
-                        <div id="phoneField2" class="hidden min-w-[150px] flex-1">
-                            <label class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/35">Phone 2</label>
-                            <input id="profilePhone2" type="tel" class="profile-input w-full rounded-lg border border-white/10 bg-white/6 px-3 py-2 text-xs text-white placeholder-white/20 outline-none transition focus:border-emerald-500 focus:bg-white/8 disabled:opacity-60" placeholder="Optional">
+                        <div id="phoneField3" class="hidden">
+                            <label class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-white/35">Phone 3</label>
+                            <input id="profilePhone3" type="tel" class="profile-input w-full rounded-xl border border-white/10 bg-white/6 px-4 py-3 text-sm text-white placeholder-white/20 outline-none transition focus:border-emerald-500 focus:bg-white/8 disabled:opacity-60" placeholder="Optional">
                         </div>
-                        <div id="phoneField3" class="hidden min-w-[150px] flex-1">
-                            <label class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/35">Phone 3</label>
-                            <input id="profilePhone3" type="tel" class="profile-input w-full rounded-lg border border-white/10 bg-white/6 px-3 py-2 text-xs text-white placeholder-white/20 outline-none transition focus:border-emerald-500 focus:bg-white/8 disabled:opacity-60" placeholder="Optional">
-                        </div>
-                        <button id="addPhoneBtn" type="button" title="Add another phone" class="hidden shrink-0 rounded-lg border border-white/10 bg-white/6 p-2 text-white/60 transition hover:bg-white/10 hover:text-white">
-                            <i data-lucide="plus" class="h-4 w-4"></i>
-                        </button>
+                    </div>
+                    <button id="addPhoneBtn" type="button" class="hidden flex items-center gap-2 rounded-xl border border-white/10 bg-white/6 px-4 py-2 text-xs font-bold text-white/60 transition hover:bg-white/10 hover:text-white">
+                        <i data-lucide="plus" class="h-3.5 w-3.5"></i> Add another phone
+                    </button>
+
+                    <div>
+                        <label class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-white/35">Business Address</label>
+                        <textarea id="profileAddress" rows="2" class="profile-input w-full rounded-xl border border-white/10 bg-white/6 px-4 py-3 text-sm text-white placeholder-white/20 outline-none transition focus:border-emerald-500 focus:bg-white/8 disabled:opacity-60" placeholder="Street, City, Country"></textarea>
                     </div>
                     <div>
-                        <label class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/35">Business Address</label>
-                        <textarea id="profileAddress" rows="2" class="profile-input w-full rounded-lg border border-white/10 bg-white/6 px-3 py-2 text-xs text-white placeholder-white/20 outline-none transition focus:border-emerald-500 focus:bg-white/8 disabled:opacity-60" placeholder="Street, City, Country"></textarea>
+                        <label class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-white/35">Opening Hours</label>
+                        <textarea id="profileHours" rows="2" class="profile-input w-full rounded-xl border border-white/10 bg-white/6 px-4 py-3 text-sm text-white placeholder-white/20 outline-none transition focus:border-emerald-500 focus:bg-white/8 disabled:opacity-60" placeholder="e.g. Mon–Fri 8:00am–5:00pm&#10;Sat 9:00am–1:00pm"></textarea>
                     </div>
+
                     <div>
-                        <label class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/35">Opening Hours</label>
-                        <textarea id="profileHours" rows="2" class="profile-input w-full rounded-lg border border-white/10 bg-white/6 px-3 py-2 text-xs text-white placeholder-white/20 outline-none transition focus:border-emerald-500 focus:bg-white/8 disabled:opacity-60" placeholder="e.g. Mon–Fri 8:00am–5:00pm&#10;Sat 9:00am–1:00pm"></textarea>
-                    </div>
-                    <div>
-                        <label class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/35">Business Type</label>
-                        <select id="profileBusinessType" class="profile-input w-full rounded-lg border border-white/10 bg-white/6 px-3 py-2 text-xs text-white outline-none transition focus:border-emerald-500 focus:bg-white/8 disabled:opacity-60">
-                            <option value="">Not set</option>
-                            <option value="school">School / Education</option>
-                            <option value="gym">Gym / Fitness</option>
-                            <option value="clinic">Clinic / Health</option>
-                            <option value="salon">Salon / Spa</option>
-                            <option value="retail">Retail / Shop</option>
-                            <option value="restaurant">Restaurant / Food</option>
-                            <option value="auto_sales">Auto Sales</option>
-                            <option value="auto_rental">Auto Rental</option>
-                            <option value="services">Services</option>
-                            <option value="property">Property / Rentals</option>
-                            <option value="other">Something else</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/35">What you call your customers</label>
-                        <div class="flex items-center gap-2">
-                            <input id="profileNounS" type="text" class="profile-input w-full rounded-lg border border-white/10 bg-white/6 px-3 py-2 text-xs text-white placeholder-white/20 outline-none transition focus:border-emerald-500 focus:bg-white/8 disabled:opacity-60" placeholder="Customer">
-                            <span class="shrink-0 text-xs text-white/30">/</span>
-                            <input id="profileNounP" type="text" class="profile-input w-full rounded-lg border border-white/10 bg-white/6 px-3 py-2 text-xs text-white placeholder-white/20 outline-none transition focus:border-emerald-500 focus:bg-white/8 disabled:opacity-60" placeholder="Customers">
+                        <label class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-white/35">What you call your customers</label>
+                        <div class="flex items-center gap-3">
+                            <input id="profileNounS" type="text" class="profile-input w-full rounded-xl border border-white/10 bg-white/6 px-4 py-3 text-sm text-white placeholder-white/20 outline-none transition focus:border-emerald-500 focus:bg-white/8 disabled:opacity-60" placeholder="Customer">
+                            <span class="shrink-0 text-lg font-light text-white/20">/</span>
+                            <input id="profileNounP" type="text" class="profile-input w-full rounded-xl border border-white/10 bg-white/6 px-4 py-3 text-sm text-white placeholder-white/20 outline-none transition focus:border-emerald-500 focus:bg-white/8 disabled:opacity-60" placeholder="Customers">
                         </div>
-                        <p class="mt-1 text-[10px] text-white/30">Singular / plural. Labels invoicing in OnePay (e.g. “Batch Invoice Students”). Leave blank for Customer/Customers.</p>
+                        <p class="mt-2 text-[10px] font-semibold text-white/25">Singular / plural. Used for invoicing labels (e.g. “Batch Invoice Students”).</p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
 <!-- ─── New Company Modal ─── -->
 <div id="newCompanyModal" class="modal-backdrop fixed inset-0 z-50 hidden items-center justify-center p-4">
@@ -470,6 +482,9 @@ if ($embed) {
 (function () {
     if (window.lucide) { lucide.createIcons(); }
 
+    // Set when the parent profile page forces one sub-tab ('members'|'profile').
+    var FORCED_TAB = <?= json_encode($forceTab) ?>;
+
     var currentCompany  = null;
     var pendingRemove   = { companyId: null, userId: null };
     var selectedUuid    = null;
@@ -534,7 +549,7 @@ if ($embed) {
 
         loadMembers(company.id);
         loadProfile(company.id);
-        activateCompanyTab('members');
+        activateCompanyTab(FORCED_TAB || 'members');
         if (window.lucide) { lucide.createIcons(); }
     }
 
