@@ -130,6 +130,8 @@ $firstName = trim((string)($user['first_name'] ?? '')) ?: 'there';
       { key: 'salon',      emoji: '💈', label: 'Salon / Spa',       noun: ['Client', 'Clients'] },
       { key: 'retail',     emoji: '🛍️', label: 'Retail / Shop',     noun: ['Customer', 'Customers'] },
       { key: 'restaurant', emoji: '🍽️', label: 'Restaurant / Food', noun: ['Customer', 'Customers'] },
+      { key: 'auto_sales', emoji: '🚗', label: 'Auto Sales',        noun: ['Buyer', 'Buyers'] },
+      { key: 'auto_rental',emoji: '🔑', label: 'Auto Rental',       noun: ['Renter', 'Renters'] },
       { key: 'services',   emoji: '🧰', label: 'Services',          noun: ['Client', 'Clients'] },
       { key: 'property',   emoji: '🏠', label: 'Property / Rentals',noun: ['Tenant', 'Tenants'] },
       { key: 'other',      emoji: '🏢', label: 'Something else',    noun: ['Customer', 'Customers'] },

@@ -296,6 +296,8 @@ if ($embed) {
                             <option value="salon">Salon / Spa</option>
                             <option value="retail">Retail / Shop</option>
                             <option value="restaurant">Restaurant / Food</option>
+                            <option value="auto_sales">Auto Sales</option>
+                            <option value="auto_rental">Auto Rental</option>
                             <option value="services">Services</option>
                             <option value="property">Property / Rentals</option>
                             <option value="other">Something else</option>
