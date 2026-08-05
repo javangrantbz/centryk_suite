@@ -276,7 +276,7 @@ function profile_app_stat_card(array $app, int $companyCount, int $userCount, st
                 <!-- Business first: Centryk is company-centric, so the business
                      profile is the default landing tab, not personal info. -->
                 <button type="button" data-target="business_profile" class="acct-nav-btn w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-bold text-white bg-blue-500/15 transition hover:bg-white/8 text-left">
-                    <i data-lucide="building-2" class="h-4 w-4 shrink-0"></i> Business Profile
+                    <i data-lucide="building-2" class="h-4 w-4 shrink-0"></i> Business Profile & Privacy
                 </button>
                 <button type="button" data-target="company_members" class="acct-nav-btn w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-bold text-white/60 transition hover:bg-white/8 text-left">
                     <i data-lucide="users" class="h-4 w-4 shrink-0"></i> Company Members

@@ -27,6 +27,11 @@ $fullName = htmlspecialchars($user['first_name'] . ' ' . $user['last_name']);
 $initial  = strtoupper(substr($user['first_name'], 0, 1));
 $email    = htmlspecialchars($user['email']);
 $requestedCompanyUuid = trim($_GET['company_uuid'] ?? '');
+$storeThemeOptions = [];
+foreach (glob(__DIR__ . '/assets/store_theme/*.{png,jpg,jpeg,webp}', GLOB_BRACE) ?: [] as $themeFile) {
+    $storeThemeOptions[] = 'assets/store_theme/' . basename($themeFile);
+}
+sort($storeThemeOptions, SORT_NATURAL);
 ?>
 <!doctype html>
 <html lang="en">
@@ -128,9 +133,13 @@ ob_start(); ?>
 <?php $headerActionsHtml = ob_get_clean();
 
 if ($embed) {
-    // Keep the picker markup in the DOM (hidden) so its JS keeps working,
-    // but render none of the page chrome — the profile page provides that.
-    echo '<div class="hidden" aria-hidden="true">' . $headerMiddleHtml . '</div>';
+    // No page chrome here (the profile page provides that), but a user who
+    // belongs to more than one company still needs a way to switch which one
+    // this panel is showing. The picker normally lives in the light header
+    // bar; embedded pages have no such bar, so it renders here instead, right
+    // above the panel content. Kept in its native light styling — the same
+    // control users already know from the standalone Companies page.
+    echo '<div class="mb-4">' . $headerMiddleHtml . '</div>';
 } else {
     $pageTitle  = 'Companies';
     $headerMaxW = 'max-w-6xl';
@@ -199,6 +208,7 @@ if ($embed) {
                         <option value="gym">Gym / Fitness</option>
                         <option value="clinic">Clinic / Health</option>
                         <option value="salon">Salon / Spa</option>
+                        <option value="grocery">Groceries</option>
                         <option value="retail">Retail / Shop</option>
                         <option value="restaurant">Restaurant / Food</option>
                         <option value="auto_sales">Auto Sales</option>
@@ -306,6 +316,35 @@ if ($embed) {
                     </button>
 
                     <div>
+                        <div class="mb-2 flex items-end justify-between gap-3">
+                            <label class="block text-[10px] font-bold uppercase tracking-wider text-white/35">Store Theme</label>
+                            <span id="profileThemeName" class="text-[10px] font-black uppercase tracking-[0.14em] text-emerald-300"></span>
+                        </div>
+                        <input id="profileStoreTheme" type="hidden" class="profile-input" value="">
+                        <div id="profileThemePreview" class="relative flex aspect-[21/7] min-h-28 items-end overflow-hidden rounded-2xl border border-white/10 bg-white/6">
+                            <img id="profileThemePreviewImg" src="" alt="" class="hidden absolute inset-0 h-full w-full object-cover">
+                            <div class="absolute inset-0 bg-gradient-to-r from-slate-950/80 via-slate-950/25 to-transparent"></div>
+                            <div class="relative p-4">
+                                <p class="text-[10px] font-black uppercase tracking-[0.18em] text-white/50">Selected Banner</p>
+                                <p class="mt-1 text-lg font-black tracking-tight text-white">Business Store Header</p>
+                            </div>
+                        </div>
+                        <div id="profileThemeThumbs" class="mt-3 grid grid-cols-5 gap-2 sm:grid-cols-10">
+                            <?php foreach ($storeThemeOptions as $idx => $themePath): ?>
+                                <button type="button"
+                                        class="profile-theme-option group relative aspect-[4/3] overflow-hidden rounded-xl border border-white/10 bg-white/6 transition hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                                        data-theme="<?= htmlspecialchars($themePath) ?>"
+                                        data-theme-label="Theme <?= str_pad((string)($idx + 1), 2, '0', STR_PAD_LEFT) ?>">
+                                    <img src="<?= htmlspecialchars($themePath) ?>" alt="" class="h-full w-full object-cover transition group-hover:scale-105">
+                                    <span class="profile-theme-check absolute right-1.5 top-1.5 hidden h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg">
+                                        <i data-lucide="check" class="h-3.5 w-3.5"></i>
+                                    </span>
+                                </button>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+
+                    <div>
                         <label class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-white/35">Business Address</label>
                         <textarea id="profileAddress" rows="2" class="profile-input w-full rounded-xl border border-white/10 bg-white/6 px-4 py-3 text-sm text-white placeholder-white/20 outline-none transition focus:border-emerald-500 focus:bg-white/8 disabled:opacity-60" placeholder="Street, City, Country"></textarea>
                     </div>
@@ -313,6 +352,14 @@ if ($embed) {
                         <label class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-white/35">Opening Hours</label>
                         <textarea id="profileHours" rows="2" class="profile-input w-full rounded-xl border border-white/10 bg-white/6 px-4 py-3 text-sm text-white placeholder-white/20 outline-none transition focus:border-emerald-500 focus:bg-white/8 disabled:opacity-60" placeholder="e.g. Mon–Fri 8:00am–5:00pm&#10;Sat 9:00am–1:00pm"></textarea>
                     </div>
+
+                    <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 bg-white/4 px-4 py-3 transition hover:bg-white/6">
+                        <input id="profileDirectoryVisible" type="checkbox" class="profile-input mt-1 h-4 w-4 shrink-0 accent-emerald-500 disabled:opacity-60">
+                        <span>
+                            <span class="block text-sm font-black text-white">Show this business in Centryk Directory</span>
+                            <span class="mt-1 block text-[11px] font-semibold leading-relaxed text-white/35">When enabled, the public home page can list this business name, type, address, and phone.</span>
+                        </span>
+                    </label>
 
                     <div>
                         <label class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-white/35">What you call your customers</label>
@@ -484,6 +531,7 @@ if ($embed) {
 
     // Set when the parent profile page forces one sub-tab ('members'|'profile').
     var FORCED_TAB = <?= json_encode($forceTab) ?>;
+    var EMBED = <?= $embed ? 'true' : 'false' ?>;
 
     var currentCompany  = null;
     var pendingRemove   = { companyId: null, userId: null };
@@ -497,7 +545,10 @@ if ($embed) {
     document.getElementById('companyPickerBtn').addEventListener('click', function (e) {
         e.stopPropagation();
         document.getElementById('companyDropdown').classList.toggle('hidden');
-        document.getElementById('appSwitcherDropdown').classList.add('hidden');
+        // appSwitcherDropdown belongs to account_header.php, which the embed
+        // never includes — guard it so the picker doesn't throw in embed.
+        var asd = document.getElementById('appSwitcherDropdown');
+        if (asd) { asd.classList.add('hidden'); }
     });
     document.addEventListener('click', function () {
         document.getElementById('companyDropdown').classList.add('hidden');
@@ -575,6 +626,7 @@ if ($embed) {
 
     // ── Company business profile ──────────────────────────────────────────────
     var profileLogoFile = null;
+    var STORE_THEMES = <?= json_encode($storeThemeOptions, JSON_UNESCAPED_SLASHES) ?>;
 
     function setProfileLogo(src) {
         var img = document.getElementById('profileLogoImg');
@@ -583,8 +635,35 @@ if ($embed) {
         else     { img.removeAttribute('src'); img.classList.add('hidden'); ph.classList.remove('hidden'); }
     }
 
+    function setProfileTheme(src) {
+        var theme = STORE_THEMES.indexOf(src || '') !== -1 ? src : (STORE_THEMES[0] || '');
+        var input = document.getElementById('profileStoreTheme');
+        var img = document.getElementById('profileThemePreviewImg');
+        var label = document.getElementById('profileThemeName');
+        if (input) { input.value = theme; }
+        if (img) {
+            if (theme) { img.src = theme; img.classList.remove('hidden'); }
+            else { img.removeAttribute('src'); img.classList.add('hidden'); }
+        }
+        var activeLabel = '';
+        document.querySelectorAll('.profile-theme-option').forEach(function (btn) {
+            var on = btn.dataset.theme === theme;
+            if (on) { activeLabel = btn.dataset.themeLabel || ''; }
+            btn.classList.toggle('border-emerald-400', on);
+            btn.classList.toggle('ring-2', on);
+            btn.classList.toggle('ring-emerald-400/70', on);
+            var check = btn.querySelector('.profile-theme-check');
+            if (check) {
+                check.classList.toggle('hidden', !on);
+                check.classList.toggle('flex', on);
+            }
+        });
+        if (label) { label.textContent = activeLabel; }
+    }
+
     function setProfileEditable(canEdit) {
         document.querySelectorAll('.profile-input').forEach(function (el) { el.disabled = !canEdit; });
+        document.querySelectorAll('.profile-theme-option').forEach(function (el) { el.disabled = !canEdit; });
         document.getElementById('profileLogoLabel').classList.toggle('hidden', !canEdit);
         document.getElementById('profileReadonlyNote').classList.toggle('hidden', canEdit);
         updatePhoneAddBtn(canEdit);
@@ -627,6 +706,7 @@ if ($embed) {
                 document.getElementById('profileTin').value     = p.tax_number || '';
                 document.getElementById('profileAddress').value = p.address || '';
                 document.getElementById('profileHours').value   = p.opening_hours || '';
+                document.getElementById('profileDirectoryVisible').checked = String(p.directory_visible ?? '1') !== '0';
                 document.getElementById('profileBusinessType').value = p.business_type || '';
                 document.getElementById('profileNounS').value   = p.customer_noun_singular || '';
                 document.getElementById('profileNounP').value   = p.customer_noun_plural || '';
@@ -636,11 +716,19 @@ if ($embed) {
                 document.getElementById('phoneField2').classList.toggle('hidden', !has2);
                 document.getElementById('phoneField3').classList.toggle('hidden', !has3);
                 setProfileLogo(p.logo || '');
+                setProfileTheme(p.store_theme || '');
                 setProfileEditable(!!data.can_edit);
                 if (window.lucide) { lucide.createIcons(); }
             })
             .catch(function () {});
     }
+
+    document.querySelectorAll('.profile-theme-option').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            if (btn.disabled) { return; }
+            setProfileTheme(btn.dataset.theme || '');
+        });
+    });
 
     document.getElementById('profileLogoInput').addEventListener('change', function () {
         var f = this.files && this.files[0];
@@ -655,7 +743,7 @@ if ($embed) {
     // admin can still type a custom one afterwards.
     var NOUN_DEFAULTS = {
         school: ['Student', 'Students'], gym: ['Member', 'Members'], clinic: ['Patient', 'Patients'],
-        salon: ['Client', 'Clients'], services: ['Client', 'Clients'], property: ['Tenant', 'Tenants'],
+        salon: ['Client', 'Clients'], grocery: ['Customer', 'Customers'], services: ['Client', 'Clients'], property: ['Tenant', 'Tenants'],
         retail: ['Customer', 'Customers'], restaurant: ['Customer', 'Customers'], other: ['Customer', 'Customers']
     };
     document.getElementById('profileBusinessType').addEventListener('change', function () {
@@ -681,9 +769,11 @@ if ($embed) {
         fd.append('tax_number',    document.getElementById('profileTin').value.trim());
         fd.append('address',       document.getElementById('profileAddress').value.trim());
         fd.append('opening_hours', document.getElementById('profileHours').value.trim());
+        fd.append('directory_visible', document.getElementById('profileDirectoryVisible').checked ? '1' : '0');
         fd.append('business_type',          document.getElementById('profileBusinessType').value);
         fd.append('customer_noun_singular', document.getElementById('profileNounS').value.trim());
         fd.append('customer_noun_plural',   document.getElementById('profileNounP').value.trim());
+        fd.append('store_theme',            document.getElementById('profileStoreTheme').value);
         if (profileLogoFile) { fd.append('logo', profileLogoFile); }
 
         var orig = btn.innerHTML;
@@ -768,7 +858,14 @@ if ($embed) {
             });
         });
 
-        if (list.length === 1) {
+        // Embedded panels have no grid to browse, so a multi-company user gets
+        // dropped straight into the first company (alphabetical, same order as
+        // the picker list) rather than an empty panel — same as the existing
+        // single-company case, just no longer limited to exactly one. The
+        // standalone Companies page is unaffected and still shows the grid so
+        // the choice stays explicit there. A ?company_uuid= deep link (handled
+        // further down in loadCompanies) still overrides this afterward.
+        if (list.length === 1 || (EMBED && list.length > 1)) {
             selectedUuid = list[0].uuid || null;
             pickerLabel.textContent = list[0].name;
             pickerLabel.classList.remove('text-slate-400');
