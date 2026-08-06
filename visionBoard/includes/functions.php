@@ -205,6 +205,17 @@ function write_resized_image(string $source, string $dest, string $ext, int $max
     return (bool) $ok;
 }
 
+/** Lucide icon markup for a content type — one place instead of a repeated emoji map per page. */
+function content_type_icon(string $type, string $class = 'h-4 w-4'): string
+{
+    $name = match ($type) {
+        'video'     => 'film',
+        'biography' => 'file-text',
+        default     => 'image',
+    };
+    return '<i data-lucide="' . e($name) . '" class="' . e($class) . '"></i>';
+}
+
 /** Public web URL for a stored media file. */
 function media_url(string $filename): string
 {

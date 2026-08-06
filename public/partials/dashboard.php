@@ -315,7 +315,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
     </div>
 
     <?php
-    $_comingSoonAppKeys = ['visionboard' => true];
+    $_comingSoonAppKeys = [];
     $_enrolledAppCount = 0;
     $_otherAppCount = 0;
     foreach ($apps as $_app) {
@@ -383,6 +383,12 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
                             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
                         </svg>
                     </span>
+                    <?php elseif ($app['key'] === 'visionboard'): ?>
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-600">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                            <rect x="2" y="3" width="20" height="14" rx="2"/><path d="m10 8 5 3-5 3V8Z"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+                        </svg>
+                    </span>
                     <?php else: ?>
                     <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xl"
                           style="background:<?= htmlspecialchars($app['color']) ?>18">
@@ -392,10 +398,11 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
                     <div>
                         <div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
                             <?php
-                            if ($app['key'] === 'onepay')      echo 'Inventory &amp; POS';
-                            elseif ($app['key'] === 'mypay')   echo 'HR &amp; Payroll';
-                            elseif ($app['key'] === 'invoice') echo 'Quotes &amp; Invoicing';
-                            else                               echo htmlspecialchars($app['label']);
+                            if ($app['key'] === 'onepay')           echo 'Inventory &amp; POS';
+                            elseif ($app['key'] === 'mypay')        echo 'HR &amp; Payroll';
+                            elseif ($app['key'] === 'invoice')      echo 'Quotes &amp; Invoicing';
+                            elseif ($app['key'] === 'visionboard')  echo 'Digital Signage';
+                            else                                    echo htmlspecialchars($app['label']);
                             ?>
                         </div>
                         <div class="text-base font-black tracking-tight text-slate-900"><?= htmlspecialchars($app['label']) ?></div>
@@ -519,30 +526,8 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
             </div>
         </button>
 
-        <!-- Vision Board — coming soon (static, not launchable) -->
-        <div style="--i:<?= ($_appIdx ?? 0) + 6 ?>" class="dash-fade order-3 flex flex-col overflow-hidden rounded-2xl border border-rose-200/70 bg-rose-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
-            <div class="h-1.5 w-full bg-rose-500/50"></div>
-            <div class="flex flex-1 flex-col p-3">
-                <div class="flex items-center gap-3">
-                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-700">
-                        <i data-lucide="monitor-play" class="h-5 w-5"></i>
-                    </span>
-                    <div>
-                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-rose-600/80">Digital Signage</div>
-                        <div class="text-base font-black tracking-tight text-slate-800">Vision Board</div>
-                    </div>
-                </div>
-                <p class="mt-2 text-xs font-semibold leading-relaxed text-slate-500">
-                    Create and schedule branded content for on-site TV screens and displays.
-                </p>
-                <div class="mt-4 flex items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-100 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-rose-700">
-                    <i data-lucide="clock-3" class="h-3 w-3"></i>
-                    Coming Soon
-                </div>
-            </div>
-        </div>
-
         <!-- Case Management — coming soon (static, not in DB) -->
+
         <div style="--i:<?= ($_appIdx ?? 0) + 7 ?>" class="dash-fade order-3 flex flex-col overflow-hidden rounded-2xl border border-blue-200/70 bg-blue-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
             <div class="h-1.5 w-full bg-blue-500/50"></div>
             <div class="flex flex-1 flex-col p-3">

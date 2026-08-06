@@ -150,7 +150,11 @@ $amAdmin = is_admin($me);
                 <!-- Waffle app switcher -->
                 <div class="relative dropdown group">
                     <button class="w-10 h-10 flex items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 transition" title="Switch app">
-                        <i data-lucide="grid-3x3" class="w-5 h-5"></i>
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <rect x="3" y="3" width="4" height="4" rx="1"/><rect x="10" y="3" width="4" height="4" rx="1"/><rect x="17" y="3" width="4" height="4" rx="1"/>
+                            <rect x="3" y="10" width="4" height="4" rx="1"/><rect x="10" y="10" width="4" height="4" rx="1"/><rect x="17" y="10" width="4" height="4" rx="1"/>
+                            <rect x="3" y="17" width="4" height="4" rx="1"/><rect x="10" y="17" width="4" height="4" rx="1"/><rect x="17" y="17" width="4" height="4" rx="1"/>
+                        </svg>
                     </button>
                     <div class="dropdown-menu-bridge"></div>
                     <div class="dropdown-menu hidden absolute right-0 top-full z-50 mt-0 w-72 pt-3">
@@ -158,23 +162,56 @@ $amAdmin = is_admin($me);
                         <p class="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Switch App</p>
                         <div class="grid grid-cols-3 gap-2">
                             <a href="<?= e($CENTRYK) ?>/profile.php" class="flex flex-col items-center gap-2 rounded-xl p-3 text-center hover:bg-slate-50 transition">
-                                <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-sm"><i data-lucide="layout-grid" class="h-6 w-6"></i></span>
+                                <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-sm">
+                                    <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+                                </span>
                                 <span class="text-xs font-medium text-slate-700">Account</span>
                             </a>
                             <?php foreach ($hdrApps as $a): $k = (string)$a['key']; if ($k === 'centryk') continue; ?>
                                 <?php if ($k === 'visionboard'): ?>
                                 <div class="flex flex-col items-center gap-2 rounded-xl p-3 text-center bg-slate-100 ring-1 ring-slate-200 cursor-default">
-                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl text-2xl shadow-sm" style="background:<?= e($a['color']) ?>18"><?= e($a['icon']) ?></span>
+                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 ring-1 ring-rose-100">
+                                        <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                                            <rect x="2" y="3" width="20" height="14" rx="2"/><path d="m10 8 5 3-5 3V8Z"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+                                        </svg>
+                                    </span>
                                     <span class="text-xs font-semibold text-rose-700"><?= e($a['label']) ?></span>
                                 </div>
+                                <?php elseif ($k === 'onepay'): ?>
+                                <a href="<?= e($CENTRYK) ?>/switch.php?app=<?= urlencode($k) . $switchQs ?>" class="flex flex-col items-center gap-2 rounded-xl p-3 text-center hover:bg-slate-50 transition">
+                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-50 p-1.5 shadow-sm ring-1 ring-purple-100">
+                                        <img src="<?= e($CENTRYK) ?>/assets/onepay_logo.png" alt="OnePay" class="h-full w-full object-contain">
+                                    </span>
+                                    <span class="text-xs font-medium text-slate-700"><?= e($a['label']) ?></span>
+                                </a>
+                                <?php elseif ($k === 'mypay'): ?>
+                                <a href="<?= e($CENTRYK) ?>/switch.php?app=<?= urlencode($k) . $switchQs ?>" class="flex flex-col items-center gap-2 rounded-xl p-3 text-center hover:bg-slate-50 transition">
+                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 p-1.5 shadow-sm ring-1 ring-orange-100">
+                                        <img src="<?= e($CENTRYK) ?>/assets/myPay.png" alt="MyPay" class="h-full w-full object-contain">
+                                    </span>
+                                    <span class="text-xs font-medium text-slate-700"><?= e($a['label']) ?></span>
+                                </a>
+                                <?php elseif ($k === 'invoice'): ?>
+                                <a href="<?= e($CENTRYK) ?>/switch.php?app=<?= urlencode($k) . $switchQs ?>" class="flex flex-col items-center gap-2 rounded-xl p-3 text-center hover:bg-slate-50 transition">
+                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm bg-emerald-50 ring-1 ring-emerald-100">
+                                        <svg class="h-6 w-6 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                                            <path d="M8 3h7l5 5v11a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M15 3v6h6"/><path d="M9 13h6"/><path d="M9 17h6"/>
+                                        </svg>
+                                    </span>
+                                    <span class="text-xs font-medium text-slate-700"><?= e($a['label']) ?></span>
+                                </a>
                                 <?php elseif ($k === 'calendar'): ?>
                                 <a href="<?= e($CENTRYK) ?>/calendar.php<?= e($calQs) ?>" class="flex flex-col items-center gap-2 rounded-xl p-3 text-center hover:bg-slate-50 transition">
-                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl text-2xl shadow-sm" style="background:<?= e($a['color']) ?>18"><?= e($a['icon']) ?></span>
+                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm bg-teal-50 ring-1 ring-teal-100">
+                                        <svg class="h-6 w-6 text-teal-600" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                                        </svg>
+                                    </span>
                                     <span class="text-xs font-medium text-slate-700"><?= e($a['label']) ?></span>
                                 </a>
                                 <?php else: ?>
                                 <a href="<?= e($CENTRYK) ?>/switch.php?app=<?= urlencode($k) . $switchQs ?>" class="flex flex-col items-center gap-2 rounded-xl p-3 text-center hover:bg-slate-50 transition">
-                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl text-2xl shadow-sm" style="background:<?= e($a['color']) ?>18"><?= e($a['icon']) ?></span>
+                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl text-2xl shadow-sm" style="background:<?= e($a['color']) ?>14; border:1px solid <?= e($a['color']) ?>33"><?= e($a['icon']) ?></span>
                                     <span class="text-xs font-medium text-slate-700"><?= e($a['label']) ?></span>
                                 </a>
                                 <?php endif; ?>
@@ -217,7 +254,7 @@ $amAdmin = is_admin($me);
         </header>
 
         <!-- Main content -->
-        <main class="flex-1 overflow-y-auto custom-scrollbar p-4 lg:p-6">
+        <main class="flex-1 overflow-y-auto custom-scrollbar p-3 lg:p-4">
             <div class="max-w-6xl mx-auto">
                 <?php foreach (take_flashes() as $f): ?>
                   <div class="mb-4 rounded-lg px-4 py-3 text-sm <?= $f['type'] === 'error' ? 'bg-red-100 text-red-800 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-500/30' ?>">

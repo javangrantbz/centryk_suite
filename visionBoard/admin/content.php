@@ -89,13 +89,13 @@ $itemsStmt->execute([$cid]);
 $items = $itemsStmt->fetchAll();
 require __DIR__ . '/../includes/header.php';
 ?>
-<h1 class="text-2xl font-bold mb-4">Content</h1>
+<h1 class="text-xl font-black tracking-tight text-slate-900 mb-3">Content</h1>
 
-<div class="grid lg:grid-cols-3 gap-6">
+<div class="grid lg:grid-cols-3 gap-4">
   <!-- Editor -->
   <div class="lg:col-span-1">
-    <div class="bg-white rounded-xl shadow-sm p-6 sticky top-4" id="editor">
-      <h2 class="font-semibold mb-4"><?= $editing ? 'Edit content' : 'New content' ?></h2>
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sticky top-4" id="editor">
+      <h2 class="font-bold text-slate-800 mb-4"><?= $editing ? 'Edit content' : 'New content' ?></h2>
       <form method="post" class="space-y-3">
         <?= csrf_field() ?>
         <input type="hidden" name="action" value="save">
@@ -104,7 +104,7 @@ require __DIR__ . '/../includes/header.php';
         <div>
           <label class="block text-sm font-medium text-slate-600 mb-1">Type</label>
           <select name="type" id="typeSelect" class="w-full rounded-lg border border-slate-300 px-3 py-2">
-            <?php foreach (['image'=>'🖼️ Image','video'=>'🎬 Video','biography'=>'📝 Biography card'] as $v=>$l): ?>
+            <?php foreach (['image'=>'Image','video'=>'Video','biography'=>'Biography card'] as $v=>$l): ?>
               <option value="<?= $v ?>" <?= ($editing['type'] ?? 'image') === $v ? 'selected' : '' ?>><?= $l ?></option>
             <?php endforeach; ?>
           </select>
@@ -133,7 +133,7 @@ require __DIR__ . '/../includes/header.php';
               </option>
             <?php endforeach; ?>
           </select>
-          <p class="text-xs text-slate-400 mt-1">Need to add one? <a class="text-green-700 underline" href="media.php">Upload media</a>.</p>
+          <p class="text-xs text-slate-400 mt-1">Need to add one? <a class="text-rose-600 font-semibold hover:underline" href="media.php">Upload media</a>.</p>
         </div>
 
         <div data-role="body">
@@ -168,8 +168,8 @@ require __DIR__ . '/../includes/header.php';
         </label>
 
         <div class="flex gap-2 pt-2">
-          <button class="bg-green-700 hover:bg-green-800 text-white font-medium rounded-lg px-5 py-2"><?= $editing ? 'Update' : 'Create' ?></button>
-          <?php if ($editing): ?><a href="content.php" class="px-4 py-2 rounded-lg border">Cancel</a><?php endif; ?>
+          <button class="bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl px-5 py-2 transition-colors"><?= $editing ? 'Update' : 'Create' ?></button>
+          <?php if ($editing): ?><a href="content.php" class="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition-colors">Cancel</a><?php endif; ?>
         </div>
       </form>
     </div>
@@ -180,30 +180,33 @@ require __DIR__ . '/../includes/header.php';
     <?php if (!$items): ?>
       <p class="text-slate-500">No content yet. Create your first item on the left.</p>
     <?php endif; ?>
-    <?php foreach ($items as $it): $icon = ['image'=>'🖼️','video'=>'🎬','biography'=>'📝'][$it['type']]; ?>
-      <div class="bg-white rounded-xl shadow-sm p-4 flex items-center gap-4">
+    <?php foreach ($items as $it): ?>
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex items-center gap-4 hover:shadow-md transition-shadow">
         <div class="w-24 h-16 rounded-lg bg-slate-900 overflow-hidden flex items-center justify-center shrink-0">
           <?php if ($it['filename'] && $it['media_kind']==='image'): ?>
             <img src="<?= thumbnail_url($it['thumbnail_filename']) ?: media_url($it['filename']) ?>" class="w-full h-full object-cover">
           <?php elseif ($it['filename'] && $it['media_kind']==='video'): ?>
             <video src="<?= media_url($it['filename']) ?>" class="w-full h-full object-cover" muted></video>
           <?php else: ?>
-            <span class="text-2xl"><?= $icon ?></span>
+            <span class="text-rose-400"><?= content_type_icon($it['type'], 'h-6 w-6') ?></span>
           <?php endif; ?>
         </div>
         <div class="flex-1 min-w-0">
-          <p class="font-medium text-slate-800 truncate"><?= $icon ?> <?= e($it['title']) ?></p>
+          <p class="font-semibold text-slate-800 truncate flex items-center gap-1.5">
+            <span class="text-slate-400 shrink-0"><?= content_type_icon($it['type'], 'h-3.5 w-3.5') ?></span>
+            <?= e($it['title']) ?>
+          </p>
           <p class="text-sm text-slate-500 truncate"><?= e($it['subtitle'] ?: ucfirst($it['type'])) ?> · <?= (int)$it['duration_seconds'] ?>s
              <?php if ($it['starts_on'] || $it['ends_on']): ?>· <?= e(($it['starts_on'] ?: 'now') . ' to ' . ($it['ends_on'] ?: 'always')) ?><?php endif; ?>
              <?php if (!$it['is_active']): ?><span class="text-red-500">· inactive</span><?php endif; ?></p>
         </div>
         <div class="flex items-center gap-3 shrink-0">
-          <a href="content.php?edit=<?= $it['id'] ?>#editor" class="text-sm text-green-700 hover:underline">Edit</a>
+          <a href="content.php?edit=<?= $it['id'] ?>#editor" class="text-sm font-semibold text-rose-600 hover:underline">Edit</a>
           <form method="post" onsubmit="return confirm('Delete this content item?')">
             <?= csrf_field() ?>
             <input type="hidden" name="action" value="delete">
             <input type="hidden" name="id" value="<?= $it['id'] ?>">
-            <button class="text-sm text-red-600 hover:underline">Delete</button>
+            <button class="text-sm font-semibold text-red-600 hover:underline">Delete</button>
           </form>
         </div>
       </div>

@@ -82,13 +82,13 @@ $displayBase = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . app_ba
 
 require __DIR__ . '/../includes/header.php';
 ?>
-<h1 class="text-2xl font-bold mb-1">Screens</h1>
-<p class="text-slate-500 mb-6 text-sm max-w-2xl">
+<h1 class="text-xl font-black tracking-tight text-slate-900 mb-1">Screens</h1>
+<p class="text-slate-500 mb-3 text-sm max-w-2xl">
   Each TV is a screen with its own private link. Open that link in the TV's browser (full-screen / kiosk)
   and it will play this company's scheduled content. Keep the link private — anyone with it can view the screen's feed.
 </p>
 
-<div class="grid lg:grid-cols-3 gap-6">
+<div class="grid lg:grid-cols-3 gap-4">
   <div class="lg:col-span-2 space-y-4">
     <?php if (!$screens): ?><p class="text-slate-500">No screens yet. Add one on the right.</p><?php endif; ?>
     <?php foreach ($screens as $s):
@@ -96,16 +96,21 @@ require __DIR__ . '/../includes/header.php';
       $online = $s['last_seen_at'] && (time() - strtotime($s['last_seen_at'])) <= 45;
       $lastSeen = $s['last_seen_at'] ? date('M j, g:i A', strtotime($s['last_seen_at'])) : 'never';
     ?>
-      <div class="bg-white rounded-xl shadow-sm p-5 <?= $s['is_active'] ? '' : 'opacity-60' ?>">
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 <?= $s['is_active'] ? '' : 'opacity-60' ?>">
         <div class="flex items-start justify-between gap-3 mb-3">
-          <div>
-            <p class="font-semibold text-slate-800">📺 <?= e($s['name']) ?>
-              <?php if (!$s['is_active']): ?><span class="text-xs text-red-500">disabled</span><?php endif; ?>
-            </p>
-            <p class="text-sm text-slate-500"><?= e($s['location'] ?: 'No location set') ?></p>
+          <div class="flex items-start gap-3">
+            <span class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-600">
+              <i data-lucide="monitor" class="h-5 w-5"></i>
+            </span>
+            <div>
+              <p class="font-bold text-slate-800"><?= e($s['name']) ?>
+                <?php if (!$s['is_active']): ?><span class="text-xs text-red-500">disabled</span><?php endif; ?>
+              </p>
+              <p class="text-sm text-slate-500"><?= e($s['location'] ?: 'No location set') ?></p>
+            </div>
           </div>
-          <div class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold <?= $online ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-500' ?>">
-            <span class="h-2 w-2 rounded-full <?= $online ? 'bg-green-600' : 'bg-slate-400' ?>"></span>
+          <div class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold <?= $online ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500' ?>">
+            <span class="h-2 w-2 rounded-full <?= $online ? 'bg-emerald-600' : 'bg-slate-400' ?>"></span>
             <?= $online ? 'Online' : 'Offline' ?>
           </div>
         </div>
@@ -114,7 +119,9 @@ require __DIR__ . '/../includes/header.php';
         <div class="flex gap-2 mb-3">
           <input readonly value="<?= e($url) ?>" onclick="this.select()"
                  class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-xs bg-slate-50 font-mono">
-          <a href="<?= e($url) ?>" target="_blank" class="rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-sm px-3 py-2 whitespace-nowrap">Open ↗</a>
+          <a href="<?= e($url) ?>" target="_blank" class="flex items-center gap-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-sm px-3 py-2 whitespace-nowrap transition-colors">
+            Open <i data-lucide="external-link" class="h-3.5 w-3.5"></i>
+          </a>
         </div>
         <p class="text-xs text-slate-400 mb-3">Last check-in: <b class="text-slate-600"><?= e($lastSeen) ?></b>
           <?php if (!empty($s['playlist_name'])): ?>· Playing: <b class="text-slate-600"><?= e($s['playlist_name']) ?></b><?php endif; ?>
@@ -153,14 +160,14 @@ require __DIR__ . '/../includes/header.php';
   </div>
 
   <div>
-    <div class="bg-white rounded-xl shadow-sm p-6 sticky top-4">
-      <h2 class="font-semibold mb-3">Add a screen</h2>
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sticky top-4">
+      <h2 class="font-bold text-slate-800 mb-3">Add a screen</h2>
       <form method="post" class="space-y-3">
         <?= csrf_field() ?>
         <input type="hidden" name="action" value="add">
         <input name="name" placeholder="Screen name (e.g. Lobby TV)" required class="w-full rounded-lg border border-slate-300 px-3 py-2">
         <input name="location" placeholder="Location (optional)" class="w-full rounded-lg border border-slate-300 px-3 py-2">
-        <button class="w-full bg-green-700 hover:bg-green-800 text-white font-medium rounded-lg py-2">Add screen</button>
+        <button class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl py-2 transition-colors">Add screen</button>
       </form>
       <p class="text-xs text-slate-400 mt-3">A private display link is generated for each screen. On the TV, open Chrome/Edge in kiosk mode pointed at that link.</p>
     </div>

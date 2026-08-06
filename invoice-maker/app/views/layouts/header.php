@@ -219,18 +219,22 @@ if ($invHdrUuid !== '') {
                                 </div>
                                 <?php elseif ($k === 'onepay'): ?>
                                 <a href="<?= CENTRYK_BASE ?>/switch.php?app=<?= urlencode($k) . $invSwitchQs ?>" class="flex flex-col items-center gap-2 rounded-xl p-3 text-center hover:bg-slate-50 transition">
-                                    <svg viewBox="0 0 32 32" class="h-12 w-12 shrink-0"><circle cx="16" cy="16" r="16" fill="#7c3aed"/><path d="M16 8l2.5 7.5H26l-6 4.5 2.5 7.5-6-4.5-6 4.5 2.5-7.5-6-4.5h7.5L16 8z" fill="white"/></svg>
+                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-50 p-1.5 shadow-sm ring-1 ring-purple-100">
+                                        <img src="<?= rtrim(CENTRYK_BASE, '/') ?>/assets/onepay_logo.png" alt="OnePay" class="h-full w-full object-contain">
+                                    </span>
                                     <span class="text-xs font-medium text-slate-700"><?= e($a['label']) ?></span>
                                 </a>
                                 <?php elseif ($k === 'mypay'): ?>
                                 <a href="<?= CENTRYK_BASE ?>/switch.php?app=<?= urlencode($k) . $invSwitchQs ?>" class="flex flex-col items-center gap-2 rounded-xl p-3 text-center hover:bg-slate-50 transition">
-                                    <img src="<?= rtrim(CENTRYK_BASE, '/') ?>/assets/myPay.png" alt="MyPay" class="h-12 w-12 rounded-2xl object-contain shadow-sm">
+                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 p-1.5 shadow-sm ring-1 ring-orange-100">
+                                        <img src="<?= rtrim(CENTRYK_BASE, '/') ?>/assets/myPay.png" alt="MyPay" class="h-full w-full object-contain">
+                                    </span>
                                     <span class="text-xs font-medium text-slate-700"><?= e($a['label']) ?></span>
                                 </a>
                                 <?php elseif ($k === 'calendar'): ?>
                                 <a href="<?= CENTRYK_BASE ?>/calendar.php<?= $invCalQs ?>" class="flex flex-col items-center gap-2 rounded-xl p-3 text-center hover:bg-slate-50 transition">
-                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm" style="background:#14b8a6">
-                                        <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm bg-teal-50 ring-1 ring-teal-100">
+                                        <svg class="h-6 w-6 text-teal-600" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
                                             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
                                             <line x1="16" y1="2" x2="16" y2="6"/>
                                             <line x1="8" y1="2" x2="8" y2="6"/>
@@ -241,7 +245,7 @@ if ($invHdrUuid !== '') {
                                 </a>
                                 <?php else: ?>
                                 <a href="<?= CENTRYK_BASE ?>/switch.php?app=<?= urlencode($k) . $invSwitchQs ?>" class="flex flex-col items-center gap-2 rounded-xl p-3 text-center hover:bg-slate-50 transition">
-                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl text-2xl shadow-sm" style="background:<?= e($a['color']) ?>18"><?= e($a['icon']) ?></span>
+                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl text-2xl shadow-sm" style="background:<?= e($a['color']) ?>14; border:1px solid <?= e($a['color']) ?>33"><?= e($a['icon']) ?></span>
                                     <span class="text-xs font-medium text-slate-700"><?= e($a['label']) ?></span>
                                 </a>
                                 <?php endif; ?>

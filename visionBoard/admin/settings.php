@@ -178,12 +178,14 @@ $mqStmt->execute([$companyId]);
 $marqueeList = $mqStmt->fetchAll();
 require __DIR__ . '/../includes/header.php';
 ?>
-<h1 class="text-2xl font-bold mb-6">Settings</h1>
+<h1 class="text-xl font-black tracking-tight text-slate-900 mb-3">Settings</h1>
 
-<div class="grid md:grid-cols-2 gap-6">
+<div class="grid md:grid-cols-2 gap-4">
   <!-- Display settings -->
-  <div class="bg-white rounded-xl shadow-sm p-6">
-    <h2 class="font-semibold mb-4">📺 Display</h2>
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+    <h2 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+      <i data-lucide="tv" class="h-5 w-5 text-rose-500"></i> Display
+    </h2>
     <form method="post" class="space-y-3">
       <?= csrf_field() ?>
       <input type="hidden" name="action" value="display">
@@ -270,23 +272,27 @@ require __DIR__ . '/../includes/header.php';
         </div>
       </div>
 
-      <button class="bg-green-700 hover:bg-green-800 text-white font-medium rounded-lg px-5 py-2">Save</button>
+      <button class="bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl px-5 py-2 transition-colors">Save</button>
     </form>
   </div>
 
   <!-- Account / users -->
-  <div class="bg-white rounded-xl shadow-sm p-6">
-    <h2 class="font-semibold mb-2">👥 Users &amp; access</h2>
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+    <h2 class="font-bold text-slate-800 mb-2 flex items-center gap-2">
+      <i data-lucide="users" class="h-5 w-5 text-rose-500"></i> Users &amp; access
+    </h2>
     <p class="text-sm text-slate-500">Your password and who can access this company are managed in Centryk.
       Add or remove team members from the company's member list in Centryk, and their access to Signage follows.</p>
-    <a href="<?= e(centryk_public_url()) ?>/companies.php" class="inline-block mt-3 text-sm text-green-700 hover:underline">Manage members in Centryk ↗</a>
+    <a href="<?= e(centryk_public_url()) ?>/companies.php" class="inline-flex items-center gap-1 mt-3 text-sm font-semibold text-rose-600 hover:underline">
+      Manage members in Centryk <i data-lucide="external-link" class="h-3.5 w-3.5"></i>
+    </a>
   </div>
 
   <!-- Scrolling marquee messages -->
-  <div class="bg-white rounded-xl shadow-sm p-6 md:col-span-2">
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 md:col-span-2">
     <div class="flex items-center justify-between gap-3 mb-2">
       <div>
-        <h2 class="font-semibold">Scrolling marquee messages</h2>
+        <h2 class="font-bold text-slate-800">Scrolling marquee messages</h2>
         <p class="text-sm text-slate-500">Active messages rotate together in the TV banner.</p>
       </div>
       <?php if ($marqueeList): ?>
@@ -294,14 +300,16 @@ require __DIR__ . '/../includes/header.php';
           <?= csrf_field() ?>
           <input type="hidden" name="action" value="marquee_reorder">
           <input type="hidden" name="order" value="">
-          <button class="text-sm bg-slate-100 hover:bg-slate-200 rounded-lg px-3 py-1.5">Save order</button>
+          <button class="text-sm bg-slate-100 hover:bg-slate-200 font-semibold rounded-lg px-3 py-1.5 transition-colors">Save order</button>
         </form>
       <?php endif; ?>
     </div>
     <div class="space-y-2 mb-4" data-sortable-list>
       <?php foreach ($marqueeList as $m): ?>
-        <div class="flex flex-wrap items-center gap-2 border border-slate-100 rounded-lg p-2 bg-white <?= $m['is_active']?'':'opacity-60' ?>" draggable="true" data-sort-id="<?= $m['id'] ?>">
-          <button type="button" class="drag-handle text-slate-400 hover:text-slate-700 cursor-grab px-1" title="Drag to reorder">☰</button>
+        <div class="flex flex-wrap items-center gap-2 border border-slate-100 rounded-xl p-2 bg-white <?= $m['is_active']?'':'opacity-60' ?>" draggable="true" data-sort-id="<?= $m['id'] ?>">
+          <button type="button" class="drag-handle text-slate-400 hover:text-slate-700 cursor-grab px-1" title="Drag to reorder">
+            <i data-lucide="grip-vertical" class="h-4 w-4"></i>
+          </button>
           <form method="post" class="flex flex-1 flex-wrap items-center gap-2">
             <?= csrf_field() ?>
             <input type="hidden" name="action" value="marquee_save">
@@ -310,24 +318,29 @@ require __DIR__ . '/../includes/header.php';
             <label class="flex items-center gap-1 text-xs text-slate-500">
               <input type="checkbox" name="is_active" <?= $m['is_active']?'checked':'' ?>> on
             </label>
-            <button class="text-xs bg-slate-100 hover:bg-slate-200 rounded px-2 py-1">Save</button>
+            <button class="text-xs font-semibold bg-slate-100 hover:bg-slate-200 rounded px-2 py-1 transition-colors">Save</button>
           </form>
           <form method="post" onsubmit="return confirm('Remove this marquee message?')">
             <?= csrf_field() ?>
             <input type="hidden" name="action" value="marquee_del">
             <input type="hidden" name="id" value="<?= $m['id'] ?>">
-            <button class="text-xs text-red-600 hover:underline">Delete</button>
+            <button class="text-xs font-semibold text-red-600 hover:underline">Delete</button>
           </form>
-          <div class="flex items-center gap-1">
-            <?php foreach (['up'=>'▲','down'=>'▼'] as $d=>$g): ?>
-              <form method="post">
-                <?= csrf_field() ?>
-                <input type="hidden" name="action" value="marquee_move">
-                <input type="hidden" name="id" value="<?= $m['id'] ?>">
-                <input type="hidden" name="dir" value="<?= $d ?>">
-                <button class="text-slate-400 hover:text-slate-700 text-xs px-1" title="Move <?= $d ?>"><?= $g ?></button>
-              </form>
-            <?php endforeach; ?>
+          <div class="flex items-center gap-0.5">
+            <form method="post">
+              <?= csrf_field() ?>
+              <input type="hidden" name="action" value="marquee_move">
+              <input type="hidden" name="id" value="<?= $m['id'] ?>">
+              <input type="hidden" name="dir" value="up">
+              <button class="text-slate-400 hover:text-slate-700 p-1" title="Move up"><i data-lucide="chevron-up" class="h-3.5 w-3.5"></i></button>
+            </form>
+            <form method="post">
+              <?= csrf_field() ?>
+              <input type="hidden" name="action" value="marquee_move">
+              <input type="hidden" name="id" value="<?= $m['id'] ?>">
+              <input type="hidden" name="dir" value="down">
+              <button class="text-slate-400 hover:text-slate-700 p-1" title="Move down"><i data-lucide="chevron-down" class="h-3.5 w-3.5"></i></button>
+            </form>
           </div>
         </div>
       <?php endforeach; ?>
@@ -337,20 +350,22 @@ require __DIR__ . '/../includes/header.php';
       <?= csrf_field() ?>
       <input type="hidden" name="action" value="marquee_add">
       <input name="message" placeholder="Add a rotating banner message" required class="flex-1 min-w-[16rem] rounded-lg border border-slate-300 px-3 py-2 text-sm">
-      <button class="bg-green-700 hover:bg-green-800 text-white text-sm font-medium rounded-lg px-4 py-2">Add message</button>
+      <button class="bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold rounded-xl px-4 py-2 transition-colors">Add message</button>
     </form>
   </div>
 
   <!-- Visitor QR codes -->
-  <div class="bg-white rounded-xl shadow-sm p-6 md:col-span-2">
-    <h2 class="font-semibold mb-1">📱 Visitor QR codes</h2>
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 md:col-span-2">
+    <h2 class="font-bold text-slate-800 mb-1 flex items-center gap-2">
+      <i data-lucide="qr-code" class="h-5 w-5 text-rose-500"></i> Visitor QR codes
+    </h2>
     <p class="text-sm text-slate-500 mb-4">
       Show one or more QR codes on the TV (website, map, tickets…). With several codes, the display
       rotates through them, fading from one to the next. Codes are generated on the TV itself, so they
       work offline — visitors only need internet to open the link.
     </p>
 
-    <div class="grid md:grid-cols-3 gap-6">
+    <div class="grid md:grid-cols-3 gap-4">
       <!-- Global settings -->
       <form method="post" class="space-y-3 md:col-span-1">
         <?= csrf_field() ?>
@@ -365,7 +380,7 @@ require __DIR__ . '/../includes/header.php';
                  class="w-full rounded-lg border border-slate-300 px-3 py-2">
           <p class="text-xs text-slate-400 mt-1">Only matters when you have more than one code.</p>
         </div>
-        <button class="bg-green-700 hover:bg-green-800 text-white font-medium rounded-lg px-5 py-2">Save</button>
+        <button class="bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl px-5 py-2 transition-colors">Save</button>
       </form>
 
       <!-- List + add -->
@@ -375,13 +390,15 @@ require __DIR__ . '/../includes/header.php';
             <?= csrf_field() ?>
             <input type="hidden" name="action" value="qr_reorder">
             <input type="hidden" name="order" value="">
-            <button class="text-sm bg-slate-100 hover:bg-slate-200 rounded-lg px-3 py-1.5">Save QR order</button>
+            <button class="text-sm bg-slate-100 hover:bg-slate-200 font-semibold rounded-lg px-3 py-1.5 transition-colors">Save QR order</button>
           </form>
         <?php endif; ?>
         <div class="space-y-3" data-sortable-list>
           <?php foreach ($qrList as $q): ?>
-            <div class="flex flex-wrap items-center gap-2 border border-slate-100 rounded-lg p-2 bg-white <?= $q['is_active']?'':'opacity-60' ?>" draggable="true" data-sort-id="<?= $q['id'] ?>">
-              <button type="button" class="drag-handle text-slate-400 hover:text-slate-700 cursor-grab px-1" title="Drag to reorder">☰</button>
+            <div class="flex flex-wrap items-center gap-2 border border-slate-100 rounded-xl p-2 bg-white <?= $q['is_active']?'':'opacity-60' ?>" draggable="true" data-sort-id="<?= $q['id'] ?>">
+              <button type="button" class="drag-handle text-slate-400 hover:text-slate-700 cursor-grab px-1" title="Drag to reorder">
+                <i data-lucide="grip-vertical" class="h-4 w-4"></i>
+              </button>
               <div class="qr-admin-preview bg-white border border-slate-200 rounded p-1" data-qr-url="<?= e($q['url']) ?>"></div>
               <form method="post" class="flex flex-1 flex-wrap items-center gap-2">
                 <?= csrf_field() ?>
@@ -396,23 +413,28 @@ require __DIR__ . '/../includes/header.php';
                 <label class="flex items-center gap-1 text-xs text-slate-500">
                   <input type="checkbox" name="is_active" <?= $q['is_active']?'checked':'' ?>> on
                 </label>
-                <button class="text-xs bg-slate-100 hover:bg-slate-200 rounded px-2 py-1">Save</button>
+                <button class="text-xs font-semibold bg-slate-100 hover:bg-slate-200 rounded px-2 py-1 transition-colors">Save</button>
               </form>
               <form method="post" onsubmit="return confirm('Remove this QR code?')"><?= csrf_field() ?>
                 <input type="hidden" name="action" value="qr_del">
                 <input type="hidden" name="id" value="<?= $q['id'] ?>">
-                <button class="text-red-500 hover:text-red-700 text-xs px-1">Delete</button>
+                <button class="text-red-500 hover:text-red-700 text-xs font-semibold px-1">Delete</button>
               </form>
-              <div class="flex items-center gap-1">
-                <?php foreach (['up'=>'▲','down'=>'▼'] as $d=>$g): ?>
-                  <form method="post">
-                    <?= csrf_field() ?>
-                    <input type="hidden" name="action" value="qr_move">
-                    <input type="hidden" name="id" value="<?= $q['id'] ?>">
-                    <input type="hidden" name="dir" value="<?= $d ?>">
-                    <button class="text-slate-400 hover:text-slate-700 text-xs px-1" title="Move <?= $d ?>"><?= $g ?></button>
-                  </form>
-                <?php endforeach; ?>
+              <div class="flex items-center gap-0.5">
+                <form method="post">
+                  <?= csrf_field() ?>
+                  <input type="hidden" name="action" value="qr_move">
+                  <input type="hidden" name="id" value="<?= $q['id'] ?>">
+                  <input type="hidden" name="dir" value="up">
+                  <button class="text-slate-400 hover:text-slate-700 p-1" title="Move up"><i data-lucide="chevron-up" class="h-3.5 w-3.5"></i></button>
+                </form>
+                <form method="post">
+                  <?= csrf_field() ?>
+                  <input type="hidden" name="action" value="qr_move">
+                  <input type="hidden" name="id" value="<?= $q['id'] ?>">
+                  <input type="hidden" name="dir" value="down">
+                  <button class="text-slate-400 hover:text-slate-700 p-1" title="Move down"><i data-lucide="chevron-down" class="h-3.5 w-3.5"></i></button>
+                </form>
               </div>
             </div>
           <?php endforeach; ?>
@@ -425,7 +447,7 @@ require __DIR__ . '/../includes/header.php';
           <input name="caption" placeholder="Caption (e.g. Zoo map)" class="flex-1 min-w-[8rem] rounded-lg border border-slate-300 px-3 py-2 text-sm">
           <input name="url" placeholder="https://…" required class="flex-[2] min-w-[12rem] rounded-lg border border-slate-300 px-3 py-2 text-sm">
           <input name="display_seconds" type="number" min="3" placeholder="Seconds" class="w-28 rounded-lg border border-slate-300 px-3 py-2 text-sm">
-          <button class="bg-green-700 hover:bg-green-800 text-white text-sm font-medium rounded-lg px-4 py-2">Add QR code</button>
+          <button class="bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold rounded-xl px-4 py-2 transition-colors">Add QR code</button>
         </form>
       </div>
     </div>

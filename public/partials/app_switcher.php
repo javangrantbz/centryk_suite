@@ -12,7 +12,7 @@ $awAlign   = $awAlign   ?? 'left';
 $awMode    = $awMode    ?? 'links';
 $awCurrent = $awCurrent ?? 'centryk'; // which app key is the current page
 $awPos     = $awAlign === 'right' ? 'right-0' : 'left-0';
-$awComingSoonAppKeys = ['visionboard' => true];
+$awComingSoonAppKeys = [];
 
 if ($awMode === 'launch' && !isset($apps)) {
     if (class_exists('Auth') && class_exists('AuthService')) {

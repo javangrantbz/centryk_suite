@@ -72,8 +72,8 @@ CREATE TABLE IF NOT EXISTS login_events (
 -- ── Seed data ──────────────────────────────────────────────────────────────
 
 INSERT INTO apps (`key`, label, description, url_local, url_production, icon, color, sort_order) VALUES
-('onepay', 'OnePay',  'Inventory & Point of Sale', 'http://onepay.local/sso.php', 'https://onepay.bz/sso.php',  '🏪', '#0ea5e9', 1),
-('mypay',  'MyPay',   'HR & Payroll',              'http://localhost/myPay/sso.php',          'https://mypay.bz/sso.php',   '👥', '#8b5cf6', 2);
+('onepay', 'OnePay',  'Inventory & Point of Sale', 'http://onepay.local/sso.php', 'https://onepay.bz/sso.php',  '🏪', '#7c3aed', 1),
+('mypay',  'MyPay',   'HR & Payroll',              'http://localhost/myPay/sso.php',          'https://mypay.bz/sso.php',   '👥', '#f97316', 2);
 
 -- Default admin user  (password: password123)
 INSERT INTO users (first_name, last_name, email, phone, password_hash) VALUES

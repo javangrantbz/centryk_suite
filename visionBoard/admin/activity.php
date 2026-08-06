@@ -16,12 +16,12 @@ require __DIR__ . '/../includes/header.php';
 ?>
 <div class="flex items-center justify-between mb-4">
   <div>
-    <h1 class="text-2xl font-bold">Activity Log</h1>
+    <h1 class="text-xl font-black tracking-tight text-slate-900">Activity Log</h1>
     <p class="text-sm text-slate-500">Recent admin and editor changes.</p>
   </div>
 </div>
 
-<div class="bg-white rounded-xl shadow-sm overflow-hidden">
+<div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
   <div class="overflow-x-auto">
     <table class="min-w-full text-sm">
       <thead class="bg-slate-50 text-slate-500">
@@ -39,7 +39,7 @@ require __DIR__ . '/../includes/header.php';
             <td class="px-4 py-3 whitespace-nowrap text-slate-500"><?= e(date('M j, g:i A', strtotime($log['created_at']))) ?></td>
             <td class="px-4 py-3 whitespace-nowrap"><?= e($log['username'] ?: 'System') ?></td>
             <td class="px-4 py-3 whitespace-nowrap">
-              <span class="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700"><?= e($log['action']) ?></span>
+              <span class="rounded-full bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700"><?= e($log['action']) ?></span>
             </td>
             <td class="px-4 py-3 whitespace-nowrap text-slate-600">
               <?= e($log['entity_type'] ?: '-') ?><?= $log['entity_id'] ? ' #' . (int) $log['entity_id'] : '' ?>

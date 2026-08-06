@@ -131,18 +131,24 @@ if (isset($_GET['export'])) {
 
 require __DIR__ . '/../includes/header.php';
 ?>
-<h1 class="text-2xl font-bold mb-2">Backup</h1>
-<p class="text-slate-500 mb-6">Export this company's signage content (settings, media, playlists, schedules) as a zip.</p>
+<h1 class="text-xl font-black tracking-tight text-slate-900 mb-2">Backup</h1>
+<p class="text-slate-500 mb-3 text-sm">Export this company's signage content (settings, media, playlists, schedules) as a zip.</p>
 
-<div class="grid md:grid-cols-2 gap-6">
-  <div class="bg-white rounded-xl shadow-sm p-6">
-    <h2 class="font-semibold mb-3">Export backup</h2>
+<div class="grid md:grid-cols-2 gap-4">
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+    <h2 class="font-bold text-slate-800 mb-3 flex items-center gap-2">
+      <i data-lucide="database" class="h-5 w-5 text-rose-500"></i> Export backup
+    </h2>
     <p class="text-sm text-slate-500 mb-4">Downloads a zip containing <code>backup.sql</code> (your data only) and your uploaded media.</p>
-    <a href="backup.php?export=1" class="inline-block bg-green-700 hover:bg-green-800 text-white font-medium rounded-lg px-5 py-2">Download backup</a>
+    <a href="backup.php?export=1" class="inline-flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl px-5 py-2 transition-colors">
+      <i data-lucide="download" class="h-4 w-4"></i> Download backup
+    </a>
   </div>
 
-  <div class="bg-white rounded-xl shadow-sm p-6">
-    <h2 class="font-semibold mb-3">Restore</h2>
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+    <h2 class="font-bold text-slate-800 mb-3 flex items-center gap-2">
+      <i data-lucide="rotate-ccw" class="h-5 w-5 text-slate-400"></i> Restore
+    </h2>
     <p class="text-sm text-slate-500">Restores are handled by an administrator to protect the shared platform. Contact Centryk support with your backup file if you need to restore content.</p>
   </div>
 </div>

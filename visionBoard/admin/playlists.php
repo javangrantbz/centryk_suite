@@ -157,38 +157,45 @@ if (isset($_GET['edit'])) {
 require __DIR__ . '/../includes/header.php';
 ?>
 <div class="flex items-center justify-between mb-4">
-  <h1 class="text-2xl font-bold">Playlists</h1>
-  <a href="playlists.php" class="text-sm text-green-700 hover:underline">← All playlists</a>
+  <h1 class="text-xl font-black tracking-tight text-slate-900">Playlists</h1>
+  <a href="playlists.php" class="flex items-center gap-1 text-sm font-semibold text-rose-600 hover:underline">
+    <i data-lucide="arrow-left" class="h-3.5 w-3.5"></i> All playlists
+  </a>
 </div>
 
 <?php if (!$editing): ?>
   <!-- List + create -->
-  <div class="grid md:grid-cols-3 gap-6">
+  <div class="grid md:grid-cols-3 gap-4">
     <div class="md:col-span-2 space-y-3">
       <?php $plsStmt = $pdo->prepare('SELECT p.*, (SELECT COUNT(*) FROM vb_playlist_items pi WHERE pi.playlist_id=p.id) AS cnt FROM vb_playlists p WHERE p.company_id=? ORDER BY p.created_at DESC');
       $plsStmt->execute([$companyId]);
       $pls = $plsStmt->fetchAll();
       if (!$pls): ?><p class="text-slate-500">No playlists yet.</p><?php endif;
       foreach ($pls as $p): ?>
-        <div class="bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
-          <div>
-            <p class="font-medium text-slate-800">🎞️ <?= e($p['name']) ?>
-              <?php if(!$p['is_active']): ?><span class="text-xs text-red-500">(inactive)</span><?php endif; ?></p>
-            <p class="text-sm text-slate-500"><?= (int)$p['cnt'] ?> item(s) · <?= e($p['description'] ?: 'No description') ?></p>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex items-center justify-between hover:shadow-md transition-shadow">
+          <div class="flex items-center gap-3">
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-600">
+              <i data-lucide="list-video" class="h-5 w-5"></i>
+            </span>
+            <div>
+              <p class="font-semibold text-slate-800"><?= e($p['name']) ?>
+                <?php if(!$p['is_active']): ?><span class="text-xs text-red-500">(inactive)</span><?php endif; ?></p>
+              <p class="text-sm text-slate-500"><?= (int)$p['cnt'] ?> item(s) · <?= e($p['description'] ?: 'No description') ?></p>
+            </div>
           </div>
-          <a href="playlists.php?edit=<?= $p['id'] ?>" class="bg-green-700 hover:bg-green-800 text-white text-sm rounded-lg px-4 py-2">Edit</a>
+          <a href="playlists.php?edit=<?= $p['id'] ?>" class="bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold rounded-xl px-4 py-2 transition-colors">Edit</a>
         </div>
       <?php endforeach; ?>
     </div>
     <div>
-      <div class="bg-white rounded-xl shadow-sm p-6">
-        <h2 class="font-semibold mb-3">New playlist</h2>
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+        <h2 class="font-bold text-slate-800 mb-3">New playlist</h2>
         <form method="post" class="space-y-3">
           <?= csrf_field() ?>
           <input type="hidden" name="action" value="create_playlist">
           <input name="name" placeholder="Playlist name" required class="w-full rounded-lg border border-slate-300 px-3 py-2">
           <textarea name="description" rows="2" placeholder="Description (optional)" class="w-full rounded-lg border border-slate-300 px-3 py-2"></textarea>
-          <button class="w-full bg-green-700 hover:bg-green-800 text-white font-medium rounded-lg py-2">Create</button>
+          <button class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl py-2 transition-colors">Create</button>
         </form>
       </div>
     </div>
@@ -206,9 +213,9 @@ require __DIR__ . '/../includes/header.php';
   $allContent = $allContentStmt->fetchAll();
 ?>
   <!-- Edit one playlist -->
-  <div class="grid lg:grid-cols-3 gap-6">
+  <div class="grid lg:grid-cols-3 gap-4">
     <div class="lg:col-span-2 space-y-4">
-      <div class="bg-white rounded-xl shadow-sm p-6">
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
         <form method="post" class="space-y-3">
           <?= csrf_field() ?>
           <input type="hidden" name="action" value="update_playlist">
@@ -220,40 +227,44 @@ require __DIR__ . '/../includes/header.php';
             </label>
           </div>
           <input name="description" value="<?= e($editing['description']) ?>" placeholder="Description" class="w-full rounded-lg border border-slate-300 px-3 py-2">
-          <button class="bg-green-700 hover:bg-green-800 text-white text-sm rounded-lg px-4 py-2">Save details</button>
+          <button class="bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold rounded-xl px-4 py-2 transition-colors">Save details</button>
         </form>
       </div>
 
-      <div class="bg-white rounded-xl shadow-sm p-6">
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
         <div class="flex items-center justify-between gap-3 mb-3">
-          <h2 class="font-semibold">Items in play order</h2>
+          <h2 class="font-bold text-slate-800">Items in play order</h2>
           <?php if ($pItems): ?>
             <form method="post" data-sort-form>
               <?= csrf_field() ?>
               <input type="hidden" name="action" value="reorder_items">
               <input type="hidden" name="playlist_id" value="<?= $editing['id'] ?>">
               <input type="hidden" name="order" value="">
-              <button class="text-sm bg-slate-100 hover:bg-slate-200 rounded-lg px-3 py-1.5">Save order</button>
+              <button class="text-sm bg-slate-100 hover:bg-slate-200 font-semibold rounded-lg px-3 py-1.5 transition-colors">Save order</button>
             </form>
           <?php endif; ?>
         </div>
         <?php if (!$pItems): ?><p class="text-slate-500 text-sm">No items yet — add some on the right.</p><?php endif; ?>
         <ol class="space-y-2" data-sortable-list>
           <?php foreach ($pItems as $idx => $pi):
-            $icon = ['image'=>'🖼️','video'=>'🎬','biography'=>'📝'][$pi['type']];
             $eff = $pi['duration_override'] ?: $pi['duration_seconds']; ?>
-            <li class="flex items-center gap-3 border border-slate-100 rounded-lg p-2 bg-white" draggable="true" data-sort-id="<?= $pi['id'] ?>">
-              <button type="button" class="drag-handle text-slate-400 hover:text-slate-700 cursor-grab px-1" title="Drag to reorder">☰</button>
-              <span class="text-slate-400 w-6 text-center" data-sort-index><?= $idx+1 ?></span>
-              <div class="w-14 h-10 rounded bg-slate-900 overflow-hidden flex items-center justify-center shrink-0">
+            <li class="flex items-center gap-3 border border-slate-100 rounded-xl p-2 bg-white" draggable="true" data-sort-id="<?= $pi['id'] ?>">
+              <button type="button" class="drag-handle text-slate-400 hover:text-slate-700 cursor-grab px-1" title="Drag to reorder">
+                <i data-lucide="grip-vertical" class="h-4 w-4"></i>
+              </button>
+              <span class="text-slate-400 w-6 text-center text-sm" data-sort-index><?= $idx+1 ?></span>
+              <div class="w-14 h-10 rounded-lg bg-slate-900 overflow-hidden flex items-center justify-center shrink-0">
                 <?php if ($pi['filename'] && $pi['media_kind']==='image'): ?>
                   <img src="<?= thumbnail_url($pi['thumbnail_filename']) ?: media_url($pi['filename']) ?>" class="w-full h-full object-cover">
                 <?php elseif ($pi['filename'] && $pi['media_kind']==='video'): ?>
                   <video src="<?= media_url($pi['filename']) ?>" class="w-full h-full object-cover" muted></video>
-                <?php else: ?><span><?= $icon ?></span><?php endif; ?>
+                <?php else: ?><span class="text-rose-400"><?= content_type_icon($pi['type'], 'h-4 w-4') ?></span><?php endif; ?>
               </div>
               <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium truncate"><?= $icon ?> <?= e($pi['title']) ?></p>
+                <p class="text-sm font-semibold truncate flex items-center gap-1.5">
+                  <span class="text-slate-400 shrink-0"><?= content_type_icon($pi['type'], 'h-3 w-3') ?></span>
+                  <?= e($pi['title']) ?>
+                </p>
                 <form method="post" class="flex items-center gap-1 mt-0.5">
                   <?= csrf_field() ?>
                   <input type="hidden" name="action" value="set_duration">
@@ -261,24 +272,29 @@ require __DIR__ . '/../includes/header.php';
                   <input type="hidden" name="item_id" value="<?= $pi['id'] ?>">
                   <input name="duration_override" type="number" min="1" value="<?= (int)$eff ?>" class="w-16 text-xs rounded border border-slate-300 px-1 py-0.5">
                   <span class="text-xs text-slate-400">sec</span>
-                  <button class="text-xs text-green-700 hover:underline ml-1">set</button>
+                  <button class="text-xs font-semibold text-rose-600 hover:underline ml-1">set</button>
                 </form>
               </div>
-              <div class="flex items-center gap-1 shrink-0">
-                <?php foreach (['up'=>'▲','down'=>'▼'] as $d=>$g): ?>
-                  <form method="post"><?= csrf_field() ?>
-                    <input type="hidden" name="action" value="move">
-                    <input type="hidden" name="playlist_id" value="<?= $editing['id'] ?>">
-                    <input type="hidden" name="item_id" value="<?= $pi['id'] ?>">
-                    <input type="hidden" name="dir" value="<?= $d ?>">
-                    <button class="text-slate-400 hover:text-slate-700 px-1" title="Move <?= $d ?>"><?= $g ?></button>
-                  </form>
-                <?php endforeach; ?>
+              <div class="flex items-center gap-0.5 shrink-0">
+                <form method="post"><?= csrf_field() ?>
+                  <input type="hidden" name="action" value="move">
+                  <input type="hidden" name="playlist_id" value="<?= $editing['id'] ?>">
+                  <input type="hidden" name="item_id" value="<?= $pi['id'] ?>">
+                  <input type="hidden" name="dir" value="up">
+                  <button class="text-slate-400 hover:text-slate-700 p-1" title="Move up"><i data-lucide="chevron-up" class="h-4 w-4"></i></button>
+                </form>
+                <form method="post"><?= csrf_field() ?>
+                  <input type="hidden" name="action" value="move">
+                  <input type="hidden" name="playlist_id" value="<?= $editing['id'] ?>">
+                  <input type="hidden" name="item_id" value="<?= $pi['id'] ?>">
+                  <input type="hidden" name="dir" value="down">
+                  <button class="text-slate-400 hover:text-slate-700 p-1" title="Move down"><i data-lucide="chevron-down" class="h-4 w-4"></i></button>
+                </form>
                 <form method="post" onsubmit="return confirm('Remove this item from the playlist?')"><?= csrf_field() ?>
                   <input type="hidden" name="action" value="remove_item">
                   <input type="hidden" name="playlist_id" value="<?= $editing['id'] ?>">
                   <input type="hidden" name="item_id" value="<?= $pi['id'] ?>">
-                  <button class="text-red-500 hover:text-red-700 px-1">✕</button>
+                  <button class="text-red-500 hover:text-red-700 p-1" title="Remove"><i data-lucide="x" class="h-4 w-4"></i></button>
                 </form>
               </div>
             </li>
@@ -291,22 +307,22 @@ require __DIR__ . '/../includes/header.php';
           <?= csrf_field() ?>
           <input type="hidden" name="action" value="duplicate_playlist">
           <input type="hidden" name="playlist_id" value="<?= $editing['id'] ?>">
-          <button class="text-sm text-green-700 hover:underline">Duplicate this playlist</button>
+          <button class="text-sm font-semibold text-rose-600 hover:underline">Duplicate this playlist</button>
         </form>
         <form method="post" onsubmit="return confirm('Delete the whole playlist?')">
           <?= csrf_field() ?>
           <input type="hidden" name="action" value="delete_playlist">
           <input type="hidden" name="playlist_id" value="<?= $editing['id'] ?>">
-          <button class="text-sm text-red-600 hover:underline">Delete this playlist</button>
+          <button class="text-sm font-semibold text-red-600 hover:underline">Delete this playlist</button>
         </form>
       </div>
     </div>
 
     <div>
-      <div class="bg-white rounded-xl shadow-sm p-6 sticky top-4">
-        <h2 class="font-semibold mb-3">Add content</h2>
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sticky top-4">
+        <h2 class="font-bold text-slate-800 mb-3">Add content</h2>
         <?php if (!$allContent): ?>
-          <p class="text-sm text-slate-500">No active content. <a class="text-green-700 underline" href="content.php">Create some</a>.</p>
+          <p class="text-sm text-slate-500">No active content. <a class="text-rose-600 font-semibold hover:underline" href="content.php">Create some</a>.</p>
         <?php else: ?>
         <form method="post" class="space-y-3">
           <?= csrf_field() ?>
@@ -318,7 +334,7 @@ require __DIR__ . '/../includes/header.php';
             <?php endforeach; ?>
           </select>
           <input name="duration_override" type="number" min="1" placeholder="Duration override (optional)" class="w-full rounded-lg border border-slate-300 px-3 py-2">
-          <button class="w-full bg-green-700 hover:bg-green-800 text-white font-medium rounded-lg py-2">Add to playlist</button>
+          <button class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl py-2 transition-colors">Add to playlist</button>
         </form>
         <?php endif; ?>
       </div>

@@ -85,23 +85,26 @@ $mediaStmt->execute([$cid]);
 $media = $mediaStmt->fetchAll();
 require __DIR__ . '/../includes/header.php';
 ?>
-<h1 class="text-2xl font-bold mb-4">Media Library</h1>
+<h1 class="text-xl font-black tracking-tight text-slate-900 mb-3">Media Library</h1>
 
 <form method="post" enctype="multipart/form-data"
-      class="bg-white rounded-xl shadow-sm p-6 mb-6 border-2 border-dashed border-slate-200 transition"
+      class="bg-white rounded-2xl shadow-sm p-4 mb-4 border-2 border-dashed border-slate-200 hover:border-rose-300 transition-colors"
       data-dropzone>
   <?= csrf_field() ?>
   <input type="hidden" name="action" value="upload">
-  <label class="block font-medium text-slate-700 mb-2">Drop photos & videos here, or choose files</label>
+  <label class="flex items-center gap-2 font-semibold text-slate-700 mb-2">
+    <i data-lucide="upload-cloud" class="h-5 w-5 text-rose-500"></i>
+    Drop photos & videos here, or choose files
+  </label>
   <input type="file" name="files[]" multiple accept="image/*,video/*"
-         class="block w-full text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-green-700 file:text-white hover:file:bg-green-800 mb-3">
+         class="block w-full text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-rose-600 file:text-white file:font-semibold hover:file:bg-rose-700 mb-3">
   <p class="text-xs text-slate-400 mb-3">JPG, PNG, and WEBP images are resized to 1920px wide with thumbnails. GIFs and videos are stored as uploaded. Max <?= human_size(MAX_UPLOAD_BYTES) ?> each.</p>
   <?php if (!function_exists('imagecreatetruecolor')): ?>
     <p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">
       PHP GD is not enabled, so images will upload without automatic resizing until GD is turned on.
     </p>
   <?php endif; ?>
-  <button class="bg-green-700 hover:bg-green-800 text-white font-medium rounded-lg px-5 py-2">Upload</button>
+  <button class="bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl px-5 py-2 transition-colors">Upload</button>
 </form>
 
 <?php if (!$media): ?>
@@ -109,7 +112,7 @@ require __DIR__ . '/../includes/header.php';
 <?php else: ?>
 <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
   <?php foreach ($media as $m): ?>
-    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
       <div class="aspect-video bg-slate-900 flex items-center justify-center">
         <?php if ($m['kind'] === 'image'): ?>
           <img src="<?= thumbnail_url($m['thumbnail_filename']) ?: media_url($m['filename']) ?>" class="w-full h-full object-cover" alt="">
@@ -118,13 +121,13 @@ require __DIR__ . '/../includes/header.php';
         <?php endif; ?>
       </div>
       <div class="p-3">
-        <p class="text-sm font-medium text-slate-700 truncate" title="<?= e($m['original_name']) ?>"><?= e($m['original_name']) ?></p>
+        <p class="text-sm font-semibold text-slate-700 truncate" title="<?= e($m['original_name']) ?>"><?= e($m['original_name']) ?></p>
         <p class="text-xs text-slate-400"><?= e(strtoupper($m['kind'])) ?> · <?= human_size((int)$m['size_bytes']) ?></p>
         <form method="post" onsubmit="return confirm('Delete this file? Content items using it will lose their media.')" class="mt-2">
           <?= csrf_field() ?>
           <input type="hidden" name="action" value="delete">
           <input type="hidden" name="id" value="<?= $m['id'] ?>">
-          <button class="text-xs text-red-600 hover:underline">Delete</button>
+          <button class="text-xs font-semibold text-red-600 hover:underline">Delete</button>
         </form>
       </div>
     </div>
