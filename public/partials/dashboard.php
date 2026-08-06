@@ -330,15 +330,6 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
     ?>
 
     <section class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
-    <div class="mb-2 flex items-end justify-between gap-4">
-        <div>
-            <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Launcher</p>
-            <h2 class="text-xl font-black tracking-tight text-slate-900">Your apps</h2>
-        </div>
-        <span class="rounded-full bg-slate-50 px-3 py-1 text-[11px] font-black text-slate-500 ring-1 ring-slate-200">
-            <?= $_enrolledAppCount ?> active
-        </span>
-    </div>
 
     <?php if ($_enrolledAppCount === 0): ?>
     <div class="mb-4 rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-semibold text-slate-500">
@@ -367,7 +358,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
                 data-opt-in="<?= $optIn ? '1' : '0' ?>"
                 <?= ($enrolled || $optIn) ? '' : 'disabled' ?>>
             <div class="h-1.5 w-full" style="background:<?= htmlspecialchars($app['color']) . ($enrolled ? '' : ';opacity:.4') ?>"></div>
-            <div class="flex flex-1 flex-col p-4">
+            <div class="flex flex-1 flex-col p-3">
                 <div class="flex items-center gap-3">
                     <?php if ($app['key'] === 'onepay'): ?>
                     <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full shadow-sm"
@@ -446,7 +437,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         <button type="button" style="--i:<?= ($_appIdx ?? 0) + 1 ?>" id="onelinkPaymentsCard"
                 class="dash-fade order-1 group flex flex-col overflow-hidden rounded-2xl border border-cyan-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]">
             <div class="h-1.5 w-full bg-cyan-500"></div>
-            <div class="flex flex-1 flex-col p-4">
+            <div class="flex flex-1 flex-col p-3">
                 <div class="flex items-center gap-3">
                     <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-100 text-cyan-700">
                         <i data-lucide="credit-card" class="h-5 w-5"></i>
@@ -471,21 +462,11 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         </button>
         <?php endif; ?>
 
-        <div style="--i:<?= ($_appIdx ?? 0) + 3 ?>" class="dash-fade order-2 sm:col-span-2 lg:col-span-4 mt-1 border-t border-slate-200 pt-4">
-            <div class="flex flex-wrap items-end justify-between gap-3">
-                <div>
-                    <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Access</p>
-                    <h2 class="text-lg font-black tracking-tight text-slate-800">Other available apps</h2>
-                </div>
-                <p class="text-xs font-semibold text-slate-400">Contact an admin for access to apps marked not enrolled.</p>
-            </div>
-        </div>
-
         <?php if (empty($user['is_admin'])): ?>
         <!-- OneLink Payments — coming soon for non-Centryk admins -->
         <div style="--i:<?= ($_appIdx ?? 0) + 4 ?>" class="dash-fade order-3 flex flex-col overflow-hidden rounded-2xl border border-cyan-200/70 bg-cyan-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
             <div class="h-1.5 w-full bg-cyan-500/50"></div>
-            <div class="flex flex-1 flex-col p-4">
+            <div class="flex flex-1 flex-col p-3">
                 <div class="flex items-center gap-3">
                     <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-100 text-cyan-700">
                         <i data-lucide="credit-card" class="h-5 w-5"></i>
@@ -509,7 +490,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         <!-- Store — coming soon (static, not launchable) -->
         <div style="--i:<?= ($_appIdx ?? 0) + 5 ?>" class="dash-fade order-3 flex flex-col overflow-hidden rounded-2xl border border-violet-200/70 bg-violet-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
             <div class="h-1.5 w-full bg-violet-500/50"></div>
-            <div class="flex flex-1 flex-col p-4">
+            <div class="flex flex-1 flex-col p-3">
                 <div class="flex items-center gap-3">
                     <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-700">
                         <i data-lucide="store" class="h-5 w-5"></i>
@@ -532,7 +513,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         <!-- Vision Board — coming soon (static, not launchable) -->
         <div style="--i:<?= ($_appIdx ?? 0) + 6 ?>" class="dash-fade order-3 flex flex-col overflow-hidden rounded-2xl border border-rose-200/70 bg-rose-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
             <div class="h-1.5 w-full bg-rose-500/50"></div>
-            <div class="flex flex-1 flex-col p-4">
+            <div class="flex flex-1 flex-col p-3">
                 <div class="flex items-center gap-3">
                     <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-700">
                         <i data-lucide="monitor-play" class="h-5 w-5"></i>
@@ -555,7 +536,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         <!-- Case Management — coming soon (static, not in DB) -->
         <div style="--i:<?= ($_appIdx ?? 0) + 7 ?>" class="dash-fade order-3 flex flex-col overflow-hidden rounded-2xl border border-blue-200/70 bg-blue-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
             <div class="h-1.5 w-full bg-blue-500/50"></div>
-            <div class="flex flex-1 flex-col p-4">
+            <div class="flex flex-1 flex-col p-3">
                 <div class="flex items-center gap-3">
                     <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100">
                         <svg class="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
