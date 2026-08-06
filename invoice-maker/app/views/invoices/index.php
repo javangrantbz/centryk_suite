@@ -5,11 +5,15 @@ if (!in_array($type, ['all', 'invoice', 'quote'], true)) $type = 'all';
 
 $rows = [];
 if ($type === 'all' || $type === 'invoice') {
+    // POS receipts (source_ref 'sale:%') live under their own "POS Receipts" tab;
+    // the Invoices list is receivables only — manual invoices + school batches.
     $s = $pdo->prepare("SELECT 'invoice' AS doc_type, i.id, i.invoice_number AS number, i.status,
                                i.issue_date, i.total, i.amount_paid, i.created_at, i.quote_id,
                                c.name AS customer_name
                         FROM invoices i LEFT JOIN customers c ON c.id = i.customer_id
-                        WHERE i.company_id = ? ORDER BY i.created_at DESC");
+                        WHERE i.company_id = ?
+                          AND (i.source_ref IS NULL OR i.source_ref NOT LIKE 'sale:%')
+                        ORDER BY i.created_at DESC");
     $s->execute([$companyId]);
     $rows = array_merge($rows, $s->fetchAll(PDO::FETCH_ASSOC));
 }

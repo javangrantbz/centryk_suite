@@ -1,0 +1,14 @@
+/* Small supplements to Tailwind for the admin UI. */
+html { scroll-behavior: smooth; }
+video { background: #0b1220; }
+[data-sort-id].dragging { opacity: .45; }
+.drag-handle { touch-action: none; }
+.qr-admin-preview { width: 54px; height: 54px; display: flex; align-items: center; justify-content: center; }
+.qr-admin-preview img { width: 44px; height: 44px; display: block; image-rendering: pixelated; }
+[data-dropzone].drop-active {
+  border-color: #15803d;
+  background: #f0fdf4;
+}
+/* Nicer scrollbars in long lists */
+.max-h-48::-webkit-scrollbar, .max-h-64::-webkit-scrollbar { width: 8px; }
+.max-h-48::-webkit-scrollbar-thumb, .max-h-64::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }

@@ -1,0 +1,436 @@
+<?php
+$active = 'settings';
+$pageTitle = 'Settings';
+require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/functions.php';
+require_admin();
+
+$pdo = db();
+$companyId = vb_cid();
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    check_csrf();
+    $action = $_POST['action'] ?? '';
+
+    if ($action === 'display') {
+        set_setting('marquee', trim($_POST['marquee'] ?? ''));
+        set_setting('animal_of_day', trim($_POST['animal_of_day'] ?? ''));
+        set_setting('show_clock', isset($_POST['show_clock']) ? '1' : '0');
+        set_setting('weather_widget_enabled', isset($_POST['weather_widget_enabled']) ? '1' : '0');
+        set_setting('weather_label', trim($_POST['weather_label'] ?? '') ?: 'Belize Zoo');
+        set_setting('weather_latitude', trim($_POST['weather_latitude'] ?? '') ?: '17.3536');
+        set_setting('weather_longitude', trim($_POST['weather_longitude'] ?? '') ?: '-88.5497');
+        set_setting('donation_qr_enabled', isset($_POST['donation_qr_enabled']) ? '1' : '0');
+        set_setting('donation_qr_caption', trim($_POST['donation_qr_caption'] ?? '') ?: 'Support the zoo');
+        set_setting('donation_qr_url', trim($_POST['donation_qr_url'] ?? ''));
+        set_setting('feedback_qr_enabled', isset($_POST['feedback_qr_enabled']) ? '1' : '0');
+        set_setting('feedback_qr_caption', trim($_POST['feedback_qr_caption'] ?? '') ?: 'Share feedback');
+        set_setting('feedback_qr_url', trim($_POST['feedback_qr_url'] ?? ''));
+        set_setting('theme', $_POST['theme'] ?? 'jungle');
+        $trans = in_array($_POST['transition'] ?? '', ['fade','slide','zoom','kenburns'], true) ? $_POST['transition'] : 'fade';
+        set_setting('transition', $trans);
+        log_activity('updated', 'settings', null, 'display settings');
+        flash('Display settings saved.');
+        redirect('settings.php');
+    }
+
+    // ---- Visitor QR codes ----
+    if ($action === 'qr_settings') {
+        set_setting('qr_enabled', isset($_POST['qr_enabled']) ? '1' : '0');
+        set_setting('qr_rotate_seconds', max(3, (int) ($_POST['qr_rotate_seconds'] ?? 10)));
+        log_activity('updated', 'settings', null, 'qr settings');
+        flash('QR settings saved.');
+        redirect('settings.php');
+    }
+    if ($action === 'qr_add') {
+        $url = trim($_POST['url'] ?? '');
+        if ($url === '') {
+            flash('A link is required for a QR code.', 'error');
+        } else {
+            $maxStmt = $pdo->prepare('SELECT COALESCE(MAX(position),-1)+1 FROM vb_qr_codes WHERE company_id=?');
+            $maxStmt->execute([$companyId]);
+            $pos = (int) $maxStmt->fetchColumn();
+            $displaySeconds = ($_POST['display_seconds'] ?? '') !== '' ? max(3, (int) $_POST['display_seconds']) : null;
+            $pdo->prepare('INSERT INTO vb_qr_codes (company_id, caption, url, position, display_seconds) VALUES (?,?,?,?,?)')
+                ->execute([$companyId, trim($_POST['caption'] ?? '') ?: null, $url, $pos, $displaySeconds]);
+            log_activity('created', 'qr_code', (int) $pdo->lastInsertId(), $url);
+            flash('QR code added.');
+        }
+        redirect('settings.php');
+    }
+    if ($action === 'qr_save') {
+        $url = trim($_POST['url'] ?? '');
+        if ($url !== '') {
+            $displaySeconds = ($_POST['display_seconds'] ?? '') !== '' ? max(3, (int) $_POST['display_seconds']) : null;
+            $pdo->prepare('UPDATE vb_qr_codes SET caption=?, url=?, display_seconds=?, is_active=? WHERE id=? AND company_id=?')
+                ->execute([trim($_POST['caption'] ?? '') ?: null, $url, $displaySeconds, isset($_POST['is_active'])?1:0, (int)$_POST['id'], $companyId]);
+            log_activity('updated', 'qr_code', (int) $_POST['id'], $url);
+            flash('QR code updated.');
+        }
+        redirect('settings.php');
+    }
+    if ($action === 'qr_del') {
+        $pdo->prepare('DELETE FROM vb_qr_codes WHERE id=? AND company_id=?')->execute([(int)$_POST['id'], $companyId]);
+        log_activity('deleted', 'qr_code', (int) $_POST['id']);
+        flash('QR code removed.');
+        redirect('settings.php');
+    }
+    if ($action === 'qr_move') {
+        $itemId = (int) $_POST['id'];
+        $dir = ($_POST['dir'] ?? '') === 'up' ? 'up' : 'down';
+        $listStmt = $pdo->prepare('SELECT id, position FROM vb_qr_codes WHERE company_id=? ORDER BY position ASC, id ASC');
+        $listStmt->execute([$companyId]);
+        $list = $listStmt->fetchAll();
+        foreach ($list as $i => $r) {
+            if ($r['id'] == $itemId) {
+                $j = $dir === 'up' ? $i - 1 : $i + 1;
+                if ($j >= 0 && $j < count($list)) {
+                    $upd = $pdo->prepare('UPDATE vb_qr_codes SET position=? WHERE id=? AND company_id=?');
+                    $upd->execute([$list[$j]['position'], $list[$i]['id'], $companyId]);
+                    $upd->execute([$list[$i]['position'], $list[$j]['id'], $companyId]);
+                }
+                break;
+            }
+        }
+        log_activity('moved', 'qr_code', $itemId, $dir);
+        redirect('settings.php');
+    }
+    if ($action === 'qr_reorder') {
+        $order = array_filter(array_map('intval', explode(',', $_POST['order'] ?? '')));
+        $upd = $pdo->prepare('UPDATE vb_qr_codes SET position=? WHERE id=? AND company_id=?');
+        foreach ($order as $pos => $id) {
+            $upd->execute([$pos, $id, $companyId]);
+        }
+        log_activity('reordered', 'qr_code');
+        flash('QR order saved.');
+        redirect('settings.php');
+    }
+
+    // ---- Marquee messages ----
+    if ($action === 'marquee_add') {
+        $message = trim($_POST['message'] ?? '');
+        if ($message !== '') {
+            $maxStmt = $pdo->prepare('SELECT COALESCE(MAX(position),-1)+1 FROM vb_marquee_messages WHERE company_id=?');
+            $maxStmt->execute([$companyId]);
+            $pos = (int) $maxStmt->fetchColumn();
+            $pdo->prepare('INSERT INTO vb_marquee_messages (company_id, message, position) VALUES (?,?,?)')->execute([$companyId, $message, $pos]);
+            log_activity('created', 'marquee_message', (int) $pdo->lastInsertId(), $message);
+            flash('Marquee message added.');
+        }
+        redirect('settings.php');
+    }
+    if ($action === 'marquee_save') {
+        $message = trim($_POST['message'] ?? '');
+        if ($message !== '') {
+            $pdo->prepare('UPDATE vb_marquee_messages SET message=?, is_active=? WHERE id=? AND company_id=?')
+                ->execute([$message, isset($_POST['is_active']) ? 1 : 0, (int) $_POST['id'], $companyId]);
+            log_activity('updated', 'marquee_message', (int) $_POST['id'], $message);
+            flash('Marquee message saved.');
+        }
+        redirect('settings.php');
+    }
+    if ($action === 'marquee_del') {
+        $pdo->prepare('DELETE FROM vb_marquee_messages WHERE id=? AND company_id=?')->execute([(int) $_POST['id'], $companyId]);
+        log_activity('deleted', 'marquee_message', (int) $_POST['id']);
+        flash('Marquee message removed.');
+        redirect('settings.php');
+    }
+    if ($action === 'marquee_move') {
+        $itemId = (int) $_POST['id'];
+        $dir = ($_POST['dir'] ?? '') === 'up' ? 'up' : 'down';
+        $listStmt = $pdo->prepare('SELECT id, position FROM vb_marquee_messages WHERE company_id=? ORDER BY position ASC, id ASC');
+        $listStmt->execute([$companyId]);
+        $list = $listStmt->fetchAll();
+        foreach ($list as $i => $r) {
+            if ($r['id'] == $itemId) {
+                $j = $dir === 'up' ? $i - 1 : $i + 1;
+                if ($j >= 0 && $j < count($list)) {
+                    $upd = $pdo->prepare('UPDATE vb_marquee_messages SET position=? WHERE id=? AND company_id=?');
+                    $upd->execute([$list[$j]['position'], $list[$i]['id'], $companyId]);
+                    $upd->execute([$list[$i]['position'], $list[$j]['id'], $companyId]);
+                }
+                break;
+            }
+        }
+        log_activity('moved', 'marquee_message', $itemId, $dir);
+        flash('Marquee order updated.');
+        redirect('settings.php');
+    }
+    if ($action === 'marquee_reorder') {
+        $order = array_filter(array_map('intval', explode(',', $_POST['order'] ?? '')));
+        $upd = $pdo->prepare('UPDATE vb_marquee_messages SET position=? WHERE id=? AND company_id=?');
+        foreach ($order as $pos => $id) {
+            $upd->execute([$pos, $id, $companyId]);
+        }
+        log_activity('reordered', 'marquee_message');
+        flash('Marquee order saved.');
+        redirect('settings.php');
+    }
+    // Note: user accounts and roles are managed in Centryk (company members),
+    // not here — this app no longer has its own users table.
+}
+
+$qrStmt = $pdo->prepare('SELECT * FROM vb_qr_codes WHERE company_id=? ORDER BY position ASC, id ASC');
+$qrStmt->execute([$companyId]);
+$qrList = $qrStmt->fetchAll();
+$mqStmt = $pdo->prepare('SELECT * FROM vb_marquee_messages WHERE company_id=? ORDER BY position ASC, id ASC');
+$mqStmt->execute([$companyId]);
+$marqueeList = $mqStmt->fetchAll();
+require __DIR__ . '/../includes/header.php';
+?>
+<h1 class="text-2xl font-bold mb-6">Settings</h1>
+
+<div class="grid md:grid-cols-2 gap-6">
+  <!-- Display settings -->
+  <div class="bg-white rounded-xl shadow-sm p-6">
+    <h2 class="font-semibold mb-4">📺 Display</h2>
+    <form method="post" class="space-y-3">
+      <?= csrf_field() ?>
+      <input type="hidden" name="action" value="display">
+      <div>
+        <label class="block text-sm font-medium text-slate-600 mb-1">Fallback scrolling banner</label>
+        <input name="marquee" value="<?= e(get_setting('marquee','')) ?>" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+        <p class="text-xs text-slate-400 mt-1">Used only when no active messages are listed below.</p>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-600 mb-1">Animal of the Day</label>
+        <input name="animal_of_day" value="<?= e(get_setting('animal_of_day','')) ?>" placeholder="e.g. Panama the jaguar"
+               class="w-full rounded-lg border border-slate-300 px-3 py-2">
+        <p class="text-xs text-slate-400 mt-1">Prepended to the scrolling banner when set.</p>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">Theme</label>
+          <select name="theme" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+            <?php foreach (['jungle'=>'Jungle green','midnight'=>'Midnight','sand'=>'Sand'] as $v=>$l): ?>
+              <option value="<?= $v ?>" <?= get_setting('theme','jungle')===$v?'selected':'' ?>><?= $l ?></option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">Slide transition</label>
+          <select name="transition" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+            <?php foreach (['fade'=>'Fade','slide'=>'Slide','zoom'=>'Zoom','kenburns'=>'Ken Burns (pan &amp; zoom)'] as $v=>$l): ?>
+              <option value="<?= $v ?>" <?= get_setting('transition','fade')===$v?'selected':'' ?>><?= $l ?></option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+      </div>
+      <label class="flex items-center gap-2 text-sm">
+        <input type="checkbox" name="show_clock" <?= get_setting('show_clock','1')==='1'?'checked':'' ?>> Show clock on display
+      </label>
+
+      <div class="rounded-lg border border-slate-200 p-4 space-y-3">
+        <label class="flex items-center gap-2 text-sm font-medium text-slate-700">
+          <input type="checkbox" name="weather_widget_enabled" <?= get_setting('weather_widget_enabled','0')==='1'?'checked':'' ?>>
+          Show Belize weather + local time widget
+        </label>
+        <div class="grid sm:grid-cols-3 gap-2">
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">Label</label>
+            <input name="weather_label" value="<?= e(get_setting('weather_label','Belize Zoo')) ?>" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">Latitude</label>
+            <input name="weather_latitude" value="<?= e(get_setting('weather_latitude','17.3536')) ?>" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">Longitude</label>
+            <input name="weather_longitude" value="<?= e(get_setting('weather_longitude','-88.5497')) ?>" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+          </div>
+        </div>
+        <p class="text-xs text-slate-400">Uses Belize Zoo coordinates by default and falls back to local time if weather cannot load.</p>
+      </div>
+
+      <div class="rounded-lg border border-slate-200 p-4 space-y-4">
+        <h3 class="text-sm font-semibold text-slate-700">Donation / feedback QR shortcuts</h3>
+        <div class="space-y-2">
+          <label class="flex items-center gap-2 text-sm font-medium text-slate-700">
+            <input type="checkbox" name="donation_qr_enabled" <?= get_setting('donation_qr_enabled','0')==='1'?'checked':'' ?>>
+            Show donation QR
+          </label>
+          <div class="grid sm:grid-cols-3 gap-2">
+            <input name="donation_qr_caption" value="<?= e(get_setting('donation_qr_caption','Support the zoo')) ?>" placeholder="Caption"
+                   class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+            <input name="donation_qr_url" value="<?= e(get_setting('donation_qr_url','')) ?>" placeholder="Donation link"
+                   class="sm:col-span-2 rounded-lg border border-slate-300 px-3 py-2 text-sm">
+          </div>
+        </div>
+        <div class="space-y-2">
+          <label class="flex items-center gap-2 text-sm font-medium text-slate-700">
+            <input type="checkbox" name="feedback_qr_enabled" <?= get_setting('feedback_qr_enabled','0')==='1'?'checked':'' ?>>
+            Show feedback QR
+          </label>
+          <div class="grid sm:grid-cols-3 gap-2">
+            <input name="feedback_qr_caption" value="<?= e(get_setting('feedback_qr_caption','Share feedback')) ?>" placeholder="Caption"
+                   class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+            <input name="feedback_qr_url" value="<?= e(get_setting('feedback_qr_url','')) ?>" placeholder="Feedback link"
+                   class="sm:col-span-2 rounded-lg border border-slate-300 px-3 py-2 text-sm">
+          </div>
+        </div>
+      </div>
+
+      <button class="bg-green-700 hover:bg-green-800 text-white font-medium rounded-lg px-5 py-2">Save</button>
+    </form>
+  </div>
+
+  <!-- Account / users -->
+  <div class="bg-white rounded-xl shadow-sm p-6">
+    <h2 class="font-semibold mb-2">👥 Users &amp; access</h2>
+    <p class="text-sm text-slate-500">Your password and who can access this company are managed in Centryk.
+      Add or remove team members from the company's member list in Centryk, and their access to Signage follows.</p>
+    <a href="<?= e(centryk_public_url()) ?>/companies.php" class="inline-block mt-3 text-sm text-green-700 hover:underline">Manage members in Centryk ↗</a>
+  </div>
+
+  <!-- Scrolling marquee messages -->
+  <div class="bg-white rounded-xl shadow-sm p-6 md:col-span-2">
+    <div class="flex items-center justify-between gap-3 mb-2">
+      <div>
+        <h2 class="font-semibold">Scrolling marquee messages</h2>
+        <p class="text-sm text-slate-500">Active messages rotate together in the TV banner.</p>
+      </div>
+      <?php if ($marqueeList): ?>
+        <form method="post" data-sort-form>
+          <?= csrf_field() ?>
+          <input type="hidden" name="action" value="marquee_reorder">
+          <input type="hidden" name="order" value="">
+          <button class="text-sm bg-slate-100 hover:bg-slate-200 rounded-lg px-3 py-1.5">Save order</button>
+        </form>
+      <?php endif; ?>
+    </div>
+    <div class="space-y-2 mb-4" data-sortable-list>
+      <?php foreach ($marqueeList as $m): ?>
+        <div class="flex flex-wrap items-center gap-2 border border-slate-100 rounded-lg p-2 bg-white <?= $m['is_active']?'':'opacity-60' ?>" draggable="true" data-sort-id="<?= $m['id'] ?>">
+          <button type="button" class="drag-handle text-slate-400 hover:text-slate-700 cursor-grab px-1" title="Drag to reorder">☰</button>
+          <form method="post" class="flex flex-1 flex-wrap items-center gap-2">
+            <?= csrf_field() ?>
+            <input type="hidden" name="action" value="marquee_save">
+            <input type="hidden" name="id" value="<?= $m['id'] ?>">
+            <input name="message" value="<?= e($m['message']) ?>" required class="flex-1 min-w-[16rem] rounded border border-slate-300 px-2 py-1 text-sm">
+            <label class="flex items-center gap-1 text-xs text-slate-500">
+              <input type="checkbox" name="is_active" <?= $m['is_active']?'checked':'' ?>> on
+            </label>
+            <button class="text-xs bg-slate-100 hover:bg-slate-200 rounded px-2 py-1">Save</button>
+          </form>
+          <form method="post" onsubmit="return confirm('Remove this marquee message?')">
+            <?= csrf_field() ?>
+            <input type="hidden" name="action" value="marquee_del">
+            <input type="hidden" name="id" value="<?= $m['id'] ?>">
+            <button class="text-xs text-red-600 hover:underline">Delete</button>
+          </form>
+          <div class="flex items-center gap-1">
+            <?php foreach (['up'=>'▲','down'=>'▼'] as $d=>$g): ?>
+              <form method="post">
+                <?= csrf_field() ?>
+                <input type="hidden" name="action" value="marquee_move">
+                <input type="hidden" name="id" value="<?= $m['id'] ?>">
+                <input type="hidden" name="dir" value="<?= $d ?>">
+                <button class="text-slate-400 hover:text-slate-700 text-xs px-1" title="Move <?= $d ?>"><?= $g ?></button>
+              </form>
+            <?php endforeach; ?>
+          </div>
+        </div>
+      <?php endforeach; ?>
+      <?php if (!$marqueeList): ?><p class="text-sm text-slate-500">No marquee messages yet.</p><?php endif; ?>
+    </div>
+    <form method="post" class="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+      <?= csrf_field() ?>
+      <input type="hidden" name="action" value="marquee_add">
+      <input name="message" placeholder="Add a rotating banner message" required class="flex-1 min-w-[16rem] rounded-lg border border-slate-300 px-3 py-2 text-sm">
+      <button class="bg-green-700 hover:bg-green-800 text-white text-sm font-medium rounded-lg px-4 py-2">Add message</button>
+    </form>
+  </div>
+
+  <!-- Visitor QR codes -->
+  <div class="bg-white rounded-xl shadow-sm p-6 md:col-span-2">
+    <h2 class="font-semibold mb-1">📱 Visitor QR codes</h2>
+    <p class="text-sm text-slate-500 mb-4">
+      Show one or more QR codes on the TV (website, map, tickets…). With several codes, the display
+      rotates through them, fading from one to the next. Codes are generated on the TV itself, so they
+      work offline — visitors only need internet to open the link.
+    </p>
+
+    <div class="grid md:grid-cols-3 gap-6">
+      <!-- Global settings -->
+      <form method="post" class="space-y-3 md:col-span-1">
+        <?= csrf_field() ?>
+        <input type="hidden" name="action" value="qr_settings">
+        <label class="flex items-center gap-2 text-sm font-medium text-slate-700">
+          <input type="checkbox" name="qr_enabled" <?= get_setting('qr_enabled','0')==='1'?'checked':'' ?>>
+          Show QR codes on the display
+        </label>
+        <div>
+          <label class="block text-sm font-medium text-slate-600 mb-1">Seconds each code shows</label>
+          <input name="qr_rotate_seconds" type="number" min="3" value="<?= (int)get_setting('qr_rotate_seconds','10') ?>"
+                 class="w-full rounded-lg border border-slate-300 px-3 py-2">
+          <p class="text-xs text-slate-400 mt-1">Only matters when you have more than one code.</p>
+        </div>
+        <button class="bg-green-700 hover:bg-green-800 text-white font-medium rounded-lg px-5 py-2">Save</button>
+      </form>
+
+      <!-- List + add -->
+      <div class="md:col-span-2 space-y-3">
+        <?php if ($qrList): ?>
+          <form method="post" data-sort-form class="text-right">
+            <?= csrf_field() ?>
+            <input type="hidden" name="action" value="qr_reorder">
+            <input type="hidden" name="order" value="">
+            <button class="text-sm bg-slate-100 hover:bg-slate-200 rounded-lg px-3 py-1.5">Save QR order</button>
+          </form>
+        <?php endif; ?>
+        <div class="space-y-3" data-sortable-list>
+          <?php foreach ($qrList as $q): ?>
+            <div class="flex flex-wrap items-center gap-2 border border-slate-100 rounded-lg p-2 bg-white <?= $q['is_active']?'':'opacity-60' ?>" draggable="true" data-sort-id="<?= $q['id'] ?>">
+              <button type="button" class="drag-handle text-slate-400 hover:text-slate-700 cursor-grab px-1" title="Drag to reorder">☰</button>
+              <div class="qr-admin-preview bg-white border border-slate-200 rounded p-1" data-qr-url="<?= e($q['url']) ?>"></div>
+              <form method="post" class="flex flex-1 flex-wrap items-center gap-2">
+                <?= csrf_field() ?>
+                <input type="hidden" name="action" value="qr_save">
+                <input type="hidden" name="id" value="<?= $q['id'] ?>">
+                <input name="caption" value="<?= e($q['caption']) ?>" placeholder="Caption"
+                       class="flex-1 min-w-[8rem] rounded border border-slate-300 px-2 py-1 text-sm">
+                <input name="url" value="<?= e($q['url']) ?>" placeholder="https://…" required
+                       class="flex-[2] min-w-[12rem] rounded border border-slate-300 px-2 py-1 text-sm">
+                <input name="display_seconds" type="number" min="3" value="<?= e($q['display_seconds'] ?? '') ?>" placeholder="sec"
+                       class="w-20 rounded border border-slate-300 px-2 py-1 text-sm" title="Seconds this QR shows">
+                <label class="flex items-center gap-1 text-xs text-slate-500">
+                  <input type="checkbox" name="is_active" <?= $q['is_active']?'checked':'' ?>> on
+                </label>
+                <button class="text-xs bg-slate-100 hover:bg-slate-200 rounded px-2 py-1">Save</button>
+              </form>
+              <form method="post" onsubmit="return confirm('Remove this QR code?')"><?= csrf_field() ?>
+                <input type="hidden" name="action" value="qr_del">
+                <input type="hidden" name="id" value="<?= $q['id'] ?>">
+                <button class="text-red-500 hover:text-red-700 text-xs px-1">Delete</button>
+              </form>
+              <div class="flex items-center gap-1">
+                <?php foreach (['up'=>'▲','down'=>'▼'] as $d=>$g): ?>
+                  <form method="post">
+                    <?= csrf_field() ?>
+                    <input type="hidden" name="action" value="qr_move">
+                    <input type="hidden" name="id" value="<?= $q['id'] ?>">
+                    <input type="hidden" name="dir" value="<?= $d ?>">
+                    <button class="text-slate-400 hover:text-slate-700 text-xs px-1" title="Move <?= $d ?>"><?= $g ?></button>
+                  </form>
+                <?php endforeach; ?>
+              </div>
+            </div>
+          <?php endforeach; ?>
+        </div>
+        <?php if (!$qrList): ?><p class="text-sm text-slate-500">No QR codes yet — add one below.</p><?php endif; ?>
+
+        <form method="post" class="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+          <?= csrf_field() ?>
+          <input type="hidden" name="action" value="qr_add">
+          <input name="caption" placeholder="Caption (e.g. Zoo map)" class="flex-1 min-w-[8rem] rounded-lg border border-slate-300 px-3 py-2 text-sm">
+          <input name="url" placeholder="https://…" required class="flex-[2] min-w-[12rem] rounded-lg border border-slate-300 px-3 py-2 text-sm">
+          <input name="display_seconds" type="number" min="3" placeholder="Seconds" class="w-28 rounded-lg border border-slate-300 px-3 py-2 text-sm">
+          <button class="bg-green-700 hover:bg-green-800 text-white text-sm font-medium rounded-lg px-4 py-2">Add QR code</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script src="<?= app_base() ?>/assets/js/qrcode.min.js"></script>
+<?php require __DIR__ . '/../includes/footer.php'; ?>

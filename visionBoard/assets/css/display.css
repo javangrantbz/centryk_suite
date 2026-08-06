@@ -1,0 +1,189 @@
+/* TV display — full-screen kiosk styling. Self-contained (no CDN). */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
+body {
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  color: #fff;
+  cursor: none;                 /* hide cursor on the TV */
+}
+
+/* Theme accent colors */
+body[data-theme="jungle"]   { --accent: #2f9e44; --bg1: #0f3d1a; --bg2: #124a20; }
+body[data-theme="midnight"] { --accent: #4dabf7; --bg1: #0b1e33; --bg2: #10263f; }
+body[data-theme="sand"]     { --accent: #d9a441; --bg1: #3a2f1a; --bg2: #4a3d22; }
+
+.stage { position: fixed; inset: 0; }
+
+/* Slides — base state (transition style set via [data-transition] on #stage) */
+.slide, .media-slide, .bio-slide {
+  position: absolute; inset: 0;
+  opacity: 0;
+  transition: opacity 1s ease, transform 1.1s ease;
+  will-change: opacity, transform;
+}
+.slide.show, .media-slide.show, .bio-slide.show { opacity: 1; transform: none; }
+
+/* --- Transition variants --- */
+/* Fade (default): opacity only */
+.stage[data-transition="fade"] .slide { transform: none; }
+
+/* Slide in from the right */
+.stage[data-transition="slide"] .slide { transform: translateX(8%); }
+
+/* Zoom in */
+.stage[data-transition="zoom"] .slide { transform: scale(1.08); }
+
+/* Ken Burns: slow continuous pan & zoom on the image itself, plus a soft fade */
+.stage[data-transition="kenburns"] .slide { transform: scale(1.02); }
+.stage[data-transition="kenburns"] .media-slide.show img {
+  animation: kenburns 20s ease-out both;
+}
+@keyframes kenburns {
+  from { transform: scale(1.0)  translate(0, 0); }
+  to   { transform: scale(1.16) translate(-2.5%, -2%); }
+}
+
+.media-slide { background: #000; }
+.media-slide img,
+.media-slide video {
+  width: 100%; height: 100%;
+  object-fit: contain;          /* show whole photo/video, letterboxed */
+  background: #000;
+}
+
+/* Caption pinned bottom-left over media */
+.caption {
+  position: absolute; left: 0; right: 0; bottom: 70px;
+  padding: 24px 48px;
+  background: linear-gradient(to top, rgba(0,0,0,.75), rgba(0,0,0,0));
+  display: flex; flex-direction: column; gap: 4px;
+}
+.caption .c-title { font-size: 3rem; font-weight: 700; text-shadow: 0 2px 12px rgba(0,0,0,.8); }
+.caption .c-sub   { font-size: 1.6rem; color: var(--accent); font-weight: 600; }
+
+/* Biography / text card */
+.bio-slide {
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 8vh 12vw;
+  background: radial-gradient(circle at 30% 20%, var(--bg2), var(--bg1));
+}
+.bio-slide h1 { font-size: 5rem; line-height: 1.05; margin-bottom: 12px; }
+.bio-slide h2 { font-size: 2.4rem; color: var(--accent); margin-bottom: 32px; font-weight: 600; }
+.bio-slide .bio-body { font-size: 2rem; line-height: 1.5; max-width: 60ch; color: #eef3ee; }
+
+/* Idle / loading */
+.idle {
+  position: fixed; inset: 0; z-index: 5;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 50% 30%, var(--bg2, #124a20), var(--bg1, #0f3d1a));
+  text-align: center;
+}
+.idle-logo { font-size: 7rem; animation: bob 3s ease-in-out infinite; }
+.idle h1 { font-size: 3.5rem; margin: 12px 0; }
+.idle p { font-size: 1.4rem; color: #cfe6cf; }
+@keyframes bob { 0%,100%{ transform: translateY(0);} 50%{ transform: translateY(-14px);} }
+
+/* Clock */
+.clock {
+  position: fixed; top: 24px; right: 32px; z-index: 6;
+  font-size: 2rem; font-weight: 600;
+  background: rgba(0,0,0,.35); padding: 6px 16px; border-radius: 999px;
+  backdrop-filter: blur(4px);
+}
+
+/* Belize weather + local time */
+.weather-widget {
+  position: fixed; top: 24px; left: 32px; z-index: 6;
+  min-width: 210px;
+  background: rgba(0,0,0,.45);
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 14px;
+  padding: 12px 16px;
+  backdrop-filter: blur(5px);
+  box-shadow: 0 10px 30px rgba(0,0,0,.25);
+}
+.weather-time { font-size: 1.4rem; font-weight: 800; line-height: 1.1; }
+.weather-main { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+.weather-icon { font-size: 2rem; line-height: 1; }
+.weather-temp { font-size: 1.75rem; font-weight: 800; }
+.weather-meta { margin-top: 4px; font-size: .95rem; color: rgba(255,255,255,.82); }
+
+/* Emergency / announcement override */
+.announcement {
+  position: fixed; inset: 0; z-index: 20;
+  align-items: center; justify-content: center;
+  padding: 8vh 10vw;
+  background: #0b1220;
+  color: #fff;
+  text-align: center;
+}
+.announcement[data-style="notice"] { background: #0f3d1a; }
+.announcement[data-style="warning"] { background: #8a4b00; }
+.announcement[data-style="emergency"] { background: #991b1b; }
+.announcement-inner { max-width: 1200px; }
+.announcement-label {
+  display: inline-block;
+  margin-bottom: 28px;
+  padding: 8px 18px;
+  border: 2px solid rgba(255,255,255,.7);
+  border-radius: 999px;
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+.announcement-text {
+  font-size: clamp(3.5rem, 8vw, 8rem);
+  line-height: 1.08;
+  font-weight: 900;
+  text-wrap: balance;
+  text-shadow: 0 4px 24px rgba(0,0,0,.35);
+}
+
+/* Marquee */
+.marquee {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 6;
+  background: var(--accent); color: #fff;
+  padding: 10px 0; font-size: 1.5rem; font-weight: 600;
+  white-space: nowrap; overflow: hidden;
+}
+.marquee span {
+  display: inline-block; padding-left: 100%;
+  animation: scroll 22s linear infinite;
+}
+@keyframes scroll { from { transform: translateX(0);} to { transform: translateX(-100%);} }
+
+/* Visitor QR code card (bottom-right, above the marquee) */
+.qrbox {
+  position: fixed; right: 32px; bottom: 84px; z-index: 6;
+  background: #fff; color: #123;
+  padding: 14px 14px 10px; border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.45);
+  text-align: center; max-width: 220px;
+  animation: qrpop .6s ease both;
+}
+.qrbox .qrcode { line-height: 0; }
+.qrbox .qrcode img {
+  width: 160px; height: 160px; display: block; margin: 0 auto;
+  image-rendering: pixelated;              /* keep QR modules crisp */
+}
+.qrbox .qrcap {
+  margin-top: 8px; font-size: 1rem; font-weight: 600; color: #123;
+  line-height: 1.2;
+}
+/* Fade between rotating codes */
+.qrbox .qrcode, .qrbox .qrcap { transition: opacity .25s ease; }
+.qrbox.swapping .qrcode, .qrbox.swapping .qrcap { opacity: 0; }
+@keyframes qrpop { from { opacity: 0; transform: translateY(12px) scale(.96);} to { opacity: 1; transform: none;} }
+
+/* When the marquee is hidden, drop the QR nearer the bottom */
+body.no-marquee .qrbox { bottom: 32px; }
+
+/* Fullscreen button */
+.fs-btn {
+  position: fixed; bottom: 60px; right: 24px; z-index: 7;
+  background: rgba(0,0,0,.5); color: #fff; border: 1px solid rgba(255,255,255,.3);
+  padding: 8px 14px; border-radius: 8px; font-size: 1rem; cursor: pointer;
+  transition: opacity .4s;
+}
+.fs-btn.hidden { opacity: 0; pointer-events: none; }

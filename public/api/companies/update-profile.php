@@ -55,13 +55,25 @@ if (isset($_FILES['logo']) && $_FILES['logo']['error'] === UPLOAD_ERR_OK) {
 
 // Business type + what the company calls its customers. The noun drives the
 // invoicing wording in OnePay; blank falls back there to Customer/Customers.
-$allowedTypes = ['school','gym','clinic','salon','services','property','retail','restaurant','other'];
+$allowedTypes = ['school','gym','clinic','salon','grocery','services','property','retail','restaurant','auto_sales','auto_rental','other'];
 $businessType = strtolower(trim($_POST['business_type'] ?? ''));
 if ($businessType !== '' && !in_array($businessType, $allowedTypes, true)) {
     $businessType = 'other';
 }
 $nounS = trim($_POST['customer_noun_singular'] ?? '');
 $nounP = trim($_POST['customer_noun_plural'] ?? '');
+
+$storeTheme = trim($_POST['store_theme'] ?? '');
+if ($storeTheme !== '') {
+    $themeBase = 'assets/store_theme/';
+    $themeFile = basename($storeTheme);
+    $themePath = $themeBase . $themeFile;
+    $themeFullPath = __DIR__ . '/../../' . $themePath;
+    if (!preg_match('/^[a-z0-9][a-z0-9_-]{1,80}\.(png|jpe?g|webp)$/i', $themeFile) || !is_file($themeFullPath)) {
+        Response::error('Choose a valid store theme.', 422);
+    }
+    $storeTheme = $themePath;
+}
 
 $data = [
     'email'         => trim($_POST['email'] ?? ''),
@@ -71,9 +83,11 @@ $data = [
     'address'       => trim($_POST['address'] ?? ''),
     'tax_number'    => trim($_POST['tax_number'] ?? ''),
     'opening_hours' => trim($_POST['opening_hours'] ?? ''),
+    'directory_visible' => isset($_POST['directory_visible']) && (string)$_POST['directory_visible'] === '0' ? 0 : 1,
     'business_type' => $businessType !== '' ? $businessType : null,
     'noun_s'        => $nounS !== '' ? $nounS : null,
     'noun_p'        => $nounP !== '' ? $nounP : null,
+    'store_theme'   => $storeTheme !== '' ? $storeTheme : null,
     'logo'          => $logo,
     'id'            => $companyId,
 ];
@@ -82,8 +96,10 @@ $stmt = $pdo->prepare("
     UPDATE companies SET
         email = :email, phone = :phone, phone2 = :phone2, phone3 = :phone3,
         address = :address, tax_number = :tax_number, opening_hours = :opening_hours,
+        directory_visible = :directory_visible,
         business_type = :business_type,
         customer_noun_singular = :noun_s, customer_noun_plural = :noun_p,
+        store_theme = :store_theme,
         logo = :logo
     WHERE id = :id
 ");

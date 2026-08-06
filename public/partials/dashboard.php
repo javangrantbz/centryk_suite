@@ -168,10 +168,10 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
 <main class="mx-auto max-w-6xl px-6 pt-1 pb-5">
 
     <!-- Company profile card -->
-    <div style="--i:0" class="dash-fade mb-1 overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white shadow-sm">
+    <div id="coProfileCard" style="--i:0" class="dash-fade mb-1 overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white shadow-sm">
 
         <!-- Empty state (no company selected) -->
-        <div id="coCardEmpty" class="px-6 py-4">
+        <div id="coCardEmpty" class="relative px-6 py-4">
             <h1 class="text-2xl font-black tracking-tight text-slate-900">
                 Welcome back, <?= htmlspecialchars($user['first_name']) ?>
             </h1>
@@ -180,53 +180,54 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
 
         <!-- Filled state (company selected) -->
         <div id="coCardFilled" class="hidden">
-
             <!-- Main row -->
-            <div class="flex flex-wrap items-center gap-4 px-6 py-4">
+            <div id="coIdentityBanner" class="relative overflow-hidden bg-transparent">
+                <div id="coBannerPreview" class="absolute inset-0 hidden bg-cover bg-center"></div>
+                <div id="coBannerWash" class="absolute inset-0 hidden bg-transparent"></div>
+                <div class="relative flex flex-col md:min-h-40 md:flex-row md:items-stretch">
 
                 <!-- Avatar -->
-                <div id="coAvatar" class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-xl font-black text-white select-none">?</div>
+                <div id="coAvatar" class="flex h-32 w-full shrink-0 items-center justify-center overflow-hidden border-b border-slate-200 bg-white/80 text-5xl font-black text-slate-700 select-none md:h-auto md:w-44 md:border-b-0 md:border-r">?</div>
 
                 <!-- Name + context -->
-                <div class="flex-1 min-w-0">
+                <div class="flex min-w-0 flex-1 flex-col justify-center p-5">
                     <div class="flex flex-wrap items-center gap-2">
                         <span id="coName" class="text-xl font-black tracking-tight text-slate-900 truncate">—</span>
-                        <span id="coRoleBadge" class="rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em]">—</span>
+                        <span id="coRoleBadge" class="rounded-full bg-white/55 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] ring-1 ring-white/60">—</span>
                     </div>
-                    <p class="mt-0.5 text-sm font-semibold text-slate-400">
+                    <p class="mt-0.5 text-sm font-bold text-slate-700">
                         Welcome back, <?= htmlspecialchars($user['first_name']) ?>
                     </p>
-                </div>
 
-                <!-- Actions -->
-                <div class="flex flex-wrap items-center gap-2 shrink-0">
+                    <!-- Actions -->
+                    <div class="mt-3 flex flex-wrap items-center gap-2">
                     <button id="coInviteBtn" type="button"
-                       class="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 transition hover:bg-slate-50 hover:border-slate-300">
+                       class="flex items-center gap-1.5 rounded-xl border border-white/60 bg-white/50 px-3 py-2 text-xs font-black text-slate-700 backdrop-blur-sm transition hover:bg-white/75 hover:border-white">
                         <i data-lucide="user-plus" class="h-3.5 w-3.5"></i>
                         <span class="hidden sm:inline">Invite Member</span>
-                        <span class="rounded-full bg-slate-50 px-1.5 py-0.5 text-[10px] text-slate-500 ring-1 ring-slate-200">
+                        <span class="rounded-full bg-white/55 px-1.5 py-0.5 text-[10px] text-slate-600 ring-1 ring-white/60">
                             <span id="coMemberCount">0</span> members
                         </span>
                     </button>
                     <a id="coMemberLink" href="profile.php#companies"
-                       class="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-black text-slate-600 transition hover:bg-white hover:border-slate-300 hover:text-slate-900">
+                       class="flex items-center gap-1.5 rounded-xl border border-white/60 bg-white/50 px-3 py-2 text-xs font-black text-slate-700 backdrop-blur-sm transition hover:bg-white/75 hover:border-white hover:text-slate-950">
                         <i data-lucide="building-2" class="h-3.5 w-3.5"></i>
                         <span class="hidden sm:inline">Manage Company Profile</span>
                     </a>
                     <?php if (!empty($user['is_admin'])): ?>
                     <a id="coOnelinkPaymentsBtn" href="onelink-payments.php"
-                       class="flex items-center gap-1.5 rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs font-black text-cyan-700 transition hover:bg-cyan-100 hover:border-cyan-300">
+                       class="flex items-center gap-1.5 rounded-xl border border-white/60 bg-white/50 px-3 py-2 text-xs font-black text-cyan-800 backdrop-blur-sm transition hover:bg-white/75 hover:border-white">
                         <i data-lucide="credit-card" class="h-3.5 w-3.5"></i>
                         <span class="hidden sm:inline">OneLink Payments</span>
                     </a>
                     <?php endif; ?>
-                    <?php if (strcasecmp((string)($user['email'] ?? ''), 'webdevelopment@bhilimited.com') === 0): ?>
-                    <a id="coAdvertiseBtn" href="advertise.php"
-                       class="flex items-center gap-1.5 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-black text-violet-700 transition hover:bg-violet-100 hover:border-violet-300">
+                    <a id="coAdvertiseBtn" href="sell.php"
+                       class="hidden items-center gap-1.5 rounded-xl border border-white/60 bg-white/50 px-3 py-2 text-xs font-black text-violet-800 backdrop-blur-sm transition hover:bg-white/75 hover:border-white">
                         <i data-lucide="share-2" class="h-3.5 w-3.5"></i>
-                        <span class="hidden sm:inline">Advertise</span>
+                        <span class="hidden sm:inline">Sell on Store</span>
                     </a>
-                    <?php endif; ?>
+                    </div>
+                </div>
                 </div>
             </div>
 
@@ -314,7 +315,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
     </div>
 
     <?php
-    $_comingSoonAppKeys = ['store' => true, 'visionboard' => true];
+    $_comingSoonAppKeys = ['visionboard' => true];
     $_enrolledAppCount = 0;
     $_otherAppCount = 0;
     foreach ($apps as $_app) {
@@ -356,6 +357,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
                 data-app="<?= htmlspecialchars($app['key']) ?>"
                 data-enrolled="<?= $enrolled ? '1' : '0' ?>"
                 data-opt-in="<?= $optIn ? '1' : '0' ?>"
+                <?= $enrolled ? 'draggable="true"' : '' ?>
                 <?= ($enrolled || $optIn) ? '' : 'disabled' ?>>
             <div class="h-1.5 w-full" style="background:<?= htmlspecialchars($app['color']) . ($enrolled ? '' : ';opacity:.4') ?>"></div>
             <div class="flex flex-1 flex-col p-3">
@@ -422,7 +424,10 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
             <?php if ($enrolled): ?>
             <div class="flex items-center justify-between border-t border-slate-100 px-4 py-3 text-xs font-bold text-slate-500 transition-colors group-hover:text-slate-800">
                 <span>Launch <?= htmlspecialchars($app['label']) ?></span>
-                <i data-lucide="arrow-right" class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"></i>
+                <span class="flex items-center gap-2">
+                    <i data-lucide="grip-vertical" class="app-drag-handle h-3.5 w-3.5 cursor-grab text-slate-300 transition-colors group-hover:text-slate-500"></i>
+                    <i data-lucide="arrow-right" class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"></i>
+                </span>
             </div>
             <?php elseif ($optIn): ?>
             <div class="flex items-center justify-between border-t border-dashed border-slate-200 px-4 py-3 text-xs font-bold text-slate-600 transition-colors group-hover:text-slate-900">
@@ -487,9 +492,9 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         </div>
         <?php endif; ?>
 
-        <!-- Store — coming soon (static, not launchable) -->
-        <div style="--i:<?= ($_appIdx ?? 0) + 5 ?>" class="dash-fade order-3 flex flex-col overflow-hidden rounded-2xl border border-violet-200/70 bg-violet-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
-            <div class="h-1.5 w-full bg-violet-500/50"></div>
+        <!-- Store -->
+        <button type="button" style="--i:<?= ($_appIdx ?? 0) + 5 ?>" id="storeCard" class="dash-fade order-1 group flex flex-col overflow-hidden rounded-2xl border border-violet-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]">
+            <div class="h-1.5 w-full bg-violet-500"></div>
             <div class="flex flex-1 flex-col p-3">
                 <div class="flex items-center gap-3">
                     <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-700">
@@ -503,12 +508,16 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
                 <p class="mt-2 text-xs font-semibold leading-relaxed text-slate-500">
                     Browse employee offers and Centryk Market listings from participating companies.
                 </p>
-                <div class="mt-4 flex items-center justify-center gap-1.5 rounded-xl border border-violet-200 bg-violet-100 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-violet-700">
-                    <i data-lucide="clock-3" class="h-3 w-3"></i>
-                    Coming Soon
+                <div class="mt-2.5 flex items-center gap-1.5">
+                    <span class="inline-block h-1.5 w-1.5 rounded-full bg-violet-500"></span>
+                    <span class="text-[11px] font-bold text-violet-700">Company listings</span>
                 </div>
             </div>
-        </div>
+            <div class="flex items-center justify-between border-t border-violet-100 px-4 py-3 text-xs font-bold text-violet-700 transition-colors group-hover:text-violet-900">
+                <span>Open Store</span>
+                <i data-lucide="arrow-right" class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"></i>
+            </div>
+        </button>
 
         <!-- Vision Board — coming soon (static, not launchable) -->
         <div style="--i:<?= ($_appIdx ?? 0) + 6 ?>" class="dash-fade order-3 flex flex-col overflow-hidden rounded-2xl border border-rose-200/70 bg-rose-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
@@ -567,6 +576,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
 
 
 </main>
+<?php include __DIR__ . '/business_directory.php'; ?>
 </div>
 
 <?php include __DIR__ . '/footer.php'; ?>
@@ -715,6 +725,11 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
     var dropdownList = document.getElementById('companyDropdownList');
     var ctxText      = document.getElementById('companyContext');
     var noCompNotice = document.getElementById('noCompanyNotice');
+    var appsGrid     = document.getElementById('appsGrid');
+    var draggingAppCard = null;
+    var appOrderChanged = false;
+    var suppressAppClick = false;
+    var canManageAllCompanies = <?= !empty($user['is_admin']) ? 'true' : 'false' ?>;
 
     function esc(s) {
         return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -737,6 +752,92 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         }, 4000);
     }
 
+    function orderedActiveAppCards() {
+        if (!appsGrid) { return []; }
+        return Array.prototype.slice.call(appsGrid.querySelectorAll('.app-card[data-enrolled="1"]'));
+    }
+
+    function appOrderPayload() {
+        return orderedActiveAppCards().map(function (card) { return card.dataset.app; });
+    }
+
+    function setAppOrderingEnabled(enabled) {
+        orderedActiveAppCards().forEach(function (card) {
+            if (enabled) {
+                card.setAttribute('draggable', 'true');
+            } else {
+                card.removeAttribute('draggable');
+            }
+            card.querySelectorAll('.app-drag-handle').forEach(function (handle) {
+                handle.classList.toggle('hidden', !enabled);
+            });
+        });
+    }
+
+    function activeAppBoundary() {
+        if (!appsGrid) { return null; }
+        var children = Array.prototype.slice.call(appsGrid.children);
+        for (var i = 0; i < children.length; i++) {
+            var child = children[i];
+            if (!(child.classList && child.classList.contains('app-card') && child.dataset.enrolled === '1')) {
+                return child;
+            }
+        }
+        return null;
+    }
+
+    function applyAppOrder(order) {
+        if (!appsGrid || !Array.isArray(order) || !order.length) { return; }
+        var cards = {};
+        orderedActiveAppCards().forEach(function (card) {
+            cards[card.dataset.app] = card;
+        });
+
+        var arranged = [];
+        order.forEach(function (appKey) {
+            if (cards[appKey]) {
+                arranged.push(cards[appKey]);
+                delete cards[appKey];
+            }
+        });
+        Object.keys(cards).forEach(function (appKey) { arranged.push(cards[appKey]); });
+
+        var boundary = activeAppBoundary();
+        arranged.forEach(function (card) {
+            appsGrid.insertBefore(card, boundary);
+        });
+    }
+
+    function loadCompanyAppOrder() {
+        if (!selectedId) { return; }
+        fetch('api/apps/order.php?company_id=' + encodeURIComponent(selectedId))
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    applyAppOrder(data.order || []);
+                }
+            })
+            .catch(function () {});
+    }
+
+    function saveCompanyAppOrder() {
+        if (!selectedId) { return; }
+        fetch('api/apps/order.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ company_id: selectedId, order: appOrderPayload() })
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (!data.success) {
+                showToast(data.message || 'Could not save app order.', 'error');
+            }
+        })
+        .catch(function () {
+            showToast('Could not save app order.', 'error');
+        });
+    }
+
     // ── Company picker ────────────────────────────────────────────────────────
     function selectCompany(id) {
         selectedId   = id;
@@ -746,6 +847,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         if (selectedUuid) { try { localStorage.setItem('centryk_company_uuid', selectedUuid); } catch (e) {} }
         markActiveCompany();
         if (c) {
+            setAppOrderingEnabled(canManageAllCompanies || c.role === 'admin');
             pickerLabel.textContent = c.name;
             pickerLabel.classList.remove('text-slate-400');
             pickerLabel.classList.add('text-slate-800');
@@ -759,8 +861,21 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
             if (coEmpty)  { coEmpty.classList.add('hidden'); }
             if (coFilled) { coFilled.classList.remove('hidden'); }
 
+            var coBannerPreview = document.getElementById('coBannerPreview');
+            var coBannerWash = document.getElementById('coBannerWash');
+            var coTheme = String(c.store_theme || '');
+            var hasTheme = /^assets\/store_theme\/[a-z0-9][a-z0-9_-]{1,80}\.(png|jpe?g|webp)$/i.test(coTheme);
+            if (coBannerPreview) {
+                coBannerPreview.style.backgroundImage = hasTheme ? "url('" + coTheme.replace(/'/g, "\\'") + "')" : '';
+                coBannerPreview.classList.toggle('hidden', !hasTheme);
+            }
+            if (coBannerWash) {
+                coBannerWash.classList.toggle('hidden', !hasTheme);
+            }
+
             var coAvatar = document.getElementById('coAvatar');
             if (coAvatar) {
+                coAvatar.innerHTML = '';
                 var coLetter = (c.name || '?').charAt(0).toUpperCase();
                 if (c.logo) {
                     // Show the business profile image instead of the letter.
@@ -771,7 +886,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
                     var coImg = document.createElement('img');
                     coImg.src = c.logo;
                     coImg.alt = c.name || '';
-                    coImg.className = 'h-full w-full rounded-2xl object-cover';
+                    coImg.className = 'h-full w-full object-contain';
                     // Fall back to the letter badge if the image fails to load.
                     coImg.onerror = function () {
                         coAvatar.textContent = coLetter;
@@ -789,7 +904,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
             var coRoleBadge = document.getElementById('coRoleBadge');
             if (coRoleBadge) {
                 coRoleBadge.textContent = c.role || '';
-                coRoleBadge.style.background = rColor + '22';
+                coRoleBadge.style.background = 'rgba(255,255,255,0.5)';
                 coRoleBadge.style.color = rColor;
             }
 
@@ -805,9 +920,14 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
             var coOnelinkBtn = document.getElementById('coOnelinkPaymentsBtn');
             if (coOnelinkBtn) { coOnelinkBtn.href = onelinkUrl; }
 
-            var advertiseUrl = 'advertise.php' + (selectedUuid ? ('?company_uuid=' + encodeURIComponent(selectedUuid)) : '');
+            var advertiseUrl = 'sell.php' + (selectedUuid ? ('?company_uuid=' + encodeURIComponent(selectedUuid)) : '');
             var coAdvertiseBtn = document.getElementById('coAdvertiseBtn');
-            if (coAdvertiseBtn) { coAdvertiseBtn.href = advertiseUrl; }
+            if (coAdvertiseBtn) {
+                var canAdvertise = ['owner', 'admin', 'manager'].indexOf(String(c.role || '').toLowerCase()) !== -1;
+                coAdvertiseBtn.href = advertiseUrl;
+                coAdvertiseBtn.classList.toggle('hidden', !canAdvertise);
+                coAdvertiseBtn.classList.toggle('flex', canAdvertise);
+            }
 
             // ── Setup progress ────────────────────────────────────────────
             var enrolledCount = document.querySelectorAll('.app-card[data-enrolled="1"]').length;
@@ -874,6 +994,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
             card.disabled = false;
             card.classList.remove('opacity-40', 'cursor-not-allowed');
         });
+        loadCompanyAppOrder();
     }
 
     // Show the checkmark + highlight on the currently selected company row.
@@ -927,6 +1048,21 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
             selectCompany(companies[0].id);
         } else {
             pickerLabel.textContent = 'Select a company…';
+            setAppOrderingEnabled(false);
+            var coBannerPreview = document.getElementById('coBannerPreview');
+            var coBannerWash = document.getElementById('coBannerWash');
+            if (coBannerPreview) {
+                coBannerPreview.style.backgroundImage = '';
+                coBannerPreview.classList.add('hidden');
+            }
+            if (coBannerWash) {
+                coBannerWash.classList.add('hidden');
+            }
+            var coAdvertiseBtn = document.getElementById('coAdvertiseBtn');
+            if (coAdvertiseBtn) {
+                coAdvertiseBtn.classList.add('hidden');
+                coAdvertiseBtn.classList.remove('flex');
+            }
             // Dim enrolled app cards until a company is chosen
             document.querySelectorAll('.app-card[data-enrolled="1"]').forEach(function (card) {
                 card.disabled = true;
@@ -1039,7 +1175,16 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
     }
 
     // ── App launch ────────────────────────────────────────────────────────────
+    function openStore() {
+        window.location.href = 'store.php';
+    }
+
     function launchApp(appKey) {
+        if (appKey === 'store') {
+            openStore();
+            return;
+        }
+
         var overlay = document.getElementById('launchOverlay');
         overlay.style.display = 'flex';
 
@@ -1079,8 +1224,58 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         });
     }
 
+    if (appsGrid) {
+        appsGrid.addEventListener('dragover', function (e) {
+            if (!draggingAppCard) { return; }
+            var target = e.target.closest('.app-card[data-enrolled="1"]');
+            if (!target || target === draggingAppCard) { return; }
+
+            e.preventDefault();
+            var rect = target.getBoundingClientRect();
+            var middleX = rect.left + (rect.width / 2);
+            var middleY = rect.top + (rect.height / 2);
+            var sameRowBand = e.clientY > (rect.top + rect.height * 0.25) && e.clientY < (rect.bottom - rect.height * 0.25);
+            var placeAfter = e.clientY > middleY || (sameRowBand && e.clientX > middleX);
+
+            if (placeAfter) {
+                appsGrid.insertBefore(draggingAppCard, target.nextSibling);
+            } else {
+                appsGrid.insertBefore(draggingAppCard, target);
+            }
+            appOrderChanged = true;
+        });
+
+        appsGrid.addEventListener('drop', function (e) {
+            if (!draggingAppCard) { return; }
+            e.preventDefault();
+        });
+    }
+
     document.querySelectorAll('.app-card').forEach(function (card) {
+        if (card.dataset.enrolled === '1') {
+            card.addEventListener('dragstart', function (e) {
+                draggingAppCard = card;
+                appOrderChanged = false;
+                card.classList.add('opacity-60', 'ring-2', 'ring-slate-300');
+                if (e.dataTransfer) {
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', card.dataset.app || '');
+                }
+            });
+
+            card.addEventListener('dragend', function () {
+                card.classList.remove('opacity-60', 'ring-2', 'ring-slate-300');
+                draggingAppCard = null;
+                if (appOrderChanged) {
+                    suppressAppClick = true;
+                    saveCompanyAppOrder();
+                    setTimeout(function () { suppressAppClick = false; }, 150);
+                }
+            });
+        }
+
         card.addEventListener('click', function () {
+            if (suppressAppClick) { return; }
             var enrolled = card.dataset.enrolled === '1';
             var optIn    = card.dataset.optIn    === '1';
 
@@ -1117,6 +1312,11 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
             launchApp(card.dataset.app);
         });
     });
+
+    var storeCard = document.getElementById('storeCard');
+    if (storeCard) {
+        storeCard.addEventListener('click', openStore);
+    }
 
     var onelinkPaymentsCard = document.getElementById('onelinkPaymentsCard');
     if (onelinkPaymentsCard) {

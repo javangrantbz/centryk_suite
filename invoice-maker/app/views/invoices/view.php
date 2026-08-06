@@ -75,8 +75,8 @@ function getStatusBadge($status) {
 }
 ?>
 
-<div class="mb-6">
-    <div class="flex items-center space-x-2 text-sm text-gray-400 mb-4">
+<div class="mb-3">
+    <div class="flex items-center space-x-2 text-sm text-gray-400 mb-3">
         <a href="<?= BASE_URL ?>/?page=invoices" class="hover:text-emerald-600 transition-colors">Invoices</a>
         <i data-lucide="chevron-right" class="w-4 h-4"></i>
         <span class="text-slate-900 font-medium"><?= e($invoice['invoice_number']) ?></span>

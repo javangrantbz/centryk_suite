@@ -79,10 +79,11 @@ if ($invHdrUuid !== '') {
             <?php
             $invCur = $_GET['page'] ?? 'dashboard';
             $invNav = [
-                ['invoices',  'receipt',   'Invoices', ['invoices', 'quotes']],
-                ['customers', 'users',     'Clients',  ['customers']],
-                ['documents', 'folder',    'Files',    ['documents']],
-                ['settings',  'panel-top', 'Header',   ['settings']],
+                ['invoices',  'receipt',        'Invoices', ['invoices', 'quotes']],
+                ['receipts',  'shopping-cart',  'POS Receipts', ['receipts']],
+                ['customers', 'users',          'Clients',  ['customers']],
+                ['documents', 'folder',         'Files',    ['documents']],
+                ['settings',  'panel-top',      'Header',   ['settings']],
             ];
             foreach ($invNav as [$pg, $ic, $lbl, $matches]):
                 $on = false;
@@ -285,5 +286,5 @@ if ($invHdrUuid !== '') {
         </header>
 
         <!-- Main Content Area -->
-        <main class="flex-1 overflow-y-auto custom-scrollbar p-4 lg:p-5">
+        <main class="flex-1 overflow-y-auto custom-scrollbar px-4 pb-4 pt-1 lg:px-5 lg:pb-5 lg:pt-1">
             <div class="max-w-7xl mx-auto h-full">

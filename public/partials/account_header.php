@@ -37,7 +37,7 @@ $awCurrent = $awCurrent ?? 'centryk';
 
 <!-- Header -->
 <header class="sticky top-[3px] z-40 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
-    <div class="mx-auto flex <?= htmlspecialchars($_hdrMaxW) ?> items-center gap-4 px-6 py-3">
+    <div class="mx-auto flex <?= htmlspecialchars($_hdrMaxW) ?> items-center gap-4 px-6 py-2.5">
 
         <!-- Logo -->
         <a href="index.php" class="flex shrink-0 items-center hover:opacity-80 transition-opacity">
@@ -48,7 +48,11 @@ $awCurrent = $awCurrent ?? 'centryk';
         <?php if (!empty($headerMiddleHtml)): ?>
             <?= $headerMiddleHtml ?>
         <?php else: ?>
-            <span class="text-sm font-bold text-slate-400"><?= htmlspecialchars($pageTitle ?? '') ?></span>
+            <?php if (($awCurrent ?? '') === 'store'): ?>
+                <a href="store.php" class="text-sm font-bold text-slate-500 transition hover:text-slate-900"><?= htmlspecialchars($pageTitle ?? '') ?></a>
+            <?php else: ?>
+                <span class="text-sm font-bold text-slate-400"><?= htmlspecialchars($pageTitle ?? '') ?></span>
+            <?php endif; ?>
         <?php endif; ?>
 
         <div class="flex-1"></div>
@@ -114,6 +118,10 @@ $awCurrent = $awCurrent ?? 'centryk';
             if (ad) ad.classList.add('hidden');
             if (typeof window.centrykAppLaunch === 'function') { window.centrykAppLaunch(tile.dataset.app); return; }
             const uuid = window.CENTRYK_ACTIVE_COMPANY_UUID || '';
+            if (tile.dataset.app === 'store') {
+                window.location.href = 'store.php';
+                return;
+            }
             window.location.href = 'switch.php?app=' + encodeURIComponent(tile.dataset.app) + (uuid ? '&company_uuid=' + encodeURIComponent(uuid) : '');
         });
     });

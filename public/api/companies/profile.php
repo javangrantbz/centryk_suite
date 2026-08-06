@@ -28,13 +28,27 @@ if ($role === false) {
     Response::error('Permission denied.', 403);
 }
 
-$stmt = $pdo->prepare("
-    SELECT name, email, phone, phone2, phone3, address, tax_number, logo, opening_hours,
-           business_type, customer_noun_singular, customer_noun_plural
-    FROM companies WHERE id = :id LIMIT 1
-");
-$stmt->execute(['id' => $companyId]);
-$profile = $stmt->fetch(PDO::FETCH_ASSOC);
+try {
+    $stmt = $pdo->prepare("
+        SELECT name, email, phone, phone2, phone3, address, tax_number, logo, store_theme, opening_hours,
+               directory_visible, business_type, customer_noun_singular, customer_noun_plural
+        FROM companies WHERE id = :id LIMIT 1
+    ");
+    $stmt->execute(['id' => $companyId]);
+    $profile = $stmt->fetch(PDO::FETCH_ASSOC);
+} catch (Throwable $e) {
+    $stmt = $pdo->prepare("
+        SELECT name, email, phone, phone2, phone3, address, tax_number, logo, opening_hours,
+               business_type, customer_noun_singular, customer_noun_plural
+        FROM companies WHERE id = :id LIMIT 1
+    ");
+    $stmt->execute(['id' => $companyId]);
+    $profile = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($profile) {
+        $profile['directory_visible'] = 1;
+        $profile['store_theme'] = '';
+    }
+}
 if (!$profile) {
     Response::error('Company not found.', 404);
 }

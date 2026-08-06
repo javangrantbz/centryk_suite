@@ -12,7 +12,7 @@ $awAlign   = $awAlign   ?? 'left';
 $awMode    = $awMode    ?? 'links';
 $awCurrent = $awCurrent ?? 'centryk'; // which app key is the current page
 $awPos     = $awAlign === 'right' ? 'right-0' : 'left-0';
-$awComingSoonAppKeys = ['store' => true, 'visionboard' => true];
+$awComingSoonAppKeys = ['visionboard' => true];
 
 if ($awMode === 'launch' && !isset($apps)) {
     if (class_exists('Auth') && class_exists('AuthService')) {
@@ -94,6 +94,7 @@ $awTileIcon = function (string $key, string $color = '', string $label = '') {
                     if (empty($app['enrolled'])) continue;          // only enrolled apps
                     if (($app['key'] ?? '') === 'centryk') continue; // centryk shown above
                     $k = (string)$app['key'];
+                    if ($k === 'store') continue;                   // Store is added below as a Centryk page
                     if (isset($awComingSoonAppKeys[$k])) continue;
                 ?>
                 <?php if ($k === $awCurrent): ?>
@@ -108,6 +109,17 @@ $awTileIcon = function (string $key, string $color = '', string $label = '') {
                 </button>
                 <?php endif; ?>
                 <?php endforeach; ?>
+                <?php if ($awCurrent === 'store'): ?>
+                <a href="store.php" class="flex flex-col items-center gap-2 rounded-xl border border-slate-300 bg-slate-100 p-3 text-center ring-1 ring-slate-200 transition hover:border-slate-400 hover:bg-slate-50">
+                    <?= $awTileIcon('store', '#7c3aed', 'Store') ?>
+                    <span class="text-xs font-semibold text-slate-700">Store</span>
+                </a>
+                <?php else: ?>
+                <button type="button" data-app="store" class="aw-app flex flex-col items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 text-center transition hover:border-slate-300 hover:bg-slate-50">
+                    <?= $awTileIcon('store', '#7c3aed', 'Store') ?>
+                    <span class="text-xs font-medium text-slate-700">Store</span>
+                </button>
+                <?php endif; ?>
             <?php elseif ($awMode === 'links'): ?>
                 <?php
                 $awMarketingApps = [
@@ -115,6 +127,7 @@ $awTileIcon = function (string $key, string $color = '', string $label = '') {
                     ['key' => 'mypay',    'label' => 'MyPay',    'href' => 'about.php#mypay'],
                     ['key' => 'calendar', 'label' => 'Calendar', 'href' => 'login.php#request', 'color' => '#14b8a6'],
                     ['key' => 'invoice',  'label' => 'Invoices', 'href' => 'login.php#request', 'color' => '#10b981'],
+                    ['key' => 'store',    'label' => 'Store',    'href' => 'store.php', 'color' => '#7c3aed'],
                 ];
                 foreach ($awMarketingApps as $awApp):
                 ?>

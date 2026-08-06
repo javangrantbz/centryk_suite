@@ -27,7 +27,7 @@ $kpis = [
 ];
 ?>
 
-<div class="mb-6 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
+<div class="mb-3 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
     <div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
             <?php foreach ($kpis as $i => $k): ?>

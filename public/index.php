@@ -45,6 +45,7 @@ if ($me['authenticated']) {
     include __DIR__ . '/partials/dashboard.php';
     exit;
 }
+
 ?>
 <!doctype html>
 <html lang="en">
@@ -130,9 +131,9 @@ if ($me['authenticated']) {
 
 <!-- ── NAV ─────────────────────────────────────────────────────────────────── -->
 <nav class="sticky top-[3px] z-40 border-b border-slate-200 bg-gradient-to-b from-white to-slate-50/80 shadow-sm shadow-slate-200/70 backdrop-blur-sm">
-    <div class="mx-auto flex max-w-6xl items-center gap-4 px-6 py-2.5">
+    <div class="mx-auto flex max-w-6xl items-center gap-4 px-6 py-1.5">
         <a href="index.php" class="flex items-center">
-            <img src="../centryk_logo.png" alt="Centryk" class="h-14 w-auto">
+            <img src="../centryk_logo.png" alt="Centryk" class="h-10 w-auto">
         </a>
 
         <div class="flex-1"></div>
@@ -153,7 +154,7 @@ if ($me['authenticated']) {
 
 
 <!-- ── HERO ───────────────────────────────────────────────────────────────── -->
-<section class="relative overflow-hidden bg-[linear-gradient(135deg,#0d1117_0%,#0f1928_50%,#111d35_100%)] px-6 py-16 text-white md:py-20">
+<section class="relative overflow-hidden bg-[linear-gradient(135deg,#0d1117_0%,#0f1928_50%,#111d35_100%)] px-6 py-10 text-white md:py-14">
     <div class="absolute inset-x-0 top-0 h-px bg-white/10"></div>
     <div class="orb-a absolute left-0 top-0 h-[500px] w-[500px] rounded-full bg-purple-700/10 blur-3xl -translate-x-1/2 -translate-y-1/4"></div>
     <div class="orb-b absolute right-0 bottom-0 h-[400px] w-[400px] rounded-full bg-blue-700/10 blur-3xl translate-x-1/3 translate-y-1/4"></div>
@@ -163,39 +164,39 @@ if ($me['authenticated']) {
             Run your business.<br>
             <span class="gradient-text">All in one place.</span>
         </h1>
-        <p class="hero-fade d2 mx-auto mt-6 max-w-2xl text-lg font-semibold leading-relaxed text-white/60">
+        <p class="hero-fade d2 mx-auto mt-4 max-w-2xl text-base font-semibold leading-relaxed text-white/60 md:text-lg">
             Centryk is a unified business platform that gives Belizean companies one secure login to access
             powerful tools for inventory, point of sale, HR, payroll, and cashless payments.
         </p>
 
-        <div class="hero-fade d3 mx-auto mt-8 max-w-5xl rounded-2xl border border-white/10 bg-white/5 p-4 text-left backdrop-blur-sm md:p-5">
-            <div class="grid gap-4 md:grid-cols-3">
-                <div class="step-card sc1 rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <span class="flex h-10 w-10 items-center justify-center rounded-full bg-white text-sm font-black text-slate-900">1</span>
-                    <h3 class="mt-4 text-lg font-black tracking-tight text-white">Create your account</h3>
-                    <p class="mt-2 text-sm font-semibold leading-relaxed text-white/60">
+        <div class="hero-fade d3 mx-auto mt-6 max-w-5xl rounded-xl border border-white/10 bg-white/5 p-3 text-left backdrop-blur-sm md:p-4">
+            <div class="grid gap-3 md:grid-cols-3">
+                <div class="step-card sc1 rounded-xl border border-white/10 bg-white/5 p-3">
+                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-white text-xs font-black text-slate-900">1</span>
+                    <h3 class="mt-3 text-base font-black tracking-tight text-white">Create your account</h3>
+                    <p class="mt-1.5 text-xs font-semibold leading-relaxed text-white/60">
                         Enter your company email, name, and business name to get instant access.
                     </p>
                 </div>
 
-                <div class="step-card sc2 rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <span class="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-sm font-black text-white ring-1 ring-white/15">2</span>
-                    <h3 class="mt-4 text-lg font-black tracking-tight text-white">Set up your business</h3>
-                    <p class="mt-2 text-sm font-semibold leading-relaxed text-white/60">
+                <div class="step-card sc2 rounded-xl border border-white/10 bg-white/5 p-3">
+                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-xs font-black text-white ring-1 ring-white/15">2</span>
+                    <h3 class="mt-3 text-base font-black tracking-tight text-white">Set up your business</h3>
+                    <p class="mt-1.5 text-xs font-semibold leading-relaxed text-white/60">
                         Add your stores, products, employees, or payroll information depending on the tools you need.
                     </p>
                 </div>
 
-                <div class="step-card sc3 rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <span class="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-sm font-black text-white ring-1 ring-white/15">3</span>
-                    <h3 class="mt-4 text-lg font-black tracking-tight text-white">Start using your tools</h3>
-                    <p class="mt-2 text-sm font-semibold leading-relaxed text-white/60">
+                <div class="step-card sc3 rounded-xl border border-white/10 bg-white/5 p-3">
+                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-xs font-black text-white ring-1 ring-white/15">3</span>
+                    <h3 class="mt-3 text-base font-black tracking-tight text-white">Start using your tools</h3>
+                    <p class="mt-1.5 text-xs font-semibold leading-relaxed text-white/60">
                         Access OnePay for inventory and POS or MyPay for payroll and HR management.
                     </p>
                 </div>
             </div>
 
-            <div class="mt-5 border-t border-white/10 pt-5">
+            <div class="mt-4 border-t border-white/10 pt-4">
                 <div class="flex flex-wrap items-center justify-center gap-2 md:justify-start">
                     <span class="text-[10px] font-black uppercase tracking-[0.18em] text-white/35">Included Apps</span>
                     <a href="about.php#onepay" class="inline-flex items-center gap-2 rounded-full border border-purple-200/15 bg-purple-50/10 px-3 py-1.5 text-xs font-black text-purple-100 transition hover:bg-purple-50/15">
@@ -224,15 +225,17 @@ if ($me['authenticated']) {
                     </a>
                 </div>
             </div>
-            <div class="mt-6 flex justify-center md:justify-start">
+            <div class="mt-4 flex justify-center md:justify-start">
                 <a href="login.php#request"
-                   class="rounded-xl bg-white px-6 py-3 text-sm font-black uppercase tracking-[0.12em] text-slate-900 shadow-lg transition hover:bg-slate-100">
+                   class="rounded-xl bg-white px-5 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-slate-900 shadow-lg transition hover:bg-slate-100">
                     Get Started - It's Free
                 </a>
             </div>
         </div>
     </div>
 </section>
+
+<?php include __DIR__ . '/partials/business_directory.php'; ?>
 
 
 <?php include __DIR__ . '/partials/footer.php'; ?>

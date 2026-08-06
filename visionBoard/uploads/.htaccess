@@ -1,0 +1,5 @@
+# Serve uploaded media but never execute anything in this folder.
+php_flag engine off
+<FilesMatch "\.(php|phtml|php3|php4|php5|pht|phar|cgi|pl|py)$">
+    Require all denied
+</FilesMatch>

@@ -55,6 +55,7 @@ $NOUNS = [
     'gym'        => ['Member',   'Members'],
     'clinic'     => ['Patient',  'Patients'],
     'salon'      => ['Client',   'Clients'],
+    'grocery'    => ['Customer', 'Customers'],
     'services'   => ['Client',   'Clients'],
     'property'   => ['Tenant',   'Tenants'],
     'retail'     => ['Customer', 'Customers'],

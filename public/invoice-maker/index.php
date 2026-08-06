@@ -19,6 +19,7 @@ $routes = [
     'invoices'         => '/views/invoices/index.php',
     'invoices-create'  => '/views/invoices/create.php',
     'invoices-view'    => '/views/invoices/view.php',
+    'receipts'         => '/views/receipts/index.php',
     'quotes'           => '/views/quotes/index.php',
     'quotes-create'    => '/views/quotes/create.php',
     'quotes-view'      => '/views/quotes/view.php',
