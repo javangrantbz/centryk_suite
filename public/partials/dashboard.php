@@ -165,10 +165,10 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
 </header>
 
 <!-- Main -->
-<main class="mx-auto max-w-6xl px-6 py-8">
+<main class="mx-auto max-w-6xl px-6 pt-1 pb-5">
 
     <!-- Company profile card -->
-    <div style="--i:0" class="dash-fade mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white shadow-sm">
+    <div style="--i:0" class="dash-fade mb-1 overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white shadow-sm">
 
         <!-- Empty state (no company selected) -->
         <div id="coCardEmpty" class="px-6 py-4">
@@ -330,7 +330,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
     ?>
 
     <section class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
-    <div class="mb-4 flex items-end justify-between gap-4">
+    <div class="mb-2 flex items-end justify-between gap-4">
         <div>
             <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Launcher</p>
             <h2 class="text-xl font-black tracking-tight text-slate-900">Your apps</h2>
