@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS store_listings (
     sku         VARCHAR(80) NULL,
     price       VARCHAR(40) NULL,
     summary     TEXT NULL,
+    image_url   VARCHAR(500) NULL,
     audience    ENUM('employee','market','both') NOT NULL DEFAULT 'employee',
     enabled     TINYINT(1) NOT NULL DEFAULT 1,
     starts_at   DATETIME NULL,

@@ -108,12 +108,11 @@ $feedStores = [];
 try {
     if ($isFeed) {
         $listingStmt = $pdo->query('
-            SELECT sl.title, sl.sku, sl.price, sl.summary, sl.audience, sl.source_item_id, ci.image_url,
+            SELECT sl.title, sl.sku, sl.price, sl.summary, sl.audience, sl.source_item_id, sl.image_url,
                    c.id AS company_id, c.uuid AS company_uuid, c.name AS company_name,
                    c.logo AS company_logo, c.store_theme AS company_store_theme, c.business_type, c.address
             FROM store_listings sl
             JOIN companies c ON c.id = sl.company_id
-            LEFT JOIN onepay.catalog_items ci ON ci.id = sl.source_item_id
             WHERE c.status = "active"
               AND sl.enabled = 1
               AND sl.source_app = "onepay"
@@ -146,9 +145,8 @@ try {
         }
     } else {
         $listingSql = '
-            SELECT sl.title, sl.sku, sl.price, sl.summary, sl.audience, sl.source_item_id, ci.image_url
+            SELECT sl.title, sl.sku, sl.price, sl.summary, sl.audience, sl.source_item_id, sl.image_url
             FROM store_listings sl
-            LEFT JOIN onepay.catalog_items ci ON ci.id = sl.source_item_id
             WHERE sl.company_id = :cid
               AND sl.enabled = 1
               AND sl.source_app = "onepay"

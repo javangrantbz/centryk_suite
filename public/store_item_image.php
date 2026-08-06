@@ -17,10 +17,9 @@ if ($itemId <= 0) {
 
 $pdo = DB::pdo();
 $stmt = $pdo->prepare('
-    SELECT sl.company_id, sl.audience, ci.image_url
+    SELECT sl.company_id, sl.audience, sl.image_url
     FROM store_listings sl
     JOIN companies c ON c.id = sl.company_id
-    JOIN onepay.catalog_items ci ON ci.id = sl.source_item_id
     WHERE sl.source_app = "onepay"
       AND sl.source_item_id = :item_id
       AND sl.enabled = 1
@@ -55,7 +54,17 @@ if (!in_array($audience, ['market', 'both'], true)) {
 }
 
 $imageUrl = trim((string)($listing['image_url'] ?? ''));
-if ($imageUrl === '' || !str_starts_with($imageUrl, '/uploads/catalog/')) {
+if ($imageUrl === '') {
+    http_response_code(404);
+    exit;
+}
+
+if (preg_match('#^https?://#i', $imageUrl)) {
+    header('Location: ' . $imageUrl, true, 302);
+    exit;
+}
+
+if (!str_starts_with($imageUrl, '/uploads/catalog/')) {
     http_response_code(404);
     exit;
 }

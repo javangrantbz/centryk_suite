@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../app/core/Auth.php';
 require_once __DIR__ . '/../app/core/DB.php';
+require_once __DIR__ . '/../app/services/OnePayStoreInventory.php';
 
 Auth::start();
 $user = Auth::user();
@@ -39,6 +40,14 @@ if ($requestedUuid !== '') {
 
 $notice = null;
 $inventoryError = '';
+$inventoryItems = [];
+try {
+    $inventoryItems = OnePayStoreInventory::fetch((string)$activeCompany['uuid']);
+    $inventoryError = OnePayStoreInventory::lastError();
+} catch (Throwable $e) {
+    $inventoryItems = [];
+    $inventoryError = 'Could not load OnePay inventory: ' . $e->getMessage();
+}
 
 function sell_date_value(?string $value, bool $endOfDay = false): ?string
 {
@@ -89,35 +98,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $startsAt = sell_date_value($_POST['starts_at'] ?? null);
         $endsAt = sell_date_value($_POST['ends_at'] ?? null, true);
 
-        $placeholders = implode(',', array_fill(0, count($selectedIds), '?'));
-        $params = [(string)$activeCompany['uuid']];
-        foreach ($selectedIds as $id) {
-            $params[] = $id;
+        $inventoryById = [];
+        foreach ($inventoryItems as $item) {
+            $inventoryById[(int)$item['id']] = $item;
         }
 
-        $selectedStmt = $pdo->prepare("
-            SELECT ci.id, ci.name, ci.description, ci.sku, ci.price
-            FROM onepay.catalog_items ci
-            JOIN onepay.stores s ON s.id = ci.store_id
-            JOIN onepay.companies oc ON oc.id = s.company_id
-            WHERE oc.centryk_uuid = ?
-              AND s.status = 'active'
-              AND ci.active = 1
-              AND ci.id IN ($placeholders)
-        ");
-        $selectedStmt->execute($params);
-        $selectedItems = $selectedStmt->fetchAll(PDO::FETCH_ASSOC);
+        $selectedItems = [];
+        foreach ($selectedIds as $id) {
+            if (isset($inventoryById[$id])) {
+                $selectedItems[] = $inventoryById[$id];
+            }
+        }
 
         $upsertStmt = $pdo->prepare("
             INSERT INTO store_listings
-                (company_id, source_app, source_item_id, title, sku, price, summary, audience, enabled, starts_at, ends_at)
+                (company_id, source_app, source_item_id, title, sku, price, summary, image_url, audience, enabled, starts_at, ends_at)
             VALUES
-                (:company_id, 'onepay', :source_item_id, :title, :sku, :price, :summary, :audience, 1, :starts_at, :ends_at)
+                (:company_id, 'onepay', :source_item_id, :title, :sku, :price, :summary, :image_url, :audience, 1, :starts_at, :ends_at)
             ON DUPLICATE KEY UPDATE
                 title = VALUES(title),
                 sku = VALUES(sku),
                 price = VALUES(price),
                 summary = VALUES(summary),
+                image_url = VALUES(image_url),
                 audience = VALUES(audience),
                 enabled = 1,
                 starts_at = VALUES(starts_at),
@@ -132,6 +135,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'sku' => trim((string)($item['sku'] ?? '')) ?: null,
                 'price' => sell_price_label($item['price'] ?? 0),
                 'summary' => trim((string)($item['description'] ?? '')) ?: null,
+                'image_url' => trim((string)($item['image_url'] ?? '')) ?: null,
                 'audience' => $audience,
                 'starts_at' => $startsAt,
                 'ends_at' => $endsAt,
@@ -142,33 +146,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$inventoryItems = [];
-try {
-    $inventoryStmt = $pdo->prepare("
-        SELECT ci.id, ci.name, ci.description, ci.sku, ci.price, ci.stock_qty, ci.track_inventory,
-               ci.active, ci.image_url, s.name AS store_name,
-               sl.id AS listing_id, sl.audience AS listing_audience, sl.enabled AS listing_enabled,
-               sl.starts_at AS listing_starts_at, sl.ends_at AS listing_ends_at
-        FROM onepay.catalog_items ci
-        JOIN onepay.stores s ON s.id = ci.store_id
-        JOIN onepay.companies oc ON oc.id = s.company_id
-        LEFT JOIN store_listings sl
-          ON sl.company_id = :company_id
-         AND sl.source_app = 'onepay'
-         AND sl.source_item_id = ci.id
-        WHERE oc.centryk_uuid = :uuid
-          AND s.status = 'active'
-          AND ci.active = 1
-        ORDER BY s.name ASC, ci.name ASC
-    ");
-    $inventoryStmt->execute([
-        'company_id' => (int)$activeCompany['id'],
-        'uuid' => (string)$activeCompany['uuid'],
-    ]);
-    $inventoryItems = $inventoryStmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (Throwable $e) {
+if (!$inventoryItems && $inventoryError === '') {
     $inventoryError = 'Could not load OnePay inventory for this company.';
 }
+
+$listingStmt = $pdo->prepare('
+    SELECT source_item_id, id AS listing_id, audience AS listing_audience,
+           enabled AS listing_enabled, starts_at AS listing_starts_at, ends_at AS listing_ends_at
+    FROM store_listings
+    WHERE company_id = :company_id AND source_app = "onepay" AND source_item_id IS NOT NULL
+');
+$listingStmt->execute(['company_id' => (int)$activeCompany['id']]);
+$listingByItemId = [];
+foreach ($listingStmt->fetchAll(PDO::FETCH_ASSOC) as $listing) {
+    $listingByItemId[(int)$listing['source_item_id']] = $listing;
+}
+foreach ($inventoryItems as &$item) {
+    $listing = $listingByItemId[(int)$item['id']] ?? [];
+    $item['listing_id'] = $listing['listing_id'] ?? null;
+    $item['listing_audience'] = $listing['listing_audience'] ?? null;
+    $item['listing_enabled'] = $listing['listing_enabled'] ?? 0;
+    $item['listing_starts_at'] = $listing['listing_starts_at'] ?? null;
+    $item['listing_ends_at'] = $listing['listing_ends_at'] ?? null;
+}
+unset($item);
 
 $publishedItems = [];
 $unpublishedItems = [];
