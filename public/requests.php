@@ -31,7 +31,7 @@ $headerActionsHtml = ob_get_clean();
 <body class="min-h-screen bg-slate-100 text-slate-900 font-sans antialiased">
 <?php $pageTitle = 'All Signups'; $headerMaxW = 'max-w-5xl'; $awCurrent = 'centryk'; include __DIR__ . '/partials/account_header.php'; ?>
 
-<div class="mx-auto max-w-5xl px-4 pt-4 pb-8">
+<div class="mx-auto max-w-5xl px-4 pt-1 pb-5">
 
     <div id="pageAlert" class="mb-4 hidden rounded-xl border p-3 text-sm font-semibold"></div>
 

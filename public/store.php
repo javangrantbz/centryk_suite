@@ -27,7 +27,7 @@ if (empty($user['is_admin'])) {
 <div class="h-[3px] w-full bg-gradient-to-r from-purple-600 via-blue-500 to-orange-500"></div>
 <?php $pageTitle = 'Store'; $headerMaxW = 'max-w-7xl'; $awCurrent = 'store'; require_once __DIR__ . '/../app/services/AuthService.php'; include __DIR__ . '/partials/account_header.php'; ?>
 
-<main class="mx-auto max-w-7xl px-6 py-8">
+<main class="mx-auto max-w-7xl px-6 pt-1 pb-5">
     <div class="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
             <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Centryk Store</p>

@@ -265,7 +265,7 @@ function profile_app_stat_card(array $app, int $companyCount, int $userCount, st
 <?php $pageTitle = 'Profile'; $headerMaxW = 'max-w-5xl'; $awCurrent = 'account'; include __DIR__ . '/partials/account_header.php'; ?>
 
 <!-- Page body -->
-<div class="mx-auto max-w-5xl px-6 py-4 space-y-4">
+<div class="mx-auto max-w-5xl px-6 pt-1 pb-4 space-y-2">
 
     <!-- Account: left menu + panels -->
     <div class="grid gap-4 lg:grid-cols-[200px_1fr]">

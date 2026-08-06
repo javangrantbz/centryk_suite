@@ -44,7 +44,7 @@ $headerMaxW = 'max-w-7xl';
 <body class="min-h-screen bg-slate-100 font-sans antialiased text-slate-900">
 <?php include __DIR__ . '/partials/account_header.php'; ?>
 
-<main class="mx-auto max-w-7xl px-6 pt-4 pb-8">
+<main class="mx-auto max-w-7xl px-6 pt-1 pb-5">
     <section id="onelinkIntroBanner" class="overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 text-white shadow-sm">
         <div class="grid gap-6 px-6 py-6 lg:grid-cols-[1.4fr_0.9fr] lg:px-8">
             <div>

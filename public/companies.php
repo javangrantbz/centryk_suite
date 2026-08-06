@@ -148,7 +148,7 @@ if ($embed) {
 ?>
 
 <!-- Company List View -->
-<div id="listView" class="mx-auto max-w-5xl px-6 <?= $embed ? 'pt-2 pb-6' : 'py-10' ?>">
+<div id="listView" class="mx-auto max-w-5xl px-6 <?= $embed ? 'pt-2 pb-6' : 'pt-2 pb-8' ?>">
     <?php if (!$embed): ?>
     <div class="mb-2">
         <a href="index.php" class="inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-[0.12em] text-white/35 transition hover:text-white/80">
@@ -157,7 +157,7 @@ if ($embed) {
         </a>
     </div>
     <?php endif; ?>
-    <div class="mb-8 flex items-center justify-between">
+    <div class="mb-4 flex items-center justify-between">
         <div>
             <h1 class="text-2xl font-black tracking-tight text-white">Companies</h1>
             <p class="mt-1 text-sm font-semibold text-white/40">Manage your companies and their members across all apps.</p>
@@ -183,7 +183,7 @@ if ($embed) {
 </div>
 
 <!-- Company Detail View (hidden initially) -->
-<div id="detailView" class="hidden mx-auto max-w-5xl px-6 <?= $embed ? 'pt-2 pb-6' : 'py-10' ?>">
+<div id="detailView" class="hidden mx-auto max-w-5xl px-6 <?= $embed ? 'pt-2 pb-6' : 'pt-2 pb-8' ?>">
     <?php if (!$embed): ?>
     <!-- Standalone only. Embedded in Profile there is no separate "Companies"
          page to go back to — the account nav switches sections instead. -->

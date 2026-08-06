@@ -56,8 +56,8 @@ function notif_time_ago(?string $ts): string
 
 <?php $pageTitle = 'Notifications'; $headerMaxW = 'max-w-3xl'; $awCurrent = 'account'; include __DIR__ . '/partials/account_header.php'; ?>
 
-<main class="mx-auto max-w-3xl px-6 py-8">
-    <div class="mb-5 flex items-center gap-3">
+<main class="mx-auto max-w-3xl px-6 pt-1 pb-5">
+    <div class="mb-3 flex items-center gap-3">
         <span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-orange-500/15 text-orange-400">
             <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
         </span>

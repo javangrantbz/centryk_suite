@@ -79,8 +79,8 @@ $headerActionsHtml = ob_get_clean();
 <body class="min-h-screen bg-slate-100 font-sans antialiased text-slate-900">
 <?php include __DIR__ . '/partials/account_header.php'; ?>
 
-<main class="mx-auto max-w-7xl px-6 py-8">
-    <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+<main class="mx-auto max-w-7xl px-6 pt-1 pb-5">
+    <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div>
             <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Company Payments</p>
             <h1 class="mt-1 text-2xl font-black tracking-tight text-slate-900">OneLink Payments</h1>
