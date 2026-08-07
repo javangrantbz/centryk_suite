@@ -122,6 +122,10 @@ require __DIR__ . '/../includes/header.php';
           <a href="<?= e($url) ?>" target="_blank" class="flex items-center gap-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-sm px-3 py-2 whitespace-nowrap transition-colors">
             Open <i data-lucide="external-link" class="h-3.5 w-3.5"></i>
           </a>
+          <button type="button" class="qr-btn flex items-center gap-1.5 rounded-lg border border-slate-300 hover:border-rose-300 hover:bg-rose-50 text-slate-700 text-sm px-3 py-2 whitespace-nowrap transition-colors"
+                  data-url="<?= e($url) ?>" data-name="<?= e($s['name']) ?>">
+            <i data-lucide="qr-code" class="h-3.5 w-3.5"></i> QR
+          </button>
         </div>
         <p class="text-xs text-slate-400 mb-3">Last check-in: <b class="text-slate-600"><?= e($lastSeen) ?></b>
           <?php if (!empty($s['playlist_name'])): ?>· Playing: <b class="text-slate-600"><?= e($s['playlist_name']) ?></b><?php endif; ?>
@@ -173,4 +177,30 @@ require __DIR__ . '/../includes/header.php';
     </div>
   </div>
 </div>
+
+<!-- QR modal: scan with a phone to open a screen's display link without typing it on the TV -->
+<div id="qrModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/60 p-4" onclick="if (event.target === this) this.classList.add('hidden')">
+  <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-xs text-center">
+    <p id="qrModalName" class="font-bold text-slate-800 mb-3"></p>
+    <div id="qrModalImg" class="mx-auto mb-3 flex justify-center"></div>
+    <p class="text-xs text-slate-400 mb-4">Scan with a phone camera, then open the link on the TV.</p>
+    <button type="button" onclick="document.getElementById('qrModal').classList.add('hidden')" class="text-sm font-semibold text-slate-500 hover:text-slate-700">Close</button>
+  </div>
+</div>
+
+<script src="<?= app_base() ?>/assets/js/qrcode.min.js"></script>
+<script>
+document.querySelectorAll('.qr-btn').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    var modal = document.getElementById('qrModal');
+    document.getElementById('qrModalName').textContent = btn.dataset.name;
+    var qr = qrcode(0, 'M');
+    qr.addData(btn.dataset.url);
+    qr.make();
+    document.getElementById('qrModalImg').innerHTML = qr.createImgTag(6, 8);
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  });
+});
+</script>
 <?php require __DIR__ . '/../includes/footer.php'; ?>
