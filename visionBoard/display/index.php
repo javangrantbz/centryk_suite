@@ -2,21 +2,38 @@
 require_once __DIR__ . '/../includes/functions.php';
 $base = app_base();
 
-// The TV player is unauthenticated — it identifies itself by a screen token.
+// The TV player is unauthenticated; it identifies itself by a screen token.
 $token  = $_GET['screen'] ?? '';
 $screen = vb_screen_by_token($token);
 if (!$screen) {
     http_response_code(404);
     ?>
-    <!doctype html><html lang="en"><head><meta charset="utf-8">
+    <!doctype html>
+    <html lang="en">
+    <head>
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title><?= APP_NAME ?> — Pair this screen</title>
-    <style>body{font-family:system-ui,sans-serif;background:#0b1220;color:#e2e8f0;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0;text-align:center}div{max-width:32rem;padding:2rem}</style>
-    </head><body><div>
-      <div style="font-size:3rem">📺</div>
+    <title><?= APP_NAME ?> - Pair this screen</title>
+    <style>
+      body{font-family:system-ui,sans-serif;background:#0b1220;color:#e2e8f0;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0;padding:2rem;text-align:center}
+      .pair-card{max-width:34rem;padding:2.25rem 2rem;border:1px solid rgba(244,63,94,.18);border-radius:1.5rem;background:linear-gradient(180deg,rgba(15,23,42,.96),rgba(15,23,42,.88));box-shadow:0 32px 80px rgba(2,6,23,.45)}
+      .pair-logo{display:block;height:4.25rem;width:auto;max-width:min(78vw,18rem);margin:0 auto 1.25rem;object-fit:contain}
+      .pair-kicker{margin:0 0 .65rem;color:#fb7185;font-size:.78rem;font-weight:800;letter-spacing:.2em;text-transform:uppercase}
+      h1{margin:0;font-size:2rem;line-height:1.05}
+      p{margin:1rem 0 0;color:#94a3b8;font-size:1rem;line-height:1.6}
+      .pair-app{color:#fb7185;font-weight:800}
+      b{color:#f8fafc}
+    </style>
+    </head>
+    <body>
+    <div class="pair-card">
+      <img src="<?= $base ?>/../public/assets/centryk_logo.png" alt="Centryk" class="pair-logo">
+      <p class="pair-kicker">Screen Setup</p>
       <h1>This screen isn't paired yet</h1>
-      <p style="color:#94a3b8">Open Signage → <b>Screens</b> in Centryk, add a screen, and point this display at the URL shown there.</p>
-    </div></body></html>
+      <p>Open <span class="pair-app">Vision Board</span> <b>&rarr; Screens</b> in Centryk, add a screen, and point this display at the URL shown there.</p>
+    </div>
+    </body>
+    </html>
     <?php
     exit;
 }
@@ -30,7 +47,7 @@ $feedQuery  = '?screen=' . rawurlencode($screen['pair_token']);
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title><?= APP_NAME ?> — Display</title>
+<title><?= APP_NAME ?> - Display</title>
 <link rel="stylesheet" href="<?= $base ?>/assets/css/display.css">
 </head>
 <body data-theme="<?= e($theme) ?>" data-api="<?= $base ?>/api/current.php<?= e($feedQuery) ?>" data-heartbeat="<?= $base ?>/api/display-heartbeat.php<?= e($feedQuery) ?>">
@@ -39,7 +56,7 @@ $feedQuery  = '?screen=' . rawurlencode($screen['pair_token']);
   <div id="idle" class="idle">
     <div class="idle-logo">🦙</div>
     <h1>The Belize Zoo</h1>
-    <p id="idleMsg">Loading today’s program…</p>
+    <p id="idleMsg">Loading today's program...</p>
   </div>
 
   <!-- Stage where content is rendered -->
