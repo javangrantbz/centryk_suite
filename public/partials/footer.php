@@ -70,8 +70,8 @@
                     </li>
                     <li>
                         <a href="about.php#onepay" class="group flex items-center gap-2.5 text-sm font-semibold text-white/55 transition hover:text-white">
-                            <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-purple-600/25 text-purple-400 transition group-hover:bg-purple-600/40">
-                                <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.5c.72 5.08 2.42 6.78 7.5 7.5-5.08.72-6.78 2.42-7.5 7.5-.72-5.08-2.42-6.78-7.5-7.5 5.08-.72 6.78-2.42 7.5-7.5Z"/></svg>
+                            <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white/90 p-0.5 transition group-hover:bg-white">
+                                <img src="assets/onepay_logo.png" alt="" class="h-full w-full object-contain">
                             </span>
                             OnePay — Inventory &amp; POS
                         </a>
@@ -141,7 +141,7 @@
             <span class="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 mr-1">Includes</span>
 
             <span class="inline-flex items-center gap-2 rounded-full border border-purple-500/20 bg-purple-500/8 px-3.5 py-1.5">
-                <svg class="h-3.5 w-3.5 text-purple-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.5c.72 5.08 2.42 6.78 7.5 7.5-5.08.72-6.78 2.42-7.5 7.5-.72-5.08-2.42-6.78-7.5-7.5 5.08-.72 6.78-2.42 7.5-7.5Z"/></svg>
+                <img src="assets/onepay_logo.png" alt="" class="h-3.5 w-3.5 object-contain">
                 <span class="text-[11px] font-black text-purple-300">OnePay</span>
                 <span class="hidden sm:inline text-[10px] font-semibold text-purple-400/55">Inventory &amp; POS</span>
             </span>

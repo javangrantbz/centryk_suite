@@ -339,7 +339,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
     <?php endif; ?>
 
     <!-- Apps grid -->
-    <div id="appsGrid" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div id="appsGrid" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <?php $_appIdx = 0; foreach ($apps as $app):
             if (isset($_comingSoonAppKeys[(string)($app['key'] ?? '')])) {
                 continue;
@@ -363,11 +363,8 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
             <div class="flex flex-1 flex-col p-3">
                 <div class="flex items-center gap-3">
                     <?php if ($app['key'] === 'onepay'): ?>
-                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full shadow-sm"
-                          style="background:<?= htmlspecialchars($app['color']) ?>">
-                        <svg viewBox="0 0 24 24" fill="white" class="h-5 w-5">
-                            <path d="M12 2.5c.72 5.08 2.42 6.78 7.5 7.5-5.08.72-6.78 2.42-7.5 7.5-.72-5.08-2.42-6.78-7.5-7.5 5.08-.72 6.78-2.42 7.5-7.5Z"/>
-                        </svg>
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-50 p-1.5 shadow-sm ring-1 ring-purple-100">
+                        <img src="assets/onepay_logo.png" alt="OnePay" class="h-full w-full object-contain">
                     </span>
                     <?php elseif ($app['key'] === 'mypay'): ?>
                     <img src="../myPay.png" alt="MyPay" class="h-10 w-10 rounded-xl object-contain shadow-sm">
@@ -527,7 +524,6 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         </button>
 
         <!-- Case Management — coming soon (static, not in DB) -->
-
         <div style="--i:<?= ($_appIdx ?? 0) + 7 ?>" class="dash-fade order-3 flex flex-col overflow-hidden rounded-2xl border border-blue-200/70 bg-blue-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
             <div class="h-1.5 w-full bg-blue-500/50"></div>
             <div class="flex flex-1 flex-col p-3">

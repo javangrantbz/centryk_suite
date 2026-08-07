@@ -143,10 +143,8 @@
             <div class="space-y-4">
                 <div class="rounded-2xl border-2 border-purple-100 bg-white p-6 shadow-lg">
                     <div class="flex items-center gap-4">
-                        <span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-purple-700 text-white shadow-md shadow-purple-200">
-                            <svg viewBox="0 0 24 24" fill="currentColor" class="h-7 w-7">
-                                <path d="M12 2.5c.72 5.08 2.42 6.78 7.5 7.5-5.08.72-6.78 2.42-7.5 7.5-.72-5.08-2.42-6.78-7.5-7.5 5.08-.72 6.78-2.42 7.5-7.5Z"/>
-                            </svg>
+                        <span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-purple-50 p-2 shadow-md shadow-purple-100 ring-1 ring-purple-100">
+                            <img src="assets/onepay_logo.png" alt="OnePay" class="h-full w-full object-contain">
                         </span>
                         <div>
                             <p class="text-[10px] font-black uppercase tracking-[0.18em] text-purple-700">Inventory &amp; POS</p>
@@ -229,10 +227,8 @@
 <section id="onepay" class="px-6 py-20 bg-white section-fade">
     <div class="mx-auto max-w-6xl">
         <div class="flex items-center gap-4 mb-3">
-            <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-purple-700 text-white shadow-md shadow-purple-200">
-                <svg viewBox="0 0 24 24" fill="currentColor" class="h-6 w-6">
-                    <path d="M12 2.5c.72 5.08 2.42 6.78 7.5 7.5-5.08.72-6.78 2.42-7.5 7.5-.72-5.08-2.42-6.78-7.5-7.5 5.08-.72 6.78-2.42 7.5-7.5Z"/>
-                </svg>
+            <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-purple-50 p-1.5 shadow-md shadow-purple-100 ring-1 ring-purple-100">
+                <img src="assets/onepay_logo.png" alt="OnePay" class="h-full w-full object-contain">
             </span>
             <div>
                 <p class="text-[10px] font-black uppercase tracking-[0.22em] text-purple-700">App 01</p>

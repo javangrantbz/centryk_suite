@@ -200,8 +200,8 @@ if ($me['authenticated']) {
                 <div class="flex flex-wrap items-center justify-center gap-2 md:justify-start">
                     <span class="text-[10px] font-black uppercase tracking-[0.18em] text-white/35">Included Apps</span>
                     <a href="about.php#onepay" class="inline-flex items-center gap-2 rounded-full border border-purple-200/15 bg-purple-50/10 px-3 py-1.5 text-xs font-black text-purple-100 transition hover:bg-purple-50/15">
-                        <span class="flex h-5 w-5 items-center justify-center rounded-full bg-purple-100 text-purple-700">
-                            <svg viewBox="0 0 32 32" class="h-3.5 w-3.5"><path d="M16 8l2.5 7.5H26l-6 4.5 2.5 7.5-6-4.5-6 4.5 2.5-7.5-6-4.5h7.5L16 8z" fill="currentColor"/></svg>
+                        <span class="flex h-5 w-5 items-center justify-center rounded-full bg-purple-100 p-0.5">
+                            <img src="assets/onepay_logo.png" alt="" class="h-full w-full object-contain">
                         </span>
                         OnePay
                     </a>

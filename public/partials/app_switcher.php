@@ -26,8 +26,8 @@ if ($awMode === 'launch' && !isset($apps)) {
 // Canonical icon for a known app key, falling back to a colored letter tile.
 $awTileIcon = function (string $key, string $color = '', string $label = '') {
     if ($key === 'onepay') {
-        return '<span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-purple-50 text-purple-700 ring-1 ring-purple-100">'
-             . '<svg viewBox="0 0 32 32" class="h-7 w-7"><path d="M16 8l2.5 7.5H26l-6 4.5 2.5 7.5-6-4.5-6 4.5 2.5-7.5-6-4.5h7.5L16 8z" fill="currentColor"/></svg>'
+        return '<span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-purple-50 p-1.5 ring-1 ring-purple-100">'
+             . '<img src="assets/onepay_logo.png" alt="OnePay" class="h-full w-full object-contain">'
              . '</span>';
     }
     if ($key === 'mypay') {
