@@ -80,6 +80,8 @@ $directoryTypeLabels = [
                         $uuid = trim((string)($business['uuid'] ?? ''));
                         $name = trim((string)($business['name'] ?? ''));
                         $address = trim((string)($business['address'] ?? ''));
+                        $addressLine = preg_replace('/\s+/', ' ', $address);
+                        $addressLine = trim((string)$addressLine);
                         $phones = array_values(array_filter([
                             trim((string)($business['phone'] ?? '')),
                             trim((string)($business['phone2'] ?? '')),
@@ -99,8 +101,8 @@ $directoryTypeLabels = [
                                     <?= htmlspecialchars($name) ?><?php if ($typeLabel !== ''): ?><span class="font-semibold text-slate-400"> . <?= htmlspecialchars($typeLabel) ?></span><?php endif; ?>
                                 </h3>
                                 <div class="mt-0.5 space-y-0.5 text-[11px] font-semibold leading-snug text-slate-500">
-                                    <?php if ($address !== ''): ?>
-                                        <p><?= nl2br(htmlspecialchars($address)) ?></p>
+                                    <?php if ($addressLine !== ''): ?>
+                                        <p class="truncate"><?= htmlspecialchars($addressLine) ?></p>
                                     <?php endif; ?>
                                     <?php if ($phones): ?>
                                         <p><?= htmlspecialchars(implode(' / ', $phones)) ?></p>
