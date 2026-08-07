@@ -16,8 +16,10 @@ if (!$screen) {
     <title><?= APP_NAME ?> - Pair this screen</title>
     <style>
       body{font-family:system-ui,sans-serif;background:#0b1220;color:#e2e8f0;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0;padding:2rem;text-align:center}
-      .pair-card{max-width:34rem;padding:2.25rem 2rem;border:1px solid rgba(244,63,94,.18);border-radius:1.5rem;background:linear-gradient(180deg,rgba(15,23,42,.96),rgba(15,23,42,.88));box-shadow:0 32px 80px rgba(2,6,23,.45)}
-      .pair-logo{display:block;height:4.25rem;width:auto;max-width:min(78vw,18rem);margin:0 auto 1.25rem;object-fit:contain}
+      .pair-shell{width:min(100%,34rem)}
+      .pair-brand{display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;padding:1rem 1.25rem;border-radius:1.25rem;background:#fff;box-shadow:0 20px 50px rgba(2,6,23,.28)}
+      .pair-card{padding:2.25rem 2rem;border:1px solid rgba(244,63,94,.18);border-radius:1.5rem;background:linear-gradient(180deg,rgba(15,23,42,.96),rgba(15,23,42,.88));box-shadow:0 32px 80px rgba(2,6,23,.45)}
+      .pair-logo{display:block;height:4.25rem;width:auto;max-width:min(78vw,18rem);object-fit:contain}
       .pair-kicker{margin:0 0 .65rem;color:#fb7185;font-size:.78rem;font-weight:800;letter-spacing:.2em;text-transform:uppercase}
       h1{margin:0;font-size:2rem;line-height:1.05}
       p{margin:1rem 0 0;color:#94a3b8;font-size:1rem;line-height:1.6}
@@ -26,11 +28,15 @@ if (!$screen) {
     </style>
     </head>
     <body>
-    <div class="pair-card">
-      <img src="<?= $base ?>/../public/assets/centryk_logo.png" alt="Centryk" class="pair-logo">
-      <p class="pair-kicker">Screen Setup</p>
-      <h1>This screen isn't paired yet</h1>
-      <p>Open <span class="pair-app">Vision Board</span> <b>&rarr; Screens</b> in Centryk, add a screen, and point this display at the URL shown there.</p>
+    <div class="pair-shell">
+      <div class="pair-brand">
+        <img src="<?= $base ?>/../public/assets/centryk_logo.png" alt="Centryk" class="pair-logo">
+      </div>
+      <div class="pair-card">
+        <p class="pair-kicker">Screen Setup</p>
+        <h1>This screen isn't paired yet</h1>
+        <p>Open <span class="pair-app">Vision Board</span> <b>&rarr; Screens</b> in Centryk, add a screen, and point this display at the URL shown there.</p>
+      </div>
     </div>
     </body>
     </html>
