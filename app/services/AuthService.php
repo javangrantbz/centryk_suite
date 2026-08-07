@@ -4,6 +4,8 @@ require_once __DIR__ . '/../core/DB.php';
 
 class AuthService
 {
+    private static bool $visionBoardAccessSynced = false;
+
     public static function me(): array
     {
         $user = Auth::user();
@@ -20,6 +22,8 @@ class AuthService
 
     public static function accessibleApps(int $userId): array
     {
+        self::syncVisionBoardAccess();
+
         $stmt = DB::pdo()->prepare(
             'SELECT a.key, a.label, a.description, a.url_local, a.url_production, a.icon, a.color
              FROM apps a
@@ -33,6 +37,8 @@ class AuthService
 
     public static function allAppsWithEnrollment(int $userId): array
     {
+        self::syncVisionBoardAccess();
+
         $stmt = DB::pdo()->prepare(
             'SELECT a.key, a.label, a.description, a.url_local, a.url_production, a.icon, a.color,
                     COALESCE(a.opt_in, 0) AS opt_in,
@@ -67,6 +73,8 @@ class AuthService
 
     public static function launchApp(int $userId, string $appKey, string $companyUuid = ''): ?string
     {
+        self::syncVisionBoardAccess();
+
         $stmt = DB::pdo()->prepare(
             'SELECT a.url_local, a.url_production FROM apps a
              JOIN user_app_access ua ON ua.app_id = a.id
@@ -91,5 +99,33 @@ class AuthService
             $url .= '&company_uuid=' . urlencode($companyUuid);
         }
         return $url;
+    }
+
+    private static function syncVisionBoardAccess(): void
+    {
+        if (self::$visionBoardAccessSynced) {
+            return;
+        }
+        self::$visionBoardAccessSynced = true;
+
+        try {
+            DB::pdo()->exec(
+                "INSERT IGNORE INTO user_app_access (user_id, app_id)
+                 SELECT DISTINCT cm.user_id, a.id
+                 FROM apps a
+                 JOIN company_members cm
+                   ON cm.status = 'active'
+                 JOIN companies c
+                   ON c.id = cm.company_id
+                  AND c.status = 'active'
+                 JOIN users u
+                   ON u.id = cm.user_id
+                  AND u.status = 'active'
+                 WHERE a.`key` = 'visionboard'
+                   AND a.status = 'active'"
+            );
+        } catch (Throwable $e) {
+            // Leave app access unchanged if the sync cannot run.
+        }
     }
 }
