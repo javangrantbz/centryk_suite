@@ -1,0 +1,12 @@
+RewriteEngine On
+
+# Block direct access to sensitive files and directories
+RewriteRule ^(app|database)(/|$) - [F,L]
+
+<FilesMatch "^\.env">
+    Require all denied
+</FilesMatch>
+
+# Route everything to public/
+RewriteRule ^$ public/ [L]
+RewriteRule ^((?!public/|visionBoard/).*) public/$1 [L]
