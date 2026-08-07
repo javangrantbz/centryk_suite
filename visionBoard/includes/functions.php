@@ -77,6 +77,21 @@ function vb_screen_by_token(?string $token): ?array
     return $stmt->fetch() ?: null;
 }
 
+/**
+ * Resolve a TV screen from its short-link slug (the /vb/<slug> route).
+ * Slugs live in one flat namespace across all companies, same as the URL.
+ */
+function vb_screen_by_slug(?string $slug): ?array
+{
+    $slug = strtolower(trim((string) $slug));
+    if ($slug === '' || !preg_match('/^[a-z0-9-]{1,64}$/', $slug)) {
+        return null;
+    }
+    $stmt = db()->prepare('SELECT * FROM vb_screens WHERE slug = ? AND is_active = 1 LIMIT 1');
+    $stmt->execute([$slug]);
+    return $stmt->fetch() ?: null;
+}
+
 function get_active_announcement(?int $companyId = null): ?array
 {
     $cid = $companyId ?? vb_cid();
@@ -229,6 +244,13 @@ function app_base(): string
     // Strip trailing /admin, /display or /api so links resolve from app root.
     $script = preg_replace('#/(admin|display|api)$#', '', $script);
     return rtrim($script, '/');
+}
+
+/** Site root one level above VisionBoard, e.g. "/centryk" locally or "" in production — used for /vb/<slug> short links. */
+function vb_site_root(): string
+{
+    $root = str_replace('\\', '/', dirname(app_base()));
+    return ($root === '/' || $root === '.') ? '' : rtrim($root, '/');
 }
 
 function human_size(int $bytes): string

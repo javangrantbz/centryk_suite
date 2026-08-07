@@ -53,6 +53,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash('A new pairing link was generated. The old link will stop working.');
             break;
 
+        case 'set_slug':
+            $slug = strtolower(trim($_POST['slug'] ?? ''));
+            if ($slug === '') {
+                $pdo->prepare('UPDATE vb_screens SET slug = NULL WHERE id=? AND company_id=?')
+                    ->execute([$id, $companyId]);
+                flash('Short link removed.');
+            } elseif (!preg_match('/^[a-z0-9-]{1,64}$/', $slug)) {
+                flash('Short link can only contain lowercase letters, numbers, and hyphens.', 'error');
+            } else {
+                $dupe = $pdo->prepare('SELECT COUNT(*) FROM vb_screens WHERE slug = ? AND id != ?');
+                $dupe->execute([$slug, $id]);
+                if ($dupe->fetchColumn() > 0) {
+                    flash('That short link is already taken — pick another.', 'error');
+                } else {
+                    $pdo->prepare('UPDATE vb_screens SET slug=? WHERE id=? AND company_id=?')
+                        ->execute([$slug, $id, $companyId]);
+                    log_activity('updated', 'screen', $id, 'short link set to /vb/' . $slug);
+                    flash('Short link saved.');
+                }
+            }
+            break;
+
         case 'toggle':
             $pdo->prepare('UPDATE vb_screens SET is_active = 1 - is_active WHERE id=? AND company_id=?')
                 ->execute([$id, $companyId]);
@@ -79,6 +101,7 @@ $screens = $screensStmt->fetchAll();
 
 $scheme = (($_SERVER['HTTPS'] ?? '') ? 'https' : 'http');
 $displayBase = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . app_base() . '/display/';
+$shortBase = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . vb_site_root() . '/vb/';
 
 require __DIR__ . '/../includes/header.php';
 ?>
@@ -127,6 +150,47 @@ require __DIR__ . '/../includes/header.php';
             <i data-lucide="qr-code" class="h-3.5 w-3.5"></i> QR
           </button>
         </div>
+
+        <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Short link</label>
+        <?php if ($s['slug']): $shortUrl = $shortBase . rawurlencode($s['slug']); ?>
+        <div class="flex gap-2 mb-3">
+          <input readonly value="<?= e($shortUrl) ?>" onclick="this.select()"
+                 class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-xs bg-slate-50 font-mono">
+          <button type="button" class="qr-btn flex items-center gap-1.5 rounded-lg border border-slate-300 hover:border-rose-300 hover:bg-rose-50 text-slate-700 text-sm px-3 py-2 whitespace-nowrap transition-colors"
+                  data-url="<?= e($shortUrl) ?>" data-name="<?= e($s['name']) ?>">
+            <i data-lucide="qr-code" class="h-3.5 w-3.5"></i> QR
+          </button>
+        </div>
+        <div class="flex items-center gap-2 mb-3">
+          <form method="post" class="flex items-center gap-2">
+            <?= csrf_field() ?>
+            <input type="hidden" name="action" value="set_slug">
+            <input type="hidden" name="id" value="<?= (int)$s['id'] ?>">
+            <span class="text-xs text-slate-400 font-mono whitespace-nowrap"><?= e($shortBase) ?></span>
+            <input name="slug" value="<?= e($s['slug']) ?>" placeholder="zoo" pattern="[a-z0-9-]+" required
+                   class="rounded-lg border border-slate-300 px-2 py-1.5 text-xs font-mono w-32">
+            <button class="text-xs bg-slate-100 hover:bg-slate-200 rounded px-3 py-1.5">Update</button>
+          </form>
+          <form method="post">
+            <?= csrf_field() ?>
+            <input type="hidden" name="action" value="set_slug">
+            <input type="hidden" name="id" value="<?= (int)$s['id'] ?>">
+            <input type="hidden" name="slug" value="">
+            <button class="text-xs text-red-600 hover:underline">Remove</button>
+          </form>
+        </div>
+        <?php else: ?>
+        <form method="post" class="flex items-center gap-2 mb-3">
+          <?= csrf_field() ?>
+          <input type="hidden" name="action" value="set_slug">
+          <input type="hidden" name="id" value="<?= (int)$s['id'] ?>">
+          <span class="text-xs text-slate-400 font-mono whitespace-nowrap"><?= e($shortBase) ?></span>
+          <input name="slug" placeholder="zoo" pattern="[a-z0-9-]+" required
+                 class="rounded-lg border border-slate-300 px-2 py-1.5 text-xs font-mono w-32">
+          <button class="text-xs bg-rose-100 hover:bg-rose-200 text-rose-700 rounded px-3 py-1.5">Set short link</button>
+        </form>
+        <?php endif; ?>
+
         <p class="text-xs text-slate-400 mb-3">Last check-in: <b class="text-slate-600"><?= e($lastSeen) ?></b>
           <?php if (!empty($s['playlist_name'])): ?>· Playing: <b class="text-slate-600"><?= e($s['playlist_name']) ?></b><?php endif; ?>
         </p>

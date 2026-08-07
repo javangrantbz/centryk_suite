@@ -8,7 +8,7 @@ RewriteRule ^(app|database)(/|$) - [F,L]
 </FilesMatch>
 
 # Short links for TV displays (internal rewrite — URL bar stays short)
-RewriteRule ^vb/zoo/?$ visionBoard/display/index.php?screen=8c0542d267e326677db9be61f098c1ed3709555616cf14e9edefa4a6c11befd4 [L]
+RewriteRule ^vb/([a-zA-Z0-9-]+)/?$ visionBoard/short.php?slug=$1 [L,QSA]
 
 # Route everything to public/
 RewriteRule ^$ public/ [L]
