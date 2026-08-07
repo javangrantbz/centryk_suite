@@ -92,6 +92,26 @@ function vb_screen_by_slug(?string $slug): ?array
     return $stmt->fetch() ?: null;
 }
 
+/**
+ * A playlist may only be shared with a company that (a) has an accepted
+ * Centryk Connect connection with the sharer, and (b) has opted in to
+ * receiving shares in its own Settings. Both are required — connection
+ * proves a relationship exists, the setting proves consent to this feature.
+ */
+function vb_can_share_with(int $fromCompanyId, int $toCompanyId): bool
+{
+    $connected = db()->prepare(
+        "SELECT COUNT(*) FROM company_connections
+         WHERE ((requester_company_id=? AND recipient_company_id=?) OR (requester_company_id=? AND recipient_company_id=?))
+           AND status = 'accepted'"
+    );
+    $connected->execute([$fromCompanyId, $toCompanyId, $toCompanyId, $fromCompanyId]);
+    if (!$connected->fetchColumn()) {
+        return false;
+    }
+    return get_setting('accept_shares', '0', $toCompanyId) === '1';
+}
+
 /** Playlists another company has shared with $companyId, newest first. */
 function vb_shares_incoming(int $companyId): array
 {

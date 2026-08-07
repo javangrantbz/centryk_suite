@@ -60,6 +60,33 @@ foreach ($memberStmt->fetchAll(PDO::FETCH_COLUMN) as $memberCompanyId) {
 
 $isMember = $company ? isset($memberCompanyIds[(int)$company['id']]) : false;
 
+// Centryk Connect status, for the Connect button when viewing another company's store.
+$connectFromCompanyId = null;
+$connectionStatus = null; // null | 'pending_out' | 'pending_in' | 'accepted'
+$connectionId = null;
+if ($company && !$isMember) {
+    $adminStmt = $pdo->prepare("SELECT company_id FROM company_members WHERE user_id=? AND status='active' AND role='admin' LIMIT 1");
+    $adminStmt->execute([(int)$user['id']]);
+    $connectFromCompanyId = $adminStmt->fetchColumn() ?: null;
+    if ($connectFromCompanyId) {
+        $connectFromCompanyId = (int)$connectFromCompanyId;
+        $connStmt = $pdo->prepare(
+            'SELECT id, status, requester_company_id FROM company_connections
+             WHERE (requester_company_id=? AND recipient_company_id=?) OR (requester_company_id=? AND recipient_company_id=?)'
+        );
+        $connStmt->execute([$connectFromCompanyId, (int)$company['id'], (int)$company['id'], $connectFromCompanyId]);
+        $connRow = $connStmt->fetch(PDO::FETCH_ASSOC);
+        if ($connRow) {
+            $connectionId = (int)$connRow['id'];
+            if ($connRow['status'] === 'accepted') {
+                $connectionStatus = 'accepted';
+            } elseif ($connRow['status'] === 'pending') {
+                $connectionStatus = ((int)$connRow['requester_company_id'] === $connectFromCompanyId) ? 'pending_out' : 'pending_in';
+            }
+        }
+    }
+}
+
 $onePayBaseUrl = '';
 try {
     $onePayUrlStmt = $pdo->prepare('SELECT url_local, url_production FROM apps WHERE `key` = "onepay" AND status = "active" LIMIT 1');
@@ -448,6 +475,30 @@ $headerActionsHtml = ob_get_clean();
         </section>
     <?php endif; ?>
 
+    <?php if ($company && !$isMember): ?>
+    <section class="mb-6" id="connectWidget">
+        <?php if (!$connectFromCompanyId): ?>
+        <?php elseif ($connectionStatus === 'accepted'): ?>
+            <span class="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700">
+                <i data-lucide="check-circle-2" class="h-3.5 w-3.5"></i> Connected on Centryk
+            </span>
+        <?php elseif ($connectionStatus === 'pending_out'): ?>
+            <span class="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-700">
+                <i data-lucide="clock" class="h-3.5 w-3.5"></i> Connect request sent
+            </span>
+        <?php elseif ($connectionStatus === 'pending_in'): ?>
+            <a href="connections.php?company_id=<?= (int)$connectFromCompanyId ?>" class="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5 text-xs font-bold text-violet-700 hover:bg-violet-100">
+                <i data-lucide="handshake" class="h-3.5 w-3.5"></i> <?= htmlspecialchars($name) ?> wants to connect &mdash; respond
+            </a>
+        <?php else: ?>
+            <button id="connectBtn" data-from="<?= (int)$connectFromCompanyId ?>" data-to="<?= (int)$company['id'] ?>"
+                    class="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5 text-xs font-bold text-violet-700 transition hover:bg-violet-100">
+                <i data-lucide="handshake" class="h-3.5 w-3.5"></i> Connect with <?= htmlspecialchars($name) ?>
+            </button>
+        <?php endif; ?>
+    </section>
+    <?php endif; ?>
+
     <section>
         <?php if ($listings): ?>
             <div class="grid gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
@@ -583,6 +634,29 @@ $headerActionsHtml = ob_get_clean();
 <script src="https://unpkg.com/lucide@latest"></script>
 <script>
 if (window.lucide) { lucide.createIcons(); }
+
+document.getElementById('connectBtn')?.addEventListener('click', function () {
+    var btn = this;
+    btn.disabled = true;
+    fetch('api/connections/send.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ company_id: parseInt(btn.dataset.from, 10), target_company_id: parseInt(btn.dataset.to, 10) }),
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+        if (data.success) {
+            document.getElementById('connectWidget').innerHTML =
+                '<span class="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-700">' +
+                '<i data-lucide="clock" class="h-3.5 w-3.5"></i> Connect request sent</span>';
+            if (window.lucide) { lucide.createIcons(); }
+        } else {
+            btn.disabled = false;
+            alert(data.message || 'Failed to send request.');
+        }
+    })
+    .catch(function () { btn.disabled = false; alert('Network error.'); });
+});
 
 (function () {
     var search = document.getElementById('storeHeaderSearch');

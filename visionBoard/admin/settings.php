@@ -34,6 +34,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect('settings.php');
     }
 
+    // ---- Centryk Connect sharing ----
+    if ($action === 'sharing') {
+        set_setting('accept_shares', isset($_POST['accept_shares']) ? '1' : '0');
+        log_activity('updated', 'settings', null, 'sharing settings');
+        flash('Sharing settings saved.');
+        redirect('settings.php');
+    }
+
     // ---- Visitor QR codes ----
     if ($action === 'qr_settings') {
         set_setting('qr_enabled', isset($_POST['qr_enabled']) ? '1' : '0');
@@ -272,6 +280,24 @@ require __DIR__ . '/../includes/header.php';
         </div>
       </div>
 
+      <button class="bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl px-5 py-2 transition-colors">Save</button>
+    </form>
+  </div>
+
+  <!-- Centryk Connect sharing -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+    <h2 class="font-bold text-slate-800 mb-2 flex items-center gap-2">
+      <i data-lucide="handshake" class="h-5 w-5 text-rose-500"></i> Sharing
+    </h2>
+    <p class="text-sm text-slate-500 mb-3">Other companies can only offer to share a playlist with you if you're connected on
+      <a href="<?= e(centryk_public_url()) ?>/connections.php" class="text-rose-600 hover:underline">Centryk Connect</a> and this is turned on.</p>
+    <form method="post" class="space-y-3">
+      <?= csrf_field() ?>
+      <input type="hidden" name="action" value="sharing">
+      <label class="flex items-center gap-2 text-sm">
+        <input type="checkbox" name="accept_shares" <?= get_setting('accept_shares','0')==='1'?'checked':'' ?>>
+        Accept playlist shares from companies I'm connected with
+      </label>
       <button class="bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl px-5 py-2 transition-colors">Save</button>
     </form>
   </div>

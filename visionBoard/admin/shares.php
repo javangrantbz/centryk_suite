@@ -40,6 +40,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash('That company was not found.', 'error');
             redirect('shares.php');
         }
+        if (!vb_can_share_with($companyId, $targetId)) {
+            flash('You can only share with companies you\'re connected with on Centryk Connect, and who accept shares.', 'error');
+            redirect('shares.php');
+        }
 
         // (playlist_id, shared_with_company_id) is unique at the DB level even
         // across history, so a prior revoked/declined share must be reused
@@ -131,9 +135,21 @@ $ownPlaylists = $pdo->prepare('SELECT id, name FROM vb_playlists WHERE company_i
 $ownPlaylists->execute([$companyId]);
 $ownPlaylists = $ownPlaylists->fetchAll();
 
-$companies = $pdo->prepare("SELECT id, name FROM companies WHERE status='active' AND directory_visible=1 AND id != ? ORDER BY name ASC");
-$companies->execute([$companyId]);
-$companies = $companies->fetchAll();
+// Only companies connected on Centryk Connect that have opted in to receiving shares.
+// (Named $shareTargets, not $companies — includes/header.php already uses $companies
+// for its own account switcher and would silently clobber it via require's shared scope.)
+$shareTargets = $pdo->prepare(
+    "SELECT c.id, c.name FROM companies c
+     JOIN company_connections cc ON (
+         (cc.requester_company_id = :cid1 AND cc.recipient_company_id = c.id) OR
+         (cc.recipient_company_id = :cid2 AND cc.requester_company_id = c.id)
+     ) AND cc.status = 'accepted'
+     JOIN vb_settings vs ON vs.company_id = c.id AND vs.setting_key = 'accept_shares' AND vs.setting_value = '1'
+     WHERE c.status = 'active'
+     ORDER BY c.name ASC"
+);
+$shareTargets->execute(['cid1' => $companyId, 'cid2' => $companyId]);
+$shareTargets = $shareTargets->fetchAll();
 
 $outgoing = vb_shares_outgoing($companyId);
 $incoming = vb_shares_incoming($companyId);
@@ -251,8 +267,10 @@ require __DIR__ . '/../includes/header.php';
       <h2 class="font-bold text-slate-800 mb-3">Share a playlist</h2>
       <?php if (!$ownPlaylists): ?>
       <p class="text-slate-500 text-sm">Create a playlist first.</p>
-      <?php elseif (!$companies): ?>
-      <p class="text-slate-500 text-sm">No other companies are available to share with.</p>
+      <?php elseif (!$shareTargets): ?>
+      <p class="text-slate-500 text-sm">No companies available yet. You can only share with companies you're
+        <a href="<?= e(centryk_public_url()) ?>/connections.php" class="text-rose-600 hover:underline">connected with on Centryk Connect</a>
+        who have also turned on "accept shares" in their own Settings.</p>
       <?php else: ?>
       <form method="post" class="space-y-3" id="shareForm">
         <?= csrf_field() ?>
@@ -268,7 +286,7 @@ require __DIR__ . '/../includes/header.php';
         <label class="block text-xs font-semibold uppercase text-slate-400">Share with</label>
         <select name="target_company_id" required class="w-full rounded-lg border border-slate-300 px-3 py-2">
           <option value="">Choose a company…</option>
-          <?php foreach ($companies as $c): ?>
+          <?php foreach ($shareTargets as $c): ?>
           <option value="<?= (int) $c['id'] ?>"><?= e($c['name']) ?></option>
           <?php endforeach; ?>
         </select>
