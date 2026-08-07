@@ -92,6 +92,108 @@ function vb_screen_by_slug(?string $slug): ?array
     return $stmt->fetch() ?: null;
 }
 
+/** Playlists another company has shared with $companyId, newest first. */
+function vb_shares_incoming(int $companyId): array
+{
+    $stmt = db()->prepare(
+        'SELECT sh.*, p.name AS playlist_name, c.name AS owner_company_name
+         FROM vb_playlist_shares sh
+         JOIN vb_playlists p ON p.id = sh.playlist_id
+         JOIN companies c ON c.id = sh.owner_company_id
+         WHERE sh.shared_with_company_id = ?
+         ORDER BY sh.created_at DESC'
+    );
+    $stmt->execute([$companyId]);
+    return $stmt->fetchAll();
+}
+
+/** Playlists $companyId has shared out to other companies, newest first. */
+function vb_shares_outgoing(int $companyId): array
+{
+    $stmt = db()->prepare(
+        'SELECT sh.*, p.name AS playlist_name, c.name AS recipient_company_name
+         FROM vb_playlist_shares sh
+         JOIN vb_playlists p ON p.id = sh.playlist_id
+         JOIN companies c ON c.id = sh.shared_with_company_id
+         WHERE sh.owner_company_id = ?
+         ORDER BY sh.created_at DESC'
+    );
+    $stmt->execute([$companyId]);
+    return $stmt->fetchAll();
+}
+
+/**
+ * The accepted "editable" share (if any) that lets $companyId use
+ * $playlistId as its own — even though another company owns it.
+ */
+function vb_playlist_is_shared_with(int $playlistId, int $companyId): ?array
+{
+    $stmt = db()->prepare(
+        "SELECT * FROM vb_playlist_shares
+         WHERE playlist_id = ? AND shared_with_company_id = ? AND mode = 'editable' AND status = 'accepted'
+         LIMIT 1"
+    );
+    $stmt->execute([$playlistId, $companyId]);
+    return $stmt->fetch() ?: null;
+}
+
+/**
+ * Create or refresh the read-only schedule row that plays a locked share.
+ * Called on accept, and again whenever the owner edits the locked window
+ * so the recipient's copy stays in sync.
+ */
+function vb_apply_locked_schedule(array $share): void
+{
+    $pdo = db();
+    $stmt = $pdo->prepare('SELECT id FROM vb_schedules WHERE source_share_id = ? LIMIT 1');
+    $stmt->execute([$share['id']]);
+    $existing = $stmt->fetch();
+
+    $params = [
+        $share['playlist_id'],
+        $share['locked_start_date'],
+        $share['locked_end_date'],
+        $share['locked_start_time'],
+        $share['locked_end_time'],
+        $share['locked_days_of_week'],
+        $share['locked_priority'],
+    ];
+
+    if ($existing) {
+        $pdo->prepare(
+            'UPDATE vb_schedules SET playlist_id=?, start_date=?, end_date=?, start_time=?, end_time=?, days_of_week=?, priority=?
+             WHERE id=?'
+        )->execute([...$params, $existing['id']]);
+    } else {
+        $pdo->prepare(
+            'INSERT INTO vb_schedules (company_id, name, playlist_id, source_share_id, start_date, end_date, start_time, end_time, days_of_week, priority, is_enabled)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)'
+        )->execute([
+            $share['shared_with_company_id'],
+            'Shared: ' . $share['playlist_name'],
+            $share['playlist_id'],
+            $share['id'],
+            $share['locked_start_date'],
+            $share['locked_end_date'],
+            $share['locked_start_time'],
+            $share['locked_end_time'],
+            $share['locked_days_of_week'],
+            $share['locked_priority'],
+        ]);
+    }
+}
+
+/** Remove a share's effect on the recipient's schedules (revoke/decline). */
+function vb_unlink_share_schedules(int $shareId, int $recipientCompanyId, int $playlistId): void
+{
+    $pdo = db();
+    // Locked mode: cascades via source_share_id, but be explicit for clarity.
+    $pdo->prepare('DELETE FROM vb_schedules WHERE source_share_id = ?')->execute([$shareId]);
+    // Editable mode: recipient may have built their own schedule(s) on this playlist.
+    $pdo->prepare('DELETE FROM vb_schedules WHERE company_id = ? AND playlist_id = ? AND source_share_id IS NULL')
+        ->execute([$recipientCompanyId, $playlistId]);
+}
+
 function get_active_announcement(?int $companyId = null): ?array
 {
     $cid = $companyId ?? vb_cid();

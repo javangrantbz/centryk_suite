@@ -13,6 +13,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     check_csrf();
     $action = $_POST['action'] ?? '';
 
+    // Schedules created from a locked share are owner-controlled — block any
+    // direct edit here; recipients manage those from the Sharing page instead.
+    if (in_array($action, ['delete', 'toggle', 'save'], true) && (int) ($_POST['id'] ?? 0)) {
+        $locked = $pdo->prepare('SELECT source_share_id FROM vb_schedules WHERE id=? AND company_id=?');
+        $locked->execute([(int) $_POST['id'], $companyId]);
+        $locked = $locked->fetchColumn();
+        if ($locked) {
+            flash('This schedule is locked by the company that shared it — manage it from Sharing instead.', 'error');
+            redirect('schedule.php');
+        }
+    }
+
     if ($action === 'delete') {
         $id = (int)$_POST['id'];
         $pdo->prepare('DELETE FROM vb_schedules WHERE id=? AND company_id=?')->execute([$id, $companyId]);
@@ -39,10 +51,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $enabled   = isset($_POST['is_enabled']) ? 1 : 0;
 
         if (!$playlist) { flash('Choose a playlist.', 'error'); redirect('schedule.php'); }
-        // The chosen playlist must belong to this company.
+        // The chosen playlist must be owned by this company, or shared with it in editable mode.
         $own = $pdo->prepare('SELECT COUNT(*) FROM vb_playlists WHERE id=? AND company_id=?');
         $own->execute([$playlist, $companyId]);
-        if (!$own->fetchColumn()) { flash('That playlist is not available.', 'error'); redirect('schedule.php'); }
+        if (!$own->fetchColumn() && !vb_playlist_is_shared_with($playlist, $companyId)) {
+            flash('That playlist is not available.', 'error'); redirect('schedule.php');
+        }
 
         if ($id) {
             $pdo->prepare('UPDATE vb_schedules SET name=?, playlist_id=?, start_date=?, end_date=?, start_time=?, end_time=?, days_of_week=?, priority=?, is_enabled=? WHERE id=? AND company_id=?')
@@ -64,13 +78,28 @@ if (isset($_GET['edit'])) {
     $s = $pdo->prepare('SELECT * FROM vb_schedules WHERE id=? AND company_id=?');
     $s->execute([(int) $_GET['edit'], $companyId]);
     $editing = $s->fetch() ?: null;
+    if ($editing && $editing['source_share_id']) {
+        flash('This schedule is locked by the company that shared it — manage it from Sharing instead.', 'error');
+        redirect('schedule.php');
+    }
 }
 $editDays = $editing && $editing['days_of_week'] !== null && $editing['days_of_week'] !== ''
     ? array_map('intval', explode(',', $editing['days_of_week'])) : array_keys($DOW);
 
-$plStmt = $pdo->prepare('SELECT * FROM vb_playlists WHERE company_id=? ORDER BY name ASC');
+$plStmt = $pdo->prepare('SELECT id, name, 0 AS is_shared FROM vb_playlists WHERE company_id=? ORDER BY name ASC');
 $plStmt->execute([$companyId]);
 $playlists = $plStmt->fetchAll();
+
+$sharedStmt = $pdo->prepare(
+    "SELECT p.id, CONCAT(p.name, ' (shared by ', c.name, ')') AS name, 1 AS is_shared
+     FROM vb_playlist_shares sh
+     JOIN vb_playlists p ON p.id = sh.playlist_id
+     JOIN companies c ON c.id = sh.owner_company_id
+     WHERE sh.shared_with_company_id = ? AND sh.mode = 'editable' AND sh.status = 'accepted'
+     ORDER BY p.name ASC"
+);
+$sharedStmt->execute([$companyId]);
+$playlists = array_merge($playlists, $sharedStmt->fetchAll());
 $schStmt = $pdo->prepare('SELECT s.*, p.name AS playlist_name FROM vb_schedules s JOIN vb_playlists p ON p.id=s.playlist_id WHERE s.company_id=? ORDER BY s.priority DESC, s.id DESC');
 $schStmt->execute([$companyId]);
 $schedules = $schStmt->fetchAll();
@@ -250,6 +279,12 @@ require __DIR__ . '/../includes/header.php';
             </div>
           </div>
           <div class="flex items-center gap-3 shrink-0">
+            <?php if ($s['source_share_id']): ?>
+              <span class="flex items-center gap-1 text-xs font-semibold text-slate-400" title="Locked by the sharing company">
+                <i data-lucide="lock" class="h-3 w-3"></i> Shared — locked
+              </span>
+              <a href="shares.php" class="text-sm font-semibold text-rose-600 hover:underline">Manage</a>
+            <?php else: ?>
             <form method="post"><?= csrf_field() ?>
               <input type="hidden" name="action" value="toggle"><input type="hidden" name="id" value="<?= $s['id'] ?>">
               <button class="text-xs font-semibold text-slate-500 hover:underline"><?= $s['is_enabled']?'Disable':'Enable' ?></button>
@@ -259,6 +294,7 @@ require __DIR__ . '/../includes/header.php';
               <input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="<?= $s['id'] ?>">
               <button class="text-sm font-semibold text-red-600 hover:underline">Delete</button>
             </form>
+            <?php endif; ?>
           </div>
         </div>
       </div>

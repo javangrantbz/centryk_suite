@@ -183,7 +183,12 @@ require __DIR__ . '/../includes/header.php';
               <p class="text-sm text-slate-500"><?= (int)$p['cnt'] ?> item(s) · <?= e($p['description'] ?: 'No description') ?></p>
             </div>
           </div>
-          <a href="playlists.php?edit=<?= $p['id'] ?>" class="bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold rounded-xl px-4 py-2 transition-colors">Edit</a>
+          <div class="flex items-center gap-2">
+            <a href="shares.php?playlist_id=<?= $p['id'] ?>" class="flex items-center gap-1.5 border border-slate-300 hover:border-rose-300 hover:bg-rose-50 text-slate-700 text-sm font-semibold rounded-xl px-3 py-2 transition-colors">
+              <i data-lucide="share-2" class="h-3.5 w-3.5"></i> Share
+            </a>
+            <a href="playlists.php?edit=<?= $p['id'] ?>" class="bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold rounded-xl px-4 py-2 transition-colors">Edit</a>
+          </div>
         </div>
       <?php endforeach; ?>
     </div>

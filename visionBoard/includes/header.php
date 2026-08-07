@@ -37,6 +37,7 @@ $nav = [
     ['playlists', 'list-video',     'Playlists', false],
     ['schedule',  'calendar-clock', 'Schedules', false],
     ['screens',   'monitor',        'Screens',   false],
+    ['shares',    'share-2',        'Sharing',   true],
     ['settings',  'settings',       'Settings',  true],
     ['activity',  'scroll-text',    'Activity',  true],
     ['backup',    'database',       'Backup',    true],
