@@ -7,6 +7,9 @@ RewriteRule ^(app|database)(/|$) - [F,L]
     Require all denied
 </FilesMatch>
 
+# Short links for TV displays (internal rewrite — URL bar stays short)
+RewriteRule ^zoo/?$ visionBoard/display/index.php?screen=8c0542d267e326677db9be61f098c1ed3709555616cf14e9edefa4a6c11befd4 [L]
+
 # Route everything to public/
 RewriteRule ^$ public/ [L]
 RewriteRule ^((?!public/|visionBoard/).*) public/$1 [L]
