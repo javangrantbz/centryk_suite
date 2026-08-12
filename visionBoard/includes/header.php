@@ -31,14 +31,10 @@ if (!empty($me['id'])) {
 
 // Sidebar modules: [active-key, lucide icon, label, admin-only].
 $nav = [
-    ['index',     'layout-grid',    'Dashboard', false],
-    ['media',     'image',          'Media',     false],
-    ['content',   'file-text',      'Content',   false],
-    ['playlists', 'list-video',     'Playlists', false],
-    ['schedule',  'calendar-clock', 'Schedules', false],
-    ['screens',   'monitor',        'Screens',   false],
+    ['index',     'layout-grid',    'V Board',   false],
+    ['schedule',  'calendar-clock', 'Scheduling', false],
+    ['settings',  'settings',       'Settings',  false],
     ['shares',    'share-2',        'Sharing',   true],
-    ['settings',  'settings',       'Settings',  true],
     ['activity',  'scroll-text',    'Activity',  true],
     ['backup',    'database',       'Backup',    true],
 ];
@@ -255,10 +251,10 @@ $amAdmin = is_admin($me);
         </header>
 
         <!-- Main content -->
-        <main class="flex-1 overflow-y-auto custom-scrollbar p-3 lg:p-4">
+        <main class="flex-1 overflow-y-auto custom-scrollbar px-3 pb-3 pt-0.5 lg:px-4 lg:pb-4 lg:pt-1">
             <div class="max-w-6xl mx-auto">
                 <?php foreach (take_flashes() as $f): ?>
-                  <div class="mb-4 rounded-lg px-4 py-3 text-sm <?= $f['type'] === 'error' ? 'bg-red-100 text-red-800 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-500/30' ?>">
+                  <div data-flash-message class="mb-4 rounded-lg px-4 py-3 text-sm transition-opacity duration-500 <?= $f['type'] === 'error' ? 'bg-red-100 text-red-800 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-500/30' ?>">
                     <?= e($f['msg']) ?>
                   </div>
                 <?php endforeach; ?>

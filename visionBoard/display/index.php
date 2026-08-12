@@ -44,6 +44,9 @@ if (!$screen) {
     exit;
 }
 $companyId  = (int) $screen['company_id'];
+$companyStmt = db()->prepare('SELECT name FROM companies WHERE id = ? LIMIT 1');
+$companyStmt->execute([$companyId]);
+$displayCompanyName = trim((string) ($companyStmt->fetchColumn() ?: 'Your Company'));
 $theme      = get_setting('theme', 'jungle', $companyId);
 $transition = get_setting('transition', 'fade', $companyId);
 $feedQuery  = '?screen=' . rawurlencode($screen['pair_token']);
@@ -61,8 +64,8 @@ $feedQuery  = '?screen=' . rawurlencode($screen['pair_token']);
   <!-- Idle / empty state -->
   <div id="idle" class="idle">
     <div class="idle-logo">🦙</div>
-    <h1>The Belize Zoo</h1>
-    <p id="idleMsg">Loading today's program...</p>
+    <h1><?= e($displayCompanyName) ?></h1>
+    <p id="idleMsg">Loading your vBoard...</p>
   </div>
 
   <!-- Stage where content is rendered -->
@@ -75,7 +78,7 @@ $feedQuery  = '?screen=' . rawurlencode($screen['pair_token']);
       <span id="weatherIcon" class="weather-icon">☀</span>
       <span id="weatherTemp" class="weather-temp"></span>
     </div>
-    <div class="weather-meta" id="weatherMeta">Belize time</div>
+    <div class="weather-meta" id="weatherMeta">Local time</div>
   </div>
   <div id="clock" class="clock"></div>
   <div id="announcement" class="announcement" style="display:none">

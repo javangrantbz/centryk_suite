@@ -7,6 +7,7 @@ require_login();
 
 $pdo = db();
 $companyId = vb_cid();
+$canManageShares = is_admin();
 
 /** Renumber a playlist's items 0..n after any structural change. */
 function resequence(PDO $pdo, int $playlistId): void
@@ -184,9 +185,11 @@ require __DIR__ . '/../includes/header.php';
             </div>
           </div>
           <div class="flex items-center gap-2">
+            <?php if ($canManageShares): ?>
             <a href="shares.php?playlist_id=<?= $p['id'] ?>" class="flex items-center gap-1.5 border border-slate-300 hover:border-rose-300 hover:bg-rose-50 text-slate-700 text-sm font-semibold rounded-xl px-3 py-2 transition-colors">
               <i data-lucide="share-2" class="h-3.5 w-3.5"></i> Share
             </a>
+            <?php endif; ?>
             <a href="playlists.php?edit=<?= $p['id'] ?>" class="bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold rounded-xl px-4 py-2 transition-colors">Edit</a>
           </div>
         </div>
@@ -232,7 +235,12 @@ require __DIR__ . '/../includes/header.php';
             </label>
           </div>
           <input name="description" value="<?= e($editing['description']) ?>" placeholder="Description" class="w-full rounded-lg border border-slate-300 px-3 py-2">
-          <button class="bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold rounded-xl px-4 py-2 transition-colors">Save details</button>
+          <div class="flex items-center gap-2">
+            <button class="bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold rounded-xl px-4 py-2 transition-colors">Save details</button>
+            <a href="schedule.php?playlist_id=<?= $editing['id'] ?>" class="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-bold text-rose-700 hover:bg-rose-100 transition-colors">
+              <i data-lucide="calendar-clock" class="h-4 w-4"></i> Go live
+            </a>
+          </div>
         </form>
       </div>
 
@@ -325,9 +333,9 @@ require __DIR__ . '/../includes/header.php';
 
     <div>
       <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sticky top-4">
-        <h2 class="font-bold text-slate-800 mb-3">Add content</h2>
+        <h2 class="font-bold text-slate-800 mb-3">Add items</h2>
         <?php if (!$allContent): ?>
-          <p class="text-sm text-slate-500">No active content. <a class="text-rose-600 font-semibold hover:underline" href="content.php">Create some</a>.</p>
+          <p class="text-sm text-slate-500">No active items. <a class="text-rose-600 font-semibold hover:underline" href="content.php">Create some</a>.</p>
         <?php else: ?>
         <form method="post" class="space-y-3">
           <?= csrf_field() ?>
@@ -338,7 +346,7 @@ require __DIR__ . '/../includes/header.php';
               <option value="<?= $c['id'] ?>">[<?= strtoupper($c['type']) ?>] <?= e($c['title']) ?></option>
             <?php endforeach; ?>
           </select>
-          <input name="duration_override" type="number" min="1" placeholder="Duration override (optional)" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+          <input name="duration_override" type="number" min="1" placeholder="Seconds on screen (optional)" class="w-full rounded-lg border border-slate-300 px-3 py-2">
           <button class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl py-2 transition-colors">Add to playlist</button>
         </form>
         <?php endif; ?>

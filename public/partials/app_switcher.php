@@ -49,6 +49,12 @@ $awTileIcon = function (string $key, string $color = '', string $label = '') {
              . '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/>'
              . '</svg></span>';
     }
+    if ($key === 'tv') {
+        return '<span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-50 text-sky-700 ring-1 ring-sky-100">'
+             . '<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+             . '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="m10 9 5 3-5 3V9Z"/><path d="M8 21h8"/>'
+             . '</svg></span>';
+    }
     if ($key === 'store') {
         return '<span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-50 text-violet-700 ring-1 ring-violet-100">'
              . '<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
@@ -127,6 +133,7 @@ $awTileIcon = function (string $key, string $color = '', string $label = '') {
                     ['key' => 'mypay',    'label' => 'MyPay',    'href' => 'about.php#mypay'],
                     ['key' => 'calendar', 'label' => 'Calendar', 'href' => 'login.php#request', 'color' => '#14b8a6'],
                     ['key' => 'invoice',  'label' => 'Invoices', 'href' => 'login.php#request', 'color' => '#10b981'],
+                    ['key' => 'tv',       'label' => 'Centryk TV', 'href' => 'login.php#request', 'color' => '#0f766e'],
                     ['key' => 'store',    'label' => 'Store',    'href' => 'store.php', 'color' => '#7c3aed'],
                 ];
                 foreach ($awMarketingApps as $awApp):

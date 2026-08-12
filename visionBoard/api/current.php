@@ -15,12 +15,16 @@ if (!$screen) {
     exit;
 }
 $companyId = (int) $screen['company_id'];
+$companyStmt = db()->prepare('SELECT name FROM companies WHERE id = ? LIMIT 1');
+$companyStmt->execute([$companyId]);
+$companyName = trim((string) $companyStmt->fetchColumn());
+$companyName = $companyName !== '' ? $companyName : 'Your Company';
 
 // Record that the screen checked in.
 $seen = db()->prepare('UPDATE vb_screens SET last_seen_at = NOW() WHERE id = ?');
 $seen->execute([(int) $screen['id']]);
 
-[$playlist, $items] = resolve_active_playlist($companyId);
+[$playlist, $items] = resolve_active_playlist($companyId, $screen);
 
 $payload = items_to_payload($items);
 $announcement = get_active_announcement($companyId);
@@ -34,7 +38,7 @@ foreach ($qrStmt as $q) {
 }
 if (get_setting('donation_qr_enabled', '0', $companyId) === '1' && trim((string) get_setting('donation_qr_url', '', $companyId)) !== '') {
     $qrCodes[] = [
-        'caption' => get_setting('donation_qr_caption', 'Support us', $companyId),
+        'caption' => get_setting('donation_qr_caption', 'Support ' . $companyName, $companyId),
         'url' => trim((string) get_setting('donation_qr_url', '', $companyId)),
     ];
 }
@@ -65,7 +69,7 @@ echo json_encode([
         'weather_widget_enabled' => get_setting('weather_widget_enabled', '0', $companyId) === '1',
         'weather_latitude' => (float) get_setting('weather_latitude', '17.3536', $companyId),
         'weather_longitude' => (float) get_setting('weather_longitude', '-88.5497', $companyId),
-        'weather_label' => get_setting('weather_label', '', $companyId),
+        'weather_label' => get_setting('weather_label', $companyName, $companyId),
         'theme'      => get_setting('theme', 'jungle', $companyId),
         'transition' => get_setting('transition', 'fade', $companyId),
         'qr_enabled' => get_setting('qr_enabled', '0', $companyId) === '1',

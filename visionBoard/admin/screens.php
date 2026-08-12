@@ -138,24 +138,14 @@ require __DIR__ . '/../includes/header.php';
           </div>
         </div>
 
-        <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Display link</label>
-        <div class="flex gap-2 mb-3">
-          <input readonly value="<?= e($url) ?>" onclick="this.select()"
-                 class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-xs bg-slate-50 font-mono">
-          <a href="<?= e($url) ?>" target="_blank" class="flex items-center gap-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-sm px-3 py-2 whitespace-nowrap transition-colors">
-            Open <i data-lucide="external-link" class="h-3.5 w-3.5"></i>
-          </a>
-          <button type="button" class="qr-btn flex items-center gap-1.5 rounded-lg border border-slate-300 hover:border-rose-300 hover:bg-rose-50 text-slate-700 text-sm px-3 py-2 whitespace-nowrap transition-colors"
-                  data-url="<?= e($url) ?>" data-name="<?= e($s['name']) ?>">
-            <i data-lucide="qr-code" class="h-3.5 w-3.5"></i> QR
-          </button>
-        </div>
-
         <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Short link</label>
         <?php if ($s['slug']): $shortUrl = $shortBase . rawurlencode($s['slug']); ?>
         <div class="flex gap-2 mb-3">
           <input readonly value="<?= e($shortUrl) ?>" onclick="this.select()"
                  class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-xs bg-slate-50 font-mono">
+          <a href="<?= e($shortUrl) ?>" target="_blank" class="flex items-center gap-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-sm px-3 py-2 whitespace-nowrap transition-colors">
+            Open <i data-lucide="external-link" class="h-3.5 w-3.5"></i>
+          </a>
           <button type="button" class="qr-btn flex items-center gap-1.5 rounded-lg border border-slate-300 hover:border-rose-300 hover:bg-rose-50 text-slate-700 text-sm px-3 py-2 whitespace-nowrap transition-colors"
                   data-url="<?= e($shortUrl) ?>" data-name="<?= e($s['name']) ?>">
             <i data-lucide="qr-code" class="h-3.5 w-3.5"></i> QR

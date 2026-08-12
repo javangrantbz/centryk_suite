@@ -18,6 +18,9 @@
         <a href="audit.php" class="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900">
             <i data-lucide="history" class="h-4 w-4 shrink-0"></i> Audit Trail
         </a>
+        <a href="visionboard-links.php" class="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900">
+            <i data-lucide="monitor-play" class="h-4 w-4 shrink-0"></i> Vision Board Links
+        </a>
     </div>
 </div>
 <?php endif; ?>

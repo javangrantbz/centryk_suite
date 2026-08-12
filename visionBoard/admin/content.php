@@ -1,12 +1,15 @@
 <?php
 $active = 'content';
-$pageTitle = 'Content';
+$pageTitle = 'Items';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/functions.php';
 require_login();
 $cid = vb_cid();
 
 $pdo = db();
+$panelMode = isset($_GET['panel']) && $_GET['panel'] === '1';
+$contentBaseQuery = $panelMode ? ['panel' => '1'] : [];
+$contentReturnUrl = 'content.php' . ($contentBaseQuery ? '?' . http_build_query($contentBaseQuery) : '');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     check_csrf();
@@ -16,39 +19,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = (int) $_POST['id'];
         $pdo->prepare('DELETE FROM vb_content_items WHERE id = ? AND company_id = ?')->execute([$id, $cid]);
         log_activity('deleted', 'content_item', $id);
-        flash('Content item deleted.');
-        redirect('content.php');
+        flash('Item deleted.');
+        redirect($contentReturnUrl);
     }
 
     if ($action === 'save') {
-        $id       = (int) ($_POST['id'] ?? 0);
-        $type     = in_array($_POST['type'] ?? '', ['image','video','biography'], true) ? $_POST['type'] : 'image';
-        $title    = trim($_POST['title'] ?? '');
+        $id = (int) ($_POST['id'] ?? 0);
+        $itemKind = ($_POST['item_kind'] ?? 'media') === 'biography' ? 'biography' : 'media';
+        $title = trim($_POST['title'] ?? '');
         $subtitle = trim($_POST['subtitle'] ?? '') ?: null;
-        $body     = trim($_POST['body'] ?? '') ?: null;
-        $mediaId  = ($_POST['media_id'] ?? '') !== '' ? (int) $_POST['media_id'] : null;
-        $duration = max(1, (int) ($_POST['duration_seconds'] ?? DEFAULT_DURATION));
-        $startsOn = ($_POST['starts_on'] ?? '') !== '' ? $_POST['starts_on'] : null;
-        $endsOn   = ($_POST['ends_on'] ?? '') !== '' ? $_POST['ends_on'] : null;
+        $body = trim($_POST['body'] ?? '') ?: null;
+        $mediaId = ($_POST['media_id'] ?? '') !== '' ? (int) $_POST['media_id'] : null;
         $isActive = isset($_POST['is_active']) ? 1 : 0;
+        $existing = null;
+
+        if ($id) {
+            $existingStmt = $pdo->prepare('SELECT * FROM vb_content_items WHERE id = ? AND company_id = ?');
+            $existingStmt->execute([$id, $cid]);
+            $existing = $existingStmt->fetch() ?: null;
+            if (!$existing) {
+                http_response_code(404);
+                die('Item not found.');
+            }
+        }
+
+        $duration = (int) ($existing['duration_seconds'] ?? DEFAULT_DURATION);
+        $startsOn = $existing['starts_on'] ?? null;
+        $endsOn = $existing['ends_on'] ?? null;
+        $type = $itemKind === 'biography' ? 'biography' : 'image';
 
         if ($title === '') {
             flash('Title is required.', 'error');
-            redirect('content.php');
+            redirect($contentReturnUrl);
         }
-        // Media required for image/video.
-        if (in_array($type, ['image','video'], true) && !$mediaId) {
-            flash('Please choose a media file for image/video content.', 'error');
-            redirect('content.php');
+
+        if ($itemKind === 'media' && !$mediaId) {
+            flash('Choose a media file from the library.', 'error');
+            redirect($contentReturnUrl);
         }
-        // A referenced media file must belong to this company.
+
         if ($mediaId) {
-            $chk = $pdo->prepare('SELECT COUNT(*) FROM vb_media WHERE id = ? AND company_id = ?');
+            $chk = $pdo->prepare('SELECT kind FROM vb_media WHERE id = ? AND company_id = ?');
             $chk->execute([$mediaId, $cid]);
-            if (!$chk->fetchColumn()) {
+            $mediaKind = $chk->fetchColumn();
+            if (!$mediaKind) {
                 flash('Selected media is not available.', 'error');
-                redirect('content.php');
+                redirect($contentReturnUrl);
             }
+            if ($itemKind === 'media') {
+                $type = $mediaKind === 'video' ? 'video' : 'image';
+            }
+        } else {
+            $mediaId = null;
+        }
+
+        if ($itemKind === 'biography') {
+            $mediaId = null;
         }
 
         if ($id) {
@@ -57,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             );
             $stmt->execute([$title, $type, $mediaId, $subtitle, $body, $duration, $startsOn, $endsOn, $isActive, $id, $cid]);
             log_activity('updated', 'content_item', $id, $title);
-            flash('Content updated.');
+            flash('Item updated.');
         } else {
             $stmt = $pdo->prepare(
                 'INSERT INTO vb_content_items (company_id, title, type, media_id, subtitle, body, duration_seconds, starts_on, ends_on, is_active)
@@ -65,9 +91,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             );
             $stmt->execute([$cid, $title, $type, $mediaId, $subtitle, $body, $duration, $startsOn, $endsOn, $isActive]);
             log_activity('created', 'content_item', (int) $pdo->lastInsertId(), $title);
-            flash('Content created.');
+            flash('Item created.');
         }
-        redirect('content.php');
+        redirect($contentReturnUrl);
     }
 }
 
@@ -82,85 +108,91 @@ $mediaStmt = $pdo->prepare('SELECT * FROM vb_media WHERE company_id = ? ORDER BY
 $mediaStmt->execute([$cid]);
 $media = $mediaStmt->fetchAll();
 $itemsStmt = $pdo->prepare(
-    'SELECT ci.*, m.filename, m.thumbnail_filename, m.kind AS media_kind FROM vb_content_items ci
-     LEFT JOIN vb_media m ON m.id = ci.media_id WHERE ci.company_id = ? ORDER BY ci.created_at DESC'
+    'SELECT ci.*, m.filename, m.thumbnail_filename, m.kind AS media_kind
+     FROM vb_content_items ci
+     LEFT JOIN vb_media m ON m.id = ci.media_id
+     WHERE ci.company_id = ?
+     ORDER BY ci.created_at DESC'
 );
 $itemsStmt->execute([$cid]);
 $items = $itemsStmt->fetchAll();
-require __DIR__ . '/../includes/header.php';
+if (!$panelMode) {
+    require __DIR__ . '/../includes/header.php';
+} else {
 ?>
-<h1 class="text-xl font-black tracking-tight text-slate-900 mb-3">Content</h1>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?= e($pageTitle) ?> Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] } } } }</script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap'); body { font-family: 'Plus Jakarta Sans', sans-serif; }</style>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans">
+<?php
+}
+?>
+<?php if ($panelMode): ?>
+<div class="h-full overflow-y-auto bg-[#f8fafc] p-5">
+<?php endif; ?>
+<h1 class="text-xl font-black tracking-tight text-slate-900 mb-3">Items</h1>
 
 <div class="grid lg:grid-cols-3 gap-4">
-  <!-- Editor -->
   <div class="lg:col-span-1">
     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sticky top-4" id="editor">
-      <h2 class="font-bold text-slate-800 mb-4"><?= $editing ? 'Edit content' : 'New content' ?></h2>
+      <h2 class="font-bold text-slate-800 mb-1"><?= $editing ? 'Edit item' : 'New item' ?></h2>
+      <p class="text-sm text-slate-500 mb-4">Choose something from the media library, or create a biography card.</p>
       <form method="post" class="space-y-3">
         <?= csrf_field() ?>
         <input type="hidden" name="action" value="save">
         <input type="hidden" name="id" value="<?= $editing['id'] ?? '' ?>">
 
+        <?php $selectedKind = ($editing['type'] ?? 'image') === 'biography' ? 'biography' : 'media'; ?>
         <div>
-          <label class="block text-sm font-medium text-slate-600 mb-1">Type</label>
-          <select name="type" id="typeSelect" class="w-full rounded-lg border border-slate-300 px-3 py-2">
-            <?php foreach (['image'=>'Image','video'=>'Video','biography'=>'Biography card'] as $v=>$l): ?>
-              <option value="<?= $v ?>" <?= ($editing['type'] ?? 'image') === $v ? 'selected' : '' ?>><?= $l ?></option>
-            <?php endforeach; ?>
-          </select>
+          <label class="block text-sm font-medium text-slate-600 mb-2">Item type</label>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="cursor-pointer">
+              <input type="radio" name="item_kind" value="media" class="peer sr-only" <?= $selectedKind === 'media' ? 'checked' : '' ?>>
+              <span class="flex items-center justify-center rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 peer-checked:border-rose-600 peer-checked:bg-rose-50 peer-checked:text-rose-700">Media item</span>
+            </label>
+            <label class="cursor-pointer">
+              <input type="radio" name="item_kind" value="biography" class="peer sr-only" <?= $selectedKind === 'biography' ? 'checked' : '' ?>>
+              <span class="flex items-center justify-center rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 peer-checked:border-rose-600 peer-checked:bg-rose-50 peer-checked:text-rose-700">Biography card</span>
+            </label>
+          </div>
         </div>
 
         <div>
           <label class="block text-sm font-medium text-slate-600 mb-1">Title</label>
-          <input name="title" required value="<?= e($editing['title'] ?? '') ?>"
-                 class="w-full rounded-lg border border-slate-300 px-3 py-2">
+          <input name="title" required value="<?= e($editing['title'] ?? '') ?>" class="w-full rounded-lg border border-slate-300 px-3 py-2">
         </div>
 
         <div data-role="subtitle">
-          <label class="block text-sm font-medium text-slate-600 mb-1">Subtitle / animal name <span class="text-slate-400">(optional)</span></label>
-          <input name="subtitle" value="<?= e($editing['subtitle'] ?? '') ?>"
-                 class="w-full rounded-lg border border-slate-300 px-3 py-2">
+          <label class="block text-sm font-medium text-slate-600 mb-1">Subtitle <span class="text-slate-400">(optional)</span></label>
+          <input name="subtitle" value="<?= e($editing['subtitle'] ?? '') ?>" class="w-full rounded-lg border border-slate-300 px-3 py-2">
         </div>
 
         <div data-role="media">
           <label class="block text-sm font-medium text-slate-600 mb-1">Media file</label>
           <select name="media_id" class="w-full rounded-lg border border-slate-300 px-3 py-2">
-            <option value="">— none —</option>
+            <option value="">-- choose from library --</option>
             <?php foreach ($media as $m): ?>
-              <option value="<?= $m['id'] ?>" data-kind="<?= $m['kind'] ?>"
-                <?= ($editing['media_id'] ?? '') == $m['id'] ? 'selected' : '' ?>>
+              <option value="<?= $m['id'] ?>" data-kind="<?= $m['kind'] ?>" <?= ($editing['media_id'] ?? '') == $m['id'] ? 'selected' : '' ?>>
                 [<?= strtoupper($m['kind']) ?>] <?= e($m['original_name']) ?>
               </option>
             <?php endforeach; ?>
           </select>
-          <p class="text-xs text-slate-400 mt-1">Need to add one? <a class="text-rose-600 font-semibold hover:underline" href="media.php">Upload media</a>.</p>
+          <p class="text-xs text-slate-400 mt-1">The item type is detected automatically from the file you choose.</p>
+          <p class="text-xs text-slate-400 mt-1">Need to add one? <a class="text-rose-600 font-semibold hover:underline" href="media.php<?= $panelMode ? '?panel=1' : '' ?>">Upload media</a>.</p>
         </div>
 
         <div data-role="body">
           <label class="block text-sm font-medium text-slate-600 mb-1">Body text</label>
           <textarea name="body" rows="5" class="w-full rounded-lg border border-slate-300 px-3 py-2"><?= e($editing['body'] ?? '') ?></textarea>
         </div>
-
-        <div>
-          <label class="block text-sm font-medium text-slate-600 mb-1">On-screen duration (seconds)</label>
-          <input name="duration_seconds" type="number" min="1" value="<?= e($editing['duration_seconds'] ?? DEFAULT_DURATION) ?>"
-                 class="w-full rounded-lg border border-slate-300 px-3 py-2">
-          <p class="text-xs text-slate-400 mt-1">Videos play their full length regardless.</p>
-        </div>
-
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-xs font-medium text-slate-600 mb-1">Start date</label>
-            <input name="starts_on" type="date" value="<?= e($editing['starts_on'] ?? '') ?>"
-                   class="w-full rounded-lg border border-slate-300 px-2 py-2 text-sm">
-          </div>
-          <div>
-            <label class="block text-xs font-medium text-slate-600 mb-1">End date</label>
-            <input name="ends_on" type="date" value="<?= e($editing['ends_on'] ?? '') ?>"
-                   class="w-full rounded-lg border border-slate-300 px-2 py-2 text-sm">
-          </div>
-        </div>
-        <p class="text-xs text-slate-400 -mt-2">Leave blank for always available.</p>
 
         <label class="flex items-center gap-2 text-sm">
           <input type="checkbox" name="is_active" <?= ($editing['is_active'] ?? 1) ? 'checked' : '' ?>>
@@ -169,23 +201,22 @@ require __DIR__ . '/../includes/header.php';
 
         <div class="flex gap-2 pt-2">
           <button class="bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl px-5 py-2 transition-colors"><?= $editing ? 'Update' : 'Create' ?></button>
-          <?php if ($editing): ?><a href="content.php" class="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition-colors">Cancel</a><?php endif; ?>
+          <?php if ($editing): ?><a href="<?= e($contentReturnUrl) ?>" class="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition-colors">Cancel</a><?php endif; ?>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- List -->
   <div class="lg:col-span-2 space-y-3">
     <?php if (!$items): ?>
-      <p class="text-slate-500">No content yet. Create your first item on the left.</p>
+      <p class="text-slate-500">No items yet. Create your first item on the left.</p>
     <?php endif; ?>
     <?php foreach ($items as $it): ?>
       <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex items-center gap-4 hover:shadow-md transition-shadow">
         <div class="w-24 h-16 rounded-lg bg-slate-900 overflow-hidden flex items-center justify-center shrink-0">
-          <?php if ($it['filename'] && $it['media_kind']==='image'): ?>
+          <?php if ($it['filename'] && $it['media_kind'] === 'image'): ?>
             <img src="<?= thumbnail_url($it['thumbnail_filename']) ?: media_url($it['filename']) ?>" class="w-full h-full object-cover">
-          <?php elseif ($it['filename'] && $it['media_kind']==='video'): ?>
+          <?php elseif ($it['filename'] && $it['media_kind'] === 'video'): ?>
             <video src="<?= media_url($it['filename']) ?>" class="w-full h-full object-cover" muted></video>
           <?php else: ?>
             <span class="text-rose-400"><?= content_type_icon($it['type'], 'h-6 w-6') ?></span>
@@ -196,13 +227,14 @@ require __DIR__ . '/../includes/header.php';
             <span class="text-slate-400 shrink-0"><?= content_type_icon($it['type'], 'h-3.5 w-3.5') ?></span>
             <?= e($it['title']) ?>
           </p>
-          <p class="text-sm text-slate-500 truncate"><?= e($it['subtitle'] ?: ucfirst($it['type'])) ?> · <?= (int)$it['duration_seconds'] ?>s
-             <?php if ($it['starts_on'] || $it['ends_on']): ?>· <?= e(($it['starts_on'] ?: 'now') . ' to ' . ($it['ends_on'] ?: 'always')) ?><?php endif; ?>
-             <?php if (!$it['is_active']): ?><span class="text-red-500">· inactive</span><?php endif; ?></p>
+          <p class="text-sm text-slate-500 truncate">
+            <?= e($it['subtitle'] ?: ucfirst($it['type'])) ?>
+            <?php if (!$it['is_active']): ?><span class="text-red-500"> · inactive</span><?php endif; ?>
+          </p>
         </div>
         <div class="flex items-center gap-3 shrink-0">
-          <a href="content.php?edit=<?= $it['id'] ?>#editor" class="text-sm font-semibold text-rose-600 hover:underline">Edit</a>
-          <form method="post" onsubmit="return confirm('Delete this content item?')">
+          <a href="content.php?edit=<?= $it['id'] ?><?= $panelMode ? '&panel=1' : '' ?>#editor" class="text-sm font-semibold text-rose-600 hover:underline">Edit</a>
+          <form method="post" onsubmit="return confirm('Delete this item?')">
             <?= csrf_field() ?>
             <input type="hidden" name="action" value="delete">
             <input type="hidden" name="id" value="<?= $it['id'] ?>">
@@ -215,15 +247,28 @@ require __DIR__ . '/../includes/header.php';
 </div>
 
 <script>
-// Show/hide fields based on content type.
-(function(){
-  const sel = document.getElementById('typeSelect');
-  function sync(){
-    const t = sel.value;
-    document.querySelector('[data-role=media]').style.display  = (t==='image'||t==='video') ? '' : 'none';
-    document.querySelector('[data-role=body]').style.display   = (t==='biography') ? '' : 'none';
+(function () {
+  const mediaRadio = document.querySelector('input[name="item_kind"][value="media"]');
+  const bioRadio = document.querySelector('input[name="item_kind"][value="biography"]');
+  const mediaWrap = document.querySelector('[data-role="media"]');
+  const bodyWrap = document.querySelector('[data-role="body"]');
+  if (!mediaRadio || !bioRadio || !mediaWrap || !bodyWrap) {
+    return;
   }
-  sel.addEventListener('change', sync); sync();
+  function sync() {
+    const isBio = bioRadio.checked;
+    mediaWrap.style.display = isBio ? 'none' : '';
+    bodyWrap.style.display = isBio ? '' : 'none';
+  }
+  mediaRadio.addEventListener('change', sync);
+  bioRadio.addEventListener('change', sync);
+  sync();
 })();
 </script>
+<?php if ($panelMode): ?>
+</div>
+</body>
+</html>
+<?php else: ?>
 <?php require __DIR__ . '/../includes/footer.php'; ?>
+<?php endif; ?>

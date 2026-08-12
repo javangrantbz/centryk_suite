@@ -7,6 +7,8 @@ require_login();
 $cid = vb_cid();
 
 $pdo = db();
+$panelMode = isset($_GET['panel']) && $_GET['panel'] === '1';
+$mediaReturnUrl = 'media.php' . ($panelMode ? '?panel=1' : '');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     check_csrf();
@@ -25,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             log_activity('deleted', 'media', $id, $m['original_name']);
             flash('Media deleted.');
         }
-        redirect('media.php');
+        redirect($mediaReturnUrl);
     }
 
     if ($action === 'upload') {
@@ -76,15 +78,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         flash("$ok file(s) uploaded" . ($fail ? ", $fail failed (unsupported type or too large)." : '.'),
               $fail && !$ok ? 'error' : 'success');
-        redirect('media.php');
+        redirect($mediaReturnUrl);
     }
 }
 
 $mediaStmt = $pdo->prepare('SELECT * FROM vb_media WHERE company_id = ? ORDER BY created_at DESC');
 $mediaStmt->execute([$cid]);
 $media = $mediaStmt->fetchAll();
-require __DIR__ . '/../includes/header.php';
+if (!$panelMode) {
+    require __DIR__ . '/../includes/header.php';
+} else {
 ?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?= e($pageTitle) ?> Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] } } } }</script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap'); body { font-family: 'Plus Jakarta Sans', sans-serif; }</style>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans">
+<?php
+}
+?>
+<?php if ($panelMode): ?>
+<div class="h-full overflow-y-auto bg-[#f8fafc] p-5">
+<?php endif; ?>
 <h1 class="text-xl font-black tracking-tight text-slate-900 mb-3">Media Library</h1>
 
 <form method="post" enctype="multipart/form-data"
@@ -134,4 +156,10 @@ require __DIR__ . '/../includes/header.php';
   <?php endforeach; ?>
 </div>
 <?php endif; ?>
+<?php if ($panelMode): ?>
+</div>
+</body>
+</html>
+<?php else: ?>
 <?php require __DIR__ . '/../includes/footer.php'; ?>
+<?php endif; ?>

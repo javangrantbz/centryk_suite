@@ -386,6 +386,12 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
                             <rect x="2" y="3" width="20" height="14" rx="2"/><path d="m10 8 5 3-5 3V8Z"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
                         </svg>
                     </span>
+                    <?php elseif ($app['key'] === 'tv'): ?>
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-100 text-cyan-700 shadow-sm ring-1 ring-cyan-200">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                            <rect x="2" y="5" width="20" height="14" rx="2"/><path d="m10 9 5 3-5 3V9Z"/><path d="M8 21h8"/>
+                        </svg>
+                    </span>
                     <?php else: ?>
                     <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xl"
                           style="background:<?= htmlspecialchars($app['color']) ?>18">
@@ -399,6 +405,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
                             elseif ($app['key'] === 'mypay')        echo 'HR &amp; Payroll';
                             elseif ($app['key'] === 'invoice')      echo 'Quotes &amp; Invoicing';
                             elseif ($app['key'] === 'visionboard')  echo 'Digital Signage';
+                            elseif ($app['key'] === 'tv')           echo 'Live Streaming';
                             else                                    echo htmlspecialchars($app['label']);
                             ?>
                         </div>
@@ -1144,7 +1151,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
         dropdown.classList.add('hidden');
     });
 
-    var appLabels = { onepay: 'OnePay', mypay: 'MyPay', centryk: 'Centryk' };
+    var appLabels = { onepay: 'OnePay', mypay: 'MyPay', tv: 'Centryk TV', centryk: 'Centryk' };
     var adminToolsBtn = document.getElementById('adminToolsBtn');
     var adminToolsMenu = document.getElementById('adminToolsMenu');
     if (adminToolsBtn && adminToolsMenu) {

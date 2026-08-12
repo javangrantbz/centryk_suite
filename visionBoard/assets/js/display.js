@@ -103,7 +103,7 @@
     const nextSettings = {
       lat: Number(s.weather_latitude) || 17.3536,
       lon: Number(s.weather_longitude) || -88.5497,
-      label: s.weather_label || 'Belize Zoo'
+      label: s.weather_label || 'Local time'
     };
     const changed = !weatherSettings ||
       weatherSettings.lat !== nextSettings.lat ||

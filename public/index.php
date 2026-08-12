@@ -223,6 +223,12 @@ if ($me['authenticated']) {
                         </span>
                         Invoices
                     </a>
+                    <a href="login.php#request" class="inline-flex items-center gap-2 rounded-full border border-cyan-200/15 bg-cyan-50/10 px-3 py-1.5 text-xs font-black text-cyan-100 transition hover:bg-cyan-50/15">
+                        <span class="flex h-5 w-5 items-center justify-center rounded-full bg-cyan-100 text-cyan-700">
+                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="m10 9 5 3-5 3V9Z"/><path d="M8 21h8"/></svg>
+                        </span>
+                        Centryk TV
+                    </a>
                 </div>
             </div>
             <div class="mt-4 flex justify-center md:justify-start">

@@ -284,18 +284,16 @@ function active_marquee_messages(?int $companyId = null): array
     $stmt = db()->prepare('SELECT message FROM vb_marquee_messages WHERE company_id = ? AND is_active = 1 ORDER BY position ASC, id ASC');
     $stmt->execute([$cid]);
     $rows = $stmt->fetchAll();
-    $messages = array_values(array_filter(array_map(fn($r) => trim((string) $r['message']), $rows)));
-    if (!$messages) {
-        $legacy = trim((string) get_setting('marquee', ''));
-        if ($legacy !== '') {
-            $messages[] = $legacy;
+    $messages = [];
+
+    foreach ($rows as $row) {
+        $message = trim((string) $row['message']);
+        if ($message !== '') {
+            $messages[] = $message;
         }
     }
-    $animal = trim((string) get_setting('animal_of_day', ''));
-    if ($animal !== '') {
-        array_unshift($messages, 'Animal of the Day: ' . $animal);
-    }
-    return $messages;
+
+    return array_values(array_unique($messages));
 }
 
 function imagecreatefrom_upload(string $path, string $ext)
@@ -387,9 +385,32 @@ function human_size(int $bytes): string
  * Determine which playlist should be showing right now for a company.
  * Returns [playlist row, items array] or [null, []].
  */
-function resolve_active_playlist(int $companyId): array
+function resolve_active_playlist(int $companyId, ?array $screen = null): array
 {
     $pdo = db();
+    if ($screen && !empty($screen['playlist_id'])) {
+        $playlistId = (int) $screen['playlist_id'];
+        $p = $pdo->prepare('SELECT * FROM vb_playlists WHERE id = ? AND company_id = ? AND is_active = 1 LIMIT 1');
+        $p->execute([$playlistId, $companyId]);
+        $row = $p->fetch();
+        if ($row) {
+            $playlist = $row;
+
+            $itemsStmt = $pdo->prepare(
+                'SELECT ci.*, pi.duration_override, pi.position, m.filename, m.thumbnail_filename, m.kind AS media_kind, m.mime
+                 FROM vb_playlist_items pi
+                 JOIN vb_content_items ci ON ci.id = pi.content_item_id AND ci.is_active = 1
+                 LEFT JOIN vb_media m ON m.id = ci.media_id
+                 WHERE pi.playlist_id = ?
+                   AND (ci.starts_on IS NULL OR ci.starts_on <= CURDATE())
+                   AND (ci.ends_on IS NULL OR ci.ends_on >= CURDATE())
+                 ORDER BY pi.position ASC, pi.id ASC'
+            );
+            $itemsStmt->execute([$playlistId]);
+            return [$playlist, $itemsStmt->fetchAll()];
+        }
+    }
+
     $now = new DateTime('now');
     $today = $now->format('Y-m-d');
     $time  = $now->format('H:i:s');

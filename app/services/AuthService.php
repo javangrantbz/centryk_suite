@@ -4,7 +4,7 @@ require_once __DIR__ . '/../core/DB.php';
 
 class AuthService
 {
-    private static bool $visionBoardAccessSynced = false;
+    private static bool $companyAppAccessSynced = false;
 
     public static function me(): array
     {
@@ -22,7 +22,7 @@ class AuthService
 
     public static function accessibleApps(int $userId): array
     {
-        self::syncVisionBoardAccess();
+        self::syncCompanyAppAccess();
 
         $stmt = DB::pdo()->prepare(
             'SELECT a.key, a.label, a.description, a.url_local, a.url_production, a.icon, a.color
@@ -37,7 +37,7 @@ class AuthService
 
     public static function allAppsWithEnrollment(int $userId): array
     {
-        self::syncVisionBoardAccess();
+        self::syncCompanyAppAccess();
 
         $stmt = DB::pdo()->prepare(
             'SELECT a.key, a.label, a.description, a.url_local, a.url_production, a.icon, a.color,
@@ -73,7 +73,7 @@ class AuthService
 
     public static function launchApp(int $userId, string $appKey, string $companyUuid = ''): ?string
     {
-        self::syncVisionBoardAccess();
+        self::syncCompanyAppAccess();
 
         $stmt = DB::pdo()->prepare(
             'SELECT a.url_local, a.url_production FROM apps a
@@ -101,12 +101,12 @@ class AuthService
         return $url;
     }
 
-    private static function syncVisionBoardAccess(): void
+    private static function syncCompanyAppAccess(): void
     {
-        if (self::$visionBoardAccessSynced) {
+        if (self::$companyAppAccessSynced) {
             return;
         }
-        self::$visionBoardAccessSynced = true;
+        self::$companyAppAccessSynced = true;
 
         try {
             DB::pdo()->exec(
@@ -121,7 +121,7 @@ class AuthService
                  JOIN users u
                    ON u.id = cm.user_id
                   AND u.status = 'active'
-                 WHERE a.`key` = 'visionboard'
+                 WHERE a.`key` IN ('visionboard', 'tv')
                    AND a.status = 'active'"
             );
         } catch (Throwable $e) {
