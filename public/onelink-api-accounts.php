@@ -82,6 +82,24 @@ $headerMaxW = 'max-w-7xl';
         </div>
     </section>
 
+    <section class="mt-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+                <p class="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-600">Auto-Provision</p>
+                <h2 class="mt-1 text-lg font-black tracking-tight">Create OneLink accounts automatically</h2>
+                <p class="mt-1 text-xs font-semibold leading-relaxed text-slate-500">
+                    Provisions a real OneLink merchant account (terminal ID, salt, token) via their API for every active
+                    company that doesn't have one enabled yet. Each company gets an access code emailed to log into
+                    OneLink and finish their own settlement bank setup.
+                </p>
+            </div>
+            <button id="provisionAllBtn" type="button" class="inline-flex shrink-0 items-center gap-2 rounded-xl bg-cyan-600 px-4 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-cyan-500">
+                <i data-lucide="zap" class="h-3.5 w-3.5"></i> Provision All Active Companies
+            </button>
+        </div>
+        <div id="provisionAllResult" class="mt-4 hidden rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm"></div>
+    </section>
+
     <section id="gatewaySetupPanel" class="mt-4 hidden grid gap-5 lg:grid-cols-[0.85fr_1.15fr]">
         <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div class="mb-4 flex items-start justify-between gap-3">
@@ -105,6 +123,11 @@ $headerMaxW = 'max-w-7xl';
             </select>
 
             <div id="gatewayAlert" class="mt-4 hidden rounded-xl px-4 py-2.5 text-sm font-bold"></div>
+
+            <button id="autoProvisionBtn" type="button" class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-600 px-4 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-cyan-500">
+                <i data-lucide="zap" class="h-3.5 w-3.5"></i> Auto-Create via OneLink API
+            </button>
+            <p class="mt-1.5 text-[11px] font-semibold text-slate-400">Creates the account automatically. Use the manual fields on the right only to edit or override afterward.</p>
 
             <div class="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <p class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Settlement Bank On File</p>
@@ -519,6 +542,74 @@ $headerMaxW = 'max-w-7xl';
             showAlert('Network error while removing credentials.', false);
         } finally {
             btn.disabled = false;
+        }
+    });
+
+    document.getElementById('autoProvisionBtn')?.addEventListener('click', async function () {
+        const btn = this;
+        const cid = fields.companyId.value;
+        if (!cid) return;
+        btn.disabled = true;
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = 'Provisioning…';
+        try {
+            const res = await fetch('api/banking/provision.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ company_id: cid })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showAlert(data.already ? 'Already provisioned.' : 'OneLink account created. Access code emailed to the company.', true);
+                loadGateway();
+            } else {
+                showAlert(data.message || 'Could not auto-create the OneLink account.', false);
+            }
+        } catch (_) {
+            showAlert('Network error while provisioning.', false);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+            if (window.lucide) lucide.createIcons();
+        }
+    });
+
+    document.getElementById('provisionAllBtn')?.addEventListener('click', async function () {
+        const btn = this;
+        const resultEl = document.getElementById('provisionAllResult');
+        if (!confirm('Provision OneLink accounts for every active company that doesn\'t have one yet? This creates real accounts on OneLink and emails each company its access code.')) return;
+        btn.disabled = true;
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = 'Provisioning…';
+        resultEl.classList.remove('hidden');
+        resultEl.innerHTML = '<p class="text-slate-500">Working through active companies — this can take a moment…</p>';
+        try {
+            const res = await fetch('api/banking/provision-all.php', { method: 'POST' });
+            const data = await res.json();
+            if (!data.success) {
+                resultEl.innerHTML = '<p class="text-rose-600 font-bold">' + escapeHtml(data.message || 'Could not run bulk provisioning.') + '</p>';
+                return;
+            }
+            let html = '<p class="font-black text-slate-800">' + data.total + ' company(ies) checked.</p>';
+            if (data.provisioned.length) {
+                html += '<p class="mt-2 font-bold text-emerald-700">Provisioned (' + data.provisioned.length + '):</p><ul class="mt-1 list-disc pl-5 text-slate-600">' +
+                    data.provisioned.map(function (p) { return '<li>' + escapeHtml(p.name) + '</li>'; }).join('') + '</ul>';
+            }
+            if (data.failed.length) {
+                html += '<p class="mt-2 font-bold text-rose-700">Failed (' + data.failed.length + '):</p><ul class="mt-1 list-disc pl-5 text-slate-600">' +
+                    data.failed.map(function (f) { return '<li>' + escapeHtml(f.name) + ' — ' + escapeHtml(f.message) + '</li>'; }).join('') + '</ul>';
+            }
+            if (!data.provisioned.length && !data.failed.length) {
+                html += '<p class="text-slate-500">Every active company already has OneLink enabled.</p>';
+            }
+            resultEl.innerHTML = html;
+            loadGateway();
+        } catch (_) {
+            resultEl.innerHTML = '<p class="text-rose-600 font-bold">Network error while provisioning.</p>';
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+            if (window.lucide) lucide.createIcons();
         }
     });
 

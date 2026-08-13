@@ -941,6 +941,15 @@ document.getElementById('updateNameForm').addEventListener('submit', async funct
         if (g && g.enabled) {
             cardStatus.className = 'rounded-lg border border-emerald-400/20 bg-emerald-500/10 px-4 py-4 text-sm font-semibold text-emerald-300';
             cardStatus.innerHTML = '<i data-lucide="check-circle" class="inline h-4 w-4 -mt-0.5"></i> Card payments are active for this company.';
+            if (g.access_code) {
+                cardStatus.innerHTML +=
+                    '<div class="mt-3 pt-3 border-t border-emerald-400/15 text-white/70 font-normal">' +
+                    '<p class="text-[10px] font-bold uppercase tracking-wider text-white/35 mb-1">OneLink Access Code</p>' +
+                    '<p class="font-mono text-base font-black text-white">' + esc(g.access_code) + '</p>' +
+                    '<p class="mt-1 text-xs">Use it to log into OneLink and finish setup, including your settlement bank details.</p>' +
+                    (g.onelink_login_url ? '<a href="' + esc(g.onelink_login_url) + '" target="_blank" rel="noopener" class="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-bold text-emerald-200 hover:bg-white/15">Log in to OneLink <i data-lucide="external-link" class="h-3 w-3"></i></a>' : '') +
+                    '</div>';
+            }
         } else {
             cardStatus.className = 'rounded-lg border border-white/10 bg-white/5 px-4 py-4 text-sm text-white/60';
             cardStatus.textContent = 'Card payments are not set up yet. Keep "I want to accept payments via OneLink" checked and save your banking information to request it.';

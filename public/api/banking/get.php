@@ -38,7 +38,7 @@ $acctStmt->execute(['cid' => $companyId]);
 $acct = $acctStmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
 // ── OneLink gateway (platform-admin managed) ───────────────────────────────
-$gwStmt = $pdo->prepare("SELECT base_url, terminal_id, salt, token, enabled FROM onelink_credentials WHERE company_id = :cid LIMIT 1");
+$gwStmt = $pdo->prepare("SELECT base_url, terminal_id, salt, token, access_code, enabled FROM onelink_credentials WHERE company_id = :cid LIMIT 1");
 $gwStmt->execute(['cid' => $companyId]);
 $gw = $gwStmt->fetch(PDO::FETCH_ASSOC);
 
@@ -52,6 +52,12 @@ if ($isPlatformAdmin) {
     $gateway['terminal_id'] = $gw['terminal_id'] ?? '';
     $gateway['salt_set']    = $gw ? ($gw['salt']  !== '') : false;
     $gateway['token_set']   = $gw ? ($gw['token'] !== '') : false;
+}
+// The company side doesn't need the gateway secrets, but does need its own
+// access code to log into OneLink and finish setup (bank details etc).
+if (!$isPlatformAdmin && $gateway['enabled'] && !empty($gw['access_code'])) {
+    $gateway['access_code']     = $gw['access_code'];
+    $gateway['onelink_login_url'] = 'https://op.onelink.bz/docs.php';
 }
 
 // Card-acceptance intent for the "I want to accept payments via OneLink"

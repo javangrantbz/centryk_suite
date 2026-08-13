@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../../app/core/Audit.php';
 require_once __DIR__ . '/../../../app/core/DB.php';
 require_once __DIR__ . '/../../../app/core/Response.php';
 require_once __DIR__ . '/../../../app/services/MyPayWebhook.php';
+require_once __DIR__ . '/../../../app/services/OneLinkProvisioning.php';
 
 Auth::start();
 $user = Auth::user();
@@ -58,6 +59,14 @@ try {
 
     // Real-time roster sync to MyPay (fire-and-forget; never blocks the response).
     MyPayWebhook::memberSynced($pdo, $companyId, (int)$user['id'], 'centryk', 'added');
+
+    // Auto-provision a OneLink merchant account (fire-and-forget; never
+    // blocks company creation — a OneLink outage shouldn't stop signups).
+    try {
+        OneLinkProvisioning::provision($pdo, $companyId);
+    } catch (Throwable $e) {
+        error_log('OneLink auto-provision failed: ' . $e->getMessage());
+    }
 
     Response::ok(['id' => $companyId, 'uuid' => $uuid, 'name' => $name]);
 } catch (Throwable $e) {
