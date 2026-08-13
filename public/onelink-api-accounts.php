@@ -19,6 +19,21 @@ $companies = $pdo->query("
     ORDER BY name
 ")->fetchAll(PDO::FETCH_ASSOC);
 
+// Provisioning status for every company, for the stats table below.
+$provisioning = $pdo->query("
+    SELECT c.id, c.name, c.status AS company_status,
+           o.enabled, o.terminal_id, o.access_code, o.provisioned_at, o.provision_error
+    FROM companies c
+    LEFT JOIN onelink_credentials o ON o.company_id = c.id
+    ORDER BY
+        (o.enabled = 1) DESC,
+        (o.provision_error IS NOT NULL AND (o.enabled IS NULL OR o.enabled = 0)) DESC,
+        c.name ASC
+")->fetchAll(PDO::FETCH_ASSOC);
+$provisionedCount = count(array_filter($provisioning, static fn($r) => (int)($r['enabled'] ?? 0) === 1));
+$failedCount      = count(array_filter($provisioning, static fn($r) => (int)($r['enabled'] ?? 0) !== 1 && !empty($r['provision_error'])));
+$notSetUpCount    = count($provisioning) - $provisionedCount - $failedCount;
+
 ob_start();
 include __DIR__ . '/partials/admin_tools_dropdown.php';
 $headerActionsHtml = ob_get_clean();
@@ -98,6 +113,55 @@ $headerMaxW = 'max-w-7xl';
             </button>
         </div>
         <div id="provisionAllResult" class="mt-4 hidden rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm"></div>
+    </section>
+
+    <section class="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-5">
+            <div>
+                <h2 class="text-lg font-black tracking-tight">Provisioning Status</h2>
+                <p class="mt-1 text-xs font-semibold text-slate-500">Every company and whether it has a OneLink account.</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-emerald-700"><?= $provisionedCount ?> Provisioned</span>
+                <span class="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-rose-700"><?= $failedCount ?> Failed</span>
+                <span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-slate-500"><?= $notSetUpCount ?> Not Set Up</span>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <div class="hidden min-w-[720px] grid-cols-[1.4fr_0.8fr_1fr_1fr_1.4fr] gap-3 border-b border-slate-200 bg-slate-50 px-5 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400 lg:grid">
+                <span>Company</span><span>Status</span><span>Terminal ID</span><span>Provisioned</span><span>Notes</span>
+            </div>
+            <div class="min-w-[720px] divide-y divide-slate-100">
+                <?php foreach ($provisioning as $p):
+                    $isEnabled = (int)($p['enabled'] ?? 0) === 1;
+                    $hasError  = !$isEnabled && !empty($p['provision_error']);
+                    if ($isEnabled) {
+                        $badge = '<span class="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-emerald-700">Provisioned</span>';
+                    } elseif ($hasError) {
+                        $badge = '<span class="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-rose-700">Failed</span>';
+                    } else {
+                        $badge = '<span class="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-slate-500">Not Set Up</span>';
+                    }
+                ?>
+                <div class="grid grid-cols-1 gap-1 px-5 py-3.5 text-sm lg:grid-cols-[1.4fr_0.8fr_1fr_1fr_1.4fr] lg:items-center lg:gap-3">
+                    <div class="font-bold text-slate-900">
+                        <?= htmlspecialchars($p['name']) ?>
+                        <?php if (($p['company_status'] ?? 'active') !== 'active'): ?>
+                        <span class="ml-1 text-xs font-semibold text-slate-400">(<?= htmlspecialchars($p['company_status']) ?>)</span>
+                        <?php endif; ?>
+                    </div>
+                    <div><?= $badge ?></div>
+                    <div class="font-mono text-xs text-slate-600"><?= $isEnabled ? htmlspecialchars((string)$p['terminal_id']) : '—' ?></div>
+                    <div class="text-xs font-semibold text-slate-500"><?= $p['provisioned_at'] ? htmlspecialchars(date('M j, Y g:ia', strtotime((string)$p['provisioned_at']))) : '—' ?></div>
+                    <div class="text-xs font-semibold <?= $hasError ? 'text-rose-600' : 'text-slate-400' ?>"><?= $hasError ? htmlspecialchars((string)$p['provision_error']) : ($isEnabled ? 'Access code on file' : 'Not attempted yet') ?></div>
+                </div>
+                <?php endforeach; ?>
+                <?php if (empty($provisioning)): ?>
+                <div class="px-5 py-8 text-center text-sm font-semibold text-slate-400">No companies found.</div>
+                <?php endif; ?>
+            </div>
+        </div>
     </section>
 
     <section id="gatewaySetupPanel" class="mt-4 hidden grid gap-5 lg:grid-cols-[0.85fr_1.15fr]">
@@ -560,8 +624,9 @@ $headerMaxW = 'max-w-7xl';
             });
             const data = await res.json();
             if (data.success) {
-                showAlert(data.already ? 'Already provisioned.' : 'OneLink account created. Access code emailed to the company.', true);
+                showAlert(data.already ? 'Already provisioned.' : 'OneLink account created. Access code emailed to the company. Refreshing status…', true);
                 loadGateway();
+                if (!data.already) setTimeout(function () { window.location.reload(); }, 1200);
             } else {
                 showAlert(data.message || 'Could not auto-create the OneLink account.', false);
             }
@@ -601,6 +666,9 @@ $headerMaxW = 'max-w-7xl';
             }
             if (!data.provisioned.length && !data.failed.length) {
                 html += '<p class="text-slate-500">Every active company already has OneLink enabled.</p>';
+            }
+            if (data.provisioned.length) {
+                html += '<button type="button" onclick="window.location.reload()" class="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-black uppercase tracking-[0.1em] text-white hover:bg-slate-700">Refresh Status Table</button>';
             }
             resultEl.innerHTML = html;
             loadGateway();
