@@ -140,6 +140,7 @@ $amAdmin = is_admin($me);
 
                 <!-- Calendar -->
                 <a href="<?= e($CENTRYK) ?>/calendar.php<?= e($calQs) ?>" title="Calendar"
+                   onclick="if (window.centrykOpenCalendarDrawer) { event.preventDefault(); window.centrykOpenCalendarDrawer('<?= e($activeUuid) ?>'); }"
                    class="w-10 h-10 flex items-center justify-center rounded-xl text-slate-500 hover:bg-teal-50 hover:text-teal-600 transition">
                     <i data-lucide="calendar" class="w-5 h-5"></i>
                 </a>
@@ -167,12 +168,12 @@ $amAdmin = is_admin($me);
                             <?php foreach ($hdrApps as $a): $k = (string)$a['key']; if ($k === 'centryk') continue; ?>
                                 <?php if ($k === 'visionboard'): ?>
                                 <div class="flex flex-col items-center gap-2 rounded-xl p-3 text-center bg-slate-100 ring-1 ring-slate-200 cursor-default">
-                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 ring-1 ring-rose-100">
-                                        <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm" style="background:<?= e($a['color'] ?: '#f43f5e') ?>">
+                                        <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
                                             <rect x="2" y="3" width="20" height="14" rx="2"/><path d="m10 8 5 3-5 3V8Z"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
                                         </svg>
                                     </span>
-                                    <span class="text-xs font-semibold text-rose-700"><?= e($a['label']) ?></span>
+                                    <span class="text-xs font-semibold text-slate-700"><?= e($a['label']) ?></span>
                                 </div>
                                 <?php elseif ($k === 'onepay'): ?>
                                 <a href="<?= e($CENTRYK) ?>/switch.php?app=<?= urlencode($k) . $switchQs ?>" class="flex flex-col items-center gap-2 rounded-xl p-3 text-center hover:bg-slate-50 transition">
@@ -190,25 +191,36 @@ $amAdmin = is_admin($me);
                                 </a>
                                 <?php elseif ($k === 'invoice'): ?>
                                 <a href="<?= e($CENTRYK) ?>/switch.php?app=<?= urlencode($k) . $switchQs ?>" class="flex flex-col items-center gap-2 rounded-xl p-3 text-center hover:bg-slate-50 transition">
-                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm bg-emerald-50 ring-1 ring-emerald-100">
-                                        <svg class="h-6 w-6 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm" style="background:<?= e($a['color'] ?: '#10b981') ?>">
+                                        <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
                                             <path d="M8 3h7l5 5v11a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M15 3v6h6"/><path d="M9 13h6"/><path d="M9 17h6"/>
                                         </svg>
                                     </span>
                                     <span class="text-xs font-medium text-slate-700"><?= e($a['label']) ?></span>
                                 </a>
                                 <?php elseif ($k === 'calendar'): ?>
-                                <a href="<?= e($CENTRYK) ?>/calendar.php<?= e($calQs) ?>" class="flex flex-col items-center gap-2 rounded-xl p-3 text-center hover:bg-slate-50 transition">
-                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm bg-teal-50 ring-1 ring-teal-100">
-                                        <svg class="h-6 w-6 text-teal-600" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                                <a href="<?= e($CENTRYK) ?>/calendar.php<?= e($calQs) ?>"
+                                   onclick="if (window.centrykOpenCalendarDrawer) { event.preventDefault(); window.centrykOpenCalendarDrawer('<?= e($activeUuid) ?>'); }"
+                                   class="flex flex-col items-center gap-2 rounded-xl p-3 text-center hover:bg-slate-50 transition">
+                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm" style="background:<?= e($a['color'] ?: '#14b8a6') ?>">
+                                        <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
                                             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                                        </svg>
+                                    </span>
+                                    <span class="text-xs font-medium text-slate-700"><?= e($a['label']) ?></span>
+                                </a>
+                                <?php elseif ($k === 'tv'): ?>
+                                <a href="<?= e($CENTRYK) ?>/switch.php?app=<?= urlencode($k) . $switchQs ?>" class="flex flex-col items-center gap-2 rounded-xl p-3 text-center hover:bg-slate-50 transition">
+                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm" style="background:#0f766e">
+                                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <rect x="2" y="5" width="20" height="14" rx="2"/><path d="m10 9 5 3-5 3V9Z"/><path d="M8 21h8"/>
                                         </svg>
                                     </span>
                                     <span class="text-xs font-medium text-slate-700"><?= e($a['label']) ?></span>
                                 </a>
                                 <?php else: ?>
                                 <a href="<?= e($CENTRYK) ?>/switch.php?app=<?= urlencode($k) . $switchQs ?>" class="flex flex-col items-center gap-2 rounded-xl p-3 text-center hover:bg-slate-50 transition">
-                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl text-2xl shadow-sm" style="background:<?= e($a['color']) ?>14; border:1px solid <?= e($a['color']) ?>33"><?= e($a['icon']) ?></span>
+                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl text-lg font-black text-white shadow-sm" style="background:<?= e($a['color'] ?: '#475569') ?>"><?= e(strtoupper(substr($a['label'] ?: $k, 0, 1))) ?></span>
                                     <span class="text-xs font-medium text-slate-700"><?= e($a['label']) ?></span>
                                 </a>
                                 <?php endif; ?>
@@ -250,11 +262,18 @@ $amAdmin = is_admin($me);
             </div>
         </header>
 
+        <!-- Calendar drawer (same Centryk session — no SSO token needed). -->
+        <script>window.CENTRYK_BASE_URL = <?= json_encode($CENTRYK . '/') ?>;</script>
+        <?php include __DIR__ . '/../../public/partials/calendar_drawer.php'; ?>
+
         <!-- Main content -->
         <main class="flex-1 overflow-y-auto custom-scrollbar px-3 pb-3 pt-0.5 lg:px-4 lg:pb-4 lg:pt-1">
             <div class="max-w-6xl mx-auto">
                 <?php foreach (take_flashes() as $f): ?>
-                  <div data-flash-message class="mb-4 rounded-lg px-4 py-3 text-sm transition-opacity duration-500 <?= $f['type'] === 'error' ? 'bg-red-100 text-red-800 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-500/30' ?>">
-                    <?= e($f['msg']) ?>
-                  </div>
+                  <div
+                    data-flash-toast
+                    data-flash-type="<?= e($f['type']) ?>"
+                    data-flash-message="<?= e($f['msg']) ?>"
+                    class="hidden"
+                  ></div>
                 <?php endforeach; ?>

@@ -18,7 +18,7 @@
     <div id="calPreviewDropdown" class="absolute right-0 top-full z-50 mt-1.5 hidden w-80 rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden">
         <div class="flex items-center justify-between border-b border-slate-100 px-4 py-3">
             <span class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Upcoming events</span>
-            <a href="calendar.php" class="text-[11px] font-bold text-teal-600 hover:text-teal-700">Open Calendar &rarr;</a>
+            <a href="calendar.php" id="calPreviewOpenLink" class="text-[11px] font-bold text-teal-600 hover:text-teal-700">Open Calendar &rarr;</a>
         </div>
         <div id="calPreviewBody" class="max-h-80 overflow-y-auto p-2">
             <p class="px-3 py-6 text-center text-xs text-slate-400">Loading&hellip;</p>
@@ -40,6 +40,16 @@
         if (!cd.classList.contains('hidden')) loadCalPreview();
     });
     document.addEventListener('click', () => cd.classList.add('hidden'));
+
+    const openLink = document.getElementById('calPreviewOpenLink');
+    if (openLink) {
+        openLink.addEventListener('click', e => {
+            if (typeof window.centrykOpenCalendarDrawer !== 'function') return; // fall back to the plain href
+            e.preventDefault();
+            cd.classList.add('hidden');
+            window.centrykOpenCalendarDrawer(window.CENTRYK_ACTIVE_COMPANY_UUID || '');
+        });
+    }
 
     function loadCalPreview() {
         if (calLoaded) return;

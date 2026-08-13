@@ -37,34 +37,41 @@ $awTileIcon = function (string $key, string $color = '', string $label = '') {
     }
     if ($key === 'calendar') {
         $bg = htmlspecialchars($color ?: '#14b8a6');
-        return '<span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-50 ring-1 ring-teal-100" style="color:' . $bg . '">'
-             . '<svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">'
+        return '<span class="flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm" style="background:' . $bg . '">'
+             . '<svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">'
              . '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>'
              . '</svg></span>';
     }
     if ($key === 'invoice') {
-        $bg = htmlspecialchars($color ?: '#6366f1');
-        return '<span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 ring-1 ring-emerald-100" style="color:' . $bg . '">'
-             . '<svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">'
+        $bg = htmlspecialchars($color ?: '#10b981');
+        return '<span class="flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm" style="background:' . $bg . '">'
+             . '<svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">'
              . '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/>'
              . '</svg></span>';
     }
     if ($key === 'tv') {
-        return '<span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-50 text-sky-700 ring-1 ring-sky-100">'
-             . '<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+        return '<span class="flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm" style="background:#0f766e">'
+             . '<svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
              . '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="m10 9 5 3-5 3V9Z"/><path d="M8 21h8"/>'
              . '</svg></span>';
     }
+    if ($key === 'visionboard') {
+        $bg = htmlspecialchars($color ?: '#f43f5e');
+        return '<span class="flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm" style="background:' . $bg . '">'
+             . '<svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">'
+             . '<rect x="2" y="3" width="20" height="14" rx="2"/><path d="m10 8 5 3-5 3V8Z"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>'
+             . '</svg></span>';
+    }
     if ($key === 'store') {
-        return '<span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-50 text-violet-700 ring-1 ring-violet-100">'
-             . '<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+        return '<span class="flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm" style="background:#7c3aed">'
+             . '<svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
              . '<path d="M3 9l1.5-5h15L21 9"/><path d="M5 9v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9"/><path d="M9 21v-7h6v7"/><path d="M3 9h18"/>'
              . '</svg></span>';
     }
-    // Generic fallback — colored square with the first letter
+    // Generic fallback — solid colored square with the white letter
     $bg     = htmlspecialchars($color ?: '#475569');
     $letter = htmlspecialchars(strtoupper(substr($label ?: $key, 0, 1)));
-    return '<span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-50 text-lg font-black ring-1 ring-slate-100" style="color:' . $bg . '">' . $letter . '</span>';
+    return '<span class="flex h-12 w-12 items-center justify-center rounded-2xl text-lg font-black text-white shadow-sm" style="background:' . $bg . '">' . $letter . '</span>';
 };
 ?>
 <div class="relative shrink-0" id="appSwitcherWrapper">
@@ -86,14 +93,10 @@ $awTileIcon = function (string $key, string $color = '', string $label = '') {
             <!-- Account: always opens the Centryk account hub (profile) -->
             <?php $awCentrykIcon = '<svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>';
             $awOnAccount = ($awCurrent === 'account'); ?>
-            <a href="profile.php" class="flex flex-col items-center gap-2 rounded-xl border p-3 text-center transition <?= $awOnAccount ? 'border-slate-300 bg-slate-100 ring-1 ring-slate-200' : 'border-slate-200 bg-slate-50/70 hover:border-slate-300 hover:bg-slate-100' ?>">
+            <a href="profile.php" class="flex flex-col items-center gap-2 rounded-xl p-3 text-center transition hover:bg-slate-50">
                 <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-sm" style="color:#fff"><?= $awCentrykIcon ?></span>
                 <span class="text-xs <?= $awOnAccount ? 'font-semibold' : 'font-medium' ?> text-slate-700">Account</span>
             </a>
-        </div>
-
-        <div class="mt-3 border-t border-slate-100 pt-3">
-            <div class="grid grid-cols-3 gap-2">
 
             <?php if ($awMode === 'launch' && !empty($apps)): ?>
                 <?php foreach ($apps as $app):
@@ -145,7 +148,6 @@ $awTileIcon = function (string $key, string $color = '', string $label = '') {
                 <?php endforeach; ?>
             <?php endif; ?>
 
-        </div>
         </div>
     </div>
 </div>

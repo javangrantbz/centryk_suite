@@ -179,6 +179,7 @@ if ($invHdrUuid !== '') {
 
                 <!-- Calendar -->
                 <a href="<?= CENTRYK_BASE ?>/calendar.php<?= $invCalQs ?>" title="Calendar"
+                   onclick="if (window.centrykOpenCalendarDrawer) { event.preventDefault(); window.centrykOpenCalendarDrawer('<?= htmlspecialchars($invHdrUuid, ENT_QUOTES) ?>'); }"
                    class="w-10 h-10 flex items-center justify-center rounded-xl text-slate-500 hover:bg-teal-50 hover:text-teal-600 transition">
                     <i data-lucide="calendar" class="w-5 h-5"></i>
                 </a>
@@ -207,15 +208,15 @@ if ($invHdrUuid !== '') {
                             <?php foreach ($invHdrApps as $a): $k = (string)$a['key']; if ($k === 'centryk') continue; ?>
                                 <?php if ($k === 'invoice'): ?>
                                 <div class="flex flex-col items-center gap-2 rounded-xl p-3 text-center bg-slate-100 ring-1 ring-slate-200 cursor-default">
-                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm bg-emerald-50 ring-1 ring-emerald-100">
-                                        <svg class="h-6 w-6 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm" style="background:<?= e($a['color'] ?: '#10b981') ?>">
+                                        <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
                                             <path d="M8 3h7l5 5v11a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/>
                                             <path d="M15 3v6h6"/>
                                             <path d="M9 13h6"/>
                                             <path d="M9 17h6"/>
                                         </svg>
                                     </span>
-                                    <span class="text-xs font-semibold text-emerald-700"><?= e($a['label']) ?></span>
+                                    <span class="text-xs font-semibold text-slate-700"><?= e($a['label']) ?></span>
                                 </div>
                                 <?php elseif ($k === 'onepay'): ?>
                                 <a href="<?= CENTRYK_BASE ?>/switch.php?app=<?= urlencode($k) . $invSwitchQs ?>" class="flex flex-col items-center gap-2 rounded-xl p-3 text-center hover:bg-slate-50 transition">
@@ -232,9 +233,11 @@ if ($invHdrUuid !== '') {
                                     <span class="text-xs font-medium text-slate-700"><?= e($a['label']) ?></span>
                                 </a>
                                 <?php elseif ($k === 'calendar'): ?>
-                                <a href="<?= CENTRYK_BASE ?>/calendar.php<?= $invCalQs ?>" class="flex flex-col items-center gap-2 rounded-xl p-3 text-center hover:bg-slate-50 transition">
-                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm bg-teal-50 ring-1 ring-teal-100">
-                                        <svg class="h-6 w-6 text-teal-600" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                                <a href="<?= CENTRYK_BASE ?>/calendar.php<?= $invCalQs ?>"
+                                   onclick="if (window.centrykOpenCalendarDrawer) { event.preventDefault(); window.centrykOpenCalendarDrawer('<?= htmlspecialchars($invHdrUuid, ENT_QUOTES) ?>'); }"
+                                   class="flex flex-col items-center gap-2 rounded-xl p-3 text-center hover:bg-slate-50 transition">
+                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm" style="background:<?= e($a['color'] ?: '#14b8a6') ?>">
+                                        <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
                                             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
                                             <line x1="16" y1="2" x2="16" y2="6"/>
                                             <line x1="8" y1="2" x2="8" y2="6"/>
@@ -243,9 +246,27 @@ if ($invHdrUuid !== '') {
                                     </span>
                                     <span class="text-xs font-medium text-slate-700"><?= e($a['label']) ?></span>
                                 </a>
+                                <?php elseif ($k === 'tv'): ?>
+                                <a href="<?= CENTRYK_BASE ?>/switch.php?app=<?= urlencode($k) . $invSwitchQs ?>" class="flex flex-col items-center gap-2 rounded-xl p-3 text-center hover:bg-slate-50 transition">
+                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm" style="background:#0f766e">
+                                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <rect x="2" y="5" width="20" height="14" rx="2"/><path d="m10 9 5 3-5 3V9Z"/><path d="M8 21h8"/>
+                                        </svg>
+                                    </span>
+                                    <span class="text-xs font-medium text-slate-700"><?= e($a['label']) ?></span>
+                                </a>
+                                <?php elseif ($k === 'visionboard'): ?>
+                                <a href="<?= CENTRYK_BASE ?>/switch.php?app=<?= urlencode($k) . $invSwitchQs ?>" class="flex flex-col items-center gap-2 rounded-xl p-3 text-center hover:bg-slate-50 transition">
+                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm" style="background:<?= e($a['color'] ?: '#f43f5e') ?>">
+                                        <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                                            <rect x="2" y="3" width="20" height="14" rx="2"/><path d="m10 8 5 3-5 3V8Z"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+                                        </svg>
+                                    </span>
+                                    <span class="text-xs font-medium text-slate-700"><?= e($a['label']) ?></span>
+                                </a>
                                 <?php else: ?>
                                 <a href="<?= CENTRYK_BASE ?>/switch.php?app=<?= urlencode($k) . $invSwitchQs ?>" class="flex flex-col items-center gap-2 rounded-xl p-3 text-center hover:bg-slate-50 transition">
-                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl text-2xl shadow-sm" style="background:<?= e($a['color']) ?>14; border:1px solid <?= e($a['color']) ?>33"><?= e($a['icon']) ?></span>
+                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl text-lg font-black text-white shadow-sm" style="background:<?= e($a['color'] ?: '#475569') ?>"><?= e(strtoupper(substr($a['label'] ?: $k, 0, 1))) ?></span>
                                     <span class="text-xs font-medium text-slate-700"><?= e($a['label']) ?></span>
                                 </a>
                                 <?php endif; ?>
@@ -288,6 +309,12 @@ if ($invHdrUuid !== '') {
                 </div>
             </div>
         </header>
+
+        <!-- Calendar drawer (same Centryk session — no SSO token needed). Set
+             CENTRYK_BASE_URL first since this page lives under /invoice-maker/,
+             deeper than Centryk's own web root. -->
+        <script>window.CENTRYK_BASE_URL = <?= json_encode(rtrim(CENTRYK_BASE, '/') . '/') ?>;</script>
+        <?php include __DIR__ . '/../../../../public/partials/calendar_drawer.php'; ?>
 
         <!-- Main Content Area -->
         <main class="flex-1 overflow-y-auto custom-scrollbar px-4 pb-4 pt-1 lg:px-5 lg:pb-5 lg:pt-1">

@@ -164,6 +164,11 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
     </div>
 </header>
 
+<!-- Calendar drawer (wired to launchApp() above). Kept outside <header> — that
+     element's backdrop-blur makes it a containing block for position:fixed
+     descendants, which trapped the drawer inside it. -->
+<?php include __DIR__ . '/calendar_drawer.php'; ?>
+
 <!-- Main -->
 <main class="mx-auto max-w-6xl px-6 pt-1 pb-5">
 
@@ -1170,6 +1175,10 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
     function launchApp(appKey) {
         if (appKey === 'store') {
             openStore();
+            return;
+        }
+        if (appKey === 'calendar' && typeof window.centrykOpenCalendarDrawer === 'function') {
+            window.centrykOpenCalendarDrawer(selectedUuid || '');
             return;
         }
 

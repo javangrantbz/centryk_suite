@@ -2,15 +2,27 @@
 require_once __DIR__ . '/../app/core/Auth.php';
 require_once __DIR__ . '/../app/core/DB.php';
 require_once __DIR__ . '/../app/services/AuthService.php';
+require_once __DIR__ . '/../app/services/MyPayCalendarFeed.php';
 
 Auth::start();
+
+// Embedding from another suite app (MyPay/OnePay): a fresh one-time token logs
+// this iframe into Centryk directly, same as login.php does with a password.
+if (!Auth::user() && isset($_GET['sso_token'])) {
+    $embedUser = Auth::consumeToken((string)$_GET['sso_token'], 'calendar_embed');
+    if ($embedUser) {
+        Auth::login((int)$embedUser['id']);
+    }
+}
+
 $me = AuthService::me();
 if (!$me['authenticated']) {
     header('Location: login.php');
     exit;
 }
-$user = $me['user'];
-$pdo  = DB::pdo();
+$user  = $me['user'];
+$pdo   = DB::pdo();
+$embed = isset($_GET['embed']); // rendered inside the calendar_drawer.php iframe
 
 // ── User's companies ────────────────────────────────────────────────────────
 $coStmt = $pdo->prepare("
@@ -49,7 +61,8 @@ if (!empty($companies)) {
     $activeCompanyUuid = (string)($picked['uuid'] ?? '');
     $activeRole        = $picked['role'];
 }
-$isAdmin = ($activeRole === 'admin');
+$isAdmin    = ($activeRole === 'admin');
+$isApprover = in_array($activeRole, ['admin', 'manager'], true);
 
 // Active members for attendee selection.
 $companyMembers = [];
@@ -119,6 +132,98 @@ if ($activeCompanyId) {
         $day = (int)date('j', strtotime($ev['event_date']));
         $eventsByDay[$day][] = $ev;
     }
+
+    // ── Invoice due dates (read-only, admin/manager only — financial data) ──
+    if ($isApprover) {
+        $invStmt = $pdo->prepare("
+            SELECT id, invoice_number, due_date, total, status
+            FROM invoices
+            WHERE company_id = :cid
+              AND due_date BETWEEN :start AND :end
+              AND status IN ('sent', 'overdue')
+            ORDER BY due_date ASC, id ASC
+        ");
+        $invStmt->execute(['cid' => $activeCompanyId, 'start' => $firstDate, 'end' => $lastDate]);
+        foreach ($invStmt->fetchAll(PDO::FETCH_ASSOC) as $inv) {
+            $day = (int)date('j', strtotime($inv['due_date']));
+            $eventsByDay[$day][] = [
+                'title'  => 'Invoice #' . $inv['invoice_number'] . ' due — $' . number_format((float)$inv['total'], 2),
+                'color'  => $inv['status'] === 'overdue' ? 'red' : 'amber',
+                'source' => 'invoice',
+            ];
+        }
+    }
+
+    // ── MyPay task due dates + approved leave (read-only, live pull) ────────
+    // MyPay owns assignment/approval; Centryk only displays what's decided
+    // there. Fails soft — MyPayCalendarFeed::fetch() never throws.
+    if ($activeCompanyUuid !== '') {
+        $mypayFeed = MyPayCalendarFeed::fetch($activeCompanyUuid, $firstDate, $lastDate);
+
+        $memberIdByEmail = [];
+        foreach ($companyMembers as $m) {
+            $memberIdByEmail[strtolower((string)$m['email'])] = (int)$m['id'];
+        }
+
+        foreach ($mypayFeed['tasks'] as $task) {
+            $dueDate = (string)($task['due_date'] ?? '');
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dueDate)) continue;
+
+            $assigneeEmail = strtolower((string)($task['assignee_email'] ?? ''));
+            $assigneeId    = $memberIdByEmail[$assigneeEmail] ?? 0;
+            $isAssignee    = $assigneeId > 0 && $assigneeId === (int)$user['id'];
+            if (!$isApprover && !$isAssignee) continue; // not this viewer's task
+
+            $name  = trim((string)($task['first_name'] ?? '') . ' ' . (string)($task['last_name'] ?? ''));
+            $color = match ($task['priority'] ?? '') {
+                'high' => 'red',
+                'low'  => 'slate',
+                default => 'blue',
+            };
+            $day = (int)date('j', strtotime($dueDate));
+            $eventsByDay[$day][] = [
+                'title'  => ($task['title'] ?? 'Task') . ' — ' . ($name !== '' ? $name : 'Unassigned') . ' (MyPay)',
+                'color'  => $color,
+                'source' => 'mypay-task',
+            ];
+        }
+
+        $monthStartTs = strtotime($firstDate);
+        $monthEndTs   = strtotime($lastDate);
+        foreach ($mypayFeed['leave'] as $lv) {
+            $status = (string)($lv['status'] ?? 'approved');
+            if ($status === 'pending' && !$isApprover) continue; // pending requests are HR-only
+
+            $startTs = strtotime((string)($lv['start_date'] ?? ''));
+            $endTs   = strtotime((string)($lv['end_date'] ?? ''));
+            if ($startTs === false || $endTs === false) continue;
+
+            $name = trim((string)($lv['first_name'] ?? '') . ' ' . (string)($lv['last_name'] ?? ''));
+            if ($name === '') $name = 'Employee';
+            $label = (string)($lv['leave_type'] ?? 'Leave');
+
+            $pill = $status === 'pending'
+                ? [
+                    'title'  => $name . ' — ' . $label . ' (Pending, MyPay)',
+                    'color'  => 'amber',
+                    'source' => 'mypay-leave-pending',
+                    'url'    => (string)($lv['review_url'] ?? ''),
+                ]
+                : [
+                    'title'  => $name . ' — ' . $label . ' (MyPay)',
+                    'color'  => 'teal',
+                    'source' => 'mypay-leave',
+                ];
+
+            $cursor = max($startTs, $monthStartTs);
+            $clampedEnd = min($endTs, $monthEndTs);
+            while ($cursor <= $clampedEnd) {
+                $day = (int)date('j', $cursor);
+                $eventsByDay[$day][] = $pill;
+                $cursor = strtotime('+1 day', $cursor);
+            }
+        }
+    }
 }
 
 // Helper: querystring-preserving link to another month / company
@@ -148,6 +253,7 @@ function calLink(int $companyId, string $ym): string {
 </head>
 <body class="min-h-screen bg-slate-100 font-sans antialiased">
 
+<?php if (!$embed): ?>
 <!-- Top accent bar -->
 <div class="h-[3px] w-full bg-gradient-to-r from-purple-600 via-blue-500 to-orange-500 sticky top-0 z-50"></div>
 
@@ -251,16 +357,20 @@ function calLink(int $companyId, string $ym): string {
         </div>
     </div>
 </header>
+<?php endif; ?>
 
 <!-- Main -->
-<main class="mx-auto max-w-7xl px-6 pb-6 pt-1">
+<main class="mx-auto <?= $embed ? 'max-w-none px-3 pb-4 pt-3' : 'max-w-7xl px-6 pb-6 pt-1' ?>">
 
+    <?php $dayCellMinH = $embed ? '82px' : '110px'; ?>
     <!-- Title bar -->
-    <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+    <div class="<?= $embed ? 'mb-3' : 'mb-6' ?> flex flex-wrap items-center justify-between gap-3">
         <div class="flex items-center gap-3">
             <div>
+                <?php if (!$embed): ?>
                 <p class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Calendar</p>
-                <h1 class="mt-1 text-2xl font-black tracking-tight text-slate-900"><?= htmlspecialchars($monthLabel) ?></h1>
+                <?php endif; ?>
+                <h1 class="<?= $embed ? 'text-lg' : 'mt-1 text-2xl' ?> font-black tracking-tight text-slate-900"><?= htmlspecialchars($monthLabel) ?></h1>
             </div>
         </div>
         <div class="flex items-center gap-2">
@@ -302,7 +412,7 @@ function calLink(int $companyId, string $ym): string {
         <!-- Day grid -->
         <div class="grid grid-cols-7">
             <?php for ($i = 0; $i < $leadingBlanks; $i++): ?>
-            <div class="min-h-[110px] border-b border-r border-slate-100 bg-slate-50/50"></div>
+            <div class="min-h-[<?= $dayCellMinH ?>] border-b border-r border-slate-100 bg-slate-50/50"></div>
             <?php endfor; ?>
 
             <?php for ($d = 1; $d <= $daysInMonth; $d++):
@@ -310,7 +420,7 @@ function calLink(int $companyId, string $ym): string {
                 $dateStr  = sprintf('%04d-%02d-%02d', $year, $month, $d);
                 $dayEvts  = $eventsByDay[$d] ?? [];
             ?>
-            <div class="day-cell group relative min-h-[110px] border-b border-r border-slate-100 p-2 transition hover:bg-slate-50 cursor-pointer" data-date="<?= $dateStr ?>">
+            <div class="day-cell group relative min-h-[<?= $dayCellMinH ?>] border-b border-r border-slate-100 p-2 transition hover:bg-slate-50 cursor-pointer" data-date="<?= $dateStr ?>">
                 <div class="flex items-center justify-between">
                     <span class="flex h-7 w-7 items-center justify-center rounded-full text-xs font-black <?= $isToday ? 'bg-slate-900 text-white' : 'text-slate-700' ?>"><?= $d ?></span>
                     <i data-lucide="plus" class="h-3.5 w-3.5 text-slate-300 opacity-0 group-hover:opacity-100 transition"></i>
@@ -328,10 +438,25 @@ function calLink(int $companyId, string $ym): string {
                             default  => 'bg-slate-500  hover:bg-slate-600',
                         };
                     ?>
+                    <?php if (!empty($ev['url'])): ?>
+                    <a href="<?= htmlspecialchars($ev['url']) ?>" target="_blank" rel="noopener"
+                       class="event-pill-readonly flex items-center gap-1 truncate rounded-md px-2 py-1 text-left text-[11px] font-bold text-white shadow-sm transition <?= $bg ?>"
+                       title="<?= htmlspecialchars($ev['title']) ?> — review in MyPay">
+                        <i data-lucide="external-link" class="h-3 w-3 shrink-0 opacity-80"></i>
+                        <span class="truncate"><?= htmlspecialchars($ev['title']) ?></span>
+                    </a>
+                    <?php elseif (!empty($ev['source'])): ?>
+                    <div class="event-pill-readonly flex items-center gap-1 truncate rounded-md px-2 py-1 text-left text-[11px] font-bold text-white shadow-sm <?= $bg ?>"
+                         title="<?= htmlspecialchars($ev['title']) ?><?= $ev['source'] !== 'invoice' ? ' — managed in MyPay' : '' ?>">
+                        <i data-lucide="<?= $ev['source'] === 'invoice' ? 'receipt' : 'external-link' ?>" class="h-3 w-3 shrink-0 opacity-80"></i>
+                        <span class="truncate"><?= htmlspecialchars($ev['title']) ?></span>
+                    </div>
+                    <?php else: ?>
                     <button type="button" class="event-pill block w-full truncate rounded-md px-2 py-1 text-left text-[11px] font-bold text-white shadow-sm transition <?= $bg ?>"
                             data-event='<?= htmlspecialchars(json_encode($ev), ENT_QUOTES, "UTF-8") ?>'>
                         <?= htmlspecialchars($ev['title']) ?>
                     </button>
+                    <?php endif; ?>
                     <?php endforeach; ?>
                 </div>
                 <?php endif; ?>
@@ -342,7 +467,7 @@ function calLink(int $companyId, string $ym): string {
             $totalCells = $leadingBlanks + $daysInMonth;
             $trailing   = (7 - ($totalCells % 7)) % 7;
             for ($i = 0; $i < $trailing; $i++): ?>
-            <div class="min-h-[110px] border-b border-r border-slate-100 bg-slate-50/50"></div>
+            <div class="min-h-[<?= $dayCellMinH ?>] border-b border-r border-slate-100 bg-slate-50/50"></div>
             <?php endfor; ?>
         </div>
     </div>
@@ -467,7 +592,9 @@ function calLink(int $companyId, string $ym): string {
     </div>
 </div>
 
+<?php if (!$embed): ?>
 <?php include __DIR__ . '/partials/footer.php'; ?>
+<?php endif; ?>
 
 <script>
 (function () {
@@ -710,6 +837,11 @@ function calLink(int $companyId, string $ym): string {
             var canEdit = Number(ev.created_by) === currentUserId;
             openModal('edit', ev, canEdit);
         });
+    });
+
+    // Read-only pills (invoices, MyPay tasks/leave) — just stop the bubble, no modal.
+    document.querySelectorAll('.event-pill-readonly').forEach(function (pill) {
+        pill.addEventListener('click', function (e) { e.stopPropagation(); });
     });
 
     // "+ New Event" header button

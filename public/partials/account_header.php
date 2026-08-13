@@ -109,6 +109,11 @@ $awCurrent = $awCurrent ?? 'centryk';
     </div>
 </header>
 
+<!-- Calendar drawer (defines window.centrykAppLaunch → routes Calendar here). Kept
+     outside <header> — that element's backdrop-blur makes it a containing block for
+     position:fixed descendants, which trapped the drawer inside it. -->
+<?php include __DIR__ . '/calendar_drawer.php'; ?>
+
 <script>
 // ── Shared header behaviour (waffle · account menu · theme · logout) ─────────
 (function () {
