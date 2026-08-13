@@ -53,8 +53,14 @@ class OneLinkProvisioning
             $email = trim((string)($row['company_email'] ?: $row['admin_email']));
             $phone = trim((string)($row['company_phone'] ?: $row['admin_phone']));
             $name  = trim((string)($row['first_name'] . ' ' . $row['last_name']));
-            if ($email === '' || $phone === '' || $name === '') {
-                return self::fail($pdo, $companyId, 'Missing required contact info (email, phone, or admin name) to provision OneLink.');
+
+            $missing = [];
+            if ($email === '') $missing[] = 'email';
+            if ($phone === '') $missing[] = 'phone';
+            if ($name === '')  $missing[] = 'admin name';
+            if (!empty($missing)) {
+                return self::fail($pdo, $companyId, 'Missing required ' . implode(', ', $missing)
+                    . ' (checked both the company record and its admin) — add it in the company profile, then try again.');
             }
 
             $terminalId = self::generateTerminalId((string)$row['uuid']);
@@ -62,14 +68,14 @@ class OneLinkProvisioning
             $password   = bin2hex(random_bytes(24)); // generated, never persisted — access_code is the retrieval mechanism
 
             $payload = [
-                'uFname'     => $name,
+                'uFname'     => self::sanitizeForLegacyCharset($name),
                 'uUname'     => self::generateUsername($email, $companyId),
                 'uEmail'     => $email,
                 'uPassword'  => $password,
                 'uPhone'     => $phone,
-                'bname'      => (string)$row['name'],
+                'bname'      => self::sanitizeForLegacyCharset((string)$row['name']),
                 'terminalId' => $terminalId,
-                'location'   => trim((string)$row['address']) ?: 'Belize',
+                'location'   => self::sanitizeForLegacyCharset(trim((string)$row['address']) ?: 'Belize'),
                 'sSalt'      => $salt,
                 'roleId'     => 8,
             ];
@@ -140,6 +146,31 @@ class OneLinkProvisioning
     private static function generateTerminalId(string $companyUuid): string
     {
         return 'CTK-' . strtoupper(substr(str_replace('-', '', $companyUuid), 0, 10));
+    }
+
+    /**
+     * OneLink's own database rejected a value containing U+2044 (fraction
+     * slash, e.g. from an address like "4⁄M..." — likely a word-processor
+     * autocorrect artifact) with a raw SQL charset error. Normalize the
+     * "smart punctuation" characters that commonly sneak in via copy-paste
+     * (fraction slash, smart quotes, em/en dash, ellipsis, no-break space)
+     * to their plain-ASCII equivalents, without stripping genuine accented
+     * letters (é, ñ, etc.) that are legitimate in real names/addresses.
+     */
+    private static function sanitizeForLegacyCharset(string $value): string
+    {
+        $replacements = [
+            "\xE2\x81\x84" => '/',   // U+2044 fraction slash
+            "\xE2\x80\x98" => "'",   // U+2018 left single quote
+            "\xE2\x80\x99" => "'",   // U+2019 right single quote
+            "\xE2\x80\x9C" => '"',   // U+201C left double quote
+            "\xE2\x80\x9D" => '"',   // U+201D right double quote
+            "\xE2\x80\x93" => '-',   // U+2013 en dash
+            "\xE2\x80\x94" => '-',   // U+2014 em dash
+            "\xE2\x80\xA6" => '...', // U+2026 horizontal ellipsis
+            "\xC2\xA0"     => ' ',   // U+00A0 non-breaking space
+        ];
+        return trim(str_replace(array_keys($replacements), array_values($replacements), $value));
     }
 
     private static function generateUsername(string $email, int $companyId): string
