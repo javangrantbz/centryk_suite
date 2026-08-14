@@ -29,8 +29,9 @@ $email  = strtolower(trim((string)($body['email'] ?? '')));
 // Each app authenticates with the shared secret it already uses with Centryk
 // (same map as api/calendar/upcoming.php).
 $secrets = [
-    'mypay'  => $_ENV['MYPAY_WEBHOOK_SECRET'] ?? '',
-    'onepay' => $_ENV['PROVISION_SECRET']     ?? '',
+    'mypay'        => $_ENV['MYPAY_WEBHOOK_SECRET'] ?? '',
+    'onepay'       => $_ENV['PROVISION_SECRET']     ?? '',
+    'centryk_pwa'  => $_ENV['CENTRYK_PWA_SECRET']   ?? '',
 ];
 $expected = $secrets[$appKey] ?? '';
 
