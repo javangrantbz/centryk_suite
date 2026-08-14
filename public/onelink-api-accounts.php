@@ -34,6 +34,62 @@ $provisionedCount = count(array_filter($provisioning, static fn($r) => (int)($r[
 $failedCount      = count(array_filter($provisioning, static fn($r) => (int)($r['enabled'] ?? 0) !== 1 && !empty($r['provision_error'])));
 $notSetUpCount    = count($provisioning) - $provisionedCount - $failedCount;
 
+// Real payment ledger: Gross Processed and Refunded/Transactions come straight
+// from OnePay's own sale_payments records (via OnePayLedger, one company at a
+// time since OneLink itself exposes no reporting endpoint — confirmed against
+// their docs). OneLink Revenue is an estimate (gross x fee_percentage), since
+// OneLink doesn't expose the real per-transaction fee anywhere either.
+require_once __DIR__ . '/../app/services/OnePayLedger.php';
+
+$ledgerEnd   = date('Y-m-d');
+$ledgerStart = date('Y-m-d', strtotime('-29 days'));
+
+$ledgerCompanies = $pdo->query("
+    SELECT c.id, c.uuid, c.name, o.fee_percentage
+    FROM companies c
+    JOIN onelink_credentials o ON o.company_id = c.id
+    WHERE o.enabled = 1
+    ORDER BY c.name
+")->fetchAll(PDO::FETCH_ASSOC);
+
+$ledgerRows          = [];
+$ledgerGrossTotal    = 0.0;
+$ledgerRevenueTotal  = 0.0;
+$ledgerRefundedTotal = 0.0;
+$ledgerCountTotal    = 0;
+
+foreach ($ledgerCompanies as $lc) {
+    if (empty($lc['uuid'])) {
+        continue;
+    }
+    $feePct = $lc['fee_percentage'] !== null ? (float)$lc['fee_percentage'] : null;
+    $result = OnePayLedger::fetch((string)$lc['uuid'], $ledgerStart, $ledgerEnd);
+    foreach ($result['days'] as $day) {
+        $gross    = (float)($day['gross'] ?? 0);
+        $refunded = (float)($day['refunded'] ?? 0);
+        $count    = (int)($day['count'] ?? 0);
+        if ($gross <= 0 && $refunded <= 0) {
+            continue;
+        }
+        $revenue = $feePct !== null ? $gross * $feePct : null;
+        $ledgerRows[] = [
+            'date'     => (string)($day['day'] ?? ''),
+            'company'  => (string)$lc['name'],
+            'gross'    => $gross,
+            'revenue'  => $revenue,
+            'refunded' => $refunded,
+            'count'    => $count,
+        ];
+        $ledgerGrossTotal    += $gross;
+        $ledgerRefundedTotal += $refunded;
+        $ledgerCountTotal    += $count;
+        if ($revenue !== null) {
+            $ledgerRevenueTotal += $revenue;
+        }
+    }
+}
+usort($ledgerRows, static fn($a, $b) => strcmp($b['date'], $a['date']));
+
 ob_start();
 include __DIR__ . '/partials/admin_tools_dropdown.php';
 $headerActionsHtml = ob_get_clean();
@@ -263,7 +319,7 @@ $headerMaxW = 'max-w-7xl';
             </button>
         </div>
 
-        <div class="grid gap-3 lg:grid-cols-[1fr_1fr_1fr_1fr_auto]">
+        <div class="grid gap-3 lg:grid-cols-[1fr_1fr_1fr_auto]">
             <div>
                 <label class="mb-1 block text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">From</label>
                 <input id="ledgerFromDate" type="date" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-700 outline-none focus:border-cyan-500 focus:bg-white">
@@ -273,81 +329,69 @@ $headerMaxW = 'max-w-7xl';
                 <input id="ledgerToDate" type="date" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-700 outline-none focus:border-cyan-500 focus:bg-white">
             </div>
             <div>
-                <label class="mb-1 block text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Status</label>
-                <select id="ledgerStatusFilter" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-700 outline-none focus:border-cyan-500 focus:bg-white">
-                    <option value="all">All Payments</option>
-                    <option value="settled">Settled</option>
-                    <option value="unsettled">Unsettled (Outstanding)</option>
-                </select>
-            </div>
-            <div>
                 <label class="mb-1 block text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Company</label>
                 <select id="ledgerCompanyFilter" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-700 outline-none focus:border-cyan-500 focus:bg-white">
                     <option value="all">All Companies</option>
-                    <option value="BHI Retail">BHI Retail</option>
-                    <option value="Northside Pharmacy">Northside Pharmacy</option>
-                    <option value="Belize Service Depot">Belize Service Depot</option>
+                    <?php foreach ($ledgerCompanies as $lc): ?>
+                    <option value="<?= htmlspecialchars($lc['name']) ?>"><?= htmlspecialchars($lc['name']) ?></option>
+                    <?php endforeach; ?>
                 </select>
             </div>
             <div class="flex items-end">
                 <button id="ledgerClearFilters" type="button" class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-slate-600 transition hover:bg-slate-50">Clear</button>
             </div>
         </div>
+        <p class="mt-3 text-[11px] font-semibold text-slate-400">Showing card payments from <?= htmlspecialchars(date('M j, Y', strtotime($ledgerStart))) ?> to <?= htmlspecialchars(date('M j, Y', strtotime($ledgerEnd))) ?>, pulled live from OnePay's own records. OneLink Revenue is an estimate (processed amount x the fee % OneLink returned at provisioning) — OneLink doesn't publish an authoritative settlement figure via any API.</p>
 
         <div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                 <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Gross Processed</p>
                 <p id="ledgerGrossTotal" class="mt-3 text-2xl font-black">$0.00</p>
-                <p class="mt-1 text-xs font-semibold text-slate-400">Visible payments</p>
+                <p class="mt-1 text-xs font-semibold text-slate-400">From OnePay's own records</p>
             </div>
             <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">OneLink Revenue</p>
+                <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">OneLink Revenue (Est.)</p>
                 <p id="ledgerRevenueTotal" class="mt-3 text-2xl font-black text-emerald-600">$0.00</p>
-                <p class="mt-1 text-xs font-semibold text-slate-400">Fees retained by OneLink</p>
+                <p class="mt-1 text-xs font-semibold text-slate-400">Estimated from fee % on file</p>
             </div>
             <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Unsettled</p>
-                <p id="ledgerUnsettledTotal" class="mt-3 text-2xl font-black text-amber-600">$0.00</p>
-                <p class="mt-1 text-xs font-semibold text-slate-400">Paid or outstanding, not settled</p>
+                <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Refunded</p>
+                <p id="ledgerRefundedTotal" class="mt-3 text-2xl font-black text-amber-600">$0.00</p>
+                <p class="mt-1 text-xs font-semibold text-slate-400">Refunded card payments</p>
             </div>
             <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Settled</p>
-                <p id="ledgerSettledTotal" class="mt-3 text-2xl font-black text-sky-600">$0.00</p>
-                <p class="mt-1 text-xs font-semibold text-slate-400">Paid to merchant accounts</p>
+                <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Transactions</p>
+                <p id="ledgerCountTotal" class="mt-3 text-2xl font-black text-sky-600">0</p>
+                <p class="mt-1 text-xs font-semibold text-slate-400">Paid card transactions</p>
             </div>
         </div>
 
         <div class="mt-5 overflow-hidden rounded-2xl border border-slate-200">
-            <div class="hidden grid-cols-[1.1fr_1.2fr_0.8fr_0.8fr_0.8fr_0.9fr] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400 lg:grid">
-                <span>Date</span><span>Company</span><span>Amount</span><span>OneLink Fee</span><span>Status</span><span>Settlement</span>
+            <div class="hidden grid-cols-[1.1fr_1.2fr_0.9fr_0.9fr_0.8fr_0.8fr] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400 lg:grid">
+                <span>Date</span><span>Company</span><span>Gross</span><span>OneLink Fee (Est.)</span><span>Refunded</span><span>Txns</span>
             </div>
             <div class="divide-y divide-slate-100">
-                <?php
-                $rows = [
-                    ['2026-07-08', 'Jul 08, 2026', 'BHI Retail', '$4,820.00', '$144.60', 'Settled', 'Heritage -> Merchant'],
-                    ['2026-07-08', 'Jul 08, 2026', 'Northside Pharmacy', '$1,250.75', '$37.52', 'Paid', 'In Heritage clearing'],
-                    ['2026-07-07', 'Jul 07, 2026', 'Belize Service Depot', '$8,410.00', '$252.30', 'Outstanding', 'Awaiting settlement'],
-                    ['2026-07-06', 'Jul 06, 2026', 'BHI Retail', '$2,100.00', '$63.00', 'Settled', 'Heritage -> Merchant'],
-                ];
-                foreach ($rows as $row):
-                    $tone = $row[5] === 'Settled' ? 'bg-sky-50 text-sky-700 border-sky-200' : ($row[5] === 'Paid' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200');
+                <?php foreach ($ledgerRows as $row):
+                    $displayDate = $row['date'] !== '' ? date('M j, Y', strtotime($row['date'])) : '—';
+                    $feeDisplay  = $row['revenue'] !== null ? '$' . number_format($row['revenue'], 2) : '—';
                 ?>
-                <div class="ledger-row grid gap-3 px-4 py-4 text-sm lg:grid-cols-[1.1fr_1.2fr_0.8fr_0.8fr_0.8fr_0.9fr] lg:items-center"
-                     data-date="<?= htmlspecialchars($row[0]) ?>"
-                     data-company="<?= htmlspecialchars($row[2]) ?>"
-                     data-status="<?= $row[5] === 'Settled' ? 'settled' : 'unsettled' ?>"
-                     data-amount="<?= htmlspecialchars(str_replace(['$', ','], '', $row[3])) ?>"
-                     data-fee="<?= htmlspecialchars(str_replace(['$', ','], '', $row[4])) ?>">
-                    <div class="font-bold text-slate-700"><?= htmlspecialchars($row[1]) ?></div>
-                    <div class="font-black text-slate-900"><?= htmlspecialchars($row[2]) ?></div>
-                    <div class="font-black text-slate-900"><?= htmlspecialchars($row[3]) ?></div>
-                    <div class="font-bold text-emerald-600"><?= htmlspecialchars($row[4]) ?></div>
-                    <div><span class="inline-flex rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] <?= $tone ?>"><?= htmlspecialchars($row[5]) ?></span></div>
-                    <div class="text-xs font-semibold text-slate-500"><?= htmlspecialchars($row[6]) ?></div>
+                <div class="ledger-row grid gap-3 px-4 py-4 text-sm lg:grid-cols-[1.1fr_1.2fr_0.9fr_0.9fr_0.8fr_0.8fr] lg:items-center"
+                     data-date="<?= htmlspecialchars($row['date']) ?>"
+                     data-company="<?= htmlspecialchars($row['company']) ?>"
+                     data-amount="<?= htmlspecialchars((string)$row['gross']) ?>"
+                     data-fee="<?= htmlspecialchars((string)($row['revenue'] ?? 0)) ?>"
+                     data-refunded="<?= htmlspecialchars((string)$row['refunded']) ?>"
+                     data-count="<?= (int)$row['count'] ?>">
+                    <div class="font-bold text-slate-700"><?= htmlspecialchars($displayDate) ?></div>
+                    <div class="font-black text-slate-900"><?= htmlspecialchars($row['company']) ?></div>
+                    <div class="font-black text-slate-900">$<?= number_format($row['gross'], 2) ?></div>
+                    <div class="font-bold text-emerald-600"><?= htmlspecialchars($feeDisplay) ?></div>
+                    <div class="font-semibold text-amber-600"><?= $row['refunded'] > 0 ? '$' . number_format($row['refunded'], 2) : '—' ?></div>
+                    <div class="text-xs font-semibold text-slate-500"><?= (int)$row['count'] ?></div>
                 </div>
                 <?php endforeach; ?>
-                <div id="ledgerEmptyState" class="hidden px-4 py-8 text-center text-sm font-semibold text-slate-400">
-                    No payments match the selected filters.
+                <div id="ledgerEmptyState" class="<?= empty($ledgerRows) ? '' : 'hidden' ?> px-4 py-8 text-center text-sm font-semibold text-slate-400">
+                    No card payments in this window for any provisioned company.
                 </div>
             </div>
         </div>
@@ -381,7 +425,6 @@ $headerMaxW = 'max-w-7xl';
         if (window.lucide) lucide.createIcons();
     });
 
-    const ledgerStatusFilter = document.getElementById('ledgerStatusFilter');
     const ledgerCompanyFilter = document.getElementById('ledgerCompanyFilter');
     const ledgerFromDate = document.getElementById('ledgerFromDate');
     const ledgerToDate = document.getElementById('ledgerToDate');
@@ -391,8 +434,8 @@ $headerMaxW = 'max-w-7xl';
     const ledgerTotals = {
         gross: document.getElementById('ledgerGrossTotal'),
         revenue: document.getElementById('ledgerRevenueTotal'),
-        unsettled: document.getElementById('ledgerUnsettledTotal'),
-        settled: document.getElementById('ledgerSettledTotal'),
+        refunded: document.getElementById('ledgerRefundedTotal'),
+        count: document.getElementById('ledgerCountTotal'),
     };
 
     function formatMoney(value) {
@@ -403,53 +446,44 @@ $headerMaxW = 'max-w-7xl';
     }
 
     function applyLedgerFilters() {
-        const status = ledgerStatusFilter?.value || 'all';
         const company = ledgerCompanyFilter?.value || 'all';
         const fromDate = ledgerFromDate?.value || '';
         const toDate = ledgerToDate?.value || '';
         let visibleCount = 0;
         let grossTotal = 0;
         let revenueTotal = 0;
-        let unsettledTotal = 0;
-        let settledTotal = 0;
+        let refundedTotal = 0;
+        let countTotal = 0;
 
         ledgerRows.forEach(function (row) {
             const companyMatches = company === 'all' || row.dataset.company === company;
-            const statusMatches = status === 'all' || row.dataset.status === status;
             const rowDate = row.dataset.date || '';
             const fromMatches = !fromDate || rowDate >= fromDate;
             const toMatches = !toDate || rowDate <= toDate;
-            const show = companyMatches && statusMatches && fromMatches && toMatches;
+            const show = companyMatches && fromMatches && toMatches;
             row.classList.toggle('hidden', !show);
             if (show) {
-                const amount = Number(row.dataset.amount || 0);
-                const fee = Number(row.dataset.fee || 0);
                 visibleCount++;
-                grossTotal += amount;
-                revenueTotal += fee;
-                if (row.dataset.status === 'settled') {
-                    settledTotal += amount;
-                } else {
-                    unsettledTotal += amount;
-                }
+                grossTotal += Number(row.dataset.amount || 0);
+                revenueTotal += Number(row.dataset.fee || 0);
+                refundedTotal += Number(row.dataset.refunded || 0);
+                countTotal += Number(row.dataset.count || 0);
             }
         });
 
         if (ledgerTotals.gross) ledgerTotals.gross.textContent = formatMoney(grossTotal);
         if (ledgerTotals.revenue) ledgerTotals.revenue.textContent = formatMoney(revenueTotal);
-        if (ledgerTotals.unsettled) ledgerTotals.unsettled.textContent = formatMoney(unsettledTotal);
-        if (ledgerTotals.settled) ledgerTotals.settled.textContent = formatMoney(settledTotal);
+        if (ledgerTotals.refunded) ledgerTotals.refunded.textContent = formatMoney(refundedTotal);
+        if (ledgerTotals.count) ledgerTotals.count.textContent = countTotal.toLocaleString('en-US');
         ledgerEmptyState?.classList.toggle('hidden', visibleCount > 0);
     }
 
-    ledgerStatusFilter?.addEventListener('change', applyLedgerFilters);
     ledgerCompanyFilter?.addEventListener('change', applyLedgerFilters);
     ledgerFromDate?.addEventListener('input', applyLedgerFilters);
     ledgerToDate?.addEventListener('input', applyLedgerFilters);
     ledgerClearFilters?.addEventListener('click', function () {
         if (ledgerFromDate) ledgerFromDate.value = '';
         if (ledgerToDate) ledgerToDate.value = '';
-        if (ledgerStatusFilter) ledgerStatusFilter.value = 'all';
         if (ledgerCompanyFilter) ledgerCompanyFilter.value = 'all';
         applyLedgerFilters();
     });

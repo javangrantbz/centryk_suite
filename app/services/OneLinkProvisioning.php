@@ -97,13 +97,14 @@ class OneLinkProvisioning
             $u = $result['user'];
             $pdo->prepare('
                 INSERT INTO onelink_credentials
-                    (company_id, base_url, terminal_id, salt, token, access_code, onelink_uid, onelink_uuid, enabled, provisioned_at, provision_error)
+                    (company_id, base_url, terminal_id, salt, token, access_code, fee_percentage, onelink_uid, onelink_uuid, enabled, provisioned_at, provision_error)
                 VALUES
-                    (:cid, :base_url, :terminal_id, :salt, :token, :access_code, :uid, :uuid, 1, NOW(), NULL)
+                    (:cid, :base_url, :terminal_id, :salt, :token, :access_code, :fee_pct, :uid, :uuid, 1, NOW(), NULL)
                 ON DUPLICATE KEY UPDATE
                     base_url = VALUES(base_url), terminal_id = VALUES(terminal_id), salt = VALUES(salt),
-                    token = VALUES(token), access_code = VALUES(access_code), onelink_uid = VALUES(onelink_uid),
-                    onelink_uuid = VALUES(onelink_uuid), enabled = 1, provisioned_at = NOW(), provision_error = NULL
+                    token = VALUES(token), access_code = VALUES(access_code), fee_percentage = VALUES(fee_percentage),
+                    onelink_uid = VALUES(onelink_uid), onelink_uuid = VALUES(onelink_uuid),
+                    enabled = 1, provisioned_at = NOW(), provision_error = NULL
             ')->execute([
                 'cid'         => $companyId,
                 'base_url'    => self::BASE_URL,
@@ -111,6 +112,7 @@ class OneLinkProvisioning
                 'salt'        => $salt,
                 'token'       => (string)($u['token'] ?? ''),
                 'access_code' => (string)($u['access_code'] ?? ''),
+                'fee_pct'     => isset($u['perc']) ? (float)$u['perc'] : null,
                 'uid'         => isset($u['uid']) ? (int)$u['uid'] : null,
                 'uuid'        => (string)($u['u_uuid'] ?? ''),
             ]);
