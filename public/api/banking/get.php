@@ -38,7 +38,7 @@ $acctStmt->execute(['cid' => $companyId]);
 $acct = $acctStmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
 // ── OneLink gateway (platform-admin managed) ───────────────────────────────
-$gwStmt = $pdo->prepare("SELECT base_url, terminal_id, salt, token, access_code, enabled FROM onelink_credentials WHERE company_id = :cid LIMIT 1");
+$gwStmt = $pdo->prepare("SELECT base_url, terminal_id, salt, token, access_code, enabled, provision_error FROM onelink_credentials WHERE company_id = :cid LIMIT 1");
 $gwStmt->execute(['cid' => $companyId]);
 $gw = $gwStmt->fetch(PDO::FETCH_ASSOC);
 
@@ -58,6 +58,12 @@ if ($isPlatformAdmin) {
 if (!$isPlatformAdmin && $gateway['enabled'] && !empty($gw['access_code'])) {
     $gateway['access_code']     = $gw['access_code'];
     $gateway['onelink_login_url'] = 'https://op.onelink.bz/docs.php';
+}
+// Surface why auto-provisioning didn't go through (e.g. missing contact info)
+// to the company itself, not just platform admins — they're the ones who can
+// fix a missing email/phone on their own profile.
+if (!$gateway['enabled'] && !empty($gw['provision_error'])) {
+    $gateway['provision_error'] = $gw['provision_error'];
 }
 
 // Card-acceptance intent for the "I want to accept payments via OneLink"

@@ -950,6 +950,12 @@ document.getElementById('updateNameForm').addEventListener('submit', async funct
                     (g.onelink_login_url ? '<a href="' + esc(g.onelink_login_url) + '" target="_blank" rel="noopener" class="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-bold text-emerald-200 hover:bg-white/15">Log in to OneLink <i data-lucide="external-link" class="h-3 w-3"></i></a>' : '') +
                     '</div>';
             }
+        } else if (g && g.provision_error) {
+            cardStatus.className = 'rounded-lg border border-amber-400/20 bg-amber-500/10 px-4 py-4 text-sm font-semibold text-amber-200';
+            cardStatus.innerHTML =
+                '<i data-lucide="alert-triangle" class="inline h-4 w-4 -mt-0.5"></i> Card payments could not be set up automatically.' +
+                '<p class="mt-2 text-xs font-normal text-white/70">' + esc(g.provision_error) + '</p>' +
+                '<p class="mt-2 text-xs font-normal text-white/70">Update your company\'s email, phone, or admin name in your profile, then contact us to try again.</p>';
         } else {
             cardStatus.className = 'rounded-lg border border-white/10 bg-white/5 px-4 py-4 text-sm text-white/60';
             cardStatus.textContent = 'Card payments are not set up yet. Keep "I want to accept payments via OneLink" checked and save your banking information to request it.';
