@@ -1,0 +1,1873 @@
+Build a production-ready MVP web application called **Centryk TV**.
+
+Centryk TV is part of the broader **Centryk business application suite**. It is a multi-tenant live-streaming and digital broadcasting platform for businesses, schools, sports organizations, churches, government agencies, event organizers, and other organizations.
+
+The goal is **not** to clone YouTube. Centryk TV should focus on controlled, branded, organization-owned streaming experiences including live sports, graduations, conferences, training sessions, ceremonies, public events, private broadcasts, and eventually pay-per-view and subscription content.
+
+The platform should separate the **business application/UI layer** from the **video streaming infrastructure**.
+
+## Core Architecture
+
+Use this architecture:
+
+```text
+GoDaddy DNS
+│
+├── tv.example.com
+│       ↓
+│   Cloudways
+│   Centryk TV Web Application
+│
+└── stream.example.com
+        ↓
+    IONOS VPS
+    Streaming Infrastructure
+```
+
+The Cloudways application must handle:
+
+* UI
+* authentication
+* users
+* organizations
+* roles and permissions
+* channels
+* events
+* stream credentials
+* viewer authorization
+* schedules
+* replay metadata
+* analytics
+* settings
+* future billing integration
+
+The IONOS VPS will eventually handle:
+
+* RTMP ingest
+* HLS output
+* NGINX or SRS
+* FFmpeg where necessary
+* streaming bandwidth
+* stream status
+* stream-key validation
+* signed/tokenized playback
+
+For this initial build, create a clean abstraction/interface for the streaming server so the Cloudways application can function before the actual IONOS server is configured.
+
+Do not tightly couple the application to a specific streaming engine.
+
+---
+
+# Technology Stack
+
+Use:
+
+* PHP 8.2+
+* MySQL / MariaDB
+* Tailwind CSS
+* JavaScript
+* HTML5
+* HLS.js for HLS browser playback
+* REST-style internal APIs where appropriate
+* PDO with prepared statements
+* Composer only if genuinely useful
+* No heavy PHP framework unless the existing repository already uses one
+
+Prefer clean, modular PHP.
+
+Use:
+
+```text
+/app
+/config
+/database
+/public
+/resources
+/routes
+/storage
+```
+
+or another clean structure if more appropriate.
+
+Keep sensitive configuration in `.env`.
+
+Never hardcode:
+
+* database credentials
+* stream credentials
+* API secrets
+* encryption keys
+* server IPs
+* domain names
+
+Provide an `.env.example`.
+
+---
+
+# Product Design
+
+The product name is:
+
+**Centryk TV**
+
+Position it as:
+
+**Live Streaming & Digital Broadcasting**
+
+The design should visually feel like part of a modern business software suite, not like a gaming site or generic IPTV panel.
+
+Use a clean, modern interface.
+
+Recommended visual direction:
+
+* dark charcoal/navy video surfaces
+* white/light-gray application backgrounds
+* Centryk brand accent color
+* strong typography
+* rounded cards
+* subtle shadows
+* restrained gradients
+* professional broadcast feel
+
+The application should be responsive and work well on:
+
+* desktop
+* tablet
+* mobile
+
+Build it so it could later become a PWA.
+
+---
+
+# Multi-Tenant Architecture
+
+Centryk TV must support multiple organizations.
+
+Examples:
+
+```text
+Centryk TV
+│
+├── Belize Basketball Federation
+├── Corozal Junior College
+├── ABC Company
+├── XYZ Church
+└── Government Department
+```
+
+Every organization must have isolated data.
+
+Users belonging to one organization must never gain access to another organization's administrative data unless explicitly authorized as a Centryk platform administrator.
+
+Use `organization_id` appropriately throughout the database.
+
+---
+
+# Roles
+
+Implement the following initial roles.
+
+## Platform Administrator
+
+Full Centryk access.
+
+Can:
+
+* view all organizations
+* create organizations
+* suspend organizations
+* view system statistics
+* view streaming status
+* manage platform settings
+* impersonation should NOT be included yet unless securely designed
+
+## Organization Owner
+
+Can manage everything within their own organization.
+
+## Organization Administrator
+
+Can:
+
+* manage channels
+* manage events
+* manage viewers
+* manage organization users
+* view analytics
+
+## Broadcaster
+
+Can:
+
+* see assigned channels
+* see RTMP information
+* create/manage broadcasts if permitted
+* start preparation for live events
+
+Do not expose sensitive platform administration.
+
+## Viewer
+
+Can:
+
+* log in
+* browse permitted content
+* watch live events
+* watch permitted replays
+* manage their profile
+
+---
+
+# Authentication
+
+Create secure authentication.
+
+Support:
+
+* email
+* password
+* remember me
+* forgot password
+* reset password
+* logout
+
+Passwords must use PHP's secure password hashing functions.
+
+Implement:
+
+* CSRF protection
+* session security
+* login throttling
+* account status
+* password reset tokens with expiration
+* session regeneration after login
+
+Create fields such as:
+
+```text
+users
+
+id
+organization_id
+first_name
+last_name
+email
+password_hash
+role
+status
+last_login_at
+created_at
+updated_at
+```
+
+Allow platform administrators to exist without an organization where appropriate.
+
+---
+
+# Organization Management
+
+Create:
+
+```text
+organizations
+
+id
+name
+slug
+logo
+banner
+description
+email
+phone
+website
+status
+timezone
+created_at
+updated_at
+```
+
+Each organization should have a public Centryk TV page.
+
+Example:
+
+```text
+/tv/belize-basketball
+/tv/cjc
+/tv/company-name
+```
+
+The organization page should show:
+
+* logo
+* organization name
+* live events
+* upcoming events
+* recent replays
+* channels
+* about information
+
+---
+
+# Channels
+
+Organizations can create channels.
+
+Example:
+
+```text
+Centryk Sports
+CJC Sports
+CJC Events
+Sunday Service
+Corporate Training
+```
+
+Create:
+
+```text
+channels
+
+id
+organization_id
+name
+slug
+description
+logo
+cover_image
+visibility
+status
+stream_key
+stream_key_hash
+stream_server_id
+created_by
+created_at
+updated_at
+```
+
+Visibility options:
+
+```text
+public
+authenticated
+private
+```
+
+Prepare for future options:
+
+```text
+paid
+subscription
+```
+
+Do not implement payments yet unless specifically requested later.
+
+---
+
+# Stream Keys
+
+Stream keys must not simply be sequential IDs.
+
+Generate strong random stream keys.
+
+Example appearance:
+
+```text
+ctv_live_7Kp9zQ2mX81...
+```
+
+Store the secure form appropriately.
+
+Do not reveal stream keys publicly.
+
+Only authorized users should see stream credentials.
+
+Allow stream key regeneration.
+
+When regenerated:
+
+* old key becomes invalid
+* action is logged
+* confirmation is required in the UI
+
+Show broadcasters something like:
+
+```text
+RTMP Server
+rtmp://stream.example.com/live
+
+Stream Key
+ctv_live_xxxxxxxxxxxxx
+```
+
+Include copy buttons.
+
+---
+
+# Events
+
+Events are a central feature.
+
+Create:
+
+```text
+events
+
+id
+organization_id
+channel_id
+title
+slug
+description
+event_type
+thumbnail
+start_at
+end_at
+status
+visibility
+stream_key_id
+replay_url
+viewer_limit
+created_by
+created_at
+updated_at
+```
+
+Status options:
+
+```text
+draft
+scheduled
+live
+ended
+cancelled
+```
+
+Visibility:
+
+```text
+public
+authenticated
+private
+```
+
+Event types:
+
+```text
+sports
+business
+education
+church
+government
+conference
+entertainment
+other
+```
+
+Organizations must be able to:
+
+* create events
+* edit events
+* schedule events
+* upload thumbnail
+* assign channel
+* set visibility
+* start/end event status manually
+* view stream information
+* view viewer count
+* archive event
+
+---
+
+# Sports Event Support
+
+Because live sports is an important use case, include optional sports-specific fields.
+
+Create a separate table if appropriate:
+
+```text
+sports_event_details
+
+id
+event_id
+sport
+home_team
+away_team
+home_logo
+away_logo
+venue
+competition
+round_name
+home_score
+away_score
+```
+
+Do not force these fields for non-sports events.
+
+On a sports watch page, support a display such as:
+
+```text
+Tigers      72
+
+LIVE
+
+Warriors    68
+```
+
+Score updates should be possible from the organization admin dashboard.
+
+No external sports API is required for the MVP.
+
+---
+
+# Public Homepage
+
+Create a polished public Centryk TV homepage.
+
+Sections:
+
+```text
+Header
+
+Hero
+"Live events. Your audience. Your brand."
+
+Live Now
+
+Upcoming Events
+
+Featured Organizations
+
+Recent Replays
+
+Use Centryk TV
+- Sports
+- Schools
+- Businesses
+- Churches
+- Government
+- Events
+
+Footer
+```
+
+Do not make it look like YouTube.
+
+Focus on professional broadcasts and events.
+
+---
+
+# Viewer Dashboard
+
+Logged-in viewers should see:
+
+```text
+Home
+Live Now
+Upcoming
+Channels
+Replays
+My Access
+Profile
+```
+
+Add:
+
+* recently watched
+* organizations followed/available
+* events they have access to
+
+Prepare the database architecture for watch history.
+
+---
+
+# Watch Page
+
+This is one of the most important screens.
+
+URL:
+
+```text
+/watch/{event-slug}
+```
+
+Layout:
+
+```text
+Event title
+
+Organization
+
+LIVE indicator
+
+Video player
+
+Sports score if applicable
+
+Current viewer count
+
+Description
+
+Event information
+
+Schedule
+
+Organization information
+
+Related events
+```
+
+Use HLS.js.
+
+The player must:
+
+* detect native HLS support
+* otherwise initialize HLS.js
+* display loading state
+* handle playback errors gracefully
+* display unavailable/offline state
+* support fullscreen
+* support volume
+* work on mobile
+
+Do not autoplay audio.
+
+---
+
+# Streaming Server Abstraction
+
+Create a service layer such as:
+
+```text
+StreamingService
+```
+
+Functions might include:
+
+```php
+createStreamKey()
+revokeStreamKey()
+getIngestUrl()
+getPlaybackUrl()
+getStreamStatus()
+generatePlaybackToken()
+isStreamLive()
+```
+
+Initially use configuration/mock values where necessary.
+
+Example `.env`:
+
+```text
+STREAM_DRIVER=mock
+
+STREAM_INGEST_URL=rtmp://stream.example.com/live
+
+STREAM_PLAYBACK_BASE_URL=https://stream.example.com/hls
+
+STREAM_API_URL=
+
+STREAM_API_KEY=
+
+STREAM_SIGNING_SECRET=
+```
+
+Make it easy to later implement:
+
+```text
+NginxStreamingDriver
+SrsStreamingDriver
+```
+
+---
+
+# Playback Security
+
+Do not make permanent public `.m3u8` links the core security model.
+
+Design the application for signed/tokenized playback.
+
+Expected future flow:
+
+```text
+Viewer requests /watch/event
+
+Centryk verifies:
+
+user
+organization
+event
+visibility
+access rights
+
+↓
+
+Centryk generates temporary playback token
+
+↓
+
+Player receives temporary stream URL
+
+↓
+
+IONOS streaming server validates token
+
+↓
+
+HLS plays
+```
+
+For MVP:
+
+Implement the token-generation side in PHP.
+
+Use:
+
+* HMAC SHA-256
+* expiration timestamp
+* event or stream identifier
+* secret from `.env`
+
+Example conceptual URL:
+
+```text
+https://stream.example.com/hls/channel.m3u8
+?expires=...
+&token=...
+```
+
+Create functions cleanly so the eventual NGINX/SRS validation implementation can match it.
+
+Do not expose the signing secret client-side.
+
+---
+
+# Access Control
+
+Implement access rules.
+
+## Public
+
+Anyone can watch.
+
+## Authenticated
+
+User must be logged in.
+
+## Private
+
+User must explicitly have access.
+
+Create:
+
+```text
+event_access
+
+id
+event_id
+user_id
+granted_by
+expires_at
+created_at
+```
+
+Prepare for future:
+
+```text
+purchase_id
+subscription_id
+```
+
+Do not implement payment processing yet.
+
+---
+
+# Device / Session Preparation
+
+Create a clean foundation for future concurrent-stream limits.
+
+Add:
+
+```text
+viewer_sessions
+
+id
+user_id
+event_id
+session_token
+ip_address
+user_agent
+started_at
+last_seen_at
+ended_at
+```
+
+Do not implement aggressive DRM.
+
+Use this for:
+
+* viewer counts
+* watch analytics
+* future device limits
+
+---
+
+# Live Viewer Count
+
+Implement approximate viewer counts.
+
+Do not trust JavaScript-only counters.
+
+Have the watch page periodically send a heartbeat.
+
+Example:
+
+```text
+POST /api/viewer/heartbeat
+```
+
+Update:
+
+```text
+last_seen_at
+```
+
+Consider a viewer active if the last heartbeat occurred within a short recent window such as 60–90 seconds.
+
+Provide an endpoint to retrieve current viewer count.
+
+---
+
+# Analytics
+
+Organization admins should see:
+
+```text
+Total events
+Live events
+Upcoming events
+Total viewers
+Unique viewers
+Total watch sessions
+Most watched events
+Average watch duration
+```
+
+For MVP, calculate analytics from internal application data.
+
+Charts are optional.
+
+Prioritize accurate data structure over flashy visualization.
+
+---
+
+# Replays
+
+Allow an event to have a replay.
+
+Fields:
+
+```text
+replay_url
+replay_status
+duration
+```
+
+Replay status:
+
+```text
+none
+processing
+available
+failed
+```
+
+For MVP, organization admin may manually provide or assign replay URL.
+
+Later this should integrate with automated recording/object storage.
+
+Build the UI so that automation can be added later.
+
+---
+
+# Organization Dashboard
+
+Create a polished dashboard.
+
+Navigation:
+
+```text
+Dashboard
+Live Events
+Upcoming Events
+Channels
+Replays
+Viewers
+Team
+Analytics
+Settings
+```
+
+Dashboard cards:
+
+```text
+Live Now
+Upcoming Events
+Total Viewers
+Total Channels
+```
+
+Sections:
+
+```text
+Current Live Events
+
+Upcoming Events
+
+Recent Activity
+```
+
+---
+
+# Platform Admin Dashboard
+
+Navigation:
+
+```text
+Dashboard
+Organizations
+Users
+Streams
+Events
+System
+Settings
+```
+
+Dashboard metrics:
+
+```text
+Organizations
+Active Organizations
+Live Streams
+Total Users
+Current Viewers
+Events Today
+```
+
+---
+
+# Stream Monitoring
+
+Create application support for stream status.
+
+Fields:
+
+```text
+offline
+connecting
+live
+error
+```
+
+Since the real streaming server does not exist yet, implement a mock provider.
+
+Admin UI should clearly distinguish:
+
+```text
+Scheduled
+Stream Offline
+
+Live
+Stream Connected
+
+Stream Error
+```
+
+---
+
+# Audit Logging
+
+Create:
+
+```text
+audit_logs
+
+id
+organization_id
+user_id
+action
+entity_type
+entity_id
+details
+ip_address
+created_at
+```
+
+Log important actions:
+
+* login
+* failed login where appropriate
+* create event
+* update event
+* delete/archive event
+* create channel
+* regenerate stream key
+* grant private access
+* revoke private access
+* organization settings changes
+
+Do not store passwords, secrets, or raw authentication tokens in logs.
+
+---
+
+# Activity Feed
+
+Use audit data to show recent activity such as:
+
+```text
+John created "Basketball Finals"
+
+Maria regenerated the stream key for Centryk Sports
+
+Admin granted access to viewer@example.com
+```
+
+---
+
+# File Uploads
+
+Support:
+
+* organization logos
+* organization banners
+* event thumbnails
+* channel logos
+* team logos
+
+Validate:
+
+* MIME type
+* extension
+* file size
+
+Generate unique filenames.
+
+Do not trust the original uploaded filename.
+
+Block executable uploads.
+
+---
+
+# Search
+
+Include basic search for:
+
+* events
+* channels
+* organizations
+
+Admin views should support search/filtering.
+
+Filters:
+
+```text
+status
+visibility
+date
+channel
+organization
+event type
+```
+
+---
+
+# Notifications
+
+Do not implement email/SMS infrastructure yet.
+
+Create a notification architecture/table so future notifications can be added.
+
+Potential notifications:
+
+```text
+event starting soon
+event now live
+private access granted
+replay available
+```
+
+---
+
+# Database
+
+Create SQL migrations or migration scripts.
+
+Suggested tables:
+
+```text
+users
+organizations
+organization_users
+channels
+events
+sports_event_details
+event_access
+viewer_sessions
+audit_logs
+notifications
+password_resets
+stream_servers
+stream_keys
+```
+
+Adjust if better normalization is appropriate.
+
+Use:
+
+* foreign keys
+* indexes
+* timestamps
+* sensible cascading behavior
+
+Be careful with destructive cascades.
+
+Prefer soft-delete/status behavior where appropriate for business records.
+
+---
+
+# Stream Servers
+
+Prepare for more than one streaming server.
+
+Create:
+
+```text
+stream_servers
+
+id
+name
+region
+provider
+hostname
+ingest_url
+playback_url
+api_url
+status
+capacity
+created_at
+updated_at
+```
+
+Example:
+
+```text
+Centryk Stream US-1
+IONOS
+United States
+```
+
+This prepares Centryk TV for future load balancing.
+
+---
+
+# API Design
+
+Create internal APIs for things such as:
+
+```text
+/api/events
+/api/events/{id}
+/api/events/{id}/status
+/api/events/{id}/score
+
+/api/channels
+
+/api/viewer/heartbeat
+/api/viewer/count/{event}
+
+/api/stream/status/{event}
+/api/stream/playback/{event}
+```
+
+Authenticate sensitive endpoints.
+
+Use consistent JSON responses:
+
+```json
+{
+  "success": true,
+  "data": {}
+}
+```
+
+or:
+
+```json
+{
+  "success": false,
+  "message": "Unauthorized"
+}
+```
+
+---
+
+# Security Requirements
+
+Apply security carefully.
+
+Must include:
+
+* prepared statements
+* output escaping
+* CSRF protection
+* secure sessions
+* role-based authorization
+* organization-level authorization
+* password hashing
+* rate-limited login attempts
+* secure reset tokens
+* file upload validation
+* protected admin routes
+* secret configuration in `.env`
+
+Never trust:
+
+```text
+organization_id
+user_id
+event_id
+role
+price
+permission
+```
+
+just because the browser submitted it.
+
+Validate permissions server-side.
+
+Never expose:
+
+* password hashes
+* stream signing secret
+* database credentials
+* API keys
+
+---
+
+# URL Structure
+
+Use clean URLs where practical.
+
+Examples:
+
+```text
+/
+ /login
+ /register
+ /forgot-password
+
+/tv/{organization}
+
+/watch/{event}
+
+/dashboard
+
+/dashboard/events
+/dashboard/events/create
+/dashboard/events/{id}
+
+/dashboard/channels
+
+/dashboard/viewers
+
+/dashboard/team
+
+/dashboard/analytics
+
+/dashboard/settings
+
+/admin
+
+/admin/organizations
+
+/admin/users
+
+/admin/streams
+
+/admin/system
+```
+
+---
+
+# Initial Seeder / Demo Data
+
+Create demo data.
+
+Organization:
+
+```text
+Belize Basketball Association
+```
+
+Channel:
+
+```text
+Centryk Sports
+```
+
+Events:
+
+```text
+Tigers vs Warriors
+Basketball Championship Finals
+Youth Tournament
+```
+
+Include:
+
+* one live event
+* one scheduled event
+* one completed/replay event
+
+Create demo users for:
+
+```text
+platform admin
+organization owner
+broadcaster
+viewer
+```
+
+Do not use weak credentials in production.
+
+Demo credentials can exist only in clearly identified local development seeders.
+
+---
+
+# Development Environment
+
+Make the project easy to run locally.
+
+Include:
+
+```text
+README.md
+.env.example
+database setup instructions
+migration commands/instructions
+local development instructions
+deployment instructions
+```
+
+Document PHP extensions required.
+
+Document folder permissions required.
+
+---
+
+# Cloudways Deployment
+
+Assume the business application will eventually run on Cloudways.
+
+Prepare for:
+
+```text
+public web root
+PHP 8.2+
+MariaDB/MySQL
+HTTPS
+cron jobs
+environment variables
+```
+
+Document how to deploy to Cloudways.
+
+Do not require root-level system modifications for the web application.
+
+---
+
+# IONOS Streaming Deployment
+
+Do NOT attempt to fully configure IONOS in the same phase as the application unless explicitly instructed later.
+
+However, create documentation in:
+
+```text
+docs/streaming-server.md
+```
+
+Explain the planned server:
+
+```text
+Ubuntu
+NGINX or SRS
+RTMP ingest
+HLS playback
+HTTPS
+FFmpeg optional
+token validation
+```
+
+Also create:
+
+```text
+docs/streaming-integration.md
+```
+
+Document how Centryk TV communicates with the future streaming server.
+
+---
+
+# NGINX/SRS Decision
+
+Architect the PHP application so either can be used.
+
+Do not hardcode assumptions that prevent migration.
+
+The likely initial deployment will use either:
+
+```text
+NGINX + nginx-rtmp-module
+```
+
+or:
+
+```text
+SRS
+```
+
+with NGINX in front for HTTPS/reverse proxy.
+
+---
+
+# OBS Workflow
+
+The broadcaster workflow should be extremely simple.
+
+Within an event or channel page show:
+
+```text
+Broadcast Setup
+
+Server
+rtmp://stream.example.com/live
+
+Stream Key
+ctv_live_xxxxxxxxx
+
+[Copy Server]
+[Copy Stream Key]
+
+Status
+● Offline
+```
+
+Once streaming begins:
+
+```text
+● LIVE
+```
+
+Add basic instructions:
+
+```text
+1. Open OBS.
+2. Open Settings → Stream.
+3. Choose Custom.
+4. Paste the server URL.
+5. Paste the stream key.
+6. Start Streaming.
+```
+
+Do not expose unnecessary technical configuration to normal business users.
+
+---
+
+# Event Creation UX
+
+Create a clean event wizard or form.
+
+Fields:
+
+```text
+Event Name
+Organization
+Channel
+Type
+Date
+Start Time
+Description
+Thumbnail
+Visibility
+Replay Enabled
+```
+
+If type is sports, reveal:
+
+```text
+Sport
+Home Team
+Away Team
+Competition
+Venue
+```
+
+Generate streaming credentials after event creation.
+
+---
+
+# Business Use Cases
+
+The application should visually and structurally accommodate:
+
+## Sports
+
+```text
+basketball
+football
+volleyball
+boxing
+local tournaments
+school sports
+```
+
+## Education
+
+```text
+graduations
+assemblies
+lectures
+school events
+```
+
+## Business
+
+```text
+training
+conferences
+product launches
+town halls
+```
+
+## Churches
+
+```text
+services
+special ceremonies
+events
+```
+
+## Government
+
+```text
+public meetings
+press conferences
+ceremonies
+```
+
+Do not make sports-specific styling dominate the entire platform.
+
+---
+
+# Future Features
+
+Do not fully implement these yet, but design the architecture so they can be added:
+
+```text
+Pay-per-view
+
+Recurring subscriptions
+
+Organization plans
+
+Payment gateways
+
+Automated recording
+
+Object storage
+
+Video-on-demand
+
+Multiple stream quality levels
+
+Adaptive bitrate streaming
+
+SRT ingest
+
+Simulcasting to YouTube/Facebook
+
+Live chat
+
+Moderation
+
+Closed captions
+
+TV apps
+
+Android app
+
+iOS app
+
+PWA
+
+Smart-TV app
+
+EPG/program schedules
+
+Advertising
+
+Sponsor placements
+
+Custom domains
+
+CDN integration
+
+Geo restrictions
+
+Concurrent device limits
+
+Coupons
+
+Affiliate links
+
+DRM
+```
+
+Do not over-engineer them now.
+
+---
+
+# Important Product Principle
+
+Centryk TV should not compete with YouTube by being a general social-video network.
+
+It should provide organizations with:
+
+```text
+control
+branding
+privacy
+access management
+business workflows
+events
+audience data
+professional presentation
+```
+
+The product should feel like:
+
+> "Your organization's own streaming platform without having to build one."
+
+---
+
+# MVP Priorities
+
+Prioritize this order:
+
+## Phase 1
+
+Build foundation:
+
+```text
+database
+authentication
+roles
+organizations
+layout
+navigation
+security
+```
+
+## Phase 2
+
+Build core streaming management:
+
+```text
+channels
+events
+stream keys
+OBS credentials
+stream service abstraction
+```
+
+## Phase 3
+
+Build viewer experience:
+
+```text
+public organization pages
+event pages
+HLS player
+access controls
+viewer heartbeat
+viewer counts
+```
+
+## Phase 4
+
+Build operations:
+
+```text
+analytics
+audit log
+replays
+sports scoring
+stream monitoring
+```
+
+## Phase 5
+
+Prepare deployment:
+
+```text
+Cloudways documentation
+IONOS integration documentation
+production hardening
+```
+
+Do not jump ahead to billing, CDN, mobile apps, or advanced transcoding before the core workflow functions properly.
+
+---
+
+# Coding Standards
+
+Use:
+
+* clear naming
+* reusable services
+* reusable UI components
+* sensible comments
+* separation of concerns
+
+Avoid:
+
+* giant PHP files
+* duplicated SQL
+* inline credentials
+* duplicated layouts
+* unnecessary dependencies
+* fake placeholder functionality presented as complete
+
+If a feature requires future infrastructure, clearly mark it as:
+
+```text
+Mock
+Development
+Not Connected
+```
+
+rather than pretending it works.
+
+---
+
+# Testing
+
+Test important workflows.
+
+At minimum verify:
+
+```text
+login
+logout
+role restrictions
+organization isolation
+event creation
+channel creation
+stream-key generation
+private-event access
+public-event access
+viewer heartbeat
+signed playback URL generation
+sports score update
+```
+
+Include basic test documentation.
+
+---
+
+# Build Process
+
+Work iteratively.
+
+Before writing large amounts of code:
+
+1. Inspect the existing repository.
+2. Understand the existing architecture.
+3. Preserve useful existing code and conventions.
+4. Produce a short implementation plan.
+5. Build Phase 1 first.
+6. Run and test it.
+7. Fix errors before proceeding.
+8. Continue phase-by-phase.
+
+Do not rewrite an existing working codebase unnecessarily.
+
+When modifying files, make the actual changes rather than only describing what should change.
+
+Run available tests, linting, syntax checks, and database validation after significant changes.
+
+---
+
+# First Deliverable
+
+Start by producing and implementing:
+
+```text
+1. Project architecture
+2. Database schema/migrations
+3. Authentication
+4. Role/permission system
+5. Organization multi-tenancy
+6. Main responsive application shell
+7. Platform admin dashboard shell
+8. Organization dashboard shell
+9. Demo seed data
+10. README setup instructions
+```
+
+Once these are working, summarize:
+
+```text
+What was completed
+Files created/modified
+Database changes
+How to run it
+Demo accounts
+Known limitations
+Recommended next phase
+```
+
+Then continue into the streaming/event functionality unless a blocking issue exists.
+
+The finished MVP should allow this complete core workflow:
+
+```text
+Organization logs in
+        ↓
+Creates channel
+        ↓
+Creates live event
+        ↓
+Receives OBS server URL + stream key
+        ↓
+OBS streams to Centryk streaming server
+        ↓
+Centryk detects event as live
+        ↓
+Authorized viewer opens event page
+        ↓
+Centryk verifies access
+        ↓
+Temporary playback URL is generated
+        ↓
+Viewer watches HLS video
+        ↓
+Viewer heartbeat is recorded
+        ↓
+Organization sees viewer count
+        ↓
+Event ends
+        ↓
+Replay can later be attached
+```
+
+Build **Centryk TV** around that workflow.

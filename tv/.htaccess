@@ -1,0 +1,16 @@
+RewriteEngine On
+
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+RewriteRule ^watch/([a-zA-Z0-9-]+)/?$ watch.php?event=$1 [L,QSA]
+RewriteRule ^dashboard/?$ admin/index.php [L,QSA]
+RewriteRule ^dashboard/channels/?$ admin/channels.php [L,QSA]
+RewriteRule ^dashboard/events/?$ admin/events.php [L,QSA]
+RewriteRule ^dashboard/viewers/?$ admin/viewers.php [L,QSA]
+RewriteRule ^dashboard/analytics/?$ admin/analytics.php [L,QSA]
+RewriteRule ^dashboard/settings/?$ admin/settings.php [L,QSA]
+RewriteRule ^admin/?$ admin/platform.php [L,QSA]
+RewriteRule ^([a-z0-9-]+)/?$ organization.php?organization=$1 [L,QSA]
+
