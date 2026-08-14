@@ -55,7 +55,7 @@ if (isset($_FILES['logo']) && $_FILES['logo']['error'] === UPLOAD_ERR_OK) {
 
 // Business type + what the company calls its customers. The noun drives the
 // invoicing wording in OnePay; blank falls back there to Customer/Customers.
-$allowedTypes = ['school','gym','clinic','salon','grocery','services','property','retail','restaurant','auto_sales','auto_rental','other'];
+$allowedTypes = ['school','gym','clinic','salon','grocery','services','property','retail','restaurant','ice_cream','meat_shop','cafeteria','auto_sales','auto_rental','other'];
 $businessType = strtolower(trim($_POST['business_type'] ?? ''));
 if ($businessType !== '' && !in_array($businessType, $allowedTypes, true)) {
     $businessType = 'other';

@@ -60,6 +60,9 @@ $NOUNS = [
     'property'   => ['Tenant',   'Tenants'],
     'retail'     => ['Customer', 'Customers'],
     'restaurant' => ['Customer', 'Customers'],
+    'ice_cream'  => ['Customer', 'Customers'],
+    'meat_shop'  => ['Customer', 'Customers'],
+    'cafeteria'  => ['Customer', 'Customers'],
     'other'      => ['Customer', 'Customers'],
 ];
 

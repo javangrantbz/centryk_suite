@@ -211,6 +211,9 @@ if ($embed) {
                         <option value="grocery">Groceries</option>
                         <option value="retail">Retail / Shop</option>
                         <option value="restaurant">Restaurant / Food</option>
+                        <option value="ice_cream">Ice Cream / Dessert Shop</option>
+                        <option value="meat_shop">Butcher / Meat Shop</option>
+                        <option value="cafeteria">Cafeteria / Food Service</option>
                         <option value="auto_sales">Auto Sales</option>
                         <option value="auto_rental">Auto Rental</option>
                         <option value="services">Services</option>
@@ -744,7 +747,9 @@ if ($embed) {
     var NOUN_DEFAULTS = {
         school: ['Student', 'Students'], gym: ['Member', 'Members'], clinic: ['Patient', 'Patients'],
         salon: ['Client', 'Clients'], grocery: ['Customer', 'Customers'], services: ['Client', 'Clients'], property: ['Tenant', 'Tenants'],
-        retail: ['Customer', 'Customers'], restaurant: ['Customer', 'Customers'], other: ['Customer', 'Customers']
+        retail: ['Customer', 'Customers'], restaurant: ['Customer', 'Customers'],
+        ice_cream: ['Customer', 'Customers'], meat_shop: ['Customer', 'Customers'], cafeteria: ['Customer', 'Customers'],
+        other: ['Customer', 'Customers']
     };
     document.getElementById('profileBusinessType').addEventListener('change', function () {
         var d = NOUN_DEFAULTS[this.value];
