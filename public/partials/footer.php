@@ -27,7 +27,7 @@
             <!-- ── Brand ── -->
             <div>
                 <a href="index.php" class="inline-block mb-6">
-                    <img src="../centryk_logo.png" alt="Centryk" class="h-12 w-auto brightness-0 invert">
+                    <img src="assets/centryk_logo.png" alt="Centryk" class="h-12 w-auto brightness-0 invert">
                 </a>
                 <p class="text-sm font-semibold leading-relaxed text-white/45 max-w-[280px]">
                     The unified business platform built for Belizean companies. Inventory, payroll, HR, and cashless payments — one login.

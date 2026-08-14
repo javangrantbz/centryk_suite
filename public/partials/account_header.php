@@ -41,7 +41,7 @@ $awCurrent = $awCurrent ?? 'centryk';
 
         <!-- Logo -->
         <a href="index.php" class="flex shrink-0 items-center hover:opacity-80 transition-opacity">
-            <img src="../centryk_logo.png" alt="Centryk" class="h-12 w-auto">
+            <img src="assets/centryk_logo.png" alt="Centryk" class="h-12 w-auto">
         </a>
         <div class="h-5 w-px bg-slate-200 shrink-0"></div>
 

@@ -49,7 +49,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
 
         <!-- Logo -->
         <a href="index.php" class="flex shrink-0 items-center">
-            <img src="../centryk_logo.png" alt="Centryk" class="h-14 w-auto">
+            <img src="assets/centryk_logo.png" alt="Centryk" class="h-14 w-auto">
         </a>
 
         <!-- Divider -->

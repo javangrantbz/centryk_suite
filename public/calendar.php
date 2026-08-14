@@ -261,7 +261,7 @@ function calLink(int $companyId, string $ym): string {
 <header class="sticky top-[3px] z-40 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
     <div class="mx-auto flex max-w-6xl items-center gap-4 px-6 py-3">
         <a href="index.php" class="flex shrink-0 items-center">
-            <img src="../centryk_logo.png" alt="Centryk" class="h-14 w-auto">
+            <img src="assets/centryk_logo.png" alt="Centryk" class="h-14 w-auto">
         </a>
         <div class="h-5 w-px bg-slate-200 shrink-0"></div>
         <?php if (count($companies) > 1): ?>
