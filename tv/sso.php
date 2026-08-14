@@ -1,6 +1,8 @@
 <?php
 require_once __DIR__ . '/includes/bootstrap.php';
 
+tv_gate_coming_soon();
+
 $token = trim((string)($_GET['sso_token'] ?? ''));
 if ($token === '') {
     tv_redirect(tv_url());

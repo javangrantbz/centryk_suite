@@ -1,6 +1,8 @@
 <?php
 require_once __DIR__ . '/includes/bootstrap.php';
 
+tv_gate_coming_soon();
+
 $liveNow = db()->query(
     'SELECT e.title, e.slug, e.thumbnail_path, e.start_at, o.name AS organization_name, o.slug AS organization_slug
      FROM tv_events e

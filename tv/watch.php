@@ -1,6 +1,8 @@
 <?php
 require_once __DIR__ . '/includes/bootstrap.php';
 
+tv_gate_coming_soon();
+
 $slug = trim((string)($_GET['event'] ?? ''));
 $event = $slug !== '' ? tv_find_event_by_slug($slug) : null;
 if (!$event) {

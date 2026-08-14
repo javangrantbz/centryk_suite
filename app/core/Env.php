@@ -50,4 +50,9 @@ class Env
             $_SERVER[$key] = $value;
         }
     }
+
+    public static function isProduction(): bool
+    {
+        return ($_ENV['APP_ENV'] ?? 'local') !== 'local';
+    }
 }

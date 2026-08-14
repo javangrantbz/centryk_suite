@@ -320,7 +320,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
     </div>
 
     <?php
-    $_comingSoonAppKeys = [];
+    $_comingSoonAppKeys = Env::isProduction() ? ['tv' => true] : [];
     $_enrolledAppCount = 0;
     $_otherAppCount = 0;
     foreach ($apps as $_app) {
@@ -501,6 +501,33 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
                     Track POS, invoice, and payment-form collections once live payment data is available.
                 </p>
                 <div class="mt-4 flex items-center justify-center gap-1.5 rounded-xl border border-cyan-200 bg-cyan-100 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-cyan-700">
+                    <i data-lucide="clock-3" class="h-3 w-3"></i>
+                    Coming Soon
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <?php if (Env::isProduction()): ?>
+        <!-- Centryk TV — coming soon on production -->
+        <div style="--i:<?= ($_appIdx ?? 0) + 4 ?>" class="dash-fade order-3 flex flex-col overflow-hidden rounded-2xl border border-teal-200/70 bg-teal-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
+            <div class="h-1.5 w-full" style="background:#0f766e80"></div>
+            <div class="flex flex-1 flex-col p-3">
+                <div class="flex items-center gap-3">
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-100 text-teal-700">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="5" width="20" height="14" rx="2"/><path d="m10 9 5 3-5 3V9Z"/><path d="M8 21h8"/>
+                        </svg>
+                    </span>
+                    <div>
+                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-teal-600/80">Live Streaming</div>
+                        <div class="text-base font-black tracking-tight text-slate-800">Centryk TV</div>
+                    </div>
+                </div>
+                <p class="mt-2 text-xs font-semibold leading-relaxed text-slate-500">
+                    Watch live broadcasts and replays from participating organizations.
+                </p>
+                <div class="mt-4 flex items-center justify-center gap-1.5 rounded-xl border border-teal-200 bg-teal-100 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-teal-700">
                     <i data-lucide="clock-3" class="h-3 w-3"></i>
                     Coming Soon
                 </div>

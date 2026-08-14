@@ -88,6 +88,49 @@ function tv_redirect(string $url): never
     exit;
 }
 
+// Public-facing TV pages (index/watch/organization/sso) render a "Coming
+// Soon" splash instead of real content on production, while localhost keeps
+// working normally for continued development. The admin panel is untouched
+// by this gate so it can still be managed ahead of the public launch.
+function tv_gate_coming_soon(): void
+{
+    if (!Env::isProduction()) {
+        return;
+    }
+    ?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Centryk TV — Coming Soon</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { theme: { extend: { fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'] } } } };
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;900&display=swap" rel="stylesheet">
+</head>
+<body class="flex min-h-screen items-center justify-center bg-slate-950 px-6 font-sans antialiased">
+    <div class="w-full max-w-sm text-center">
+        <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl shadow-sm" style="background:#0f766e">
+            <svg class="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="5" width="20" height="14" rx="2"/><path d="m10 9 5 3-5 3V9Z"/><path d="M8 21h8"/>
+            </svg>
+        </span>
+        <h1 class="mt-5 text-xl font-black tracking-tight text-white">Centryk TV</h1>
+        <p class="mt-2 text-sm font-semibold leading-relaxed text-slate-400">
+            Live streaming and digital broadcasting is on its way. Check back soon.
+        </p>
+        <a href="<?= e(centryk_public_url()) ?>/" class="mt-6 inline-block rounded-xl bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-white/20">
+            &larr; Back to Centryk
+        </a>
+    </div>
+</body>
+</html>
+    <?php
+    exit;
+}
+
 function tv_csrf_token(): string
 {
     if (empty($_SESSION['tv_csrf'])) {

@@ -1,6 +1,8 @@
 <?php
 require_once __DIR__ . '/includes/bootstrap.php';
 
+tv_gate_coming_soon();
+
 $slug = trim((string)($_GET['organization'] ?? ''));
 $organization = $slug !== '' ? tv_find_public_organization($slug) : null;
 if (!$organization) {
