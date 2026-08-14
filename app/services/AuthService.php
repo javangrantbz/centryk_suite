@@ -121,7 +121,7 @@ class AuthService
                  JOIN users u
                    ON u.id = cm.user_id
                   AND u.status = 'active'
-                 WHERE a.`key` IN ('visionboard', 'tv', 'centryk_pwa')
+                 WHERE a.`key` IN ('visionboard', 'tv')
                    AND a.status = 'active'"
             );
         } catch (Throwable $e) {

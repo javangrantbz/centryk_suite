@@ -3,6 +3,20 @@ require_once __DIR__ . '/../app/core/Auth.php';
 require_once __DIR__ . '/../app/core/DB.php';
 require_once __DIR__ . '/../app/services/AuthService.php';
 Auth::start();
+
+// Phones get the mobile hub instead of the full desktop UI. Tablets are
+// treated as desktop - enough screen for the real thing. A visitor who
+// picks "Continue to desktop site" (mobile/views/account.php, or anywhere
+// desktop.php gets linked) gets a cookie that skips this permanently.
+if (empty($_COOKIE['centryk_view']) || $_COOKIE['centryk_view'] !== 'desktop') {
+    $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+    $isMobile = preg_match('/iPhone|Android.*Mobile|Windows Phone|BlackBerry/i', $ua) === 1;
+    if ($isMobile) {
+        header('Location: mobile/');
+        exit;
+    }
+}
+
 $me = AuthService::me();
 
 // Logged in → render the dashboard. Logged out → marketing landing below.
