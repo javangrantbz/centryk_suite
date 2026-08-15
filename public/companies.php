@@ -72,6 +72,7 @@ sort($storeThemeOptions, SORT_NATURAL);
         body.light .text-white      { color: #0f172a; }
         body.light .text-white\/80  { color: #334155; }
         body.light .text-white\/60  { color: #64748b; }
+        body.light .text-white\/50  { color: #64748b; }
         body.light .text-white\/45  { color: #64748b; }
         body.light .text-white\/40  { color: #94a3b8; }
         body.light .text-white\/35  { color: #94a3b8; }
@@ -83,6 +84,9 @@ sort($storeThemeOptions, SORT_NATURAL);
         body.light .text-purple-300 { color: #7e22ce; }
         body.light .text-blue-300   { color: #1d4ed8; }
         body.light .text-slate-300  { color: #475569; }
+        body.light .hover\:text-orange-300:hover { color: #c2410c; }
+        body.light .border-orange-500\/40 { border-color: #fb923c; }
+        body.light .bg-orange-500\/10      { background-color: #fff7ed; }
 
         /* Preserve white text on solid coloured buttons */
         body.light .bg-blue-600.text-white,
@@ -949,7 +953,7 @@ if ($embed) {
 
                 data.members.forEach(function (m) {
                     var row = document.createElement('div');
-                    row.className = 'flex items-center justify-between gap-4 px-6 py-4';
+                    row.className = 'flex flex-col gap-2.5 px-6 py-4';
                     var initial = (m.first_name || '?').charAt(0).toUpperCase();
                     var roleColors = { admin: 'bg-purple-500/20 text-purple-300', manager: 'bg-blue-500/20 text-blue-300', employee: 'bg-slate-500/20 text-slate-300' };
                     var roleClass = roleColors[m.role] || roleColors.employee;
@@ -959,7 +963,7 @@ if ($embed) {
                     // App access pills
                     var appsHtml = '';
                     if ((isAdmin || isMe) && m.apps && m.apps.length) {
-                        appsHtml = '<div class="flex items-center gap-1.5">';
+                        appsHtml = '<div class="flex flex-wrap items-center gap-1.5">';
                         m.apps.forEach(function (app) {
                             var enrolledCls = app.enrolled
                                 ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-400'
@@ -987,9 +991,10 @@ if ($embed) {
                         '<div class="text-sm font-bold text-white truncate">' + escHtml(m.first_name + ' ' + m.last_name) + (isMe ? ' <span class="text-white/30 text-xs">(you)</span>' : '') + '</div>' +
                         '<div class="text-xs text-white/40 truncate">' + escHtml(m.email) + '</div>' +
                         '</div></div>' +
-                        '<div class="flex items-center gap-3 shrink-0">' +
+                        '<div class="flex flex-wrap items-center gap-2">' +
                         appsHtml +
                         '<span class="rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] ' + roleClass + '">' + escHtml(m.role) + '</span>' +
+                        (isAdmin && m.email ? '<a href="switch.php?app=mypay&redirect=' + encodeURIComponent('/views/employees/by-email.php?email=' + encodeURIComponent(m.email)) + '" target="_blank" rel="noopener" class="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.08em] text-white/50 transition hover:border-orange-500/40 hover:bg-orange-500/10 hover:text-orange-300" title="View this person\'s HR profile in MyPay"><i data-lucide="briefcase" class="h-2.5 w-2.5 shrink-0"></i> HR Profile</a>' : '') +
                         (isAdmin && !isMe ? '<button class="remove-member text-white/20 transition hover:text-red-400" data-uid="' + m.id + '" data-name="' + escHtml(m.first_name + ' ' + m.last_name) + '" title="Remove member"><i data-lucide="user-minus" class="h-4 w-4"></i></button>' : '') +
                         '</div>';
 

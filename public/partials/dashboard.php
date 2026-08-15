@@ -377,7 +377,7 @@ Env::load(__DIR__ . '/../../.env');
                         <img src="assets/onepay_logo.png" alt="OnePay" class="h-full w-full object-contain">
                     </span>
                     <?php elseif ($app['key'] === 'mypay'): ?>
-                    <img src="../myPay.png" alt="MyPay" class="h-10 w-10 rounded-xl object-contain shadow-sm">
+                    <img src="assets/myPay.png" alt="MyPay" class="h-10 w-10 rounded-xl object-contain shadow-sm">
                     <?php elseif ($app['key'] === 'invoice'): ?>
                     <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100">
                         <svg class="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">

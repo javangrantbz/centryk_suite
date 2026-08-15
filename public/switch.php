@@ -17,15 +17,16 @@ if (!$user) {
     exit;
 }
 
-$appKey      = trim($_GET['app']          ?? '');
-$companyUuid = trim($_GET['company_uuid'] ?? '');
+$appKey       = trim($_GET['app']          ?? '');
+$companyUuid  = trim($_GET['company_uuid'] ?? '');
+$redirectPath = trim($_GET['redirect']     ?? '');
 
 if ($appKey === '') {
     header('Location: ' . $appUrl . '/');
     exit;
 }
 
-$url = AuthService::launchApp((int)$user['id'], $appKey, $companyUuid);
+$url = AuthService::launchApp((int)$user['id'], $appKey, $companyUuid, $redirectPath);
 
 if (!$url) {
     header('Location: ' . $appUrl . '/');

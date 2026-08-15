@@ -65,7 +65,7 @@ class AuthService
         return true;
     }
 
-    public static function launchApp(int $userId, string $appKey, string $companyUuid = ''): ?string
+    public static function launchApp(int $userId, string $appKey, string $companyUuid = '', string $redirectPath = ''): ?string
     {
         $stmt = DB::pdo()->prepare(
             'SELECT a.url_local, a.url_production FROM apps a
@@ -89,6 +89,13 @@ class AuthService
         $url   = $base . '?sso_token=' . $token;
         if ($companyUuid !== '') {
             $url .= '&company_uuid=' . urlencode($companyUuid);
+        }
+        // Where to land inside the spoke app after SSO — e.g. deep-linking an
+        // admin straight to an employee's record in MyPay. Only same-site
+        // relative paths are ever accepted (enforced on the receiving end too);
+        // this is just passed through as-is here.
+        if ($redirectPath !== '') {
+            $url .= '&redirect=' . urlencode($redirectPath);
         }
         return $url;
     }

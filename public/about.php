@@ -165,7 +165,7 @@
 
                 <div class="rounded-2xl border-2 border-orange-200 bg-white p-6 shadow-lg">
                     <div class="flex items-center gap-4">
-                        <img src="../myPay.png" alt="MyPay" class="h-14 w-14 rounded-xl object-contain shadow-md shadow-orange-100">
+                        <img src="assets/myPay.png" alt="MyPay" class="h-14 w-14 rounded-xl object-contain shadow-md shadow-orange-100">
                         <div>
                             <p class="text-[10px] font-black uppercase tracking-[0.18em] text-orange-600">HR &amp; Payroll</p>
                             <h3 class="text-xl font-black tracking-tight text-slate-950">MyPay</h3>
@@ -317,7 +317,7 @@
 <section id="mypay" class="px-6 py-20 bg-slate-50 section-fade">
     <div class="mx-auto max-w-6xl">
         <div class="flex items-center gap-4 mb-3">
-            <img src="../myPay.png" alt="MyPay" class="h-12 w-12 rounded-xl object-contain shadow-md shadow-orange-100">
+            <img src="assets/myPay.png" alt="MyPay" class="h-12 w-12 rounded-xl object-contain shadow-md shadow-orange-100">
             <div>
                 <p class="text-[10px] font-black uppercase tracking-[0.22em] text-orange-600">App 02</p>
                 <h2 class="text-3xl font-black tracking-tight text-slate-950">MyPay</h2>
