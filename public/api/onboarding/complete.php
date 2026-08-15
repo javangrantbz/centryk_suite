@@ -95,7 +95,7 @@ $grant   = $pdo->prepare('INSERT IGNORE INTO user_app_access (user_id, app_id)
                           SELECT :uid, id FROM apps WHERE `key` = :key AND status = "active"');
 $granted = [];
 foreach ($want as $key) {
-    if (!in_array($key, ['onepay', 'mypay', 'calendar', 'invoice'], true)) continue;
+    if (!in_array($key, ['onepay', 'mypay', 'calendar', 'invoice', 'visionboard', 'tv'], true)) continue;
     $grant->execute(['uid' => (int)$caller['id'], 'key' => $key]);
     $granted[] = $key;
 }

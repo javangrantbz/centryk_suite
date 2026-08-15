@@ -593,7 +593,7 @@ function calLink(int $companyId, string $ym): string {
 </div>
 
 <?php if (!$embed): ?>
-<?php include __DIR__ . '/partials/footer.php'; ?>
+<?php include __DIR__ . '/partials/footer_app.php'; ?>
 <?php endif; ?>
 
 <script>

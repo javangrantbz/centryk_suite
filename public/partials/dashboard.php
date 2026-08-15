@@ -242,7 +242,7 @@ Env::load(__DIR__ . '/../../.env');
             <div id="setupProgressWrap" class="hidden border-t border-slate-100 px-6 py-3.5">
                 <div class="mb-2 flex items-center justify-between">
                     <p class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Getting Started</p>
-                    <p id="setupProgressLabel" class="text-[10px] font-bold text-slate-400">0 of 3 complete</p>
+                    <p id="setupProgressLabel" class="text-[10px] font-bold text-slate-400">0 of 4 complete</p>
                 </div>
                 <div class="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
                     <div id="setupProgressBar" class="h-1.5 rounded-full bg-violet-500 transition-all duration-500" style="width:0%"></div>
@@ -252,9 +252,12 @@ Env::load(__DIR__ . '/../../.env');
                         <span class="h-2 w-2 rounded-full bg-slate-200"></span>Company created
                     </span>
                     <span id="setupStep2" class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400">
-                        <span class="h-2 w-2 rounded-full bg-slate-200"></span>Team added
+                        <span class="h-2 w-2 rounded-full bg-slate-200"></span>Set up company profile
                     </span>
                     <span id="setupStep3" class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400">
+                        <span class="h-2 w-2 rounded-full bg-slate-200"></span>Team added
+                    </span>
+                    <span id="setupStep4" class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400">
                         <span class="h-2 w-2 rounded-full bg-slate-200"></span>Apps active
                     </span>
                 </div>
@@ -601,7 +604,7 @@ Env::load(__DIR__ . '/../../.env');
 <?php include __DIR__ . '/business_directory.php'; ?>
 </div>
 
-<?php include __DIR__ . '/footer.php'; ?>
+<?php include __DIR__ . '/footer_app.php'; ?>
 
 <!-- Toast -->
 <div id="toastWrap" class="pointer-events-none fixed bottom-6 left-1/2 z-[60] flex -translate-x-1/2 flex-col items-center gap-2"></div>
@@ -887,12 +890,15 @@ Env::load(__DIR__ . '/../../.env');
             var coBannerWash = document.getElementById('coBannerWash');
             var coTheme = String(c.store_theme || '');
             var hasTheme = /^assets\/store_theme\/[a-z0-9][a-z0-9_-]{1,80}\.(png|jpe?g|webp)$/i.test(coTheme);
+            // Companies that haven't picked a banner yet still get one — the
+            // default Centryk-branded theme — instead of a blank strip.
+            var bannerSrc = hasTheme ? coTheme : 'assets/store_theme/default01.png';
             if (coBannerPreview) {
-                coBannerPreview.style.backgroundImage = hasTheme ? "url('" + coTheme.replace(/'/g, "\\'") + "')" : '';
-                coBannerPreview.classList.toggle('hidden', !hasTheme);
+                coBannerPreview.style.backgroundImage = "url('" + bannerSrc.replace(/'/g, "\\'") + "')";
+                coBannerPreview.classList.remove('hidden');
             }
             if (coBannerWash) {
-                coBannerWash.classList.toggle('hidden', !hasTheme);
+                coBannerWash.classList.remove('hidden');
             }
 
             var coAvatar = document.getElementById('coAvatar');
@@ -954,19 +960,20 @@ Env::load(__DIR__ . '/../../.env');
             // ── Setup progress ────────────────────────────────────────────
             var enrolledCount = document.querySelectorAll('.app-card[data-enrolled="1"]').length;
             var step1Done = true;
-            var step2Done = n > 1;
-            var step3Done = enrolledCount > 0;
-            var stepsComplete = (step1Done ? 1 : 0) + (step2Done ? 1 : 0) + (step3Done ? 1 : 0);
+            var step2Done = !!(c.logo || c.store_theme);
+            var step3Done = n > 1;
+            var step4Done = enrolledCount > 0;
+            var stepsComplete = (step1Done ? 1 : 0) + (step2Done ? 1 : 0) + (step3Done ? 1 : 0) + (step4Done ? 1 : 0);
 
             var progressWrap = document.getElementById('setupProgressWrap');
             if (progressWrap) {
-                if (stepsComplete < 3) {
+                if (stepsComplete < 4) {
                     progressWrap.classList.remove('hidden');
-                    var pct = Math.round((stepsComplete / 3) * 100);
+                    var pct = Math.round((stepsComplete / 4) * 100);
                     var bar = document.getElementById('setupProgressBar');
                     var lbl = document.getElementById('setupProgressLabel');
                     if (bar) { bar.style.width = pct + '%'; }
-                    if (lbl) { lbl.textContent = stepsComplete + ' of 3 complete'; }
+                    if (lbl) { lbl.textContent = stepsComplete + ' of 4 complete'; }
 
                     function markStep(id, done) {
                         var el = document.getElementById(id);
@@ -983,6 +990,7 @@ Env::load(__DIR__ . '/../../.env');
                     markStep('setupStep1', step1Done);
                     markStep('setupStep2', step2Done);
                     markStep('setupStep3', step3Done);
+                    markStep('setupStep4', step4Done);
                 } else {
                     progressWrap.classList.add('hidden');
                 }

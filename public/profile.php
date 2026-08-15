@@ -260,7 +260,7 @@ function profile_app_stat_card(array $app, int $companyCount, int $userCount, st
     </style>
 </head>
 <body class="min-h-screen bg-[#0d1117] font-sans antialiased text-white">
-<script>var _ct=localStorage.getItem('centrikyTheme');if(_ct==='light'){document.body.classList.add('light');}if(_ct==='dark'){document.body.classList.add('dark');}</script>
+<script>var _ct=localStorage.getItem('centrikyTheme');if(_ct==='dark'){document.body.classList.add('dark');}else{document.body.classList.add('light');}</script>
 
 <?php $pageTitle = 'Profile'; $headerMaxW = 'max-w-5xl'; $awCurrent = 'account'; include __DIR__ . '/partials/account_header.php'; ?>
 

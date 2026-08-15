@@ -165,7 +165,7 @@ $awCurrent = $awCurrent ?? 'centryk';
         if (moon) moon.classList.toggle('hidden', theme !== 'light');
         if (lbl)  lbl.textContent = theme === 'light' ? 'Dark mode' : 'Light mode';
     }
-    applyTheme(localStorage.getItem('centrikyTheme') || 'dark');
+    applyTheme(localStorage.getItem('centrikyTheme') || 'light');
     document.getElementById('themeToggle')?.addEventListener('click', () => {
         const next = document.body.classList.contains('light') ? 'dark' : 'light';
         localStorage.setItem('centrikyTheme', next);

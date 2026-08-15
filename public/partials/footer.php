@@ -112,7 +112,7 @@
             <div>
                 <h3 class="text-[10px] font-black uppercase tracking-[0.22em] text-white/30 mb-6">Get Started</h3>
                 <p class="text-sm font-semibold leading-relaxed text-white/45 mb-5">
-                    Free to request. We set up your account and have you running within one business day.
+                    Free to request. We set up your account and have you running instantly.
                 </p>
                 <a href="login.php"
                    class="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-slate-900 shadow-lg transition hover:bg-slate-100">
@@ -176,18 +176,3 @@
     </div>
 
 </footer>
-
-<script>
-(function () {
-    var btn = document.getElementById('appSwitcherBtn');
-    var dd  = document.getElementById('appSwitcherDropdown');
-    if (!btn || !dd) return;
-    btn.addEventListener('click', function (e) {
-        e.stopPropagation();
-        dd.classList.toggle('hidden');
-    });
-    document.addEventListener('click', function () {
-        if (dd) dd.classList.add('hidden');
-    });
-}());
-</script>

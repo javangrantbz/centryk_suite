@@ -48,32 +48,41 @@ $firstName = trim((string)($user['first_name'] ?? '')) ?: 'there';
   <script>
     tailwind.config = { theme: { extend: { fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] } } } };
   </script>
+  <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body class="min-h-screen bg-slate-50 font-sans text-slate-900">
-  <div class="mx-auto flex min-h-screen max-w-2xl flex-col px-4 py-8">
 
-    <!-- Header -->
-    <div class="mb-6">
-      <div class="flex items-center gap-2 text-sm font-bold text-violet-600">
-        <svg viewBox="0 0 32 32" class="h-7 w-7"><circle cx="16" cy="16" r="16" fill="#7c3aed"/><path d="M16 8l2.5 7.5H26l-6 4.5 2.5 7.5-6-4.5-6 4.5 2.5-7.5-6-4.5h7.5L16 8z" fill="white"/></svg>
-        Centryk
+  <!-- Fixed header + progress — stays pinned while the card below scrolls -->
+  <div class="fixed inset-x-0 top-0 z-20 border-b border-slate-200 bg-slate-50/95 backdrop-blur-sm">
+    <div class="mx-auto max-w-2xl px-4 pb-4 pt-8">
+      <div class="mb-6">
+        <img src="assets/centryk_logo.png" alt="Centryk" class="h-7 w-auto">
+        <h1 class="mt-4 text-2xl font-black tracking-tight">Welcome, <?= htmlspecialchars($firstName) ?> 👋</h1>
+        <p class="mt-1 text-slate-500">Let's set up <span class="font-bold text-slate-700"><?= htmlspecialchars($company['name']) ?></span> — takes about 30 seconds.</p>
       </div>
-      <h1 class="mt-4 text-2xl font-black tracking-tight">Welcome, <?= htmlspecialchars($firstName) ?> 👋</h1>
-      <p class="mt-1 text-slate-500">Let's set up <span class="font-bold text-slate-700"><?= htmlspecialchars($company['name']) ?></span> — takes about 30 seconds.</p>
+      <div class="flex items-center gap-2">
+        <div id="dot1" class="h-1.5 flex-1 rounded-full bg-violet-600"></div>
+        <div id="dot2" class="h-1.5 flex-1 rounded-full bg-slate-200"></div>
+      </div>
     </div>
+  </div>
 
-    <!-- Progress -->
-    <div class="mb-6 flex items-center gap-2">
-      <div id="dot1" class="h-1.5 flex-1 rounded-full bg-violet-600"></div>
-      <div id="dot2" class="h-1.5 flex-1 rounded-full bg-slate-200"></div>
-    </div>
+  <div class="mx-auto flex min-h-screen max-w-2xl flex-col px-4 pb-8 pt-[210px]">
 
     <div class="flex-1 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
 
       <!-- ── Step 1: nature of business ─────────────────────────────────────── -->
       <section id="step1">
-        <h2 class="text-lg font-black">What kind of business is this?</h2>
-        <p class="mb-4 text-sm text-slate-500">This tailors your apps — like what to call the people you serve.</p>
+        <div class="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-black">What type of business do you run?</h2>
+            <p class="text-sm text-slate-500">We'll use this to personalize Centryk for your business.</p>
+          </div>
+          <button id="toStep2" onclick="goStep2()" disabled
+                  class="shrink-0 rounded-lg bg-violet-600 px-5 py-2 text-sm font-bold text-white shadow-sm hover:bg-violet-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400">
+            Continue
+          </button>
+        </div>
 
         <div id="typeGrid" class="grid grid-cols-2 gap-2 sm:grid-cols-3"></div>
 
@@ -88,31 +97,27 @@ $firstName = trim((string)($user['first_name'] ?? '')) ?: 'there';
           </div>
           <p class="mt-1 text-xs text-slate-400">Singular / plural. You can change this later.</p>
         </div>
-
-        <div class="mt-6 flex items-center justify-between">
-          <button onclick="skip()" class="text-sm font-semibold text-slate-400 hover:text-slate-600">Skip for now</button>
-          <button id="toStep2" onclick="goStep2()" disabled
-                  class="rounded-lg bg-violet-600 px-5 py-2 text-sm font-bold text-white shadow-sm hover:bg-violet-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400">
-            Continue
-          </button>
-        </div>
       </section>
 
       <!-- ── Step 2: apps ───────────────────────────────────────────────────── -->
       <section id="step2" class="hidden">
-        <h2 class="text-lg font-black">Which apps will you use?</h2>
-        <p class="mb-4 text-sm text-slate-500">Turn on what you need — you can add more anytime.</p>
+        <div class="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-black">Which apps will you use?</h2>
+            <p class="text-sm text-slate-500">On by default — turn off anything you don't need.</p>
+          </div>
+          <button id="finishBtn" onclick="finish()"
+                  class="shrink-0 rounded-lg bg-violet-600 px-5 py-2 text-sm font-bold text-white shadow-sm hover:bg-violet-700">
+            Finish setup
+          </button>
+        </div>
 
         <div id="appList" class="space-y-2"></div>
 
         <div id="obError" class="mt-4 hidden rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700"></div>
 
-        <div class="mt-6 flex items-center justify-between">
+        <div class="mt-6">
           <button onclick="backStep1()" class="text-sm font-semibold text-slate-400 hover:text-slate-600">&larr; Back</button>
-          <button id="finishBtn" onclick="finish()"
-                  class="rounded-lg bg-violet-600 px-5 py-2 text-sm font-bold text-white shadow-sm hover:bg-violet-700">
-            Finish setup
-          </button>
         </div>
       </section>
 
@@ -124,27 +129,35 @@ $firstName = trim((string)($user['first_name'] ?? '')) ?: 'there';
 
     // Business type → default customer noun (mirrors api/onboarding/complete.php).
     const TYPES = [
-      { key: 'school',     emoji: '🎓', label: 'School / Education', noun: ['Student', 'Students'] },
-      { key: 'gym',        emoji: '🏋️', label: 'Gym / Fitness',     noun: ['Member', 'Members'] },
-      { key: 'clinic',     emoji: '🩺', label: 'Clinic / Health',   noun: ['Patient', 'Patients'] },
-      { key: 'salon',      emoji: '💈', label: 'Salon / Spa',       noun: ['Client', 'Clients'] },
-      { key: 'retail',     emoji: '🛍️', label: 'Retail / Shop',     noun: ['Customer', 'Customers'] },
-      { key: 'restaurant', emoji: '🍽️', label: 'Restaurant / Food', noun: ['Customer', 'Customers'] },
-      { key: 'ice_cream',  emoji: '🍦', label: 'Ice Cream / Dessert',noun: ['Customer', 'Customers'] },
-      { key: 'meat_shop',  emoji: '🥩', label: 'Butcher / Meat Shop',noun: ['Customer', 'Customers'] },
-      { key: 'cafeteria',  emoji: '🍱', label: 'Cafeteria / Food Service', noun: ['Customer', 'Customers'] },
-      { key: 'auto_sales', emoji: '🚗', label: 'Auto Sales',        noun: ['Buyer', 'Buyers'] },
-      { key: 'auto_rental',emoji: '🔑', label: 'Auto Rental',       noun: ['Renter', 'Renters'] },
-      { key: 'services',   emoji: '🧰', label: 'Services',          noun: ['Client', 'Clients'] },
-      { key: 'property',   emoji: '🏠', label: 'Property / Rentals',noun: ['Tenant', 'Tenants'] },
-      { key: 'other',      emoji: '🏢', label: 'Something else',    noun: ['Customer', 'Customers'] },
+      { key: 'school',     icon: 'graduation-cap', color: 'blue',    label: 'School / Education', noun: ['Student', 'Students'] },
+      { key: 'gym',        icon: 'dumbbell',        color: 'orange',  label: 'Gym / Fitness',     noun: ['Member', 'Members'] },
+      { key: 'clinic',     icon: 'stethoscope',     color: 'rose',    label: 'Clinic / Health',   noun: ['Patient', 'Patients'] },
+      { key: 'salon',      icon: 'scissors',        color: 'pink',    label: 'Salon / Spa',       noun: ['Client', 'Clients'] },
+      { key: 'retail',     icon: 'shopping-bag',    color: 'violet',  label: 'Retail / Shop',     noun: ['Customer', 'Customers'] },
+      { key: 'restaurant', icon: 'utensils',        color: 'amber',   label: 'Restaurant / Food', noun: ['Customer', 'Customers'] },
+      { key: 'ice_cream',  icon: 'ice-cream-cone',  color: 'fuchsia', label: 'Ice Cream / Dessert',noun: ['Customer', 'Customers'] },
+      { key: 'meat_shop',  icon: 'beef',            color: 'red',     label: 'Butcher / Meat Shop',noun: ['Customer', 'Customers'] },
+      { key: 'cafeteria',  icon: 'utensils-crossed',color: 'teal',    label: 'Cafeteria / Food Service', noun: ['Customer', 'Customers'] },
+      { key: 'auto_sales', icon: 'car',             color: 'sky',     label: 'Auto Sales',        noun: ['Buyer', 'Buyers'] },
+      { key: 'auto_rental',icon: 'key-round',       color: 'indigo',  label: 'Auto Rental',       noun: ['Renter', 'Renters'] },
+      { key: 'services',   icon: 'wrench',          color: 'slate',   label: 'Services',          noun: ['Client', 'Clients'] },
+      { key: 'property',   icon: 'home',            color: 'emerald', label: 'Property / Rentals',noun: ['Tenant', 'Tenants'] },
+      { key: 'other',      icon: 'building-2',      color: 'gray',    label: 'Something else',    noun: ['Customer', 'Customers'] },
     ];
 
+    // Real choices, all on by default — deselect what you don't want. Whichever
+    // are checked get granted (api/onboarding/complete.php) and show up in the
+    // waffle switcher; anything left unchecked still shows up on the dashboard
+    // as an app you can turn on later. Calendar is the one exception — every
+    // company gets it, so it stays locked-on. OnePay's two nested rows (Store,
+    // OneLink Payments) aren't separate apps at all, just bundled features.
     const APPS = [
-      { key: 'onepay',   emoji: '🛒', label: 'OnePay',   desc: 'Inventory, POS & sales',   on: true,  locked: false },
-      { key: 'invoice',  emoji: '🧾', label: 'Invoices', desc: 'Bill customers & track pay',on: true,  locked: false },
-      { key: 'mypay',    emoji: '👥', label: 'MyPay',    desc: 'HR & payroll',             on: false, locked: false },
-      { key: 'calendar', emoji: '📅', label: 'Calendar', desc: 'Included for everyone',    on: true,  locked: true },
+      { key: 'onepay',      icon: 'shopping-cart', color: 'purple',  label: 'OnePay',       desc: 'Inventory, POS & sales',              on: true, locked: false },
+      { key: 'invoice',     icon: 'file-text',     color: 'emerald', label: 'Invoices',     desc: 'Bill customers & track pay',          on: true, locked: false },
+      { key: 'mypay',       icon: 'users',         color: 'orange',  label: 'MyPay',        desc: 'HR & payroll',                        on: true, locked: false },
+      { key: 'visionboard', icon: 'monitor-play',  color: 'rose',    label: 'Vision Board', desc: 'Digital signage for your screens',    on: true, locked: false },
+      { key: 'tv',          icon: 'tv',            color: 'cyan',    label: 'Centryk TV',   desc: 'Live streaming & broadcasting',       on: true, locked: false },
+      { key: 'calendar',    icon: 'calendar',      color: 'teal',    label: 'Calendar',     desc: 'Included for everyone',               on: true, locked: true },
     ];
 
     let chosenType = null;
@@ -153,10 +166,13 @@ $firstName = trim((string)($user['first_name'] ?? '')) ?: 'there';
     const grid = document.getElementById('typeGrid');
     grid.innerHTML = TYPES.map(t => `
       <button type="button" data-key="${t.key}" onclick="pickType('${t.key}')"
-        class="type-card flex flex-col items-center gap-1 rounded-xl border border-slate-200 px-3 py-3 text-center hover:border-violet-300 hover:bg-violet-50/40 transition-colors">
-        <span class="text-2xl">${t.emoji}</span>
-        <span class="text-xs font-bold text-slate-700">${t.label}</span>
+        class="type-card flex flex-col items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-3 text-center hover:border-violet-300 hover:bg-violet-50/40 transition-colors">
+        <span class="flex h-11 w-11 items-center justify-center rounded-lg bg-${t.color}-500 text-white shadow-sm">
+          <i data-lucide="${t.icon}" class="h-6 w-6" stroke-width="2.25"></i>
+        </span>
+        <span class="text-sm font-bold text-slate-700">${t.label}</span>
       </button>`).join('');
+    if (window.lucide) lucide.createIcons();
 
     function pickType(key){
       const changed = (chosenType !== key);
@@ -181,15 +197,44 @@ $firstName = trim((string)($user['first_name'] ?? '')) ?: 'there';
     }
 
     // ── Step 2 rendering ──────────────────────────────────────────────────────
+    // Store and OneLink Payments ride along with OnePay — neither is its own
+    // app_access row, they're just bundled features. Shown nested under OnePay
+    // and mirror its checkbox rather than being their own toggle.
+    const onepaySubRows = [
+      { id: 'storeSubRow',   icon: 'store',       label: 'Centryk Store',    note: 'included automatically with OnePay' },
+      { id: 'onelinkSubRow', icon: 'credit-card', label: 'OneLink Payments', note: 'included automatically with OnePay' },
+    ];
+    const onepaySubRowsHtml = onepaySubRows.map(r => `
+      <div id="${r.id}" class="ml-6 flex items-center gap-2.5 border-l-2 border-purple-100 py-1.5 pl-3 text-slate-400">
+        <i data-lucide="corner-down-right" class="h-3.5 w-3.5 shrink-0"></i>
+        <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-purple-50 text-purple-500">
+          <i data-lucide="${r.icon}" class="h-3.5 w-3.5"></i>
+        </span>
+        <span class="flex-1 text-xs font-semibold">${r.label} <span class="font-normal text-slate-400">— ${r.note}</span></span>
+      </div>`).join('');
+
     document.getElementById('appList').innerHTML = APPS.map(a => `
       <label class="flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 ${a.locked ? 'opacity-70' : 'cursor-pointer hover:border-violet-300'}">
-        <span class="text-2xl">${a.emoji}</span>
+        <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-${a.color}-500 text-white shadow-sm">
+          <i data-lucide="${a.icon}" class="h-6 w-6" stroke-width="2.25"></i>
+        </span>
         <span class="flex-1">
-          <span class="block text-sm font-bold text-slate-800">${a.label}</span>
-          <span class="block text-xs text-slate-500">${a.desc}</span>
+          <span class="block text-[15px] font-bold text-slate-800">${a.label}</span>
+          <span class="block text-[13px] text-slate-500">${a.desc}</span>
         </span>
         <input type="checkbox" class="app-check h-4 w-4" value="${a.key}" ${a.on ? 'checked' : ''} ${a.locked ? 'disabled' : ''}>
-      </label>`).join('');
+      </label>${a.key === 'onepay' ? onepaySubRowsHtml : ''}`).join('');
+    if (window.lucide) lucide.createIcons();
+
+    // OnePay's sub-rows dim/undim with its checkbox since they aren't real toggles.
+    const onepayCheck = document.querySelector('.app-check[value="onepay"]');
+    const syncOnepaySubRows = () => {
+      onepaySubRows.forEach(r => {
+        document.getElementById(r.id).classList.toggle('opacity-40', !onepayCheck.checked);
+      });
+    };
+    onepayCheck.addEventListener('change', syncOnepaySubRows);
+    syncOnepaySubRows();
 
     // ── Navigation ────────────────────────────────────────────────────────────
     function goStep2(){
@@ -227,11 +272,6 @@ $firstName = trim((string)($user['first_name'] ?? '')) ?: 'there';
         e.textContent = res.message || 'Something went wrong.'; e.classList.remove('hidden');
         return;
       }
-      window.location.href = 'index.php';
-    }
-
-    async function skip(){
-      await post({ company_id: COMPANY_ID, skip: true });
       window.location.href = 'index.php';
     }
   </script>

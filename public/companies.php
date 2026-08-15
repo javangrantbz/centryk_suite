@@ -106,7 +106,7 @@ sort($storeThemeOptions, SORT_NATURAL);
     </style>
 </head>
 <body class="<?= $embed ? 'bg-[#0d1117]' : 'min-h-screen bg-[#0d1117]' ?> font-sans antialiased text-white">
-<script>var _ct=localStorage.getItem('centrikyTheme');if(_ct==='light'){document.body.classList.add('light');}if(_ct==='dark'){document.body.classList.add('dark');}</script>
+<script>var _ct=localStorage.getItem('centrikyTheme');if(_ct==='dark'){document.body.classList.add('dark');}else{document.body.classList.add('light');}</script>
 
 <?php
 // Header middle slot: the company selector (its JS lives in this page).

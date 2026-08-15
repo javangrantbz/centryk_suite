@@ -154,3 +154,17 @@ $awTileIcon = function (string $key, string $color = '', string $label = '') {
         </div>
     </div>
 </div>
+<script>
+(function () {
+    var btn = document.getElementById('appSwitcherBtn');
+    var dd  = document.getElementById('appSwitcherDropdown');
+    if (!btn || !dd) return;
+    btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        dd.classList.toggle('hidden');
+    });
+    document.addEventListener('click', function () {
+        if (dd) dd.classList.add('hidden');
+    });
+}());
+</script>

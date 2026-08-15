@@ -52,7 +52,7 @@ function notif_time_ago(?string $ts): string
     </style>
 </head>
 <body class="min-h-screen bg-[#0d1117] font-sans antialiased text-white">
-<script>var _ct=localStorage.getItem('centrikyTheme');if(_ct==='light'){document.body.classList.add('light');}</script>
+<script>var _ct=localStorage.getItem('centrikyTheme');if(_ct!=='dark'){document.body.classList.add('light');}</script>
 
 <?php $pageTitle = 'Notifications'; $headerMaxW = 'max-w-3xl'; $awCurrent = 'account'; include __DIR__ . '/partials/account_header.php'; ?>
 

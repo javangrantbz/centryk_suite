@@ -707,7 +707,7 @@
                     <svg class="h-4 w-4 shrink-0 text-slate-400 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
                 </summary>
                 <div class="border-t border-slate-100 px-5 pb-4 pt-3 text-sm font-semibold leading-relaxed text-slate-500">
-                    After you submit your access request, our team reviews it and provisions your account typically within 1 business day. You'll receive a welcome email with your login credentials and the apps assigned to your account.
+                    Instantly. As soon as you submit your access request, your account and company are created automatically and a welcome email with your login credentials is sent right away.
                 </div>
             </details>
 
@@ -791,7 +791,7 @@
         </div>
         <h2 class="text-4xl font-black tracking-tight">Ready to get started?</h2>
         <p class="mt-4 text-base font-semibold leading-relaxed text-white/55 max-w-xl mx-auto">
-            Join businesses across Belize already running on Centryk. Request access today — it's free, fast, and our team will have you up and running within one business day.
+            Join businesses across Belize already running on Centryk. Request access today — it's free, and you'll be up and running instantly.
         </p>
         <div class="mt-10 flex flex-wrap items-center justify-center gap-4">
             <a href="login.php"
