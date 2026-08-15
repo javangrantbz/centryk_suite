@@ -135,27 +135,27 @@ if (AuthService::me()['authenticated']) {
                     <div class="divide-y divide-slate-100">
                         <div class="pb-4">
                             <div class="flex items-center gap-2 mb-1.5">
-                                <span class="rounded-full bg-violet-500 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] text-white">Coming Soon</span>
-                                <span class="text-[10px] font-semibold text-slate-400">May 2026</span>
+                                <span class="rounded-full bg-teal-500 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] text-white">Coming Soon</span>
+                                <span class="text-[10px] font-semibold text-slate-400">Aug 2026</span>
                             </div>
-                            <p class="text-sm font-black text-slate-900">Invoice Maker</p>
-                            <p class="mt-0.5 text-xs font-semibold leading-relaxed text-slate-500">Create and share quotes and invoices with clients directly from Centryk.</p>
+                            <p class="text-sm font-black text-slate-900">Centryk TV</p>
+                            <p class="mt-0.5 text-xs font-semibold leading-relaxed text-slate-500">Live streaming and broadcasting for your organization, right from Centryk.</p>
                         </div>
                         <div class="py-4">
                             <div class="flex items-center gap-2 mb-1.5">
                                 <span class="rounded-full bg-blue-500 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] text-white">Update</span>
-                                <span class="text-[10px] font-semibold text-slate-400">Apr 2026</span>
+                                <span class="text-[10px] font-semibold text-slate-400">Aug 2026</span>
                             </div>
-                            <p class="text-sm font-black text-slate-900">Company profile renaming</p>
-                            <p class="mt-0.5 text-xs font-semibold leading-relaxed text-slate-500">Admins can now rename their company profiles from the Companies page.</p>
+                            <p class="text-sm font-black text-slate-900">Centryk Connect</p>
+                            <p class="mt-0.5 text-xs font-semibold leading-relaxed text-slate-500">Companies can now connect directly with each other on Centryk.</p>
                         </div>
                         <div class="pt-4">
                             <div class="flex items-center gap-2 mb-1.5">
                                 <span class="rounded-full bg-emerald-500 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] text-white">Update</span>
-                                <span class="text-[10px] font-semibold text-slate-400">Mar 2026</span>
+                                <span class="text-[10px] font-semibold text-slate-400">Aug 2026</span>
                             </div>
-                            <p class="text-sm font-black text-slate-900">MyPay termination webhooks</p>
-                            <p class="mt-0.5 text-xs font-semibold leading-relaxed text-slate-500">Automated employee deactivation on termination via MyPay webhook integration.</p>
+                            <p class="text-sm font-black text-slate-900">Instant card payment setup</p>
+                            <p class="mt-0.5 text-xs font-semibold leading-relaxed text-slate-500">New companies now get OneLink card payment accounts provisioned automatically — no manual setup wait.</p>
                         </div>
                     </div>
                 </div>

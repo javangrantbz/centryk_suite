@@ -8,6 +8,9 @@
 // AuthService::allAppsWithEnrollment(). If the caller already populated
 // $apps in scope (the dashboard does), that's used directly; otherwise
 // the partial queries it itself.
+require_once __DIR__ . '/../../app/core/Env.php';
+Env::load(__DIR__ . '/../../.env');
+
 $awAlign   = $awAlign   ?? 'left';
 $awMode    = $awMode    ?? 'links';
 $awCurrent = $awCurrent ?? 'centryk'; // which app key is the current page

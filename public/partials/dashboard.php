@@ -2,6 +2,8 @@
 // Authenticated dashboard page — included by index.php when a user is logged in.
 // Expects in scope: $user, $apps, $showOnboarding, $hasDefaultPassword
 if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
+require_once __DIR__ . '/../../app/core/Env.php';
+Env::load(__DIR__ . '/../../.env');
 ?>
 <!doctype html>
 <html lang="en">

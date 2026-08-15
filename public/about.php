@@ -88,6 +88,9 @@
         <p class="mt-5 text-lg font-semibold leading-relaxed text-white/55 max-w-2xl mx-auto">
             One platform. One login. Everything your Belizean business needs to run inventory, payroll, and payments.
         </p>
+        <div class="mx-auto mt-8 w-full max-w-md overflow-hidden rounded-2xl shadow-2xl ring-1 ring-white/10">
+            <img src="assets/centryk_logo_intro.gif" alt="" width="400" height="225" class="block w-full">
+        </div>
     </div>
 </section>
 
