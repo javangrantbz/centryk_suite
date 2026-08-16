@@ -117,9 +117,12 @@ $awCurrent = $awCurrent ?? 'centryk';
 <script>
 // ── Shared header behaviour (waffle · account menu · theme · logout) ─────────
 (function () {
-    const ab = document.getElementById('appSwitcherBtn');
+    // The open/close toggle for #appSwitcherBtn is owned by app_switcher.php's
+    // own inline script (it's a reusable partial included on many pages, not
+    // just this header) - binding it again here double-fired on every click:
+    // one listener opened the dropdown, the other immediately closed it right
+    // back, so the waffle looked like it did nothing.
     const ad = document.getElementById('appSwitcherDropdown');
-    if (ab && ad) ab.addEventListener('click', e => { e.stopPropagation(); ad.classList.toggle('hidden'); });
 
     document.querySelectorAll('.aw-app').forEach(tile => {
         tile.addEventListener('click', () => {
