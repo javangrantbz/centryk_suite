@@ -53,9 +53,10 @@ if ($isPlatformAdmin) {
     $gateway['salt_set']    = $gw ? ($gw['salt']  !== '') : false;
     $gateway['token_set']   = $gw ? ($gw['token'] !== '') : false;
 }
-// The company side doesn't need the gateway secrets, but does need its own
-// access code to log into OneLink and finish setup (bank details etc).
-if (!$isPlatformAdmin && $gateway['enabled'] && !empty($gw['access_code'])) {
+// Everyone who can see this company's banking panel needs the access code to
+// log into OneLink and finish setup (bank details etc) - including a
+// platform admin who is also the company's own admin, not just non-admins.
+if ($gateway['enabled'] && !empty($gw['access_code'])) {
     $gateway['access_code']     = $gw['access_code'];
     $gateway['onelink_login_url'] = 'https://op.onelink.bz/docs.php';
 }
