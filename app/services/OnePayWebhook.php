@@ -89,8 +89,17 @@ class OnePayWebhook
                 return; // not configured — silently skip
             }
 
+            // NOTE: the "salt" OneLink's own API actually authenticates against
+            // is the u_uuid it assigned at account creation (onelink_uuid here),
+            // not the sSalt we generated and submitted to /user/create — confirmed
+            // live against /user/transactions (see OneLinkPaymentsService). For a
+            // company auto-provisioned via OneLinkProvisioning, onelink_uuid is
+            // set and is the correct value to push. For a company still on the
+            // older manual-paste-in flow (api/banking/save.php), onelink_uuid is
+            // never populated — fall back to the manually-entered salt column,
+            // since that's the only value we have for those.
             $stmt = $pdo->prepare('
-                SELECT c.uuid, o.base_url, o.terminal_id, o.salt, o.token, o.enabled
+                SELECT c.uuid, o.base_url, o.terminal_id, o.salt, o.onelink_uuid, o.token, o.enabled
                 FROM companies c
                 JOIN onelink_credentials o ON o.company_id = c.id
                 WHERE c.id = :id AND c.status = "active"
@@ -102,12 +111,14 @@ class OnePayWebhook
                 return; // no credentials saved yet — nothing to push
             }
 
+            $salt = (string)$row['onelink_uuid'] !== '' ? (string)$row['onelink_uuid'] : (string)$row['salt'];
+
             $payload = [
                 'event'        => 'company.onelink.updated',
                 'company_uuid' => $row['uuid'],
                 'base_url'     => (string)$row['base_url'],
                 'terminal_id'  => (string)$row['terminal_id'],
-                'salt'         => (string)$row['salt'],
+                'salt'         => $salt,
                 'token'        => (string)$row['token'],
                 'enabled'      => ((int)$row['enabled'] === 1),
                 'sent_at'      => gmdate('c'),
