@@ -231,8 +231,16 @@ $headerActionsHtml = ob_get_clean();
                 <span>Date</span><span>Customer</span><span>Amount</span><span>Status</span><span>Reference</span>
             </div>
             <div class="divide-y divide-slate-100">
-                <?php if (!$transactions && !$listError): ?>
-                <div class="px-4 py-8 text-center text-sm font-bold text-slate-400">No transactions yet.</div>
+                <?php if (!$transactions && !$listError):
+                    $knownTotal = (int)($pagination['total'] ?? 0);
+                ?>
+                <div class="px-4 py-8 text-center text-sm font-bold text-slate-400">
+                    <?php if ($knownTotal > 0): ?>
+                    OneLink reports <?= $knownTotal ?> transaction(s) for this terminal, but didn't return the details on this request — try refreshing.
+                    <?php else: ?>
+                    No transactions yet.
+                    <?php endif; ?>
+                </div>
                 <?php endif; ?>
                 <?php foreach ($transactions as $t):
                     $tone = ((int)($t['status'] ?? -1)) === 2 ? 'bg-sky-50 text-sky-700 border-sky-200' : 'bg-amber-50 text-amber-700 border-amber-200';
