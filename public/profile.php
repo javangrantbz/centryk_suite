@@ -973,21 +973,36 @@ document.getElementById('updateNameForm').addEventListener('submit', async funct
         const cid = sel.value;
         acct.companyId.value = cid;
         alertEl.className = 'hidden';
+
+        let res;
         try {
-            const res  = await fetch('api/banking/get.php?company_id=' + encodeURIComponent(cid));
-            const data = await res.json();
-            if (!data.success) { bkAlert(data.message || 'Could not load banking.', false); return; }
-            const a = data.account || {};
-            setBank(a.bank_name || '');
-            acct.holder.value = a.account_holder || '';
-            acct.number.value = a.account_number || '';
-            acct.branch.value = a.branch || '';
-            const g = data.gateway || {};
-            if (acceptOnelink) acceptOnelink.checked = (data.wants_onelink !== false);
-            renderCardStatus(g);
-        } catch (_) {
-            bkAlert('Network error while loading banking.', false);
+            res = await fetch('api/banking/get.php?company_id=' + encodeURIComponent(cid));
+        } catch (e) {
+            console.error('Banking load: request could not reach the server.', e);
+            bkAlert('Network error while loading banking (could not reach the server).', false);
+            return;
         }
+
+        const resClone = res.clone();
+        let data;
+        try {
+            data = await res.json();
+        } catch (e) {
+            const bodyText = await resClone.text().catch(() => '');
+            console.error('Banking load: response was not valid JSON.', res.status, bodyText);
+            bkAlert('Banking failed to load (HTTP ' + res.status + '). Check the browser console for details.', false);
+            return;
+        }
+
+        if (!data.success) { bkAlert(data.message || 'Could not load banking.', false); return; }
+        const a = data.account || {};
+        setBank(a.bank_name || '');
+        acct.holder.value = a.account_holder || '';
+        acct.number.value = a.account_number || '';
+        acct.branch.value = a.branch || '';
+        const g = data.gateway || {};
+        if (acceptOnelink) acceptOnelink.checked = (data.wants_onelink !== false);
+        renderCardStatus(g);
     }
 
     let loaded = false;
