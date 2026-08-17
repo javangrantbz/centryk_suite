@@ -139,19 +139,40 @@ $awCurrent = $awCurrent ?? 'centryk';
 
     const ub = document.getElementById('userMenuBtn');
     const um = document.getElementById('userMenu');
-    if (ub && um) ub.addEventListener('click', e => { e.stopPropagation(); um.classList.toggle('hidden'); });
+    if (ub && um) ub.addEventListener('click', e => {
+        e.stopPropagation();
+        const opening = um.classList.contains('hidden');
+        um.classList.toggle('hidden');
+        if (opening) document.dispatchEvent(new CustomEvent('centryk:dropdown-open', { detail: { id: um.id } }));
+    });
 
     const atb = document.getElementById('adminToolsBtn');
     const atm = document.getElementById('adminToolsMenu');
-    if (atb && atm) atb.addEventListener('click', e => { e.stopPropagation(); atm.classList.toggle('hidden'); });
+    if (atb && atm) atb.addEventListener('click', e => {
+        e.stopPropagation();
+        const opening = atm.classList.contains('hidden');
+        atm.classList.toggle('hidden');
+        if (opening) document.dispatchEvent(new CustomEvent('centryk:dropdown-open', { detail: { id: atm.id } }));
+    });
 
     // Notification bell + calendar preview manage their own open/close — see
-    // partials/notification_bell.php and partials/calendar_preview.php.
-
+    // partials/notification_bell.php and partials/calendar_preview.php. Every
+    // header dropdown (including those two) fires 'centryk:dropdown-open' the
+    // moment it opens, and every dropdown listens for that event to close
+    // itself if it wasn't the one that opened - each partial stays
+    // self-contained (no hard dependency on the others existing on a given
+    // page) while still behaving as one mutually-exclusive group when they
+    // do co-occur, here in the shared header.
     document.addEventListener('click', () => {
         if (ad) ad.classList.add('hidden');
         if (um) um.classList.add('hidden');
         if (atm) atm.classList.add('hidden');
+    });
+    document.addEventListener('centryk:dropdown-open', e => {
+        const openedId = e.detail && e.detail.id;
+        if (ad && openedId !== ad.id) ad.classList.add('hidden');
+        if (um && openedId !== um.id) um.classList.add('hidden');
+        if (atm && openedId !== atm.id) atm.classList.add('hidden');
     });
 
     document.getElementById('logoutBtn')?.addEventListener('click', () => {

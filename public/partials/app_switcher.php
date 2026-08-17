@@ -161,10 +161,18 @@ $awTileIcon = function (string $key, string $color = '', string $label = '') {
     if (!btn || !dd) return;
     btn.addEventListener('click', function (e) {
         e.stopPropagation();
+        var opening = dd.classList.contains('hidden');
         dd.classList.toggle('hidden');
+        if (opening) document.dispatchEvent(new CustomEvent('centryk:dropdown-open', { detail: { id: dd.id } }));
     });
     document.addEventListener('click', function () {
         if (dd) dd.classList.add('hidden');
+    });
+    // Close if a different header dropdown (notifications, calendar preview,
+    // user menu, ...) just opened - see account_header.php for the shared
+    // convention this event follows.
+    document.addEventListener('centryk:dropdown-open', function (e) {
+        if (dd && e.detail && e.detail.id !== dd.id) dd.classList.add('hidden');
     });
 }());
 </script>

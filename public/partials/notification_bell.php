@@ -105,9 +105,18 @@
         e.stopPropagation();
         const opening = dd.classList.contains('hidden');
         dd.classList.add('hidden');
-        if (opening) { dd.classList.remove('hidden'); loadList(); }
+        if (opening) {
+            dd.classList.remove('hidden');
+            loadList();
+            document.dispatchEvent(new CustomEvent('centryk:dropdown-open', { detail: { id: dd.id } }));
+        }
     });
     document.addEventListener('click', () => dd.classList.add('hidden'));
+    // Close if a different header dropdown (waffle, calendar preview, user
+    // menu, ...) just opened - see account_header.php for the shared convention.
+    document.addEventListener('centryk:dropdown-open', e => {
+        if (e.detail && e.detail.id !== dd.id) dd.classList.add('hidden');
+    });
 
     refreshCount();
     setInterval(refreshCount, 60000);

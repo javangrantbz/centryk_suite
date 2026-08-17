@@ -36,10 +36,19 @@
 
     cb.addEventListener('click', e => {
         e.stopPropagation();
+        const opening = cd.classList.contains('hidden');
         cd.classList.toggle('hidden');
-        if (!cd.classList.contains('hidden')) loadCalPreview();
+        if (opening) {
+            loadCalPreview();
+            document.dispatchEvent(new CustomEvent('centryk:dropdown-open', { detail: { id: cd.id } }));
+        }
     });
     document.addEventListener('click', () => cd.classList.add('hidden'));
+    // Close if a different header dropdown (waffle, notifications, user menu,
+    // ...) just opened - see account_header.php for the shared convention.
+    document.addEventListener('centryk:dropdown-open', e => {
+        if (e.detail && e.detail.id !== cd.id) cd.classList.add('hidden');
+    });
 
     const openLink = document.getElementById('calPreviewOpenLink');
     if (openLink) {
