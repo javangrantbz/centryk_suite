@@ -301,6 +301,12 @@ function profile_app_stat_card(array $app, int $companyCount, int $userCount, st
                     <i data-lucide="landmark" class="h-4 w-4 shrink-0"></i> Banking
                 </button>
                 <?php endif; ?>
+                <?php if ($isPlatformAdmin || !empty($bankingCompanies)): ?>
+                <a href="onelink-payments.php<?= $companyDeepUuid !== '' ? '?company_uuid=' . urlencode($companyDeepUuid) : '' ?>" target="_blank" rel="noopener"
+                   class="w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-bold text-white/60 transition hover:bg-white/8 text-left">
+                    <i data-lucide="credit-card" class="h-4 w-4 shrink-0"></i> OneLink Payments
+                </a>
+                <?php endif; ?>
             </nav>
         </aside>
 

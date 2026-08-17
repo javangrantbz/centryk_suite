@@ -1,9 +1,10 @@
 <?php
 // Authenticated dashboard page — included by index.php when a user is logged in.
-// Expects in scope: $user, $apps, $showOnboarding, $hasDefaultPassword
+// Expects in scope: $user, $apps, $showOnboarding, $hasDefaultPassword, $isCompanyAdmin
 if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
 require_once __DIR__ . '/../../app/core/Env.php';
 Env::load(__DIR__ . '/../../.env');
+$canUseOnelink = !empty($user['is_admin']) || !empty($isCompanyAdmin);
 ?>
 <!doctype html>
 <html lang="en">
@@ -221,7 +222,7 @@ Env::load(__DIR__ . '/../../.env');
                         <i data-lucide="building-2" class="h-3.5 w-3.5"></i>
                         <span class="hidden sm:inline">Manage Company Profile</span>
                     </a>
-                    <?php if (!empty($user['is_admin'])): ?>
+                    <?php if ($canUseOnelink): ?>
                     <a id="coOnelinkPaymentsBtn" href="onelink-payments.php"
                        class="flex items-center gap-1.5 rounded-xl border border-white/60 bg-white/50 px-3 py-2 text-xs font-black text-cyan-800 backdrop-blur-sm transition hover:bg-white/75 hover:border-white">
                         <i data-lucide="credit-card" class="h-3.5 w-3.5"></i>
@@ -459,7 +460,7 @@ Env::load(__DIR__ . '/../../.env');
         </button>
         <?php endforeach; ?>
 
-        <?php if (!empty($user['is_admin'])): ?>
+        <?php if ($canUseOnelink): ?>
         <button type="button" style="--i:<?= ($_appIdx ?? 0) + 1 ?>" id="onelinkPaymentsCard"
                 class="dash-fade order-1 group flex flex-col overflow-hidden rounded-2xl border border-cyan-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]">
             <div class="h-1.5 w-full bg-cyan-500"></div>
@@ -488,8 +489,8 @@ Env::load(__DIR__ . '/../../.env');
         </button>
         <?php endif; ?>
 
-        <?php if (empty($user['is_admin'])): ?>
-        <!-- OneLink Payments — coming soon for non-Centryk admins -->
+        <?php if (!$canUseOnelink): ?>
+        <!-- OneLink Payments — coming soon for users without company/platform admin access -->
         <div style="--i:<?= ($_appIdx ?? 0) + 4 ?>" class="dash-fade order-3 flex flex-col overflow-hidden rounded-2xl border border-cyan-200/70 bg-cyan-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
             <div class="h-1.5 w-full bg-cyan-500/50"></div>
             <div class="flex flex-1 flex-col p-3">

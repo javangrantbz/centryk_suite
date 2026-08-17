@@ -32,6 +32,9 @@ $invCentrykHomeUrl = rtrim(CENTRYK_BASE, '/') . '/';
 if ($invHdrUuid !== '') {
     $invCentrykHomeUrl .= '?company_uuid=' . urlencode($invHdrUuid);
 }
+$invIsPlatformAdmin = !empty(Auth::user()['is_admin']);
+$invCanUseOnelink   = $invIsPlatformAdmin || $invActiveRole === 'admin';
+$invOnelinkUrl      = rtrim(CENTRYK_BASE, '/') . '/onelink-payments.php' . ($invHdrUuid !== '' ? '?company_uuid=' . urlencode($invHdrUuid) : '');
 ?>
 <?php $invPage = $_GET['page'] ?? 'dashboard'; ?>
 <!DOCTYPE html>
@@ -95,6 +98,13 @@ if ($invHdrUuid !== '') {
                 <span class="text-[10px] font-bold tracking-wide"><?= $lbl ?></span>
             </a>
             <?php endforeach; ?>
+            <?php if ($invCanUseOnelink): ?>
+            <a href="<?= e($invOnelinkUrl) ?>" target="_blank" rel="noopener"
+               class="flex flex-col items-center gap-1 rounded-2xl py-2.5 transition-all text-gray-400 hover:text-white hover:bg-white/5">
+                <i data-lucide="credit-card" class="w-5 h-5"></i>
+                <span class="text-[10px] font-bold tracking-wide">OneLink</span>
+            </a>
+            <?php endif; ?>
         </nav>
     </aside>
 

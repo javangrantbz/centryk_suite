@@ -40,6 +40,18 @@ if ($me['authenticated']) {
         }
     } catch (Throwable $e) {}
 
+    $isCompanyAdmin = false;
+    try {
+        $caStmt = DB::pdo()->prepare("
+            SELECT 1 FROM company_members cm
+            JOIN companies c ON c.id = cm.company_id
+            WHERE cm.user_id = :uid AND cm.role = 'admin' AND cm.status = 'active'
+              AND c.status = 'active'
+            LIMIT 1");
+        $caStmt->execute(['uid' => (int)$user['id']]);
+        $isCompanyAdmin = (bool)$caStmt->fetchColumn();
+    } catch (Throwable $e) {}
+
     $showOnboarding     = false;
     $hasDefaultPassword = false;
     try {

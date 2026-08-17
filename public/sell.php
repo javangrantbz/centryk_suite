@@ -38,6 +38,8 @@ if ($requestedUuid !== '') {
     }
 }
 
+$canUseOnelink = !empty($user['is_admin']) || in_array($activeCompany['role'], ['owner', 'admin'], true);
+
 $notice = null;
 $inventoryError = '';
 $inventoryItems = [];
@@ -218,16 +220,24 @@ $headerActionsHtml = ob_get_clean();
             <h1 class="mt-1 text-2xl font-black tracking-tight text-slate-900">Sell on Centryk Store</h1>
             <p class="mt-1 text-sm font-semibold text-slate-500">Choose which OnePay inventory items appear in Store.</p>
         </div>
-        <form method="get" class="flex items-center gap-2">
-            <select name="company_uuid" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700 shadow-sm outline-none focus:border-violet-500">
-                <?php foreach ($companies as $company): ?>
-                <option value="<?= sell_h($company['uuid']) ?>" <?= $company['uuid'] === $activeCompany['uuid'] ? 'selected' : '' ?>>
-                    <?= sell_h($company['name']) ?>
-                </option>
-                <?php endforeach; ?>
-            </select>
-            <button class="rounded-xl bg-slate-950 px-4 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-slate-800">Switch</button>
-        </form>
+        <div class="flex items-center gap-2">
+            <?php if ($canUseOnelink): ?>
+            <a href="onelink-payments.php?company_uuid=<?= urlencode((string)$activeCompany['uuid']) ?>" target="_blank" rel="noopener"
+               class="inline-flex items-center gap-1.5 rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-cyan-700 transition hover:bg-cyan-100">
+                <i data-lucide="credit-card" class="h-4 w-4"></i> OneLink Payments
+            </a>
+            <?php endif; ?>
+            <form method="get" class="flex items-center gap-2">
+                <select name="company_uuid" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-700 shadow-sm outline-none focus:border-violet-500">
+                    <?php foreach ($companies as $company): ?>
+                    <option value="<?= sell_h($company['uuid']) ?>" <?= $company['uuid'] === $activeCompany['uuid'] ? 'selected' : '' ?>>
+                        <?= sell_h($company['name']) ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+                <button class="rounded-xl bg-slate-950 px-4 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-slate-800">Switch</button>
+            </form>
+        </div>
     </div>
 
     <?php if ($notice): ?>
