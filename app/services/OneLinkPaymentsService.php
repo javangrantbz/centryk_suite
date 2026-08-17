@@ -12,14 +12,25 @@
  */
 class OneLinkPaymentsService
 {
-    /** Fetches the enabled onelink_credentials row for a company, or null. */
+    /**
+     * Fetches the enabled onelink_credentials row for a company, or null.
+     *
+     * Confirmed against the live API: the `salt` field the reporting endpoints
+     * (/user/transactions, /user/transactions/status) actually authenticate
+     * against is the `u_uuid` OneLink assigned at account creation (stored
+     * here as onelink_uuid) - NOT the sSalt value we generated and submitted
+     * to /user/create. Sending our own sSalt back fails with "CREDENTIALS
+     * COULD NOT AUTHENTICATED"; sending onelink_uuid succeeds. So `salt`
+     * below is aliased from onelink_uuid, not the onelink_credentials.salt
+     * column.
+     */
     public static function credentials(PDO $pdo, int $companyId): ?array
     {
         $stmt = $pdo->prepare('
-            SELECT base_url, terminal_id, salt, token
+            SELECT base_url, terminal_id, onelink_uuid AS salt, token
             FROM onelink_credentials
             WHERE company_id = :cid AND enabled = 1
-              AND terminal_id <> "" AND salt <> "" AND token <> ""
+              AND terminal_id <> "" AND onelink_uuid <> "" AND token <> ""
             LIMIT 1
         ');
         $stmt->execute(['cid' => $companyId]);
