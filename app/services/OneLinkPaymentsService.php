@@ -46,6 +46,57 @@ class OneLinkPaymentsService
         ]);
     }
 
+    /**
+     * Sums real transactions into day buckets (Y-m-d => ['amount' => float,
+     * 'count' => int]) for [$startDate, $endDate] (inclusive, Y-m-d). Pages
+     * /user/transactions (newest first) and stops as soon as a page's oldest
+     * row predates $startDate, or hasMore is false, or $maxPages is hit.
+     */
+    public static function transactionsByDayInRange(array $creds, string $startDate, string $endDate, int $maxPages = 25): array
+    {
+        $byDay = [];
+        $page  = 1;
+        $reachedStart = false;
+
+        while ($page <= $maxPages) {
+            $result = self::transactions($creds, $page);
+            if (empty($result['success'])) {
+                return ['success' => false, 'message' => (string)($result['message'] ?? 'Could not reach OneLink.'), 'byDay' => $byDay];
+            }
+
+            $rows = $result['transactions'] ?? [];
+            if (!$rows) {
+                break;
+            }
+
+            foreach ($rows as $t) {
+                $day = substr((string)($t['dateCreated'] ?? ''), 0, 10);
+                if ($day === '') {
+                    continue;
+                }
+                if ($day < $startDate) {
+                    $reachedStart = true;
+                    continue;
+                }
+                if ($day > $endDate) {
+                    continue;
+                }
+                if (!isset($byDay[$day])) {
+                    $byDay[$day] = ['amount' => 0.0, 'count' => 0];
+                }
+                $byDay[$day]['amount'] += (float)($t['amount'] ?? 0);
+                $byDay[$day]['count']++;
+            }
+
+            if ($reachedStart || empty($result['pagination']['hasMore'])) {
+                break;
+            }
+            $page++;
+        }
+
+        return ['success' => true, 'byDay' => $byDay];
+    }
+
     /** POST /user/transactions/status — all matching rows + count/totalAmount. $status: 0=Unsettled, 2=Settled. */
     public static function byStatus(array $creds, int $status): array
     {

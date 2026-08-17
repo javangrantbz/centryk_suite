@@ -36,10 +36,14 @@ $notSetUpCount    = count($provisioning) - $provisionedCount - $failedCount;
 
 // Real payment ledger: Gross Processed and Refunded/Transactions come straight
 // from OnePay's own sale_payments records (via OnePayLedger, one company at a
-// time since OneLink itself exposes no reporting endpoint — confirmed against
-// their docs). OneLink Revenue is an estimate (gross x fee_percentage), since
-// OneLink doesn't expose the real per-transaction fee anywhere either.
+// time). OneLink Revenue is now pulled live from OneLink's own
+// /user/transactions API (via OneLinkPaymentsService) for any company with a
+// working onelink_uuid-based credential set; companies provisioned through
+// the older manual-paste-in flow have no onelink_uuid on file (that flow only
+// ever collected a self-reported "salt"), so those still fall back to the
+// gross x fee_percentage estimate, clearly marked as such per row.
 require_once __DIR__ . '/../app/services/OnePayLedger.php';
+require_once __DIR__ . '/../app/services/OneLinkPaymentsService.php';
 
 $ledgerEnd   = date('Y-m-d');
 $ledgerStart = date('Y-m-d', strtotime('-29 days'));
@@ -63,6 +67,18 @@ foreach ($ledgerCompanies as $lc) {
         continue;
     }
     $feePct = $lc['fee_percentage'] !== null ? (float)$lc['fee_percentage'] : null;
+
+    $liveByDay = [];
+    $liveOk    = false;
+    $creds = OneLinkPaymentsService::credentials($pdo, (int)$lc['id']);
+    if ($creds !== null) {
+        $liveResult = OneLinkPaymentsService::transactionsByDayInRange($creds, $ledgerStart, $ledgerEnd);
+        if (!empty($liveResult['success'])) {
+            $liveByDay = $liveResult['byDay'];
+            $liveOk    = true;
+        }
+    }
+
     $result = OnePayLedger::fetch((string)$lc['uuid'], $ledgerStart, $ledgerEnd);
     foreach ($result['days'] as $day) {
         $gross    = (float)($day['gross'] ?? 0);
@@ -71,14 +87,25 @@ foreach ($ledgerCompanies as $lc) {
         if ($gross <= 0 && $refunded <= 0) {
             continue;
         }
-        $revenue = $feePct !== null ? $gross * $feePct : null;
+        $date = (string)($day['day'] ?? '');
+        if ($liveOk && isset($liveByDay[$date])) {
+            $revenue = (float)$liveByDay[$date]['amount'];
+            $revenueSource = 'live';
+        } elseif ($feePct !== null) {
+            $revenue = $gross * $feePct;
+            $revenueSource = 'est';
+        } else {
+            $revenue = null;
+            $revenueSource = null;
+        }
         $ledgerRows[] = [
-            'date'     => (string)($day['day'] ?? ''),
-            'company'  => (string)$lc['name'],
-            'gross'    => $gross,
-            'revenue'  => $revenue,
-            'refunded' => $refunded,
-            'count'    => $count,
+            'date'          => $date,
+            'company'       => (string)$lc['name'],
+            'gross'         => $gross,
+            'revenue'       => $revenue,
+            'revenueSource' => $revenueSource,
+            'refunded'      => $refunded,
+            'count'         => $count,
         ];
         $ledgerGrossTotal    += $gross;
         $ledgerRefundedTotal += $refunded;
@@ -341,7 +368,7 @@ $headerMaxW = 'max-w-7xl';
                 <button id="ledgerClearFilters" type="button" class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-slate-600 transition hover:bg-slate-50">Clear</button>
             </div>
         </div>
-        <p class="mt-3 text-[11px] font-semibold text-slate-400">Showing card payments from <?= htmlspecialchars(date('M j, Y', strtotime($ledgerStart))) ?> to <?= htmlspecialchars(date('M j, Y', strtotime($ledgerEnd))) ?>, pulled live from OnePay's own records. OneLink Revenue is an estimate (processed amount x the fee % OneLink returned at provisioning) — OneLink doesn't publish an authoritative settlement figure via any API.</p>
+        <p class="mt-3 text-[11px] font-semibold text-slate-400">Showing card payments from <?= htmlspecialchars(date('M j, Y', strtotime($ledgerStart))) ?> to <?= htmlspecialchars(date('M j, Y', strtotime($ledgerEnd))) ?>, pulled live from OnePay's own records. OneLink Revenue is pulled live from OneLink's own transaction API where a company has a working credential set (marked <span class="font-black text-sky-600">Live</span> below); companies still on the older manual-credential flow fall back to an estimate (gross x fee % on file, marked <span class="font-black text-slate-500">Est.</span>).</p>
 
         <div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5">
@@ -350,9 +377,9 @@ $headerMaxW = 'max-w-7xl';
                 <p class="mt-1 text-xs font-semibold text-slate-400">From OnePay's own records</p>
             </div>
             <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">OneLink Revenue (Est.)</p>
+                <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">OneLink Revenue</p>
                 <p id="ledgerRevenueTotal" class="mt-3 text-2xl font-black text-emerald-600">$0.00</p>
-                <p class="mt-1 text-xs font-semibold text-slate-400">Estimated from fee % on file</p>
+                <p class="mt-1 text-xs font-semibold text-slate-400">Live where connected, else estimated</p>
             </div>
             <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                 <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Refunded</p>
@@ -368,7 +395,7 @@ $headerMaxW = 'max-w-7xl';
 
         <div class="mt-5 overflow-hidden rounded-2xl border border-slate-200">
             <div class="hidden grid-cols-[1.1fr_1.2fr_0.9fr_0.9fr_0.8fr_0.8fr] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400 lg:grid">
-                <span>Date</span><span>Company</span><span>Gross</span><span>OneLink Fee (Est.)</span><span>Refunded</span><span>Txns</span>
+                <span>Date</span><span>Company</span><span>Gross</span><span>OneLink Fee</span><span>Refunded</span><span>Txns</span>
             </div>
             <div class="divide-y divide-slate-100">
                 <?php foreach ($ledgerRows as $row):
@@ -385,7 +412,14 @@ $headerMaxW = 'max-w-7xl';
                     <div class="font-bold text-slate-700"><?= htmlspecialchars($displayDate) ?></div>
                     <div class="font-black text-slate-900"><?= htmlspecialchars($row['company']) ?></div>
                     <div class="font-black text-slate-900">$<?= number_format($row['gross'], 2) ?></div>
-                    <div class="font-bold text-emerald-600"><?= htmlspecialchars($feeDisplay) ?></div>
+                    <div class="font-bold text-emerald-600">
+                        <?= htmlspecialchars($feeDisplay) ?>
+                        <?php if ($row['revenueSource'] === 'live'): ?>
+                        <span class="ml-1 rounded-full bg-sky-100 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-sky-600">Live</span>
+                        <?php elseif ($row['revenueSource'] === 'est'): ?>
+                        <span class="ml-1 rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-slate-500">Est.</span>
+                        <?php endif; ?>
+                    </div>
                     <div class="font-semibold text-amber-600"><?= $row['refunded'] > 0 ? '$' . number_format($row['refunded'], 2) : '—' ?></div>
                     <div class="text-xs font-semibold text-slate-500"><?= (int)$row['count'] ?></div>
                 </div>
