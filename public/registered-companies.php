@@ -113,7 +113,9 @@ function companyCard(company) {
                 ${avatar(company)}
                 <div class="min-w-0 flex-1">
                     <div class="flex flex-wrap items-center gap-2">
-                        <h2 class="truncate text-base font-black tracking-tight text-slate-900">${esc(company.name)}</h2>
+                        <h2 class="truncate text-base font-black tracking-tight text-slate-900">
+                            <a href="company-profile.php?uuid=${encodeURIComponent(company.uuid || '')}" class="hover:text-violet-700 hover:underline">${esc(company.name)}</a>
+                        </h2>
                         ${statusBadge(active)}
                     </div>
                     <p class="mt-1 text-xs font-semibold text-slate-500">Registered ${fmtDate(company.registered_at)}</p>
