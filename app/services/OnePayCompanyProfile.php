@@ -370,14 +370,21 @@ class OnePayCompanyProfile
 
             $itemsStmt = $pdo->prepare("
                 SELECT ci.id, ci.name, ci.sku, ci.item_type, ci.price, ci.track_inventory, ci.stock_qty, ci.active,
-                       cc.name AS category_name, s.name AS store_name
+                       cc.name AS category_name, s.name AS store_name, COALESCE(sold.total_qty, 0) AS sold_qty
                 FROM onepay.catalog_items ci
                 JOIN onepay.stores s ON s.id = ci.store_id
                 LEFT JOIN onepay.catalog_categories cc ON cc.id = ci.category_id
+                LEFT JOIN (
+                    SELECT sl.item_id, SUM(sl.qty) AS total_qty
+                    FROM onepay.sale_lines sl
+                    JOIN onepay.sales sa ON sa.id = sl.sale_id
+                    WHERE sa.store_id IN ($in) AND sa.status IN ('completed', 'partially_refunded')
+                    GROUP BY sl.item_id
+                ) sold ON sold.item_id = ci.id
                 WHERE ci.store_id IN ($in)
                 ORDER BY s.name ASC, ci.name ASC
             ");
-            $itemsStmt->execute($storeIds);
+            $itemsStmt->execute(array_merge($storeIds, $storeIds));
             $result['inventory'] = ['categories' => $categories, 'items' => $itemsStmt->fetchAll(PDO::FETCH_ASSOC)];
 
             $promoStmt = $pdo->prepare("

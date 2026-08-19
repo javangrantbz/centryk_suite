@@ -21,7 +21,7 @@ if ($uuid === '') {
     exit;
 }
 
-$stmt = $pdo->prepare('SELECT id, uuid, name, logo, status, created_at FROM companies WHERE uuid = :uuid LIMIT 1');
+$stmt = $pdo->prepare('SELECT id, uuid, name, logo, status, business_type, created_at FROM companies WHERE uuid = :uuid LIMIT 1');
 $stmt->execute(['uuid' => $uuid]);
 $centrykCompany = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$centrykCompany) {
@@ -105,6 +105,11 @@ $awCurrent  = 'centryk';
                     <span class="rounded-full border px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] <?= $centrykCompany['status'] === 'active' ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300' : 'border-white/15 bg-white/5 text-white/50' ?>"><?= cp_h($centrykCompany['status']) ?></span>
                     <?php if ($hasOnePay): ?>
                     <span class="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-cyan-300">OnePay Connected</span>
+                    <?php endif; ?>
+                    <?php if (!empty($centrykCompany['business_type'])): ?>
+                    <span class="rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-white/70"><?= cp_h(str_replace('_', ' ', $centrykCompany['business_type'])) ?></span>
+                    <?php else: ?>
+                    <span class="rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-amber-300">Business type not set</span>
                     <?php endif; ?>
                 </div>
                 <p class="mt-1 text-xs font-semibold text-white/55">Registered <?= cp_date($centrykCompany['created_at']) ?> · Admin: <?= cp_h(trim(($centrykAdmin['first_name'] ?? '') . ' ' . ($centrykAdmin['last_name'] ?? '')) ?: 'Unnamed') ?> (<?= cp_h($centrykAdmin['email'] ?? '—') ?>)</p>
@@ -193,8 +198,8 @@ $awCurrent  = 'centryk';
         </div>
         <div class="overflow-x-auto">
         <div class="min-w-[650px]">
-            <div class="grid grid-cols-[1.6fr_0.9fr_0.8fr_0.7fr_0.8fr_0.8fr] gap-3 bg-slate-50 px-5 py-2.5 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
-                <span>Item</span><span>SKU</span><span>Category</span><span>Type</span><span>Price</span><span>Stock</span>
+            <div class="grid grid-cols-[1.4fr_0.8fr_0.7fr_0.6fr_0.7fr_0.7fr_0.7fr] gap-3 bg-slate-50 px-5 py-2.5 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+                <span>Item</span><span>SKU</span><span>Category</span><span>Type</span><span>Price</span><span>Stock</span><span>Sold</span>
             </div>
             <div class="divide-y divide-slate-100 max-h-[420px] overflow-y-auto">
                 <?php if (!$profile['inventory']['items']): ?>
@@ -202,13 +207,14 @@ $awCurrent  = 'centryk';
                 <?php endif; ?>
                 <?php foreach ($profile['inventory']['items'] as $it): ?>
                 <div onclick="openItemModal(<?= (int)$it['id'] ?>)"
-                     class="grid cursor-pointer grid-cols-[1.6fr_0.9fr_0.8fr_0.7fr_0.8fr_0.8fr] gap-3 px-5 py-3 text-sm transition hover:bg-violet-50 <?= empty($it['active']) ? 'opacity-50' : '' ?>">
+                     class="grid cursor-pointer grid-cols-[1.4fr_0.8fr_0.7fr_0.6fr_0.7fr_0.7fr_0.7fr] gap-3 px-5 py-3 text-sm transition hover:bg-violet-50 <?= empty($it['active']) ? 'opacity-50' : '' ?>">
                     <span class="truncate font-bold text-slate-800"><?= cp_h($it['name'] ?? '') ?></span>
                     <span class="truncate text-slate-500"><?= cp_h($it['sku'] ?: '—') ?></span>
                     <span class="truncate text-slate-500"><?= cp_h($it['category_name'] ?: '—') ?></span>
                     <span class="truncate text-slate-500 capitalize"><?= cp_h($it['item_type'] ?? '') ?></span>
                     <span class="font-bold text-slate-700"><?= cp_money($it['price'] ?? 0) ?></span>
                     <span class="text-slate-500"><?= !empty($it['track_inventory']) ? cp_h($it['stock_qty']) : '—' ?></span>
+                    <span class="font-bold text-sky-600"><?= (float)($it['sold_qty'] ?? 0) > 0 ? cp_h(rtrim(rtrim(number_format((float)$it['sold_qty'], 2), '0'), '.')) : '—' ?></span>
                 </div>
                 <?php endforeach; ?>
             </div>
