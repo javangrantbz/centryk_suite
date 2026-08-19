@@ -50,7 +50,7 @@ class Auth
 
         $stmt = $pdo->prepare('SELECT * FROM users WHERE email = :email AND status = "active" LIMIT 1');
         $stmt->execute(['email' => $normalizedEmail]);
-        $user = $stmt->fetch();
+        $user = $stmt->fetch() ?: null; // fetch() returns false (not null) on no match - passwordValid() is typed ?array
 
         if (!self::passwordValid($user, $normalizedEmail, $password)) {
             self::recordLoginEvent($user['id'] ?? null, $normalizedEmail, false);
