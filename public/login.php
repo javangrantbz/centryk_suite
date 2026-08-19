@@ -116,16 +116,16 @@ if (AuthService::me()['authenticated']) {
 </nav>
 
 <!-- ── Forms ── -->
-<section class="bg-slate-50 px-6 py-12">
+<section class="bg-slate-50 px-6 py-4 lg:py-5">
     <div class="mx-auto max-w-5xl">
-        <div class="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] items-start">
+        <div class="grid items-start gap-4 lg:grid-cols-[1.1fr_0.9fr]">
 
             <!-- ── Left: News & trust ── -->
-            <div class="space-y-5">
+            <div class="space-y-3.5">
 
                 <!-- Announcements — shown with sign-in. Update these whenever something ships -->
-                <div id="updatesPanel" class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                    <div class="mb-5 flex items-center gap-2.5">
+                <div id="updatesPanel" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <div class="mb-3.5 flex items-center gap-2.5">
                         <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-900 text-white">
                             <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
                         </span>
@@ -133,7 +133,7 @@ if (AuthService::me()['authenticated']) {
                     </div>
 
                     <div class="divide-y divide-slate-100">
-                        <div class="pb-4">
+                        <div class="pb-3.5">
                             <div class="flex items-center gap-2 mb-1.5">
                                 <span class="rounded-full bg-teal-500 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] text-white">Coming Soon</span>
                                 <span class="text-[10px] font-semibold text-slate-400">Aug 2026</span>
@@ -141,7 +141,7 @@ if (AuthService::me()['authenticated']) {
                             <p class="text-sm font-black text-slate-900">Centryk TV</p>
                             <p class="mt-0.5 text-xs font-semibold leading-relaxed text-slate-500">Live streaming and broadcasting for your organization, right from Centryk.</p>
                         </div>
-                        <div class="py-4">
+                        <div class="py-3.5">
                             <div class="flex items-center gap-2 mb-1.5">
                                 <span class="rounded-full bg-blue-500 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] text-white">Update</span>
                                 <span class="text-[10px] font-semibold text-slate-400">Aug 2026</span>
@@ -149,7 +149,7 @@ if (AuthService::me()['authenticated']) {
                             <p class="text-sm font-black text-slate-900">Centryk Connect</p>
                             <p class="mt-0.5 text-xs font-semibold leading-relaxed text-slate-500">Companies can now connect directly with each other on Centryk.</p>
                         </div>
-                        <div class="pt-4">
+                        <div class="pt-3.5">
                             <div class="flex items-center gap-2 mb-1.5">
                                 <span class="rounded-full bg-emerald-500 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] text-white">Update</span>
                                 <span class="text-[10px] font-semibold text-slate-400">Aug 2026</span>
@@ -161,9 +161,9 @@ if (AuthService::me()['authenticated']) {
                 </div>
 
                 <!-- Why Centryk — shown with request access -->
-                <div id="whyPanel" class="hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                    <p class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400 mb-5">Why Centryk</p>
-                    <div class="space-y-4">
+                <div id="whyPanel" class="hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <p class="mb-3.5 text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Why Centryk</p>
+                    <div class="space-y-3">
                         <div class="flex items-start gap-3">
                             <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
                                 <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
@@ -198,18 +198,18 @@ if (AuthService::me()['authenticated']) {
 
             <!-- ── Right: Form ── -->
             <div class="lg:sticky lg:top-24">
-                <div class="lf-d rounded-2xl border border-slate-200 bg-white p-7 shadow-sm">
+                <div class="lf-d rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:p-5">
 
             <!-- ── Sign-in view ── -->
             <div id="signinView">
-                <div class="mb-6">
+                <div class="mb-3.5">
                     <p class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Returning user</p>
                     <h2 class="mt-1.5 text-2xl font-black tracking-tight text-slate-950">Welcome back</h2>
                 </div>
 
                 <form id="loginForm">
-                    <div id="loginAlert" class="mb-4 hidden rounded-2xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-600"></div>
-                    <div class="space-y-4">
+                    <div id="loginAlert" class="mb-3.5 hidden rounded-2xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-600"></div>
+                    <div class="space-y-3.5">
                         <div>
                             <label class="mb-1.5 block text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Email Address</label>
                             <input name="email" type="email" required autofocus
@@ -232,26 +232,27 @@ if (AuthService::me()['authenticated']) {
                                     </svg>
                                 </button>
                             </div>
+                            <p id="capsLockWarning" class="mt-1.5 hidden text-[11px] font-bold text-amber-600">Caps Lock is on</p>
                         </div>
                     </div>
 
                     <button id="loginBtn"
-                        class="mt-5 w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-black uppercase tracking-[0.12em] text-white shadow transition-all duration-200 hover:bg-slate-700 active:scale-[0.99] focus:outline-none focus:ring-4 focus:ring-slate-300">
+                        class="mt-4 w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-black uppercase tracking-[0.12em] text-white shadow transition-all duration-200 hover:bg-slate-700 active:scale-[0.99] focus:outline-none focus:ring-4 focus:ring-slate-300">
                         Sign In to Centryk
                     </button>
 
-                    <div class="mt-4 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
+                    <div class="mt-3.5 flex items-center justify-between gap-3 border-t border-slate-100 pt-3.5">
                         <a href="forgot-password.php" class="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400 transition hover:text-slate-700">Forgot Password?</a>
                         <a href="contact.php" class="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400 transition hover:text-slate-700">Need Help?</a>
                     </div>
                 </form>
 
-                <div class="mt-5 flex items-center gap-2.5 rounded-xl border border-emerald-100 bg-emerald-50/60 px-4 py-3">
+                <div class="mt-3.5 flex items-center gap-2.5 rounded-xl border border-emerald-100 bg-emerald-50/60 px-4 py-2.5">
                     <svg class="h-4 w-4 shrink-0 text-emerald-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7l-9-5z"/></svg>
                     <p class="text-xs font-semibold text-slate-500">Encrypted sessions &amp; role-based access control.</p>
                 </div>
 
-                <div class="mt-5 border-t border-slate-100 pt-4 text-center">
+                <div class="mt-3.5 border-t border-slate-100 pt-3 text-center">
                     <button id="showRequestBtn" class="group text-sm font-semibold text-slate-400 transition hover:text-slate-700">
                         New to Centryk? <span class="font-black text-slate-600 group-hover:text-slate-900">Request access →</span>
                     </button>
@@ -260,14 +261,13 @@ if (AuthService::me()['authenticated']) {
 
             <!-- ── Request access view ── -->
             <div id="requestView" class="hidden">
-                <div class="mb-5 flex items-start justify-between gap-2">
+                <div class="mb-3.5 flex items-start justify-between gap-2">
                     <div>
                         <p class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">New to Centryk</p>
                         <h2 class="mt-1.5 text-2xl font-black tracking-tight text-slate-950">Request Access</h2>
                     </div>
                     <span class="mt-1 shrink-0 rounded-full bg-emerald-500 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-white">Free</span>
                 </div>
-                <p class="mb-5 text-sm font-semibold leading-relaxed text-slate-500">No credit card required. We'll have you set up within one business day.</p>
 
                 <div id="reqSuccess" class="hidden rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-center">
                     <div class="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
@@ -277,7 +277,7 @@ if (AuthService::me()['authenticated']) {
                     <p class="mt-1 text-xs font-semibold text-emerald-600">We'll review it and send your login details shortly.</p>
                 </div>
 
-                <form id="requestForm" class="space-y-3">
+                <form id="requestForm" class="space-y-2">
                     <div class="grid gap-3 sm:grid-cols-2">
                         <div>
                             <label class="mb-1.5 block text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Email Address</label>
@@ -307,7 +307,7 @@ if (AuthService::me()['authenticated']) {
                     Your login details will be sent to your inbox.
                 </p>
 
-                <div class="mt-5 border-t border-slate-100 pt-4 text-center">
+                <div class="mt-3.5 border-t border-slate-100 pt-3 text-center">
                     <button id="showSigninBtn" class="group text-sm font-semibold text-slate-400 transition hover:text-slate-700">
                         ← <span class="font-black text-slate-600 group-hover:text-slate-900">Back to sign in</span>
                     </button>
@@ -336,6 +336,7 @@ if (AuthService::me()['authenticated']) {
         loginBtn.disabled    = true;
         loginBtn.textContent = 'Signing in…';
 
+        var loginRes = null;
         fetch('api/auth/login.php', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -344,7 +345,10 @@ if (AuthService::me()['authenticated']) {
                 password: loginForm.querySelector('[name="password"]').value,
             }),
         })
-        .then(function (r) { return r.json(); })
+        .then(function (r) {
+            loginRes = r;
+            return r.clone().json();
+        })
         .then(function (data) {
             if (data.success) {
                 window.location.href = 'index.php';
@@ -357,8 +361,16 @@ if (AuthService::me()['authenticated']) {
                 loginBtn.textContent = 'Sign In to Centryk';
             }
         })
-        .catch(function () {
-            loginAlert.textContent = 'Network error. Please try again.';
+        .catch(function (err) {
+            if (loginRes) {
+                loginRes.clone().text().then(function (bodyText) {
+                    console.error('Login: response was not valid JSON.', loginRes.status, bodyText);
+                }).catch(function () {});
+                loginAlert.textContent = 'Login failed (HTTP ' + loginRes.status + '). Check the browser console for details.';
+            } else {
+                console.error('Login: request could not reach the server.', err);
+                loginAlert.textContent = 'Network error (could not reach the server). Please try again.';
+            }
             loginAlert.classList.remove('hidden');
             loginBtn.disabled    = false;
             loginBtn.textContent = 'Sign In to Centryk';
@@ -388,6 +400,26 @@ if (AuthService::me()['authenticated']) {
         document.getElementById('reqEmail').focus();
     }
 
+    // ── Caps Lock warning ──────────────────────────────────────────────────────
+    // getModifierState reflects the physical keyboard state at the moment of
+    // any keyboard event on the field, so checking on keydown/keyup (rather
+    // than only on the character typed) catches it as soon as focus + a key
+    // press happen, not just after Caps Lock itself is pressed.
+    (function () {
+        var pwInput = document.getElementById('passwordInput');
+        var warning = document.getElementById('capsLockWarning');
+        if (!pwInput || !warning) return;
+
+        function checkCapsLock(e) {
+            var on = typeof e.getModifierState === 'function' && e.getModifierState('CapsLock');
+            warning.classList.toggle('hidden', !on);
+        }
+
+        pwInput.addEventListener('keydown', checkCapsLock);
+        pwInput.addEventListener('keyup', checkCapsLock);
+        pwInput.addEventListener('blur', function () { warning.classList.add('hidden'); });
+    }());
+
     // ── Password toggle ────────────────────────────────────────────────────────
     document.getElementById('togglePassword').addEventListener('click', function () {
         var input  = document.getElementById('passwordInput');
@@ -409,6 +441,7 @@ if (AuthService::me()['authenticated']) {
         reqBtn.disabled    = true;
         reqBtn.textContent = 'Submitting…';
 
+        var reqRes = null;
         fetch('api/requests/submit.php', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -418,7 +451,10 @@ if (AuthService::me()['authenticated']) {
                 company_name: document.getElementById('reqCompanyName').value,
             }),
         })
-        .then(function (r) { return r.json(); })
+        .then(function (r) {
+            reqRes = r;
+            return r.clone().json();
+        })
         .then(function (data) {
             if (data.success) {
                 reqForm.classList.add('hidden');
@@ -431,9 +467,17 @@ if (AuthService::me()['authenticated']) {
                 reqBtn.textContent = 'Get Instant Access';
             }
         })
-        .catch(function () {
-            reqAlert.className   = 'rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-600';
-            reqAlert.textContent = 'Network error. Please try again.';
+        .catch(function (err) {
+            reqAlert.className = 'rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-600';
+            if (reqRes) {
+                reqRes.clone().text().then(function (bodyText) {
+                    console.error('Request access: response was not valid JSON.', reqRes.status, bodyText);
+                }).catch(function () {});
+                reqAlert.textContent = 'Submission failed (HTTP ' + reqRes.status + '). Check the browser console for details.';
+            } else {
+                console.error('Request access: request could not reach the server.', err);
+                reqAlert.textContent = 'Network error (could not reach the server). Please try again.';
+            }
             reqAlert.classList.remove('hidden');
             reqBtn.disabled    = false;
             reqBtn.textContent = 'Get Instant Access';
