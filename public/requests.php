@@ -113,7 +113,7 @@ function renderTable() {
                 ${esc(initials(u.first_name, u.last_name))}
             </div>
             <div class="min-w-0 flex-1">
-                <p class="text-sm font-semibold text-slate-900 truncate">${esc(name)}</p>
+                <p class="text-sm font-semibold text-slate-900 truncate"><a href="user-profile.php?id=${u.id}" class="hover:text-violet-700 hover:underline">${esc(name)}</a></p>
                 <p class="text-xs text-slate-500 mt-0.5 truncate">${esc(u.email)}</p>
             </div>
             <div class="shrink-0 hidden sm:block text-xs text-slate-400">${fmtDate(u.created_at)}</div>
