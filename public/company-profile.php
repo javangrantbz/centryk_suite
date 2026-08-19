@@ -201,7 +201,8 @@ $awCurrent  = 'centryk';
                 <div class="px-5 py-6 text-center text-sm font-semibold text-slate-400">No inventory items yet.</div>
                 <?php endif; ?>
                 <?php foreach ($profile['inventory']['items'] as $it): ?>
-                <div class="grid grid-cols-[1.6fr_0.9fr_0.8fr_0.7fr_0.8fr_0.8fr] gap-3 px-5 py-3 text-sm <?= empty($it['active']) ? 'opacity-50' : '' ?>">
+                <div onclick="openItemModal(<?= (int)$it['id'] ?>)"
+                     class="grid cursor-pointer grid-cols-[1.6fr_0.9fr_0.8fr_0.7fr_0.8fr_0.8fr] gap-3 px-5 py-3 text-sm transition hover:bg-violet-50 <?= empty($it['active']) ? 'opacity-50' : '' ?>">
                     <span class="truncate font-bold text-slate-800"><?= cp_h($it['name'] ?? '') ?></span>
                     <span class="truncate text-slate-500"><?= cp_h($it['sku'] ?: '—') ?></span>
                     <span class="truncate text-slate-500"><?= cp_h($it['category_name'] ?: '—') ?></span>
@@ -293,7 +294,187 @@ $awCurrent  = 'centryk';
     <?php endif; ?>
 </main>
 
+<!-- Item detail modal -->
+<div id="itemModalOverlay" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4">
+    <div class="max-h-[85vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
+        <div class="sticky top-0 flex items-center justify-between border-b border-slate-100 bg-white px-5 py-4">
+            <h3 id="itemModalTitle" class="truncate text-base font-black tracking-tight text-slate-900">Item</h3>
+            <button type="button" onclick="closeItemModal()" class="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+                <i data-lucide="x" class="h-5 w-5"></i>
+            </button>
+        </div>
+        <div id="itemModalBody" class="px-5 py-5 text-sm text-slate-500">Loading…</div>
+    </div>
+</div>
+
 <script src="https://unpkg.com/lucide@latest"></script>
-<script>if (window.lucide) { lucide.createIcons(); }</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+if (window.lucide) { lucide.createIcons(); }
+
+const COMPANY_UUID = <?= json_encode($uuid) ?>;
+
+function ipEsc(v) {
+    return String(v == null ? '' : v).replace(/[&<>"]/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+}
+function ipMoney(v) { return '$' + Number(v || 0).toFixed(2); }
+function ipDate(v) {
+    if (!v) return '—';
+    const d = new Date(String(v).replace(' ', 'T'));
+    return isNaN(d) ? '—' : d.toLocaleDateString('en-BZ', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+function ipDateTime(v) {
+    if (!v) return '—';
+    const d = new Date(String(v).replace(' ', 'T'));
+    return isNaN(d) ? '—' : d.toLocaleString('en-BZ', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+function closeItemModal() {
+    document.getElementById('itemModalOverlay').classList.add('hidden');
+    document.getElementById('itemModalOverlay').classList.remove('flex');
+}
+document.getElementById('itemModalOverlay').addEventListener('click', function (e) {
+    if (e.target === this) closeItemModal();
+});
+
+async function openItemModal(itemId) {
+    const overlay = document.getElementById('itemModalOverlay');
+    const body = document.getElementById('itemModalBody');
+    const title = document.getElementById('itemModalTitle');
+    overlay.classList.remove('hidden');
+    overlay.classList.add('flex');
+    title.textContent = 'Loading…';
+    body.innerHTML = '<p class="py-6 text-center text-slate-400">Loading item…</p>';
+
+    let res, data;
+    try {
+        res = await fetch('api/admin/company-item-detail.php?company_uuid=' + encodeURIComponent(COMPANY_UUID) + '&item_id=' + encodeURIComponent(itemId));
+        data = await res.json();
+    } catch (e) {
+        body.innerHTML = '<p class="py-6 text-center text-red-600 font-semibold">Could not load item detail.</p>';
+        return;
+    }
+    if (!data.success) {
+        title.textContent = 'Item';
+        body.innerHTML = '<p class="py-6 text-center text-red-600 font-semibold">' + ipEsc(data.message || 'Could not load item detail.') + '</p>';
+        return;
+    }
+
+    const it = data.item;
+    title.textContent = it.name || 'Item';
+
+    let html = '';
+
+    // Identifiers
+    html += '<div class="mb-5">';
+    html += '<p class="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Identifiers</p>';
+    html += '<div class="grid grid-cols-3 gap-3">';
+    html += identifierTile('Barcode', it.barcode);
+    html += identifierTile('POS Code', it.internal_code);
+    html += identifierTile('SKU', it.sku);
+    html += '</div></div>';
+
+    // Stock & price
+    html += '<div class="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">';
+    html += statTile('Price', ipMoney(it.price));
+    html += statTile('Stock', it.track_inventory == 1 ? Number(it.stock_qty || 0) : 'Not tracked');
+    html += statTile('Min Stock', it.track_inventory == 1 ? Number(it.min_stock_qty || 0) : '—');
+    html += statTile('Reorder Qty', it.track_inventory == 1 ? Number(it.reorder_qty || 0) : '—');
+    html += '</div>';
+
+    // Modifiers
+    html += '<div class="mb-5">';
+    html += '<p class="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Modifiers</p>';
+    if (!data.modifiers.length) {
+        html += '<p class="text-xs font-semibold text-slate-400">No modifier groups on this item.</p>';
+    } else {
+        data.modifiers.forEach(function (g) {
+            html += '<div class="mb-2 rounded-xl border border-slate-200 p-3">';
+            html += '<p class="text-xs font-black text-slate-700">' + ipEsc(g.name) + ' <span class="font-semibold text-slate-400">(' + ipEsc(g.selection_type) + (g.required == 1 ? ', required' : '') + ')</span></p>';
+            html += '<p class="mt-1 text-xs text-slate-500">' + g.options.map(function (o) {
+                return ipEsc(o.name) + (Number(o.price_delta) ? ' (+' + ipMoney(o.price_delta) + ')' : '');
+            }).join(', ') + '</p>';
+            html += '</div>';
+        });
+    }
+    html += '</div>';
+
+    // Promotional QR link
+    const activeLink = data.promotional_links.find(function (l) { return l.active == 1; }) || data.promotional_links[0];
+    html += '<div class="mb-5">';
+    html += '<p class="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Promotional QR Link</p>';
+    if (!activeLink) {
+        html += '<p class="text-xs font-semibold text-slate-400">No promotional link set up for this item yet — create one in OnePay\'s Catalog to get a scannable QR code.</p>';
+    } else {
+        html += '<div class="rounded-xl border ' + (activeLink.active == 1 ? 'border-cyan-200 bg-cyan-50/40' : 'border-slate-200 bg-slate-50') + ' p-4">';
+        html += '<div class="flex items-start gap-4">';
+        html += '<div id="itemModalQr" class="shrink-0 rounded-lg bg-white p-2 shadow-sm"></div>';
+        html += '<div class="min-w-0 flex-1">';
+        html += '<p class="text-xs font-black ' + (activeLink.active == 1 ? 'text-cyan-700' : 'text-slate-500') + '">' + (activeLink.active == 1 ? 'Active' : 'Inactive') + '</p>';
+        html += '<p class="mt-1 truncate text-xs font-mono text-slate-500">' + ipEsc(activeLink.public_url) + '</p>';
+        html += '<p class="mt-2 text-[11px] font-semibold text-slate-500">Scanned ' + Number(activeLink.scan_count || 0) + ' time(s)' + (activeLink.last_scanned_at ? ' · last ' + ipDateTime(activeLink.last_scanned_at) : '') + '</p>';
+        html += '</div></div></div>';
+    }
+    html += '</div>';
+
+    // Active promotions
+    html += '<div class="mb-5">';
+    html += '<p class="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Active Promotions</p>';
+    if (!data.active_promotions.length) {
+        html += '<p class="text-xs font-semibold text-slate-400">No active discount promotions on this item.</p>';
+    } else {
+        data.active_promotions.forEach(function (p) {
+            html += '<div class="mb-1.5 rounded-xl border border-emerald-200 bg-emerald-50/50 px-3 py-2">';
+            html += '<p class="text-xs font-black text-emerald-800">' + ipEsc(p.name) + (p.promo_code ? ' <span class="font-mono font-semibold">(' + ipEsc(p.promo_code) + ')</span>' : '') + '</p>';
+            html += '<p class="text-[11px] font-semibold text-emerald-600">' + ipEsc((p.promo_type || '').replace(/_/g, ' ')) + ' · ' + ipEsc(p.discount_value) + '</p>';
+            html += '</div>';
+        });
+    }
+    html += '</div>';
+
+    // Recent scans
+    html += '<div>';
+    html += '<p class="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Recent Scans</p>';
+    if (!data.recent_scans.length) {
+        html += '<p class="text-xs font-semibold text-slate-400">No scans recorded for this item yet.</p>';
+    } else {
+        html += '<div class="divide-y divide-slate-100 rounded-xl border border-slate-200">';
+        data.recent_scans.forEach(function (s) {
+            html += '<div class="flex items-center justify-between px-3 py-2 text-xs">';
+            html += '<span class="font-semibold text-slate-600">' + ipEsc((s.scan_source || '').replace(/_/g, ' ')) + '</span>';
+            html += '<span class="' + (s.success == 1 ? 'text-emerald-600' : 'text-rose-500') + ' font-bold">' + (s.success == 1 ? 'Matched' : 'No match') + '</span>';
+            html += '<span class="text-slate-400">' + ipDateTime(s.created_at) + '</span>';
+            html += '</div>';
+        });
+        html += '</div>';
+    }
+    html += '</div>';
+
+    body.innerHTML = html;
+    if (window.lucide) lucide.createIcons();
+
+    if (activeLink && activeLink.public_url && window.QRCode) {
+        const qrEl = document.getElementById('itemModalQr');
+        if (qrEl) {
+            new QRCode(qrEl, { text: activeLink.public_url, width: 120, height: 120, correctLevel: QRCode.CorrectLevel.M });
+        }
+    }
+}
+
+function identifierTile(label, value) {
+    return '<div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">' +
+        '<p class="truncate font-mono text-xs font-bold text-slate-700">' + (value ? ipEsc(value) : '—') + '</p>' +
+        '<p class="mt-1 text-[10px] font-black uppercase tracking-[0.1em] text-slate-400">' + ipEsc(label) + '</p>' +
+        '</div>';
+}
+function statTile(label, value) {
+    return '<div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">' +
+        '<p class="text-sm font-black text-slate-800">' + ipEsc(value) + '</p>' +
+        '<p class="mt-1 text-[10px] font-black uppercase tracking-[0.1em] text-slate-400">' + ipEsc(label) + '</p>' +
+        '</div>';
+}
+</script>
 </body>
 </html>

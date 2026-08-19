@@ -93,16 +93,182 @@ class OnePayCompanyProfile
         return self::normalize($payload);
     }
 
-    private static function endpointUrl(): string
+    /** Item detail for the company-profile item modal: identifiers, modifiers, QR/promo link, active promotions, recent scans. */
+    public static function fetchItemDetail(string $companyUuid, int $itemId): array
     {
-        $explicit = trim((string)($_ENV['ONEPAY_COMPANY_PROFILE_URL'] ?? ''));
+        self::$lastError = '';
+        $companyUuid = trim($companyUuid);
+        $emptyDetail = ['item' => null, 'modifiers' => [], 'promotional_links' => [], 'active_promotions' => [], 'recent_scans' => []];
+        if ($companyUuid === '' || $itemId <= 0) {
+            self::$lastError = 'Missing company UUID or item ID.';
+            return $emptyDetail;
+        }
+
+        $url = self::endpointUrl('centryk-item-detail.php', 'ONEPAY_ITEM_DETAIL_URL');
+        $secret = (string)($_ENV['ONEPAY_WEBHOOK_SECRET'] ?? '');
+        if ($url === '' || $secret === '' || !function_exists('curl_init')) {
+            self::$lastError = $url === ''
+                ? 'OnePay item-detail endpoint is not configured.'
+                : ($secret === '' ? 'OnePay webhook secret is not configured.' : 'PHP cURL is not enabled.');
+            return self::localItemDetailFallback($companyUuid, $itemId);
+        }
+
+        $body = json_encode(['company_uuid' => $companyUuid, 'item_id' => $itemId, 'sent_at' => gmdate('c')], JSON_UNESCAPED_SLASHES);
+        if ($body === false) {
+            self::$lastError = 'Could not build OnePay item-detail request.';
+            return $emptyDetail;
+        }
+
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $body,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CONNECTTIMEOUT => 8,
+            CURLOPT_TIMEOUT => 20,
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/json',
+                'X-Centryk-Signature: sha256=' . hash_hmac('sha256', $body, $secret),
+            ],
+        ]);
+        $raw = curl_exec($ch);
+        $status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        if ($raw === false || $status < 200 || $status >= 300) {
+            self::$lastError = $raw === false
+                ? 'Could not reach OnePay item-detail endpoint: ' . $curlError
+                : 'OnePay item-detail endpoint returned HTTP ' . $status . '.';
+            return self::localItemDetailFallback($companyUuid, $itemId);
+        }
+
+        $payload = json_decode((string)$raw, true);
+        if (!is_array($payload) || empty($payload['success'])) {
+            self::$lastError = 'OnePay item-detail endpoint returned an unexpected response.';
+            return self::localItemDetailFallback($companyUuid, $itemId);
+        }
+
+        return [
+            'item' => $payload['item'] ?? null,
+            'modifiers' => is_array($payload['modifiers'] ?? null) ? $payload['modifiers'] : [],
+            'promotional_links' => is_array($payload['promotional_links'] ?? null) ? $payload['promotional_links'] : [],
+            'active_promotions' => is_array($payload['active_promotions'] ?? null) ? $payload['active_promotions'] : [],
+            'recent_scans' => is_array($payload['recent_scans'] ?? null) ? $payload['recent_scans'] : [],
+        ];
+    }
+
+    private static function localItemDetailFallback(string $companyUuid, int $itemId): array
+    {
+        $result = ['item' => null, 'modifiers' => [], 'promotional_links' => [], 'active_promotions' => [], 'recent_scans' => []];
+        try {
+            $pdo = DB::pdo();
+
+            $itemStmt = $pdo->prepare('
+                SELECT ci.*, s.name AS store_name, s.id AS verified_store_id, cc.name AS category_name
+                FROM onepay.catalog_items ci
+                JOIN onepay.stores s ON s.id = ci.store_id
+                JOIN onepay.companies oc ON oc.id = s.company_id
+                LEFT JOIN onepay.catalog_categories cc ON cc.id = ci.category_id
+                WHERE ci.id = :item_id AND oc.centryk_uuid = :uuid
+                LIMIT 1
+            ');
+            $itemStmt->execute(['item_id' => $itemId, 'uuid' => $companyUuid]);
+            $item = $itemStmt->fetch(PDO::FETCH_ASSOC);
+            if (!$item) {
+                self::$lastError = 'Item not found for this company.';
+                return $result;
+            }
+            $result['item'] = $item;
+            $storeId = (int)$item['verified_store_id'];
+
+            $groupsStmt = $pdo->prepare('SELECT id, name, selection_type, required, sort_order FROM onepay.item_modifier_groups WHERE item_id = :item_id ORDER BY sort_order ASC, id ASC');
+            $groupsStmt->execute(['item_id' => $itemId]);
+            $groups = $groupsStmt->fetchAll(PDO::FETCH_ASSOC);
+            if ($groups) {
+                $groupIds = array_map(static fn($g) => (int)$g['id'], $groups);
+                $in = implode(',', array_fill(0, count($groupIds), '?'));
+                $optStmt = $pdo->prepare("SELECT id, group_id, name, price_delta, sort_order FROM onepay.item_modifier_options WHERE group_id IN ($in) ORDER BY sort_order ASC, id ASC");
+                $optStmt->execute($groupIds);
+                $optionsByGroup = [];
+                foreach ($optStmt->fetchAll(PDO::FETCH_ASSOC) as $opt) {
+                    $optionsByGroup[(int)$opt['group_id']][] = $opt;
+                }
+                foreach ($groups as $g) {
+                    $g['options'] = $optionsByGroup[(int)$g['id']] ?? [];
+                    $result['modifiers'][] = $g;
+                }
+            }
+
+            $linkStmt = $pdo->prepare('
+                SELECT id, token, title, campaign_type, campaign_name, starts_at, ends_at, active, scan_count, last_scanned_at, created_at
+                FROM onepay.promotional_links
+                WHERE item_id = :item_id
+                ORDER BY active DESC, created_at DESC
+            ');
+            $linkStmt->execute(['item_id' => $itemId]);
+            $promoLinks = $linkStmt->fetchAll(PDO::FETCH_ASSOC);
+            $onePayBase = self::onePayBaseUrl();
+            foreach ($promoLinks as &$link) {
+                $link['public_url'] = $onePayBase !== '' ? $onePayBase . '/promo.php?t=' . rawurlencode($link['token']) : '';
+            }
+            unset($link);
+            $result['promotional_links'] = $promoLinks;
+
+            $promoRulesStmt = $pdo->prepare("
+                SELECT pr.id, pr.name, pr.promo_code, pr.promo_type, pr.discount_value, pr.starts_at, pr.ends_at, pr.active
+                FROM onepay.promotion_rule_items pri
+                JOIN onepay.promotion_rules pr ON pr.id = pri.promotion_rule_id
+                WHERE pri.item_id = :item_id AND pr.store_id = :store_id AND pr.active = 1
+                  AND (pr.starts_at IS NULL OR pr.starts_at <= NOW())
+                  AND (pr.ends_at IS NULL OR pr.ends_at >= NOW())
+                ORDER BY pr.name ASC
+            ");
+            $promoRulesStmt->execute(['item_id' => $itemId, 'store_id' => $storeId]);
+            $result['active_promotions'] = $promoRulesStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $scansStmt = $pdo->prepare('
+                SELECT scan_source, scanned_value, success, created_at
+                FROM onepay.scan_events
+                WHERE matched_item_id = :item_id
+                ORDER BY created_at DESC
+                LIMIT 10
+            ');
+            $scansStmt->execute(['item_id' => $itemId]);
+            $result['recent_scans'] = $scansStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            return $result;
+        } catch (Throwable $e) {
+            if (self::$lastError === '') {
+                self::$lastError = 'Could not load OnePay item detail.';
+            }
+            return $result;
+        }
+    }
+
+    /** Best-effort OnePay base URL, for building promo.php links in the local fallback. */
+    private static function onePayBaseUrl(): string
+    {
+        $syncUrl = trim((string)($_ENV['ONEPAY_SYNC_URL'] ?? ''));
+        if ($syncUrl !== '') {
+            $parts = parse_url($syncUrl);
+            if (!empty($parts['scheme']) && !empty($parts['host'])) {
+                return $parts['scheme'] . '://' . $parts['host'] . (!empty($parts['port']) ? ':' . $parts['port'] : '');
+            }
+        }
+        return '';
+    }
+
+    private static function endpointUrl(string $filename = 'centryk-company-profile.php', string $envKey = 'ONEPAY_COMPANY_PROFILE_URL'): string
+    {
+        $explicit = trim((string)($_ENV[$envKey] ?? ''));
         if ($explicit !== '') {
             return $explicit;
         }
 
         $syncUrl = trim((string)($_ENV['ONEPAY_SYNC_URL'] ?? ''));
         if ($syncUrl !== '') {
-            return preg_replace('~/api/webhooks/[^/?#]+(?:[?#].*)?$~', '/api/webhooks/centryk-company-profile.php', $syncUrl) ?: '';
+            return preg_replace('~/api/webhooks/[^/?#]+(?:[?#].*)?$~', '/api/webhooks/' . $filename, $syncUrl) ?: '';
         }
 
         try {
@@ -116,7 +282,7 @@ class OnePayCompanyProfile
                 $parts = parse_url($launch);
                 if (!empty($parts['scheme']) && !empty($parts['host'])) {
                     $base = $parts['scheme'] . '://' . $parts['host'] . (!empty($parts['port']) ? ':' . $parts['port'] : '');
-                    return $base . '/api/webhooks/centryk-company-profile.php';
+                    return $base . '/api/webhooks/' . $filename;
                 }
             }
         } catch (Throwable $e) {
