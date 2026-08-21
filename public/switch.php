@@ -13,7 +13,17 @@ $appUrl = rtrim($_ENV['APP_URL'] ?? 'http://localhost/centryk/public', '/');
 $user   = Auth::user();
 
 if (!$user) {
-    header('Location: ' . $appUrl . '/');
+    // Previously this dropped an unauthenticated visitor on Centryk's own
+    // homepage, discarding the app=/company_uuid=/redirect= they arrived
+    // with - after logging in they'd land on Centryk's dashboard instead of
+    // back in the spoke app that sent them here. login.php's own redirect
+    // param only accepts a same-directory relative path (no leading slash,
+    // see centryk_safe_login_redirect() there), which "switch.php?..." is,
+    // so this request's exact query string round-trips through login and
+    // re-enters this same script once the user is authenticated.
+    $selfQuery = $_SERVER['QUERY_STRING'] ?? '';
+    $returnToSelf = 'switch.php' . ($selfQuery !== '' ? '?' . $selfQuery : '');
+    header('Location: login.php?redirect=' . urlencode($returnToSelf));
     exit;
 }
 
