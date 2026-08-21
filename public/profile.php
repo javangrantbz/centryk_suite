@@ -163,6 +163,17 @@ $companyCount = count($myCompanies);
 // Optional deep-link: open a specific company in the embedded companies manager.
 $companyDeepUuid = trim($_GET['company_uuid'] ?? '');
 
+// Optional round-trip back to a spoke app (e.g. OnePay sent an admin here to
+// set the business type). Only same-site relative paths are accepted - never
+// an absolute URL or a protocol-relative "//host" one - since this becomes
+// part of an outbound link.
+$_returnApp  = trim($_GET['from'] ?? '');
+$_returnPath = trim($_GET['return_path'] ?? '');
+if ($_returnPath === '' || $_returnPath[0] !== '/' || strpos($_returnPath, '//') === 0) {
+    $_returnPath = '';
+}
+$_showReturnBanner = $_returnApp === 'onepay' && $companyDeepUuid !== '';
+
 ob_start();
 include __DIR__ . '/partials/admin_tools_dropdown.php';
 $headerActionsHtml = ob_get_clean();
@@ -486,6 +497,19 @@ function profile_app_stat_card(array $app, int $companyCount, int $userCount, st
 
         <!-- Business Profile — no panel header; the left menu shows the active section. -->
         <section data-panel="business_profile" class="acct-panel hidden rounded-xl border border-white/10 bg-[#111827] overflow-hidden">
+            <?php if ($_showReturnBanner):
+                $_returnUrl = 'switch.php?app=onepay&company_uuid=' . urlencode($companyDeepUuid)
+                            . ($_returnPath !== '' ? '&redirect=' . urlencode($_returnPath) : '');
+            ?>
+            <div class="flex items-center justify-between gap-3 border-b border-indigo-500/25 bg-indigo-500/10 px-4 py-2.5">
+                <p class="text-xs font-semibold text-white/70">Set the business type below, then head back to OnePay.</p>
+                <a href="<?= htmlspecialchars($_returnUrl, ENT_QUOTES) ?>"
+                   class="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-black text-white transition hover:bg-indigo-500">
+                    <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                    Back to OnePay
+                </a>
+            </div>
+            <?php endif; ?>
             <iframe data-src="companies.php?embed=1&amp;tab=profile<?= $companyDeepQs ?>" title="Business Profile"
                     class="acct-frame block w-full" style="height:560px;border:0;background:transparent;" scrolling="no"></iframe>
         </section>
