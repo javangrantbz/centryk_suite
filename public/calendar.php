@@ -17,7 +17,8 @@ if (!Auth::user() && isset($_GET['sso_token'])) {
 
 $me = AuthService::me();
 if (!$me['authenticated']) {
-    header('Location: login.php');
+    $qs = $_SERVER['QUERY_STRING'] ?? '';
+    header('Location: login.php?redirect=' . urlencode(basename(__FILE__) . ($qs !== '' ? '?' . $qs : '')));
     exit;
 }
 $user  = $me['user'];

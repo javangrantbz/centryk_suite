@@ -5,7 +5,8 @@ require_once __DIR__ . '/../app/services/NotificationService.php';
 Auth::start();
 $user = Auth::user();
 if (!$user) {
-    header('Location: login.php');
+    $qs = $_SERVER['QUERY_STRING'] ?? '';
+    header('Location: login.php?redirect=' . urlencode(basename(__FILE__) . ($qs !== '' ? '?' . $qs : '')));
     exit;
 }
 

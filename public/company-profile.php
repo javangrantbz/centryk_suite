@@ -8,7 +8,8 @@ Auth::start();
 $me = AuthService::me();
 
 if (!$me['authenticated'] || empty($me['user']['is_admin'])) {
-    header('Location: login.php');
+    $qs = $_SERVER['QUERY_STRING'] ?? '';
+    header('Location: login.php?redirect=' . urlencode(basename(__FILE__) . ($qs !== '' ? '?' . $qs : '')));
     exit;
 }
 
