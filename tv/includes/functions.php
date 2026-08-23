@@ -321,12 +321,17 @@ function tv_user_organizations(): array
           AND cm.status = "active"
          LEFT JOIN tv_organization_users tou
            ON tou.organization_id = o.id
-          AND tou.user_id = :user_id
+          AND tou.user_id = :user_id2
           AND tou.status = "active"
          WHERE c.status = "active" AND o.status IN ("active", "suspended")
          ORDER BY o.name ASC'
     );
-    $stmt->execute(['user_id' => (int)$user['id']]);
+    // Two distinct placeholders for the one value: this connection runs with
+    // PDO::ATTR_EMULATE_PREPARES = false, so MySQL's native prepared
+    // statements can't bind a single named parameter to two placeholder
+    // positions - each occurrence needs its own bound value even though it's
+    // the same user id both times.
+    $stmt->execute(['user_id' => (int)$user['id'], 'user_id2' => (int)$user['id']]);
     return $organizations = $stmt->fetchAll();
 }
 
