@@ -9,6 +9,7 @@ require_once __DIR__ . '/../../app/services/AuthService.php';
 require_once __DIR__ . '/../services/StreamingService.php';
 require_once __DIR__ . '/../services/TvMetricsService.php';
 require_once __DIR__ . '/../services/TvManagementService.php';
+require_once __DIR__ . '/../services/TvPaymentService.php';
 require_once __DIR__ . '/functions.php';
 
 date_default_timezone_set(tv_config('timezone'));

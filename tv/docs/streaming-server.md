@@ -225,18 +225,52 @@ storage for now): monitor `/var/recordings` and `/var/www/hls/replays` disk
 usage directly - nothing here expires old replays automatically, and video
 fills a disk fast. Revisit object storage if retention needs grow.
 
+## Pay-per-event access (built)
+
+`paid` channel visibility now means what it says: `tv_can_watch_event()`
+requires a real, confirmed payment (or org staff / private grant) before a
+`paid` channel's events play, closing a real gap where a `paid` channel's
+events were previously freely watchable by anyone (the event's own
+`visibility` column defaults to `public` and nothing checked the channel's
+`paid` flag at all).
+
+Charges go straight to OneLink using Centryk's own `onelink_credentials`
+(company-level - see `database/add_tv_payments.sql`), the same endpoint and
+request shape OnePay's POS already uses
+(`app/services/payments/onelink_pos.php` in the OnePay codebase), rather
+than bridging to OnePay's `payment_settings`: that table is only ever a
+one-way mirror of these same credentials out to a company's OnePay stores,
+not the source of truth, and a company doesn't need an OnePay store at all
+to have OneLink provisioned.
+
+- `TvPaymentService::chargeForEventAccess()` validates the event actually
+  requires payment and has a price, is idempotent (a user with an existing
+  successful payment is never charged twice), and grants
+  `tv_event_access` ONLY after OneLink's own response confirms success -
+  never from the client's say-so. `api/payments/charge_for_access.php` is
+  the sole caller.
+- `paywall.php` is what `watch.php` redirects a signed-in viewer to instead
+  of a flat 403 when the event is paid-gated; card details are POSTed
+  straight through to OneLink and never stored, matching OnePay's existing
+  pattern.
+- **`subscription` visibility is explicitly out of scope.** Recurring
+  billing (renewal, cancellation, dunning) is a materially different
+  problem from a one-time charge; it still falls through to the same
+  private-grant check, which is safe (fails closed) but not full-featured.
+- The actual OneLink success path (a real charge going through) could not
+  be verified in development - only the failure path was exercised against
+  the live endpoint, using obviously-fake credentials that OneLink
+  correctly rejected before any card processing. Confirm a real charge end
+  to end against a real (or OneLink-provided sandbox) merchant account
+  before relying on this in production.
+
 ## Known gaps not yet covered here
 
-- **Paid/subscription visibility.** `tv_channels.visibility` allows `paid`
-  and `subscription`, but `tv_can_watch_event()` treats both exactly like
-  `private` (an explicit `tv_event_access` grant) - there is no payment or
-  subscription verification anywhere in the app yet. Slated to integrate
-  with OnePay/OneLink.
 - **Token/session binding.** Playback tokens are valid for anyone who has
   them until `expires` (5 minutes for live, 6 hours for replay), not bound
   to a session or IP. This is a standard signed-URL tradeoff, not a bug, but
   keep these ttls short rather than lengthening them for convenience,
-  especially once paid events exist.
+  especially with paid events now live.
 - **No automatic replay retention/expiry.** Once disk usage from local
   recordings becomes a real concern, revisit moving to object storage or
   adding a cleanup job for old replays.

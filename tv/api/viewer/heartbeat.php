@@ -12,7 +12,12 @@ if ($eventId <= 0 || $sessionToken === '') {
     Response::error('event_id and session_token are required.');
 }
 
-$eventStmt = db()->prepare('SELECT * FROM tv_events WHERE id = :id LIMIT 1');
+$eventStmt = db()->prepare(
+    'SELECT e.*, c.visibility AS channel_visibility
+       FROM tv_events e
+       JOIN tv_channels c ON c.id = e.channel_id
+      WHERE e.id = :id LIMIT 1'
+);
 $eventStmt->execute(['id' => $eventId]);
 $event = $eventStmt->fetch();
 if (!$event) {

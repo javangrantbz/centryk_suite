@@ -92,6 +92,24 @@ streaming server itself, never by a logged-in browser session, so
 as an `Authorization: Bearer` header or a `key` request field, and fails
 closed (401) if the secret is unconfigured or wrong.
 
+## Payment flow (built, one-time `paid` access only)
+
+1. `watch.php` redirects a signed-in viewer to `paywall.php` instead of a
+   flat 403 when `tv_can_watch_event()` fails specifically because the
+   channel is `paid` and the event has a price.
+2. `paywall.php` posts card details to `api/payments/charge_for_access.php`,
+   which calls `TvPaymentService::chargeForEventAccess()`.
+3. That charges OneLink directly using the organization's company-level
+   `onelink_credentials` (see `streaming-server.md`'s "Pay-per-event access"
+   section for why this doesn't go through OnePay).
+4. Only a confirmed OneLink success inserts a `tv_event_access` row -
+   `tv_can_watch_event()` needs no changes for the paid case, since a
+   successful payment is indistinguishable from any other private-grant
+   access it already checks.
+
+`subscription` visibility is explicitly out of scope - see
+`streaming-server.md`.
+
 ## Remaining integration points
 
 - A real health/status endpoint on the streaming origin, so
@@ -99,6 +117,7 @@ closed (401) if the secret is unconfigured or wrong.
   (`on_publish_done` only fires on a clean disconnect).
 - Automatic replay retention/expiry - nothing currently cleans up old
   recordings on VPS-local disk.
-- Payment/subscription verification for `paid`/`subscription` channel
-  visibility - currently unenforced beyond the same grant table `private`
-  visibility uses. Slated to integrate with OnePay/OneLink.
+- Recurring billing for `subscription` channel visibility.
+- The OneLink success path for `charge_for_access.php` wasn't verified
+  against a real merchant account in development - only the failure path
+  was exercised live.

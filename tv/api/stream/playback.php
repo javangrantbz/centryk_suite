@@ -7,7 +7,7 @@ if ($eventId <= 0) {
 }
 
 $stmt = db()->prepare(
-    'SELECT e.*, c.slug AS channel_slug
+    'SELECT e.*, c.slug AS channel_slug, c.visibility AS channel_visibility
      FROM tv_events e
      JOIN tv_channels c ON c.id = e.channel_id
      WHERE e.id = :event_id LIMIT 1'

@@ -16,6 +16,14 @@ if (!tv_can_watch_event($event, $user)) {
         tv_redirect(centryk_public_url() . '/login.php?redirect=' . urlencode(tv_current_path()));
     }
 
+    if ((string)($event['channel_visibility'] ?? '') === 'paid' && (float)($event['price_amount'] ?? 0) > 0) {
+        // No pretty-URL rewrite rule exists for this new route yet (see
+        // .htaccess - only watch/{slug}, dashboard/*, and a bare-slug
+        // organization catch-all are defined), so this stays query-string
+        // form rather than assuming one.
+        tv_redirect(tv_url('paywall.php?event=' . $event['slug']));
+    }
+
     http_response_code(403);
     exit('You do not have access to this event.');
 }

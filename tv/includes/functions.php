@@ -393,7 +393,7 @@ function tv_find_event_by_slug(string $slug): ?array
 {
     $stmt = db()->prepare(
         'SELECT e.*, o.name AS organization_name, o.slug AS organization_slug, o.logo_path AS organization_logo,
-                c.name AS channel_name, c.slug AS channel_slug,
+                c.name AS channel_name, c.slug AS channel_slug, c.visibility AS channel_visibility,
                 sk.stream_key_encrypted, sk.stream_key_hash,
                 sed.sport, sed.home_team, sed.away_team, sed.venue, sed.competition, sed.round_name,
                 sed.home_logo_path, sed.away_logo_path, sed.home_score, sed.away_score
@@ -429,8 +429,22 @@ function tv_user_has_private_event_access(int $eventId, int $userId): bool
 
 function tv_can_watch_event(array $event, ?array $user = null): bool
 {
+    // channel_visibility (tv_channels.visibility - every current caller
+    // joins this: tv_find_event_by_slug(), api/stream/playback.php,
+    // api/viewer/heartbeat.php) is where 'paid'/'subscription' actually
+    // live; tv_events.visibility is a narrower 3-value enum (public/
+    // authenticated/private) that defaults to 'public'. Without this check,
+    // a 'paid' channel's events were freely watchable by everyone, because
+    // the event's own visibility column being 'public' short-circuited the
+    // checks below before the channel's payment requirement was ever
+    // considered. Defaults to 'public' if a future caller forgets this
+    // join - keep joining it in any new caller, or a paid channel's content
+    // reopens to everyone through that one code path.
+    $channelVisibility = (string)($event['channel_visibility'] ?? 'public');
+    $requiresPayment = in_array($channelVisibility, ['paid', 'subscription'], true);
+
     $visibility = (string)($event['visibility'] ?? 'public');
-    if ($visibility === 'public') {
+    if ($visibility === 'public' && !$requiresPayment) {
         return true;
     }
 
@@ -458,10 +472,13 @@ function tv_can_watch_event(array $event, ?array $user = null): bool
         return true;
     }
 
-    if ($visibility === 'authenticated') {
+    if ($visibility === 'authenticated' && !$requiresPayment) {
         return true;
     }
 
+    // Same grant table for private access AND a successful payment
+    // (TvPaymentService::ensureAccessGrant() inserts here on a confirmed
+    // OneLink charge) - a 'paid' channel just means this is the only door in.
     return tv_user_has_private_event_access((int)$event['id'], (int)$user['id']);
 }
 

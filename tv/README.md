@@ -18,13 +18,19 @@ Centryk TV is a Centryk suite app for organization-owned live streaming and digi
   with the same signed-URL scheme as live, once the streaming server's
   cron-driven recording job reports in (`api/stream/replay_status.php`,
   `should_record_replay.php`)
+- pay-per-event access for `paid` channels, charged directly through
+  OneLink using the organization's own `onelink_credentials`
+  (`paywall.php`, `api/payments/charge_for_access.php`) - and a fix to a
+  real pre-existing gap where a `paid` channel's events were previously
+  watchable by anyone, since nothing actually checked the channel's
+  payment requirement
 - watch page heartbeat and viewer counting
 - analytics, audit logging, seed data, and deployment docs
 
 See [`docs/streaming-server.md`](./docs/streaming-server.md) for the actual
 IONOS VPS / NGINX-RTMP configuration this app's ingest, playback, and
 replay endpoints are built to work with, and its "Known gaps" section for
-what isn't built yet (payment/subscription enforcement).
+what isn't built yet (`subscription` recurring billing).
 
 ## Local setup
 
@@ -35,6 +41,7 @@ what isn't built yet (payment/subscription enforcement).
 ```sql
 SOURCE C:/xampp/htdocs/centryk/tv/database/add_tv_app.sql;
 SOURCE C:/xampp/htdocs/centryk/tv/database/add_tv_stream_ingest_tracking.sql;
+SOURCE C:/xampp/htdocs/centryk/tv/database/add_tv_payments.sql;
 ```
 
 4. Open `http://localhost/centryk/tv/`.
