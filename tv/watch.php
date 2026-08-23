@@ -21,6 +21,7 @@ if (!tv_can_watch_event($event, $user)) {
 }
 
 $playbackUrl = StreamingService::getPlaybackUrl($event);
+$liveStatus = StreamingService::getStreamStatus($event);
 $viewerCount = TvMetricsService::currentViewerCount((int)$event['id']);
 $related = db()->prepare(
     'SELECT title, slug, status
@@ -71,7 +72,7 @@ $related = $related->fetchAll();
                         <p class="mt-3 text-sm text-slate-400"><?= e(tv_format_datetime($event['start_at'])) ?></p>
                     </div>
                     <div class="flex flex-wrap gap-3">
-                        <span class="rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] <?= e(tv_status_badge_class((string)$event['status'])) ?>"><?= e($event['status']) ?></span>
+                        <span class="rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] <?= e(tv_status_badge_class($liveStatus)) ?>"><?= e($liveStatus) ?></span>
                         <span class="rounded-full border border-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-slate-200"><?= e($event['visibility']) ?></span>
                     </div>
                 </div>

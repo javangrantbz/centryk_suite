@@ -585,10 +585,45 @@ function tv_status_badge_class(string $status): string
 {
     return match ($status) {
         'live' => 'bg-emerald-100 text-emerald-700',
-        'scheduled' => 'bg-amber-100 text-amber-700',
-        'ended', 'available' => 'bg-slate-100 text-slate-700',
+        'scheduled', 'connecting' => 'bg-amber-100 text-amber-700',
+        'ended', 'available', 'offline' => 'bg-slate-100 text-slate-700',
         'cancelled', 'error', 'failed' => 'bg-rose-100 text-rose-700',
         default => 'bg-sky-100 text-sky-700',
     };
+}
+
+/**
+ * Guards the api/stream/on_publish.php, on_publish_done.php and
+ * authorize_playback.php endpoints - these are called by the streaming
+ * server itself (nginx-rtmp's on_publish/on_publish_done HTTP callbacks, or
+ * an auth_request subrequest for playback), never by a logged-in browser
+ * session, so they can't be gated by Auth::user(). Shared-secret only:
+ * checks the caller sent stream_api_key, either as an Authorization: Bearer
+ * header or a "key" request field (nginx-rtmp callbacks are configured with
+ * static extra POST args, which is the easier place to put it in practice).
+ *
+ * Exits with 401 and never returns if the secret is missing/wrong, or if
+ * STREAM_API_KEY isn't configured at all - an unconfigured secret must fail
+ * closed, not silently allow every request through.
+ */
+function tv_require_stream_origin_secret(): void
+{
+    $configured = (string)tv_config('stream_api_key');
+    if ($configured === '') {
+        Response::error('Streaming origin authentication is not configured.', 401);
+    }
+
+    $provided = '';
+    $header = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    if (stripos($header, 'Bearer ') === 0) {
+        $provided = trim(substr($header, 7));
+    }
+    if ($provided === '') {
+        $provided = (string)($_POST['key'] ?? $_GET['key'] ?? '');
+    }
+
+    if ($provided === '' || !hash_equals($configured, $provided)) {
+        Response::error('Unauthorized.', 401);
+    }
 }
 
