@@ -2,18 +2,20 @@
   "name": "Centryk",
   "short_name": "Centryk",
   "description": "Approvals, notifications, and reports across the Centryk suite.",
-  "start_url": "app.php",
+  "id": "/centryk/public/mobile/",
+  "start_url": "index.php?source=pwa",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f8fafc",
   "theme_color": "#2563eb",
+  "categories": ["business", "productivity"],
   "orientation": "portrait",
   "icons": [
     {
       "src": "assets/icons/icon.png",
       "sizes": "250x257",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
     }
   ]
 }

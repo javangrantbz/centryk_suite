@@ -250,6 +250,40 @@ function calLink(int $companyId, string $ym): string {
     </script>
     <style>
         [data-lucide] { display: inline-block; }
+        @keyframes centryk-logo-settle {
+            0%   { opacity: 0; transform: translateY(-2px) scale(0.965); filter: saturate(0.92); }
+            62%  { opacity: 1; transform: translateY(0) scale(1.018); filter: saturate(1.03); }
+            100% { opacity: 1; transform: translateY(0) scale(1); filter: saturate(1); }
+        }
+        @keyframes centryk-logo-sheen {
+            0%, 14% { opacity: 0; transform: translateX(-135%) skewX(-18deg); }
+            32%     { opacity: 0.34; }
+            100%    { opacity: 0; transform: translateX(165%) skewX(-18deg); }
+        }
+        .centryk-logo-lockup {
+            position: relative;
+            overflow: hidden;
+        }
+        .centryk-logo-lockup::after {
+            content: '';
+            position: absolute;
+            inset: -10% auto -10% -35%;
+            width: 32%;
+            background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.72) 50%, transparent 100%);
+            opacity: 0;
+            pointer-events: none;
+            animation: centryk-logo-sheen 900ms cubic-bezier(0.22, 1, 0.36, 1) 420ms 1 both;
+        }
+        .centryk-logo-mark {
+            transform-origin: center left;
+            animation: centryk-logo-settle 520ms cubic-bezier(0.22, 1, 0.36, 1) 1 both;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .centryk-logo-lockup::after,
+            .centryk-logo-mark {
+                animation: none !important;
+            }
+        }
     </style>
 </head>
 <body class="min-h-screen bg-slate-100 font-sans antialiased">
@@ -261,8 +295,8 @@ function calLink(int $companyId, string $ym): string {
 <!-- Header (matches Centryk dashboard) -->
 <header class="sticky top-[3px] z-40 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
     <div class="mx-auto flex max-w-6xl items-center gap-4 px-6 py-3">
-        <a href="index.php" class="flex shrink-0 items-center">
-            <img src="assets/centryk_logo.png" alt="Centryk" class="h-14 w-auto">
+        <a href="index.php" class="centryk-logo-lockup flex shrink-0 items-center">
+            <img src="assets/centryk_logo.png" alt="Centryk" class="centryk-logo-mark h-14 w-auto">
         </a>
         <div class="h-5 w-px bg-slate-200 shrink-0"></div>
         <?php if (count($companies) > 1): ?>

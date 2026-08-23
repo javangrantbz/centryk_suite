@@ -32,6 +32,42 @@ $awAlign   = 'right';
 $awMode    = 'launch';
 $awCurrent = $awCurrent ?? 'centryk';
 ?>
+<style>
+    @keyframes centryk-logo-settle {
+        0%   { opacity: 0; transform: translateY(-2px) scale(0.965); filter: saturate(0.92); }
+        62%  { opacity: 1; transform: translateY(0) scale(1.018);  filter: saturate(1.03); }
+        100% { opacity: 1; transform: translateY(0) scale(1);      filter: saturate(1); }
+    }
+    @keyframes centryk-logo-sheen {
+        0%, 14% { opacity: 0; transform: translateX(-135%) skewX(-18deg); }
+        32%     { opacity: 0.34; }
+        100%    { opacity: 0; transform: translateX(165%) skewX(-18deg); }
+    }
+    .centryk-logo-lockup {
+        position: relative;
+        overflow: hidden;
+    }
+    .centryk-logo-lockup::after {
+        content: "";
+        position: absolute;
+        inset: -10% auto -10% -35%;
+        width: 32%;
+        background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.72) 50%, transparent 100%);
+        opacity: 0;
+        pointer-events: none;
+        animation: centryk-logo-sheen 900ms cubic-bezier(0.22, 1, 0.36, 1) 420ms 1 both;
+    }
+    .centryk-logo-mark {
+        transform-origin: center left;
+        animation: centryk-logo-settle 520ms cubic-bezier(0.22, 1, 0.36, 1) 1 both;
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .centryk-logo-lockup::after,
+        .centryk-logo-mark {
+            animation: none !important;
+        }
+    }
+</style>
 <!-- Top accent bar -->
 <div class="h-[3px] w-full bg-gradient-to-r from-purple-600 via-blue-500 to-orange-500 sticky top-0 z-50"></div>
 
@@ -40,8 +76,8 @@ $awCurrent = $awCurrent ?? 'centryk';
     <div class="mx-auto flex <?= htmlspecialchars($_hdrMaxW) ?> items-center gap-4 px-6 py-2.5">
 
         <!-- Logo -->
-        <a href="index.php" class="flex shrink-0 items-center hover:opacity-80 transition-opacity">
-            <img src="assets/centryk_logo.png" alt="Centryk" class="h-12 w-auto">
+        <a href="index.php" class="centryk-logo-lockup flex shrink-0 items-center hover:opacity-80 transition-opacity">
+            <img src="assets/centryk_logo.png" alt="Centryk" class="centryk-logo-mark h-12 w-auto">
         </a>
         <div class="h-5 w-px bg-slate-200 shrink-0"></div>
 

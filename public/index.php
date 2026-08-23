@@ -148,6 +148,41 @@ if ($me['authenticated']) {
         }
         .orb-a { animation: orb-breathe   12s ease-in-out infinite; }
         .orb-b { animation: orb-breathe-b 15s ease-in-out infinite 2s; }
+
+        @keyframes centryk-logo-settle {
+            0%   { opacity: 0; transform: translateY(-2px) scale(0.965); filter: saturate(0.92); }
+            62%  { opacity: 1; transform: translateY(0) scale(1.018);  filter: saturate(1.03); }
+            100% { opacity: 1; transform: translateY(0) scale(1);      filter: saturate(1); }
+        }
+        @keyframes centryk-logo-sheen {
+            0%, 14% { opacity: 0; transform: translateX(-135%) skewX(-18deg); }
+            32%     { opacity: 0.34; }
+            100%    { opacity: 0; transform: translateX(165%) skewX(-18deg); }
+        }
+        .centryk-logo-lockup {
+            position: relative;
+            overflow: hidden;
+        }
+        .centryk-logo-lockup::after {
+            content: "";
+            position: absolute;
+            inset: -10% auto -10% -35%;
+            width: 32%;
+            background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.72) 50%, transparent 100%);
+            opacity: 0;
+            pointer-events: none;
+            animation: centryk-logo-sheen 900ms cubic-bezier(0.22, 1, 0.36, 1) 420ms 1 both;
+        }
+        .centryk-logo-mark {
+            transform-origin: center left;
+            animation: centryk-logo-settle 520ms cubic-bezier(0.22, 1, 0.36, 1) 1 both;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .centryk-logo-lockup::after,
+            .centryk-logo-mark {
+                animation: none !important;
+            }
+        }
     </style>
 </head>
 <body class="bg-white font-sans antialiased text-slate-900">
@@ -158,8 +193,8 @@ if ($me['authenticated']) {
 <!-- ── NAV ─────────────────────────────────────────────────────────────────── -->
 <nav class="sticky top-[3px] z-40 border-b border-slate-200 bg-gradient-to-b from-white to-slate-50/80 shadow-sm shadow-slate-200/70 backdrop-blur-sm">
     <div class="mx-auto flex max-w-6xl items-center gap-4 px-6 py-1.5">
-        <a href="index.php" class="flex items-center">
-            <img src="assets/centryk_logo.png" alt="Centryk" class="h-10 w-auto">
+        <a href="index.php" class="centryk-logo-lockup flex items-center">
+            <img src="assets/centryk_logo.png" alt="Centryk" class="centryk-logo-mark h-10 w-auto">
         </a>
 
         <div class="flex-1"></div>

@@ -49,6 +49,44 @@ $firstName = trim((string)($user['first_name'] ?? '')) ?: 'there';
     tailwind.config = { theme: { extend: { fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] } } } };
   </script>
   <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @keyframes centryk-logo-settle {
+      0%   { opacity: 0; transform: translateY(-2px) scale(0.965); filter: saturate(0.92); }
+      62%  { opacity: 1; transform: translateY(0) scale(1.018); filter: saturate(1.03); }
+      100% { opacity: 1; transform: translateY(0) scale(1); filter: saturate(1); }
+    }
+    @keyframes centryk-logo-sheen {
+      0%, 14% { opacity: 0; transform: translateX(-135%) skewX(-18deg); }
+      32%     { opacity: 0.34; }
+      100%    { opacity: 0; transform: translateX(165%) skewX(-18deg); }
+    }
+    .centryk-logo-lockup {
+      position: relative;
+      overflow: hidden;
+      display: inline-flex;
+      align-items: center;
+    }
+    .centryk-logo-lockup::after {
+      content: '';
+      position: absolute;
+      inset: -10% auto -10% -35%;
+      width: 32%;
+      background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.72) 50%, transparent 100%);
+      opacity: 0;
+      pointer-events: none;
+      animation: centryk-logo-sheen 900ms cubic-bezier(0.22, 1, 0.36, 1) 420ms 1 both;
+    }
+    .centryk-logo-mark {
+      transform-origin: center left;
+      animation: centryk-logo-settle 520ms cubic-bezier(0.22, 1, 0.36, 1) 1 both;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .centryk-logo-lockup::after,
+      .centryk-logo-mark {
+        animation: none !important;
+      }
+    }
+  </style>
 </head>
 <body class="min-h-screen bg-slate-50 font-sans text-slate-900">
 
@@ -56,7 +94,9 @@ $firstName = trim((string)($user['first_name'] ?? '')) ?: 'there';
   <div class="fixed inset-x-0 top-0 z-20 border-b border-slate-200 bg-slate-50/95 backdrop-blur-sm">
     <div class="mx-auto max-w-2xl px-4 pb-4 pt-8">
       <div class="mb-6">
-        <img src="assets/centryk_logo.png" alt="Centryk" class="h-7 w-auto">
+        <span class="centryk-logo-lockup">
+          <img src="assets/centryk_logo.png" alt="Centryk" class="centryk-logo-mark h-7 w-auto">
+        </span>
         <h1 class="mt-4 text-2xl font-black tracking-tight">Welcome, <?= htmlspecialchars($firstName) ?> 👋</h1>
         <p class="mt-1 text-slate-500">Let's set up <span class="font-bold text-slate-700"><?= htmlspecialchars($company['name']) ?></span> — takes about 30 seconds.</p>
       </div>

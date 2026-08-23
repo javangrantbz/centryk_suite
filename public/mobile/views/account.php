@@ -38,7 +38,7 @@
     </div>
   </section>
 
-  <a href="../logout.php" class="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-rose-200 py-3.5 text-sm font-black uppercase tracking-widest text-rose-600 hover:bg-rose-50">
+  <a href="logout.php" class="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-rose-200 py-3.5 text-sm font-black uppercase tracking-widest text-rose-600 hover:bg-rose-50">
     <i data-lucide="log-out" class="h-4 w-4"></i>
     Sign Out
   </a>

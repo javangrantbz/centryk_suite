@@ -6,7 +6,7 @@ require_once __DIR__ . '/../../app/services/AuthService.php';
 Auth::start();
 $user = Auth::user();
 if (!$user) {
-    header('Location: ../login.php');
+    header('Location: login.php');
     exit;
 }
 
@@ -79,7 +79,12 @@ $appPages = [
     ],
 ];
 $pagesForApp = $appPages[$currentApp] ?? [];
-$view = $_GET['view'] ?? ($pagesForApp[0]['key'] ?? '');
+$pageKeys = array_column($pagesForApp, 'key');
+$allowedViews = array_merge(['dashboard'], $pageKeys);
+$view = $_GET['view'] ?? 'dashboard';
+if (!in_array($view, $allowedViews, true)) {
+    $view = 'dashboard';
+}
 
 function h($v): string { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
 ?>
@@ -91,6 +96,8 @@ function h($v): string { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'
   <title>Centryk</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="<?= h($appColor) ?>">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="assets/icons/icon.png">
   <link rel="icon" href="assets/icons/icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -108,6 +115,17 @@ function h($v): string { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'
   </style>
 </head>
 <body class="flex min-h-screen flex-col bg-slate-50 text-slate-900 antialiased">
+  <div id="pwaOfflineBanner" class="hidden border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-xs font-black uppercase tracking-[0.18em] text-amber-700">
+    Offline mode: cached shell only
+  </div>
+  <div id="pwaInstallBar" class="hidden border-b border-slate-200 bg-white px-4 py-2">
+    <div class="mx-auto flex max-w-lg items-center justify-between gap-3">
+      <p class="text-xs font-semibold text-slate-500">Install Centryk on this device for faster launch.</p>
+      <button id="btnInstallPwa" type="button" class="rounded-full px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.14em] text-white" style="background:<?= h($appColor) ?>;">
+        Install
+      </button>
+    </div>
+  </div>
 
   <!-- Header: app dropdown, subtly tinted with the current app's brand color -->
   <header class="safe-top sticky top-0 z-30 border-b" style="background:<?= h($appColor) ?>0d; border-color:<?= h($appColor) ?>33;">
@@ -151,8 +169,14 @@ function h($v): string { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'
         </button>
       </div>
       <nav class="flex-1 space-y-0.5 overflow-y-auto p-3">
+        <a href="app.php?tab=home&view=dashboard"
+           class="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-bold transition-colors <?= $tab === 'home' && $view === 'dashboard' ? 'text-white' : 'text-slate-600 hover:bg-slate-50' ?>"
+           style="<?= $tab === 'home' && $view === 'dashboard' ? 'background:' . h($appColor) . ';' : '' ?>">
+          <i data-lucide="layout-dashboard" class="h-4 w-4 shrink-0"></i>
+          Overview
+        </a>
         <?php if (!$pagesForApp): ?>
-          <p class="px-2 py-3 text-xs font-semibold text-slate-400">Nothing here yet for <?= h($currentAppLabel) ?>.</p>
+          <p class="px-2 py-3 text-xs font-semibold text-slate-400">Nothing else here yet for <?= h($currentAppLabel) ?>.</p>
         <?php else: foreach ($pagesForApp as $page): $isActive = $tab === 'home' && $view === $page['key']; ?>
           <a href="app.php?tab=home&view=<?= urlencode($page['key']) ?>"
              class="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-bold transition-colors <?= $isActive ? 'text-white' : 'text-slate-600 hover:bg-slate-50' ?>"
@@ -169,7 +193,9 @@ function h($v): string { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'
     <main class="min-w-0 flex-1 pb-24">
       <?php
       if ($tab === 'home') {
-          if ($currentApp === 'mypay' && $view === 'hr_requests') {
+          if ($view === 'dashboard') {
+              require __DIR__ . '/views/home.php';
+          } elseif ($currentApp === 'mypay' && $view === 'hr_requests') {
               require __DIR__ . '/views/mypay_hr_requests.php';
           } else {
               require __DIR__ . '/views/home_placeholder.php';
@@ -207,6 +233,15 @@ function h($v): string { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'
 
   <script>
     lucide.createIcons();
+    let deferredInstallPrompt = null;
+
+    function syncConnectivityBanner() {
+      document.getElementById('pwaOfflineBanner')?.classList.toggle('hidden', navigator.onLine);
+    }
+
+    window.addEventListener('online', syncConnectivityBanner);
+    window.addEventListener('offline', syncConnectivityBanner);
+    syncConnectivityBanner();
 
     const dropBtn = document.getElementById('btnAppDropdown');
     const dropMenu = document.getElementById('appDropdownMenu');
@@ -229,6 +264,22 @@ function h($v): string { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'
     document.getElementById('btnOpenMenu')?.addEventListener('click', openMenu);
     document.getElementById('btnCloseMenu')?.addEventListener('click', closeMenu);
     leftMenuOverlay?.addEventListener('click', closeMenu);
+
+    window.addEventListener('beforeinstallprompt', (event) => {
+      event.preventDefault();
+      deferredInstallPrompt = event;
+      document.getElementById('pwaInstallBar')?.classList.remove('hidden');
+    });
+
+    document.getElementById('btnInstallPwa')?.addEventListener('click', async () => {
+      if (!deferredInstallPrompt) return;
+      deferredInstallPrompt.prompt();
+      try {
+        await deferredInstallPrompt.userChoice;
+      } catch (e) {}
+      deferredInstallPrompt = null;
+      document.getElementById('pwaInstallBar')?.classList.add('hidden');
+    });
 
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').catch(() => {});
