@@ -20,7 +20,11 @@ if (!tv_can_watch_event($event, $user)) {
     exit('You do not have access to this event.');
 }
 
-$playbackUrl = StreamingService::getPlaybackUrl($event);
+// An ended event with a finished replay shows that instead of attempting
+// live playback (which is meaningless once the stream has stopped) - a
+// still-live or not-yet-replayed event falls back to the live URL as before.
+$isReplay = (string)($event['status'] ?? '') === 'ended' && (string)($event['replay_status'] ?? '') === 'available';
+$playbackUrl = $isReplay ? StreamingService::getReplayUrl($event) : StreamingService::getPlaybackUrl($event);
 $liveStatus = StreamingService::getStreamStatus($event);
 $viewerCount = TvMetricsService::currentViewerCount((int)$event['id']);
 $related = db()->prepare(
@@ -81,6 +85,22 @@ $related = $related->fetchAll();
                     <div class="aspect-video bg-black">
                         <?php if ($playbackUrl): ?>
                             <video id="tvPlayer" controls playsinline class="h-full w-full bg-black"></video>
+                        <?php elseif ((string)($event['status'] ?? '') === 'ended' && (string)($event['replay_status'] ?? '') === 'processing'): ?>
+                            <div class="flex h-full items-center justify-center p-8 text-center">
+                                <div>
+                                    <p class="text-sm font-bold uppercase tracking-[0.3em] text-amber-300">Replay Processing</p>
+                                    <h2 class="mt-3 text-2xl font-black">This event just ended</h2>
+                                    <p class="mt-3 max-w-xl text-sm leading-7 text-slate-400">The replay is being prepared and will appear here shortly.</p>
+                                </div>
+                            </div>
+                        <?php elseif ((string)($event['replay_status'] ?? '') === 'failed'): ?>
+                            <div class="flex h-full items-center justify-center p-8 text-center">
+                                <div>
+                                    <p class="text-sm font-bold uppercase tracking-[0.3em] text-rose-300">Replay Unavailable</p>
+                                    <h2 class="mt-3 text-2xl font-black">This replay could not be prepared</h2>
+                                    <p class="mt-3 max-w-xl text-sm leading-7 text-slate-400">Something went wrong while processing this recording. Contact the organization if you expected a replay here.</p>
+                                </div>
+                            </div>
                         <?php else: ?>
                             <div class="flex h-full items-center justify-center p-8 text-center">
                                 <div>
@@ -145,6 +165,7 @@ $related = $related->fetchAll();
 
     <script>
         const playbackUrl = <?= json_encode($playbackUrl) ?>;
+        const isReplay = <?= $isReplay ? 'true' : 'false' ?>;
         const eventId = <?= (int)$event['id'] ?>;
         const player = document.getElementById('tvPlayer');
         const viewerCount = document.getElementById('viewerCount');
@@ -176,7 +197,11 @@ $related = $related->fetchAll();
         }
 
         if (playbackUrl && player) {
-            if (player.canPlayType('application/vnd.apple.mpegurl')) {
+            if (isReplay) {
+                // A replay is a plain remuxed MP4, not an HLS manifest - every
+                // browser plays that natively, no hls.js involved.
+                player.src = playbackUrl;
+            } else if (player.canPlayType('application/vnd.apple.mpegurl')) {
                 player.src = playbackUrl;
             } else if (window.Hls && window.Hls.isSupported()) {
                 const hls = new Hls();

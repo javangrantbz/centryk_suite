@@ -346,6 +346,17 @@ class StreamingService
                         duration_seconds = TIMESTAMPDIFF(SECOND, start_at, NOW())
                   WHERE id = :id AND status = 'live'"
             )->execute(['id' => $key['event_id']]);
+
+            // Recording is opt-in per event (is_replay_enabled) - flip to
+            // "processing" only for events that asked for a replay, so the
+            // admin UI can show something other than the default "none"
+            // while the VPS-side FFmpeg remux (docs/streaming-server.md)
+            // finishes and calls back to finalizeReplay().
+            db()->prepare(
+                "UPDATE tv_events
+                    SET replay_status = 'processing', updated_at = NOW()
+                  WHERE id = :id AND is_replay_enabled = 1 AND replay_status = 'none'"
+            )->execute(['id' => $key['event_id']]);
         }
 
         tv_record_audit((int)$key['organization_id'], null, 'stream_publish_ended', 'stream_key', (int)$key['id'], [
@@ -354,6 +365,80 @@ class StreamingService
         ]);
 
         return $key;
+    }
+
+    /**
+     * Called back by the VPS-side recording job (see docs/streaming-server.md's
+     * "Replay/VOD recording" section) once it has finished remuxing a
+     * completed publish's raw recording, or given up. Resolves the stream
+     * key the same way authorizePublish()/recordPublishEnded() do rather
+     * than trusting a bare event id, so this can only ever be called by
+     * whatever process actually held the real stream key for that session.
+     *
+     * $replayPath is relative to STREAM_PLAYBACK_BASE_URL, matching how
+     * getPlaybackUrl() already treats getIngestUrl()'s sibling config value
+     * as the join point between the app's URLs and the streaming origin's
+     * actual file layout.
+     */
+    public static function finalizeReplay(string $rawKey, string $status, ?string $replayPath = null): ?array
+    {
+        $rawKey = trim($rawKey);
+        if ($rawKey === '' || !in_array($status, ['available', 'failed'], true)) {
+            return null;
+        }
+
+        $stmt = db()->prepare('SELECT * FROM tv_stream_keys WHERE stream_key_hash = :hash LIMIT 1');
+        $stmt->execute(['hash' => hash('sha256', $rawKey)]);
+        $key = $stmt->fetch();
+        if (!$key || empty($key['event_id'])) {
+            return null;
+        }
+
+        if ($status === 'available') {
+            $replayPath = trim((string)$replayPath, '/');
+            if ($replayPath === '') {
+                return null;
+            }
+            db()->prepare(
+                "UPDATE tv_events SET replay_status = 'available', replay_url = :url, updated_at = NOW() WHERE id = :id"
+            )->execute(['url' => $replayPath, 'id' => $key['event_id']]);
+        } else {
+            db()->prepare(
+                "UPDATE tv_events SET replay_status = 'failed', updated_at = NOW() WHERE id = :id"
+            )->execute(['id' => $key['event_id']]);
+        }
+
+        tv_record_audit((int)$key['organization_id'], null, 'replay_' . $status, 'event', (int)$key['event_id'], [
+            'replay_path' => $replayPath,
+        ]);
+
+        return $key;
+    }
+
+    /**
+     * Signed playback URL for a finished replay - same HMAC scheme as
+     * getPlaybackUrl(), so it goes through the same authorize_playback.php
+     * check, just against a longer default ttl (6 hours vs live's 5
+     * minutes): a replay viewer plausibly pauses, scrubs, or leaves the tab
+     * open far longer than someone tuning into something actually live, and
+     * re-minting the URL on every page load (same as live) is what keeps
+     * this from being a permanent public link rather than the ttl alone.
+     */
+    public static function getReplayUrl(array $event, int $ttl = 21600): ?string
+    {
+        if ((string)($event['replay_status'] ?? '') !== 'available' || empty($event['replay_url'])) {
+            return null;
+        }
+
+        $base = (string)tv_config('stream_playback_base_url');
+        if ($base === '') {
+            return null;
+        }
+
+        $expires = time() + $ttl;
+        $token = self::generatePlaybackToken((string)$event['id'], $expires);
+        return $base . '/' . ltrim((string)$event['replay_url'], '/')
+            . '?expires=' . $expires . '&token=' . urlencode($token) . '&event=' . (int)$event['id'];
     }
 }
 

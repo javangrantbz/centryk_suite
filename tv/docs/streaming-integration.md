@@ -13,11 +13,15 @@ Available responsibilities:
   (`authorizePublish()`) and reject it once the assigned
   `tv_stream_servers.capacity` is reached
 - record a publish ending (`recordPublishEnded()`), reverting the channel/
-  event live state
+  event live state, and flipping opted-in events to `replay_status =
+  'processing'`
 - verify a playback token in constant time (`verifyPlaybackToken()`)
 - report stream status, preferring the real `is_publishing` signal from
   ingest over the editorial event status once a stream key has ever
   reported in, falling back to the mocked status mapping otherwise
+- finalize a replay once the VPS-side recording job reports in
+  (`finalizeReplay()`), and generate its own signed playback URL
+  (`getReplayUrl()`)
 
 ## Playback flow (built)
 
@@ -60,23 +64,41 @@ already issued still validates until its (short) expiry even if the event's
 visibility changes in between. That mirrors how most signed-URL schemes
 behave and is why `getPlaybackUrl()`'s default `$ttl` should stay short.
 
+## Replay flow (built, VPS-local disk)
+
+1. `on_publish_done.php` marks an opted-in event's `replay_status`
+   `processing` the moment the stream ends.
+2. A cron job on the streaming server processes the raw recording nginx-rtmp
+   already wrote, checking `api/stream/should_record_replay.php` first so a
+   non-opted-in event's raw recording is deleted rather than remuxed.
+3. If the event wants a replay, FFmpeg remuxes it and the job posts to
+   `api/stream/replay_status.php` with `status=available` and where the
+   result landed; a failed remux posts `status=failed` instead.
+4. `finalizeReplay()` sets `tv_events.replay_url`/`replay_status`
+   accordingly. `watch.php` then serves `getReplayUrl()`'s signed URL (same
+   HMAC scheme as live, 6-hour ttl) instead of attempting live playback for
+   an ended event with an available replay.
+
+See `streaming-server.md`'s "Replay/VOD recording" section for the concrete
+nginx `record` config and the cron script.
+
 ## Shared-secret auth for server-to-server callbacks
 
-`api/stream/on_publish.php`, `on_publish_done.php`, and
-`authorize_playback.php` are all called by the streaming server itself,
-never by a logged-in browser session, so `Auth::user()` doesn't apply.
-`tv_require_stream_origin_secret()` (`includes/functions.php`) gates all
-three: it checks `STREAM_API_KEY` either as an `Authorization: Bearer`
-header or a `key` request field, and fails closed (401) if the secret is
-unconfigured or wrong.
+`api/stream/on_publish.php`, `on_publish_done.php`, `authorize_playback.php`,
+`replay_status.php`, and `should_record_replay.php` are all called by the
+streaming server itself, never by a logged-in browser session, so
+`Auth::user()` doesn't apply. `tv_require_stream_origin_secret()`
+(`includes/functions.php`) gates all five: it checks `STREAM_API_KEY` either
+as an `Authorization: Bearer` header or a `key` request field, and fails
+closed (401) if the secret is unconfigured or wrong.
 
 ## Remaining integration points
 
 - A real health/status endpoint on the streaming origin, so
   `getStreamStatus()` can also detect a hard-crashed origin process
   (`on_publish_done` only fires on a clean disconnect).
-- Recording/replay: no FFmpeg trigger or storage convention exists yet -
-  see the "Known gaps" section of `streaming-server.md`.
+- Automatic replay retention/expiry - nothing currently cleans up old
+  recordings on VPS-local disk.
 - Payment/subscription verification for `paid`/`subscription` channel
   visibility - currently unenforced beyond the same grant table `private`
-  visibility uses.
+  visibility uses. Slated to integrate with OnePay/OneLink.

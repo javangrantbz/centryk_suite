@@ -141,21 +141,102 @@ extra wiring needed beyond appending the shared-secret `key` in the
    stream key has ever reported in - a health endpoint would let it also
    detect a hard-crashed origin process, not just a graceful disconnect).
 
+## Replay/VOD recording (local VPS disk)
+
+Recording happens unconditionally at the nginx-rtmp layer - there's no
+per-connection way to toggle its `record` directive from an `on_publish`
+response - so a separate small poller decides, per finished recording,
+whether the event actually wanted a replay (`tv_events.is_replay_enabled`)
+before spending CPU on a remux or disk on keeping the result.
+
+```nginx
+application live {
+    live on;
+    on_publish http://centryk.example/tv/api/stream/on_publish.php?key=STREAM_API_KEY_VALUE;
+    on_publish_done http://centryk.example/tv/api/stream/on_publish_done.php?key=STREAM_API_KEY_VALUE;
+
+    hls on;
+    hls_path /var/www/hls;
+
+    # Raw recording, keyed by stream key - closes automatically when the
+    # publish ends (nginx-rtmp finalizes the file on disconnect).
+    record all;
+    record_path /var/recordings/raw;
+    record_suffix .flv;
+}
+```
+
+A cron job (every minute is fine) processes anything nginx-rtmp has
+finished writing:
+
+```bash
+#!/usr/bin/env bash
+# /usr/local/bin/process_tv_replays.sh
+set -euo pipefail
+APP_KEY="STREAM_API_KEY_VALUE"
+APP_BASE="http://centryk.example/tv"
+RAW_DIR="/var/recordings/raw"
+OUT_DIR="/var/www/hls/replays"
+
+for raw in "$RAW_DIR"/*.flv; do
+    [ -e "$raw" ] || continue
+    # nginx-rtmp still holds an open file handle on the active recording -
+    # only touch files whose mtime is comfortably in the past.
+    [ "$(( $(date +%s) - $(stat -c %Y "$raw") ))" -lt 30 ] && continue
+
+    stream_key="$(basename "$raw" .flv)"
+
+    should_record=$(curl -s "$APP_BASE/api/stream/should_record_replay.php?key=$APP_KEY&stream_key=$stream_key" \
+        | grep -o '"should_record":true' || true)
+
+    if [ -z "$should_record" ]; then
+        rm -f "$raw"
+        continue
+    fi
+
+    out_name="$(date +%s)-${stream_key:0:18}.mp4"
+    if ffmpeg -y -i "$raw" -c copy "$OUT_DIR/$out_name" 2>/tmp/ffmpeg_last_error.log; then
+        curl -s -X POST "$APP_BASE/api/stream/replay_status.php" \
+            --data-urlencode "key=$APP_KEY" \
+            --data-urlencode "stream_key=$stream_key" \
+            --data-urlencode "status=available" \
+            --data-urlencode "replay_path=replays/$out_name" > /dev/null
+    else
+        curl -s -X POST "$APP_BASE/api/stream/replay_status.php" \
+            --data-urlencode "key=$APP_KEY" \
+            --data-urlencode "stream_key=$stream_key" \
+            --data-urlencode "status=failed" > /dev/null
+    fi
+    rm -f "$raw"
+done
+```
+
+`-c copy` remuxes the container without re-encoding (fast, no quality loss);
+add real transcoding flags later if multiple renditions are ever needed.
+`$OUT_DIR` should sit under the same NGINX root that already serves `/hls/`
+so `replay_path` values resolve under `STREAM_PLAYBACK_BASE_URL` exactly
+like live segments do - the `auth_request` block already in front of that
+location protects replay files the same way it protects live ones, since
+`StreamingService::getReplayUrl()` signs tokens with the same scheme
+`authorize_playback.php` already checks.
+
+Since this is VPS-local disk (the simplest option, chosen over object
+storage for now): monitor `/var/recordings` and `/var/www/hls/replays` disk
+usage directly - nothing here expires old replays automatically, and video
+fills a disk fast. Revisit object storage if retention needs grow.
+
 ## Known gaps not yet covered here
 
-- **Replay/VOD.** `tv_events.replay_url`/`replay_status` exist and the
-  README lists replay as included, but there is no recording pipeline: no
-  FFmpeg trigger tied to `on_publish`/`on_publish_done`, no defined storage
-  path, and no code path that ever sets `replay_status` to anything but its
-  default. Treat replay as a separate phase of work, not implied by
-  anything above.
 - **Paid/subscription visibility.** `tv_channels.visibility` allows `paid`
   and `subscription`, but `tv_can_watch_event()` treats both exactly like
   `private` (an explicit `tv_event_access` grant) - there is no payment or
-  subscription verification anywhere in the app. Needs an explicit decision
-  on which payment rail to integrate before this is real.
+  subscription verification anywhere in the app yet. Slated to integrate
+  with OnePay/OneLink.
 - **Token/session binding.** Playback tokens are valid for anyone who has
-  them until `expires` (default 5 minutes), not bound to a session or IP.
-  This is a standard signed-URL tradeoff, not a bug, but keep `getPlaybackUrl()`'s
-  `$ttl` short rather than lengthening it for convenience, especially once
-  paid events exist.
+  them until `expires` (5 minutes for live, 6 hours for replay), not bound
+  to a session or IP. This is a standard signed-URL tradeoff, not a bug, but
+  keep these ttls short rather than lengthening them for convenience,
+  especially once paid events exist.
+- **No automatic replay retention/expiry.** Once disk usage from local
+  recordings becomes a real concern, revisit moving to object storage or
+  adding a cleanup job for old replays.

@@ -14,13 +14,17 @@ Centryk TV is a Centryk suite app for organization-owned live streaming and digi
   capacity guardrail
 - edge-side playback token validation (`api/stream/authorize_playback.php`),
   meant to run behind NGINX's `auth_request` on the real streaming server
+- opt-in replay/VOD: an ended event's recording gets remuxed and served
+  with the same signed-URL scheme as live, once the streaming server's
+  cron-driven recording job reports in (`api/stream/replay_status.php`,
+  `should_record_replay.php`)
 - watch page heartbeat and viewer counting
 - analytics, audit logging, seed data, and deployment docs
 
 See [`docs/streaming-server.md`](./docs/streaming-server.md) for the actual
-IONOS VPS / NGINX-RTMP configuration this app's ingest and playback
-endpoints are built to work with, and its "Known gaps" section for what
-isn't built yet (replay/VOD, paid/subscription enforcement).
+IONOS VPS / NGINX-RTMP configuration this app's ingest, playback, and
+replay endpoints are built to work with, and its "Known gaps" section for
+what isn't built yet (payment/subscription enforcement).
 
 ## Local setup
 
