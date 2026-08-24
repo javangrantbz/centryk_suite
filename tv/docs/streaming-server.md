@@ -2,12 +2,71 @@
 
 ## Target stack
 
-- Ubuntu LTS on IONOS VPS
+- Ubuntu LTS or AlmaLinux/RHEL on IONOS VPS
 - NGINX plus `nginx-rtmp-module` or SRS
 - RTMP ingest for OBS and compatible encoders
 - HLS output for browser playback
 - HTTPS in front of the playback origin
 - Optional FFmpeg for recording, transmuxing, and future renditions
+
+### Installing on AlmaLinux/RHEL (no prebuilt package exists)
+
+Debian/Ubuntu package `nginx-rtmp-module` (`libnginx-mod-rtmp`); RHEL-family
+distros don't ship it anywhere, including EPEL. Compile from source instead
+- this is genuinely how the module has always been installed on RHEL, not a
+workaround:
+
+```bash
+dnf install -y gcc make pcre-devel pcre2-devel zlib-devel openssl-devel wget tar
+mkdir -p /usr/local/src && cd /usr/local/src
+wget -q https://nginx.org/download/nginx-1.26.2.tar.gz
+wget -q https://github.com/arut/nginx-rtmp-module/archive/refs/heads/master.tar.gz -O nginx-rtmp-module.tar.gz
+tar xzf nginx-1.26.2.tar.gz && tar xzf nginx-rtmp-module.tar.gz
+
+cd nginx-1.26.2
+./configure --prefix=/etc/nginx --sbin-path=/usr/sbin/nginx \
+    --conf-path=/etc/nginx/nginx.conf --pid-path=/var/run/nginx.pid \
+    --lock-path=/var/run/nginx.lock --error-log-path=/var/log/nginx/error.log \
+    --http-log-path=/var/log/nginx/access.log \
+    --with-http_ssl_module --with-http_auth_request_module --with-http_v2_module \
+    --with-file-aio --with-threads \
+    --add-module=/usr/local/src/nginx-rtmp-module-master
+make -j2 && make install
+
+groupadd -f nginx && useradd -r -g nginx -s /sbin/nologin -M nginx
+mkdir -p /var/log/nginx /var/www/hls && chown nginx:nginx /var/www/hls
+```
+
+`--with-http_auth_request_module` is required (not on by default) - the
+playback authorization section below depends on it. Source-installed nginx
+has no systemd unit; create `/etc/systemd/system/nginx.service`:
+
+```ini
+[Unit]
+Description=nginx (with RTMP module)
+After=network.target
+
+[Service]
+Type=forking
+PIDFile=/var/run/nginx.pid
+ExecStartPre=/usr/sbin/nginx -t
+ExecStart=/usr/sbin/nginx
+ExecReload=/bin/kill -s HUP $MAINPID
+ExecStop=/bin/kill -s TERM $MAINPID
+KillMode=process
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Then `systemctl daemon-reload && systemctl enable --now nginx`.
+
+If SELinux is Enforcing (`getenforce`), check `ausearch -m avc -ts recent`
+after first start/first publish attempt if anything behaves oddly - a
+source-compiled binary may not carry the `httpd_exec_t` label RHEL's policy
+expects, though in practice this has run clean without any AVC denials or
+`setsebool` changes needed.
 
 ## Responsibilities
 
@@ -55,13 +114,43 @@ rtmp {
             live on;
             record off;
 
-            on_publish http://centryk.example/tv/api/stream/on_publish.php?key=STREAM_API_KEY_VALUE;
-            on_publish_done http://centryk.example/tv/api/stream/on_publish_done.php?key=STREAM_API_KEY_VALUE;
+            on_publish http://127.0.0.1:8080/_callback/on_publish.php;
+            on_publish_done http://127.0.0.1:8080/_callback/on_publish_done.php;
 
             hls on;
             hls_path /var/www/hls;
             hls_fragment 4s;
             hls_playlist_length 20s;
+        }
+    }
+}
+```
+
+**nginx-rtmp's notify module (`on_publish`/`on_publish_done`) has no HTTPS
+support at all** - confirmed against its actual source
+(`ngx_rtmp_notify_module.c` has zero references to SSL/TLS). If the app only
+serves HTTPS (the normal case), pointing these directly at `https://...`
+silently fails. Route them through a local plain-HTTP bridge on the same
+VPS instead - this uses nginx's regular HTTP module, which proxies to HTTPS
+upstreams natively:
+
+```nginx
+http {
+    # Loopback only - never reachable from outside this VPS.
+    server {
+        listen 127.0.0.1:8080;
+        server_name _;
+
+        location /_callback/on_publish.php {
+            proxy_pass https://centryk.example/tv/api/stream/on_publish.php?key=STREAM_API_KEY_VALUE;
+            proxy_ssl_server_name on;
+            proxy_set_header Host centryk.example;
+        }
+
+        location /_callback/on_publish_done.php {
+            proxy_pass https://centryk.example/tv/api/stream/on_publish_done.php?key=STREAM_API_KEY_VALUE;
+            proxy_ssl_server_name on;
+            proxy_set_header Host centryk.example;
         }
     }
 }
@@ -98,12 +187,15 @@ http {
 
         location = /_authorize_playback {
             internal;
-            proxy_pass http://centryk.example/tv/api/stream/authorize_playback.php?key=STREAM_API_KEY_VALUE&$args;
+            proxy_pass https://centryk.example/tv/api/stream/authorize_playback.php?key=STREAM_API_KEY_VALUE&$forwarded_qs;
+            proxy_ssl_server_name on;
+            proxy_set_header Host centryk.example;
             proxy_pass_request_body off;
             proxy_set_header Content-Length "";
         }
 
         location /hls/ {
+            set $forwarded_qs $args;
             auth_request /_authorize_playback;
             alias /var/www/hls/;
             add_header Cache-Control no-cache;
@@ -112,11 +204,26 @@ http {
 }
 ```
 
-`auth_request` forwards the client's original query string to the
-subrequest by default, so `expires`/`token`/`event` arrive at
-`authorize_playback.php` exactly as `getPlaybackUrl()` embedded them - no
-extra wiring needed beyond appending the shared-secret `key` in the
-`proxy_pass` line above.
+**`auth_request` does NOT forward the client's original query string to the
+subrequest** - this contradicted an earlier version of this doc, which was
+wrong, confirmed the hard way against a real deployment. `$args` is a
+request-line-derived variable that nginx recomputes fresh for the internal
+subrequest (which has none), so referencing `$args` directly inside
+`/_authorize_playback` is always empty there, regardless of what the client
+actually requested. The `auth_request` directive itself also does not
+accept variables in its own argument - `auth_request /_authorize_playback$is_args$args;`
+looks plausible but nginx treats the whole string as a literal, unparsed
+path and 404s trying to open a file with that literal name.
+
+The fix that actually works: capture `$args` into a plain `set` variable
+(`$forwarded_qs` above) in the outer location *before* calling
+`auth_request`. Unlike `$args`, a `set` variable is not request-line-derived
+and survives into the subrequest correctly. Verified against a live
+deployment: an expired/bad token now correctly 403s (previously a 500
+"auth request unexpected status" from `$args` arriving empty and failing
+`authorize_playback.php`'s own "missing credentials" check), and a
+genuinely valid signed token passes through to file serving (404 only
+because no HLS segment exists yet - not an auth failure).
 
 ## Recommended initial rollout
 
@@ -152,8 +259,8 @@ before spending CPU on a remux or disk on keeping the result.
 ```nginx
 application live {
     live on;
-    on_publish http://centryk.example/tv/api/stream/on_publish.php?key=STREAM_API_KEY_VALUE;
-    on_publish_done http://centryk.example/tv/api/stream/on_publish_done.php?key=STREAM_API_KEY_VALUE;
+    on_publish http://127.0.0.1:8080/_callback/on_publish.php;
+    on_publish_done http://127.0.0.1:8080/_callback/on_publish_done.php;
 
     hls on;
     hls_path /var/www/hls;
@@ -165,6 +272,10 @@ application live {
     record_suffix .flv;
 }
 ```
+
+(same local HTTP bridge as the ingest authentication section above - these
+are the same two callbacks, shown again here as part of the full
+`application live` block.)
 
 A cron job (every minute is fine) processes anything nginx-rtmp has
 finished writing:
