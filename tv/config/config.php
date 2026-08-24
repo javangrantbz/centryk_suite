@@ -14,5 +14,10 @@ return [
     'stream_signing_secret' => (string)($_ENV['STREAM_SIGNING_SECRET'] ?? ''),
     'stream_cipher_key' => (string)($_ENV['TV_STREAM_CIPHER_KEY'] ?? ''),
     'viewer_active_window_seconds' => 90,
+    // Comma-separated emails let through the production "coming soon" gate
+    // ahead of public launch. Kept out of source (not hardcoded in
+    // functions.php) so it's editable without a code deploy and personal
+    // addresses don't sit in git history.
+    'coming_soon_allowlist' => (string)($_ENV['TV_COMING_SOON_ALLOWLIST'] ?? ''),
 ];
 

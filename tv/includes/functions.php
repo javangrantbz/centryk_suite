@@ -97,6 +97,16 @@ function tv_gate_coming_soon(): void
     if (!Env::isProduction()) {
         return;
     }
+
+    $user = tv_user();
+    $email = strtolower(trim((string)($user['email'] ?? '')));
+    $allowlist = array_filter(array_map(
+        static fn (string $e): string => strtolower(trim($e)),
+        explode(',', (string)tv_config('coming_soon_allowlist'))
+    ));
+    if ($email !== '' && in_array($email, $allowlist, true)) {
+        return;
+    }
     ?>
 <!DOCTYPE html>
 <html lang="en">
