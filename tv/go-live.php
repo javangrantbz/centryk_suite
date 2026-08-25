@@ -27,7 +27,7 @@ $channels = $channels->fetchAll();
 // (in practice always 001, since this only fires when the org has none
 // yet) so it isn't a bare "Untitled Channel" before anyone bothers to
 // rename it from the Channels page.
-if (!$channels && $channelId === 0) {
+if (!$channels && $channelId === 0 && !tv_organization_choice_pending()) {
     $companyName = trim((string)($organization['company_name'] ?? $organization['name'] ?? 'My Channel'));
     $autoName = ($companyName !== '' ? $companyName : 'My Channel') . ' ' . str_pad((string)(count($channels) + 1), 3, '0', STR_PAD_LEFT);
     try {
@@ -53,7 +53,7 @@ $turnCredentials = StreamingService::generateTurnCredentials('user' . (int)$user
     <style>@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;900&display=swap'); body{font-family:'Plus Jakarta Sans',sans-serif;}</style>
 </head>
 <body class="bg-slate-50 text-slate-900">
-    <?php tv_render_page_header('Go Live', (string)$organization['name'], [['href' => tv_url('dashboard/channels'), 'label' => 'Channels']]); ?>
+    <?php tv_render_page_header('Go Live', (string)$organization['name'], [['href' => tv_url('dashboard/channels'), 'label' => 'Channels']], true); ?>
     <main class="mx-auto max-w-[920px] px-4 py-3 lg:px-5">
         <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <h1 class="text-lg font-black tracking-tight">Go Live</h1>

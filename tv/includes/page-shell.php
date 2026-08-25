@@ -1,6 +1,6 @@
 <?php
 
-function tv_render_page_header(string $title, string $subtitle = '', array $actions = []): void
+function tv_render_page_header(string $title, string $subtitle = '', array $actions = [], bool $showOrgSwitcher = false): void
 {
     $user = tv_user();
     $displayName = '';
@@ -12,6 +12,12 @@ function tv_render_page_header(string $title, string $subtitle = '', array $acti
         }
         $initial = strtoupper(substr((string)($user['first_name'] ?? $displayName), 0, 1));
     }
+    // Only meaningful on pages about the CURRENT user's own management
+    // context (Go Live picking a channel to stream to) - not on pages like
+    // watch.php that show someone else's event/organization, where this
+    // viewer's own org membership (if any) is irrelevant to what's on screen.
+    $organizations = $showOrgSwitcher ? tv_user_organizations() : [];
+    $activeOrganization = $showOrgSwitcher ? tv_active_organization() : null;
     ?>
     <div class="border-b border-slate-200 bg-white">
         <div class="mx-auto flex max-w-[1400px] items-center gap-3 px-4 py-2.5 lg:px-5">
@@ -27,6 +33,15 @@ function tv_render_page_header(string $title, string $subtitle = '', array $acti
             </div>
 
             <div class="ml-auto flex items-center gap-2">
+                <?php if (count($organizations) > 1): ?>
+                    <select onchange="if (this.value) { window.location.href = this.value; }" class="hidden rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold text-slate-600 outline-none focus:border-brand-500 sm:block">
+                        <?php foreach ($organizations as $item): ?>
+                            <option value="<?= e(tv_current_url_with_organization((int)$item['id'])) ?>" <?= (int)$item['id'] === (int)($activeOrganization['id'] ?? 0) ? 'selected' : '' ?>>
+                                <?= e((string)$item['name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                <?php endif; ?>
                 <?php foreach ($actions as $action): ?>
                     <?php
                     $href = (string)($action['href'] ?? '#');
@@ -70,6 +85,27 @@ function tv_render_page_header(string $title, string $subtitle = '', array $acti
             </div>
         </div>
     </div>
+
+    <?php if ($showOrgSwitcher && tv_organization_choice_pending()): ?>
+    <!-- Forces an explicit pick when the org was only resolved by falling
+         back to whichever sorts first, mirroring the core Centryk
+         dashboard's "Choose a company" modal. -->
+    <div id="tvOrgChooseModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-4">
+        <div class="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
+            <p class="text-[10px] font-black uppercase tracking-[0.16em] text-brand-700">Centryk TV</p>
+            <h2 class="mt-1 text-lg font-black text-slate-900">Choose a workspace</h2>
+            <p class="mt-1 text-sm text-slate-500">You're part of more than one organization here - pick which one to manage.</p>
+            <div class="mt-4 space-y-1.5">
+                <?php foreach ($organizations as $item): ?>
+                    <a href="<?= e(tv_current_url_with_organization((int)$item['id'])) ?>" class="flex items-center justify-between gap-3 rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm font-semibold text-slate-800 transition hover:border-brand-500 hover:bg-brand-50">
+                        <span class="truncate"><?= e((string)$item['name']) ?></span>
+                        <span class="shrink-0 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400"><?= e((string)($item['user_role'] ?? '')) ?></span>
+                    </a>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
     <?php
 }
 

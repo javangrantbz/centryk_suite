@@ -65,6 +65,23 @@ function tv_url(string $path = ''): string
     return $path === '' ? $base : $base . '/' . ltrim($path, '/');
 }
 
+/**
+ * The current page's URL with organization_id swapped to the given id,
+ * preserving everything else (path, other query params like an events
+ * filter) - used by the organization switcher dropdown/modal so changing
+ * organization doesn't silently reset whatever else was on the page.
+ */
+function tv_current_url_with_organization(int $organizationId): string
+{
+    $uri = (string)($_SERVER['REQUEST_URI'] ?? '/');
+    $parts = parse_url($uri);
+    parse_str($parts['query'] ?? '', $query);
+    $query['organization_id'] = $organizationId;
+    unset($query['organization_slug']);
+    $qs = http_build_query($query);
+    return ($parts['path'] ?? '/') . ($qs !== '' ? '?' . $qs : '');
+}
+
 function tv_current_path(): string
 {
     return (string)($_SERVER['REQUEST_URI'] ?? '/');
@@ -359,24 +376,64 @@ function tv_active_organization(): ?array
 
     $requestedId = isset($_GET['organization_id']) ? (int)$_GET['organization_id'] : 0;
     $requestedSlug = trim((string)($_GET['organization_slug'] ?? ''));
-    $sessionId = (int)($_SESSION['tv_organization_id'] ?? 0);
 
+    // An explicit GET-driven switch (the header dropdown, or the "Choose
+    // organization" modal below) is a real choice - remember it in the
+    // session for the rest of this login, and in a year-long cookie so it
+    // survives a closed browser too. This mirrors the core Centryk
+    // dashboard's centryk_company_uuid localStorage pattern; a cookie is
+    // the server-renderable equivalent, since these TV pages are plain
+    // page loads, not an SPA reading localStorage client-side.
     foreach ($items as $item) {
-        if ($requestedId > 0 && (int)$item['id'] === $requestedId) {
+        if (($requestedId > 0 && (int)$item['id'] === $requestedId)
+            || ($requestedSlug !== '' && (string)$item['slug'] === $requestedSlug)) {
             $_SESSION['tv_organization_id'] = (int)$item['id'];
+            $_SESSION['tv_organization_choice_made'] = true;
+            if (!headers_sent()) {
+                setcookie('tv_organization_id', (string)$item['id'], time() + 60 * 60 * 24 * 365, '/');
+            }
             return $organization = $item;
         }
-        if ($requestedSlug !== '' && (string)$item['slug'] === $requestedSlug) {
-            $_SESSION['tv_organization_id'] = (int)$item['id'];
-            return $organization = $item;
-        }
+    }
+
+    $sessionId = (int)($_SESSION['tv_organization_id'] ?? 0);
+    foreach ($items as $item) {
         if ($sessionId > 0 && (int)$item['id'] === $sessionId) {
             return $organization = $item;
         }
     }
 
+    $cookieId = (int)($_COOKIE['tv_organization_id'] ?? 0);
+    foreach ($items as $item) {
+        if ($cookieId > 0 && (int)$item['id'] === $cookieId) {
+            $_SESSION['tv_organization_id'] = (int)$item['id'];
+            $_SESSION['tv_organization_choice_made'] = true;
+            return $organization = $item;
+        }
+    }
+
+    // Nothing explicit found anywhere - default to the first alphabetically
+    // so every page still has *an* organization to work with, but leave
+    // tv_organization_choice_made unset so tv_organization_choice_pending()
+    // can tell the difference between "the user picked this" and "this was
+    // an arbitrary guess" and prompt for a real choice when it matters
+    // (more than one organization to actually choose between).
     $_SESSION['tv_organization_id'] = (int)$items[0]['id'];
     return $organization = $items[0];
+}
+
+/**
+ * True when the active organization was resolved by pure default (no GET
+ * switch, session choice, or remembered cookie) AND there's more than one
+ * organization to actually pick from - the same situation the core
+ * Centryk dashboard's "Choose a company" modal exists to prevent, so an
+ * action never happens under the wrong organization just because it
+ * happened to sort first.
+ */
+function tv_organization_choice_pending(): bool
+{
+    tv_active_organization();
+    return count(tv_user_organizations()) > 1 && empty($_SESSION['tv_organization_choice_made']);
 }
 
 function tv_require_organization(): array
