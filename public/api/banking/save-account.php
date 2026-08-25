@@ -3,6 +3,7 @@ require_once __DIR__ . '/../../../app/core/Auth.php';
 require_once __DIR__ . '/../../../app/core/DB.php';
 require_once __DIR__ . '/../../../app/core/Response.php';
 require_once __DIR__ . '/../../../app/services/NotificationService.php';
+require_once __DIR__ . '/../../../app/services/OneLinkProvisioning.php';
 
 Auth::start();
 $user = Auth::user();
@@ -64,6 +65,28 @@ $stmt->execute([
     'branch'         => $branch,
 ]);
 
+// Push the same details to OneLink so the merchant doesn't also have to log
+// into OneLink's own portal to enter settlement banking separately — this is
+// best-effort: a company that hasn't been provisioned yet (no OneLink uid)
+// isn't a failure of saving the account itself, so "skipped" leaves both
+// columns null rather than recording a permanent-looking warning for a
+// perfectly normal, already-visible-elsewhere (Part B) pending state. An
+// unsupported bank IS worth persisting, though — that's actionable by the
+// company (pick one of the three OneLink actually settles to).
+$onelinkSync = OneLinkProvisioning::syncBankInfo($pdo, $companyId, $accountHolder, $bankName, $accountNumber);
+if (empty($onelinkSync['skipped'])) {
+    $pdo->prepare("
+        UPDATE company_bank_accounts
+        SET onelink_synced_at  = :synced_at,
+            onelink_sync_error = :sync_error
+        WHERE company_id = :cid
+    ")->execute([
+        'synced_at'  => !empty($onelinkSync['success']) ? date('Y-m-d H:i:s') : null,
+        'sync_error' => empty($onelinkSync['success']) ? substr((string)($onelinkSync['message'] ?? ''), 0, 255) : null,
+        'cid'        => $companyId,
+    ]);
+}
+
 // Card-acceptance intent, expressed via the "I want to accept payments via
 // OneLink" checkbox. Only meaningful for company self-service (not platform
 // admins, who configure the gateway directly).
@@ -114,4 +137,12 @@ if (empty($user['is_admin'])) {
     }
 }
 
-Response::ok(['message' => 'Banking information saved.', 'requested' => $requested]);
+Response::ok([
+    'message'      => 'Banking information saved.',
+    'requested'    => $requested,
+    'onelink_sync' => [
+        'synced'  => !empty($onelinkSync['success']),
+        'skipped' => !empty($onelinkSync['skipped']),
+        'message' => $onelinkSync['message'] ?? null,
+    ],
+]);

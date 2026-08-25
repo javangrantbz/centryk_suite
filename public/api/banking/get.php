@@ -33,7 +33,7 @@ if (!$isPlatformAdmin) {
 }
 
 // ── Settlement bank account (company self-service) ─────────────────────────
-$acctStmt = $pdo->prepare("SELECT bank_name, account_holder, account_number, branch FROM company_bank_accounts WHERE company_id = :cid LIMIT 1");
+$acctStmt = $pdo->prepare("SELECT bank_name, account_holder, account_number, branch, onelink_synced_at, onelink_sync_error FROM company_bank_accounts WHERE company_id = :cid LIMIT 1");
 $acctStmt->execute(['cid' => $companyId]);
 $acct = $acctStmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
@@ -84,10 +84,12 @@ Response::ok([
     'is_platform_admin' => $isPlatformAdmin,
     'wants_onelink'     => $wantsOnelink,
     'account' => [
-        'bank_name'      => (string)($acct['bank_name'] ?? ''),
-        'account_holder' => (string)($acct['account_holder'] ?? ''),
-        'account_number' => (string)($acct['account_number'] ?? ''),
-        'branch'         => (string)($acct['branch'] ?? ''),
+        'bank_name'          => (string)($acct['bank_name'] ?? ''),
+        'account_holder'     => (string)($acct['account_holder'] ?? ''),
+        'account_number'     => (string)($acct['account_number'] ?? ''),
+        'branch'             => (string)($acct['branch'] ?? ''),
+        'onelink_synced_at'  => $acct['onelink_synced_at'] ?? null,
+        'onelink_sync_error' => $acct['onelink_sync_error'] ?? null,
     ],
     'gateway' => $gateway,
 ]);

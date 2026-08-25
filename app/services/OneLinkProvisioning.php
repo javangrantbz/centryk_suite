@@ -120,6 +120,25 @@ class OneLinkProvisioning
             OnePayWebhook::onelinkCredentialsSynced($pdo, $companyId);
             self::emailAccessCode($email, $name, (string)$row['name'], (string)($u['access_code'] ?? ''));
 
+            // A company can save its settlement bank account in Centryk before
+            // provisioning ever runs (they're independent forms/flows) — push
+            // it now rather than leaving it stranded until the company happens
+            // to touch the banking form again.
+            $bankStmt = $pdo->prepare('SELECT bank_name, account_holder, account_number FROM company_bank_accounts WHERE company_id = :cid LIMIT 1');
+            $bankStmt->execute(['cid' => $companyId]);
+            if ($bank = $bankStmt->fetch(PDO::FETCH_ASSOC)) {
+                $sync = self::syncBankInfo($pdo, $companyId, (string)$bank['account_holder'], (string)$bank['bank_name'], (string)$bank['account_number']);
+                $pdo->prepare('
+                    UPDATE company_bank_accounts
+                    SET onelink_synced_at = :synced_at, onelink_sync_error = :sync_error
+                    WHERE company_id = :cid
+                ')->execute([
+                    'synced_at'  => !empty($sync['success']) ? date('Y-m-d H:i:s') : null,
+                    'sync_error' => empty($sync['success']) ? substr((string)($sync['message'] ?? ''), 0, 255) : null,
+                    'cid'        => $companyId,
+                ]);
+            }
+
             return [
                 'success'     => true,
                 'access_code' => (string)($u['access_code'] ?? ''),
@@ -129,6 +148,76 @@ class OneLinkProvisioning
             error_log('OneLinkProvisioning::provision failed: ' . $e->getMessage());
             return self::fail($pdo, $companyId, $e->getMessage());
         }
+    }
+
+    /**
+     * The three settlement banks OneLink's /user/bank/info actually accepts
+     * (confirmed against the live docs page, including its error response
+     * listing them back verbatim). Anything else — the other Belize banks and
+     * credit unions our own bank_name dropdown offers — is rejected server
+     * side, so we pre-check here rather than firing a request guaranteed to
+     * fail. Matched case-insensitively; the canonical spelling (OneLink's,
+     * which matches ours) is what gets sent.
+     */
+    private const SUPPORTED_BANKS = ['Belize Bank', 'Heritage Bank', 'Atlantic Bank'];
+
+    /**
+     * Pushes a company's settlement bank account to OneLink via
+     * POST /user/bank/info, so the merchant no longer has to separately log
+     * into OneLink's own portal to enter it — Centryk's own banking form is
+     * now the single place this gets typed.
+     *
+     * Unlike provision(), this endpoint has no token/terminalId/salt
+     * auth — just the numeric `uid` OneLink returned from /user/create.
+     * "Already on file" (same bank+account already stored for this uid) is
+     * treated as success, not an error: the end state matches what we asked
+     * for either way.
+     */
+    public static function syncBankInfo(PDO $pdo, int $companyId, string $accountHolder, string $bankName, string $accountNumber): array
+    {
+        $uidStmt = $pdo->prepare('SELECT onelink_uid FROM onelink_credentials WHERE company_id = :cid AND enabled = 1 LIMIT 1');
+        $uidStmt->execute(['cid' => $companyId]);
+        $uid = $uidStmt->fetchColumn();
+        if (!$uid) {
+            return ['success' => false, 'skipped' => true, 'message' => 'Company is not yet provisioned with OneLink.'];
+        }
+
+        $canonicalBank = null;
+        foreach (self::SUPPORTED_BANKS as $supported) {
+            if (strcasecmp($supported, $bankName) === 0) {
+                $canonicalBank = $supported;
+                break;
+            }
+        }
+        if ($canonicalBank === null) {
+            return [
+                'success'          => false,
+                'unsupported_bank' => true,
+                'message'          => 'OneLink only settles to ' . implode(', ', self::SUPPORTED_BANKS)
+                    . ' — "' . $bankName . '" is saved in Centryk but was not sent to OneLink.',
+            ];
+        }
+
+        $result = self::post('/user/bank/info', [
+            'uid'     => (int)$uid,
+            'aName'   => self::sanitizeForLegacyCharset($accountHolder),
+            'bName'   => $canonicalBank,
+            'bNumber' => $accountNumber,
+        ]);
+
+        if (!empty($result['success'])) {
+            return [
+                'success'  => true,
+                'bi_uuid'  => (string)($result['bankInfo']['bi_uuid'] ?? ''),
+            ];
+        }
+
+        $message = (string)($result['message'] ?? 'OneLink rejected the bank details.');
+        if (stripos($message, 'already on file') !== false) {
+            return ['success' => true, 'already' => true];
+        }
+
+        return ['success' => false, 'message' => $message];
     }
 
     private static function fail(PDO $pdo, int $companyId, string $message): array

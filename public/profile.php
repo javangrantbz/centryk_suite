@@ -656,6 +656,7 @@ function profile_app_stat_card(array $app, int $companyCount, int $userCount, st
                         </label>
                         <?php endif; ?>
                     </div>
+                    <p id="baOnelinkSyncStatus" class="hidden text-[10px] font-semibold"></p>
                 </form>
             </div>
 
@@ -946,7 +947,31 @@ document.getElementById('updateNameForm').addEventListener('submit', async funct
         number:    document.getElementById('baNumber'),
         branch:    document.getElementById('baBranch'),
         form:      document.getElementById('bankAccountForm'),
+        syncStatus: document.getElementById('baOnelinkSyncStatus'),
     };
+
+    /**
+     * OneLink only settles to Belize Bank / Heritage Bank / Atlantic Bank, and
+     * only once the company has a live OneLink account — so "not synced" is
+     * the normal, expected state for most companies, not an error. Only a
+     * real message (an actual API failure, not just "not provisioned yet")
+     * gets the amber warning treatment.
+     */
+    function renderOnelinkSyncStatus({ synced, skipped, message, syncedAt }) {
+        const el = acct.syncStatus;
+        if (!el) return;
+        if (synced) {
+            el.textContent = 'Synced to OneLink' + (syncedAt ? ' · ' + new Date(syncedAt.replace(' ', 'T')).toLocaleString() : '');
+            el.className = 'text-[10px] font-semibold text-emerald-400';
+        } else if (message && !skipped) {
+            el.textContent = message;
+            el.className = 'text-[10px] font-semibold text-amber-400';
+        } else {
+            el.className = 'hidden';
+            return;
+        }
+        el.classList.remove('hidden');
+    }
     acct.bank.addEventListener('change', function () {
         const other = this.value === '__other__';
         acct.bankOther.classList.toggle('hidden', !other);
@@ -1025,6 +1050,12 @@ document.getElementById('updateNameForm').addEventListener('submit', async funct
         acct.holder.value = a.account_holder || '';
         acct.number.value = a.account_number || '';
         acct.branch.value = a.branch || '';
+        renderOnelinkSyncStatus({
+            synced: !!a.onelink_synced_at,
+            skipped: !a.onelink_synced_at && !a.onelink_sync_error,
+            message: a.onelink_sync_error || null,
+            syncedAt: a.onelink_synced_at || null,
+        });
         const g = data.gateway || {};
         if (acceptOnelink) acceptOnelink.checked = (data.wants_onelink !== false);
         renderCardStatus(g);
@@ -1060,6 +1091,14 @@ document.getElementById('updateNameForm').addEventListener('submit', async funct
             });
             const data = await res.json();
             bkAlert(data.success ? 'Banking information saved.' : (data.message || 'Could not save.'), !!data.success);
+            if (data.success && data.onelink_sync) {
+                renderOnelinkSyncStatus({
+                    synced: !!data.onelink_sync.synced,
+                    skipped: !!data.onelink_sync.skipped,
+                    message: data.onelink_sync.message || null,
+                    syncedAt: data.onelink_sync.synced ? new Date().toISOString() : null,
+                });
+            }
             if (data.success && cardStatus && data.requested) {
                 cardStatus.className = 'rounded-lg border border-cyan-400/20 bg-cyan-500/10 px-4 py-4 text-sm font-semibold text-cyan-200';
                 cardStatus.textContent = 'Your request to accept card payments via OneLink has been sent.';
