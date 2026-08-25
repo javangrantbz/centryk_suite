@@ -36,32 +36,6 @@ $bankingCompanies = $onelinkCompanies;
 // each app has its own isolated DB/user, so ask the app over HTTP instead
 // (server-to-server, shared secret). Both paths return identical row shapes.
 
-/** Fetch a user's access rows from an app's account endpoint. */
-function sw_fetch_app_access(PDO $pdo, string $appKey, string $email, string $secret): array {
-    if ($secret === '' || $email === '') return [];
-    $stmt = $pdo->prepare("SELECT url_production FROM apps WHERE `key` = :k LIMIT 1");
-    $stmt->execute(['k' => $appKey]);
-    $url = (string)($stmt->fetchColumn() ?: '');
-    if ($url === '') return [];
-    $base = preg_replace('#/[^/]*$#', '', rtrim($url, '/')); // strip /sso.php
-    $ch = curl_init($base . '/api/account/access.php');
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POST           => true,
-        CURLOPT_POSTFIELDS     => json_encode(['secret' => $secret, 'email' => $email]),
-        CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
-        CURLOPT_TIMEOUT        => 5,
-    ]);
-    $res  = curl_exec($ch);
-    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    if ($res === false || $code >= 400) return [];
-    $data = json_decode($res, true);
-    return (is_array($data) && !empty($data['rows'])) ? $data['rows'] : [];
-}
-
-$onePayStores = [];
-$myPayAccess  = [];
 $connectedApps = [];
 
 try {
@@ -106,39 +80,6 @@ if ($activeCompanyIds) {
     }
 }
 
-$_swHost    = $_SERVER['HTTP_HOST'] ?? '';
-$_swIsLocal = preg_match('/^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i', $_swHost) === 1;
-
-if ($_swIsLocal) {
-    try {
-        $s = $pdo->prepare("
-            SELECT s.name, s.status, sm.status AS membership_status
-            FROM onepay.stores s
-            JOIN onepay.store_memberships sm ON sm.store_id = s.id
-            JOIN onepay.users u ON u.id = sm.user_id
-            WHERE u.email = :email AND sm.status = 'active'
-            ORDER BY s.name
-        ");
-        $s->execute(['email' => $user['email']]);
-        $onePayStores = $s->fetchAll(PDO::FETCH_ASSOC);
-    } catch (Exception $e) {}
-    try {
-        $s = $pdo->prepare("
-            SELECT c.name, c.status AS company_status, r.name AS role_name, u.status AS user_status
-            FROM payroll.users u
-            JOIN payroll.user_company_assignments uca ON uca.user_id = u.id
-            JOIN payroll.companies c ON c.id = uca.company_id
-            LEFT JOIN payroll.roles r ON r.id = uca.role_id
-            WHERE u.email = :email
-            ORDER BY c.name
-        ");
-        $s->execute(['email' => $user['email']]);
-        $myPayAccess = $s->fetchAll(PDO::FETCH_ASSOC);
-    } catch (Exception $e) {}
-} else {
-    $onePayStores = sw_fetch_app_access($pdo, 'onepay', $user['email'], $_ENV['PROVISION_SECRET']    ?? '');
-    $myPayAccess  = sw_fetch_app_access($pdo, 'mypay',  $user['email'], $_ENV['MYPAY_WEBHOOK_SECRET'] ?? '');
-}
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ── Notification preferences (catalog + the user's stored overrides) ──────────
@@ -183,7 +124,7 @@ $headerActionsHtml = ob_get_clean();
 $activeCompanyCount = count($activeCompanyIds);
 $managedCompanyCount = count($onelinkCompanies);
 
-function profile_app_stat_card(array $app, int $companyCount, int $userCount, string $note, string $tone = 'slate'): string
+function profile_app_stat_card(array $app, int $companyCount, int $userCount, string $note, string $tone = 'slate', string $appKey = ''): string
 {
     $colors = [
         'indigo' => ['border-indigo-500/20', 'bg-indigo-500/5', 'bg-indigo-600', 'text-indigo-400/70'],
@@ -196,6 +137,7 @@ function profile_app_stat_card(array $app, int $companyCount, int $userCount, st
     $desc = htmlspecialchars((string)($app['description'] ?? 'Connected Centryk app'));
     $letter = htmlspecialchars(strtoupper(substr((string)($app['label'] ?? 'A'), 0, 1)));
     $note = htmlspecialchars($note);
+    $noteAttr = $appKey !== '' ? ' data-app-note="' . htmlspecialchars($appKey, ENT_QUOTES) . '"' : '';
 
     return '
     <div class="rounded-lg border ' . $c[0] . ' ' . $c[1] . ' p-3">
@@ -219,7 +161,7 @@ function profile_app_stat_card(array $app, int $companyCount, int $userCount, st
                 <p class="text-[9px] font-bold uppercase tracking-wider text-white/30">Users</p>
             </div>
         </div>
-        <p class="mt-2 text-[11px] text-white/35">' . $note . '</p>
+        <p class="mt-2 text-[11px] text-white/35"' . $noteAttr . '>' . $note . '</p>
     </div>';
 }
 ?>
@@ -543,17 +485,11 @@ function profile_app_stat_card(array $app, int $companyCount, int $userCount, st
                 <?php
                 $key = (string)$app['key'];
                 if ($key === 'onepay') {
-                    $note = !empty($onePayStores)
-                        ? count($onePayStores) . ' store ' . (count($onePayStores) === 1 ? 'assignment' : 'assignments') . ' found.'
-                        : 'Access granted. Store assignment is still pending.';
-                    echo profile_app_stat_card($app, $activeCompanyCount, $appUserCounts[$key] ?? 0, $note, 'indigo');
+                    echo profile_app_stat_card($app, $activeCompanyCount, $appUserCounts[$key] ?? 0, 'Checking store assignments…', 'indigo', $key);
                     continue;
                 }
                 if ($key === 'mypay') {
-                    $note = !empty($myPayAccess)
-                        ? count($myPayAccess) . ' payroll ' . (count($myPayAccess) === 1 ? 'company' : 'companies') . ' found.'
-                        : 'Access granted. Payroll company assignment is still pending.';
-                    echo profile_app_stat_card($app, $activeCompanyCount, $appUserCounts[$key] ?? 0, $note, 'orange');
+                    echo profile_app_stat_card($app, $activeCompanyCount, $appUserCounts[$key] ?? 0, 'Checking payroll assignments…', 'orange', $key);
                     continue;
                 }
                 echo profile_app_stat_card($app, $activeCompanyCount, $appUserCounts[$key] ?? 0, 'Access granted through your Centryk login.', 'slate');
@@ -1082,6 +1018,49 @@ document.getElementById('updateNameForm').addEventListener('submit', async funct
         finally { btn.disabled = false; }
     });
 
+})();
+
+// Load slow connected-app assignment lookups only when the Apps tab is opened.
+(function () {
+    const panel = document.querySelector('[data-panel="apps"]');
+    if (!panel) return;
+
+    let loaded = false;
+    async function loadAppNotes() {
+        if (loaded) return;
+        loaded = true;
+
+        let data = null;
+        try {
+            const res = await fetch('api/profile/app-access-summary.php');
+            data = await res.json();
+        } catch (e) {
+            data = null;
+        }
+
+        if (!data || !data.success || !data.app_notes) {
+            panel.querySelectorAll('[data-app-note]').forEach(el => {
+                if (!el.textContent || el.textContent.indexOf('Checking ') === 0) {
+                    el.textContent = 'Access granted through your Centryk login.';
+                }
+            });
+            return;
+        }
+
+        Object.entries(data.app_notes).forEach(([key, note]) => {
+            const el = panel.querySelector('[data-app-note="' + key + '"]');
+            if (el && typeof note === 'string' && note !== '') {
+                el.textContent = note;
+            }
+        });
+    }
+
+    document.querySelector('.acct-nav-btn[data-target="apps"]')
+        ?.addEventListener('click', loadAppNotes);
+
+    if (!panel.classList.contains('hidden')) {
+        loadAppNotes();
+    }
 })();
 </script>
 </body>

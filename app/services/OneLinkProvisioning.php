@@ -290,7 +290,8 @@ class OneLinkProvisioning
             CURLOPT_POST           => true,
             CURLOPT_POSTFIELDS     => $json,
             CURLOPT_HTTPHEADER     => ['Content-Type: application/json', 'Accept: application/json'],
-            CURLOPT_TIMEOUT        => 45,
+            CURLOPT_CONNECTTIMEOUT => 3,
+            CURLOPT_TIMEOUT        => 8,
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2,
         ]);

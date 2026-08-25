@@ -61,24 +61,31 @@ if ($canonicalBank === null) {
 }
 $bankName = $canonicalBank;
 
-$stmt = $pdo->prepare("
-    INSERT INTO company_bank_accounts
-        (company_id, bank_name, account_holder, account_number, branch)
-    VALUES
-        (:cid, :bank_name, :account_holder, :account_number, :branch)
-    ON DUPLICATE KEY UPDATE
-        bank_name      = VALUES(bank_name),
-        account_holder = VALUES(account_holder),
-        account_number = VALUES(account_number),
-        branch         = VALUES(branch)
-");
-$stmt->execute([
-    'cid'            => $companyId,
-    'bank_name'      => $bankName,
-    'account_holder' => $accountHolder,
-    'account_number' => $accountNumber,
-    'branch'         => $branch,
-]);
+$saveSucceeded = false;
+try {
+    $stmt = $pdo->prepare("
+        INSERT INTO company_bank_accounts
+            (company_id, bank_name, account_holder, account_number, branch)
+        VALUES
+            (:cid, :bank_name, :account_holder, :account_number, :branch)
+        ON DUPLICATE KEY UPDATE
+            bank_name      = VALUES(bank_name),
+            account_holder = VALUES(account_holder),
+            account_number = VALUES(account_number),
+            branch         = VALUES(branch)
+    ");
+    $stmt->execute([
+        'cid'            => $companyId,
+        'bank_name'      => $bankName,
+        'account_holder' => $accountHolder,
+        'account_number' => $accountNumber,
+        'branch'         => $branch,
+    ]);
+    $saveSucceeded = true;
+} catch (Throwable $e) {
+    error_log('save-account local save failed: ' . $e->getMessage());
+    Response::error('Could not save banking information.', 500);
+}
 
 // Push the same details to OneLink so the merchant doesn't also have to log
 // into OneLink's own portal to enter settlement banking separately — this is
@@ -88,18 +95,30 @@ $stmt->execute([
 // perfectly normal, already-visible-elsewhere (Part B) pending state. An
 // unsupported bank IS worth persisting, though — that's actionable by the
 // company (pick one of the three OneLink actually settles to).
-$onelinkSync = OneLinkProvisioning::syncBankInfo($pdo, $companyId, $accountHolder, $bankName, $accountNumber);
-if (empty($onelinkSync['skipped'])) {
-    $pdo->prepare("
-        UPDATE company_bank_accounts
-        SET onelink_synced_at  = :synced_at,
-            onelink_sync_error = :sync_error
-        WHERE company_id = :cid
-    ")->execute([
-        'synced_at'  => !empty($onelinkSync['success']) ? date('Y-m-d H:i:s') : null,
-        'sync_error' => empty($onelinkSync['success']) ? substr((string)($onelinkSync['message'] ?? ''), 0, 255) : null,
-        'cid'        => $companyId,
-    ]);
+$onelinkSync = ['success' => false, 'skipped' => true, 'message' => null];
+if ($saveSucceeded) {
+    try {
+        $onelinkSync = OneLinkProvisioning::syncBankInfo($pdo, $companyId, $accountHolder, $bankName, $accountNumber);
+        if (empty($onelinkSync['skipped'])) {
+            $pdo->prepare("
+                UPDATE company_bank_accounts
+                SET onelink_synced_at  = :synced_at,
+                    onelink_sync_error = :sync_error
+                WHERE company_id = :cid
+            ")->execute([
+                'synced_at'  => !empty($onelinkSync['success']) ? date('Y-m-d H:i:s') : null,
+                'sync_error' => empty($onelinkSync['success']) ? substr((string)($onelinkSync['message'] ?? ''), 0, 255) : null,
+                'cid'        => $companyId,
+            ]);
+        }
+    } catch (Throwable $e) {
+        error_log('save-account OneLink sync failed: ' . $e->getMessage());
+        $onelinkSync = [
+            'success' => false,
+            'skipped' => false,
+            'message' => 'Banking information was saved, but OneLink sync could not be completed right now.',
+        ];
+    }
 }
 
 // Card-acceptance intent, expressed via the "I want to accept payments via
