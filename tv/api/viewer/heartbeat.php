@@ -30,5 +30,13 @@ if (!tv_can_watch_event($event, $user)) {
 }
 
 $count = TvMetricsService::recordHeartbeat($eventId, $user ? (int)$user['id'] : null, hash('sha256', $sessionToken));
-Response::ok(['data' => ['viewer_count' => $count]]);
+// status/replay_status ride along on the heartbeat the watch page already
+// polls every 30s, so it can notice a broadcast ending on its own instead
+// of the player just stalling on the last frame with no explanation once
+// the streaming server stops writing new HLS segments.
+Response::ok(['data' => [
+    'viewer_count' => $count,
+    'status' => (string)$event['status'],
+    'replay_status' => (string)$event['replay_status'],
+]]);
 

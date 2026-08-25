@@ -68,7 +68,7 @@ $related = $related->fetchAll();
                 </div>
 
                 <div class="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-                    <div class="aspect-video bg-black">
+                    <div id="playerArea" class="aspect-video bg-black">
                         <?php if ($playbackUrl): ?>
                             <video id="tvPlayer" controls playsinline class="h-full w-full bg-black"></video>
                         <?php elseif ((string)($event['status'] ?? '') === 'ended' && (string)($event['replay_status'] ?? '') === 'processing'): ?>
@@ -127,8 +127,12 @@ $related = $related->fetchAll();
         const playbackUrl = <?= json_encode($playbackUrl) ?>;
         const isReplay = <?= $isReplay ? 'true' : 'false' ?>;
         const eventId = <?= (int)$event['id'] ?>;
+        const initialStatus = <?= json_encode((string)$event['status']) ?>;
         const player = document.getElementById('tvPlayer');
+        const playerArea = document.getElementById('playerArea');
         const viewerCount = document.getElementById('viewerCount');
+        let hlsInstance = null;
+        let broadcastEndedShown = false;
 
         function ensureSessionToken() {
             let token = localStorage.getItem('tv_viewer_session');
@@ -139,6 +143,22 @@ $related = $related->fetchAll();
             return token;
         }
 
+        // The streaming server just stops writing new HLS segments once the
+        // broadcaster disconnects - nothing in the video stream itself says
+        // "this is over," so without this the player just silently stalls
+        // on the last frame forever. Piggybacking on the same heartbeat the
+        // page already sends every 30s to notice the transition instead of
+        // adding a second poll loop.
+        function showBroadcastEnded() {
+            if (broadcastEndedShown || !playerArea) { return; }
+            broadcastEndedShown = true;
+            if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+            playerArea.innerHTML = '<div class="flex h-full items-center justify-center p-8 text-center">'
+                + '<div><p class="text-sm font-bold uppercase tracking-[0.18em] text-amber-500">Broadcast Ended</p>'
+                + '<h2 class="mt-2 text-xl font-black text-white">This live broadcast has ended</h2>'
+                + '<p class="mt-2 max-w-xl text-sm leading-6 text-slate-400">Check back later - if the broadcaster saved a replay, it will appear here once it finishes processing.</p></div></div>';
+        }
+
         async function sendHeartbeat() {
             const response = await fetch('<?= e(tv_url('api/viewer/heartbeat.php')) ?>', {
                 method: 'POST',
@@ -146,8 +166,18 @@ $related = $related->fetchAll();
                 body: JSON.stringify({ event_id: eventId, session_token: ensureSessionToken() })
             });
             const payload = await response.json();
-            if (payload.success && viewerCount) {
+            if (!payload.success) { return; }
+            if (viewerCount) {
                 viewerCount.textContent = `${payload.data.viewer_count} watching now`;
+            }
+            if (!isReplay && payload.data.status === 'ended') {
+                if (payload.data.replay_status === 'available') {
+                    // Reload so the server-side isReplay branch takes over,
+                    // rather than duplicating replay-playback logic here.
+                    location.reload();
+                } else {
+                    showBroadcastEnded();
+                }
             }
         }
 
@@ -157,11 +187,13 @@ $related = $related->fetchAll();
             } else if (player.canPlayType('application/vnd.apple.mpegurl')) {
                 player.src = playbackUrl;
             } else if (window.Hls && window.Hls.isSupported()) {
-                const hls = new Hls();
-                hls.loadSource(playbackUrl);
-                hls.attachMedia(player);
+                hlsInstance = new Hls();
+                hlsInstance.loadSource(playbackUrl);
+                hlsInstance.attachMedia(player);
             }
         }
+
+        if (!isReplay && initialStatus === 'ended') { showBroadcastEnded(); }
 
         sendHeartbeat().catch(console.error);
         setInterval(() => sendHeartbeat().catch(console.error), 30000);
