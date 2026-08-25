@@ -5,6 +5,16 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
 require_once __DIR__ . '/../../app/core/Env.php';
 Env::load(__DIR__ . '/../../.env');
 $canUseOnelink = !empty($user['is_admin']) || !empty($isCompanyAdmin);
+// Same early-access allowlist as tv/includes/functions.php's
+// tv_gate_coming_soon() - kept as a small duplicate here rather than a
+// cross-module include, since this dashboard and the tv/ app are
+// independently deployable. Update both if the mechanism ever changes.
+$_tvAllowlist = array_filter(array_map(
+    static fn (string $e): string => strtolower(trim($e)),
+    explode(',', (string)($_ENV['TV_COMING_SOON_ALLOWLIST'] ?? ''))
+));
+$_tvUserEmail = strtolower(trim((string)($user['email'] ?? '')));
+$canUseTv = $_tvUserEmail !== '' && in_array($_tvUserEmail, $_tvAllowlist, true);
 ?>
 <!doctype html>
 <html lang="en">
@@ -549,8 +559,8 @@ $canUseOnelink = !empty($user['is_admin']) || !empty($isCompanyAdmin);
         </div>
         <?php endif; ?>
 
-        <?php if (Env::isProduction()): ?>
-        <!-- Centryk TV — coming soon on production -->
+        <?php if (Env::isProduction() && !$canUseTv): ?>
+        <!-- Centryk TV — coming soon on production for everyone not on the early-access allowlist -->
         <div style="--i:<?= ($_appIdx ?? 0) + 4 ?>" class="dash-fade order-3 flex flex-col overflow-hidden rounded-2xl border border-teal-200/70 bg-teal-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
             <div class="h-1.5 w-full" style="background:#0f766e80"></div>
             <div class="flex flex-1 flex-col p-3">
@@ -574,6 +584,32 @@ $canUseOnelink = !empty($user['is_admin']) || !empty($isCompanyAdmin);
                 </div>
             </div>
         </div>
+        <?php else: ?>
+        <!-- Centryk TV — real link: either not production, or this viewer is on the early-access allowlist -->
+        <a href="/tv/" style="--i:<?= ($_appIdx ?? 0) + 4 ?>"
+           class="dash-fade order-1 group flex flex-col overflow-hidden rounded-2xl border border-teal-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]">
+            <div class="h-1.5 w-full bg-teal-600"></div>
+            <div class="flex flex-1 flex-col p-3">
+                <div class="flex items-center gap-3">
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-100 text-teal-700">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="5" width="20" height="14" rx="2"/><path d="m10 9 5 3-5 3V9Z"/><path d="M8 21h8"/>
+                        </svg>
+                    </span>
+                    <div>
+                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-teal-600/80">Live Streaming</div>
+                        <div class="text-base font-black tracking-tight text-slate-900">Centryk TV</div>
+                    </div>
+                </div>
+                <p class="mt-2 text-xs font-semibold leading-relaxed text-slate-500">
+                    Watch live broadcasts and replays from participating organizations.
+                </p>
+            </div>
+            <div class="flex items-center justify-between border-t border-teal-100 px-4 py-3 text-xs font-bold text-teal-700 transition-colors group-hover:text-teal-900">
+                <span>Open Centryk TV</span>
+                <i data-lucide="arrow-right" class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"></i>
+            </div>
+        </a>
         <?php endif; ?>
 
         <!-- Store -->
