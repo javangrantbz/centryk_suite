@@ -383,6 +383,20 @@ gear, a real dealbreaker for "point a phone at a school game." WHIP
 (WebRTC-HTTP Ingestion) lets a browser tab capture camera/mic and publish
 directly - `go-live.php` is the page, no separate app needed.
 
+**Clicking Go Live creates a real `tv_events` row** (via the same
+`api/events/create.php` the dashboard's "Create Event" form posts to) -
+it does NOT publish under the channel's own persistent stream key like
+phase 1 originally did. Two reasons surfaced this after phase 1 shipped:
+`watch.php` only knows how to show events, not bare channels, so a
+channel-key broadcast had no viewer-facing watch link at all; and replay
+eligibility is entirely event-scoped (`tv_events.is_replay_enabled`), so
+it could never produce a replay either. Going through a real event fixes
+both for free, reusing logic that already existed for OBS. The broadcaster
+gets an optional title field and a "Save a replay" checkbox before going
+live, and a shareable watch link once connected. Stopping lets the RTMP
+disconnect end the event naturally (`on_publish_done` -> `recordPublishEnded()`),
+the same path OBS-based events already went through.
+
 **Architecture**: [MediaMTX](https://github.com/bluenviron/mediamtx) runs
 alongside nginx on the same VPS, accepts the WHIP publish, and forwards it
 **natively** (a declarative `forward:` path setting - no ffmpeg subprocess)

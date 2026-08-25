@@ -30,7 +30,10 @@ Centryk TV is a Centryk suite app for organization-owned live streaming and digi
   broadcasters: stream straight from a phone/laptop's own browser, no OBS or
   app install. Bridged through MediaMTX into the same RTMP ingest OBS uses,
   so nothing downstream needed to change. A self-hosted TURN relay (coturn)
-  keeps this working on cellular data, not just wifi.
+  keeps this working on cellular data, not just wifi. Going live creates a
+  real event under the hood (optional title, optional "Save a replay"),
+  so it gets a shareable watch link and can produce a replay exactly like
+  an OBS-based event.
 
 See [`docs/streaming-server.md`](./docs/streaming-server.md) for the actual
 IONOS VPS / NGINX-RTMP configuration this app's ingest, playback, and
