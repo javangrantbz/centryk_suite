@@ -102,9 +102,14 @@ function getStatusBadge($status) {
             <a href="https://wa.me/?text=<?= rawurlencode($shareMsg) ?>" target="_blank" rel="noopener" title="Share via WhatsApp" class="flex items-center justify-center w-12 h-12 rounded-2xl bg-[#25D366] text-white hover:opacity-90 transition shadow-lg shadow-green-100">
                 <i data-lucide="message-circle" class="w-5 h-5"></i>
             </a>
-            <a href="mailto:?subject=<?= rawurlencode('Invoice ' . $invoice['invoice_number']) ?>&body=<?= rawurlencode($shareMsg) ?>" title="Share via Email" class="flex items-center justify-center w-12 h-12 rounded-2xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
+            <button type="button" id="btnEmailInvoice"
+                    data-invoice-id="<?= (int)$invoice['id'] ?>"
+                    data-customer-email="<?= e($invoice['email'] ?? '') ?>"
+                    title="<?= !empty($invoice['email']) ? 'Email this invoice to ' . e($invoice['email']) : 'This customer has no email address on file' ?>"
+                    <?= empty($invoice['email']) ? 'disabled' : '' ?>
+                    class="flex items-center justify-center w-12 h-12 rounded-2xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition disabled:opacity-40 disabled:cursor-not-allowed">
                 <i data-lucide="mail" class="w-5 h-5"></i>
-            </a>
+            </button>
             <a href="<?= BASE_URL ?>/pdf-invoice.php?id=<?= $invoice['id'] ?>" target="_blank" class="flex items-center bg-[#1a1a1a] hover:bg-emerald-600 text-white px-5 py-2.5 rounded-2xl font-bold transition-all shadow-lg shadow-gray-200">
                 <i data-lucide="download" class="w-4 h-4 mr-2"></i>
                 Download PDF
@@ -240,3 +245,43 @@ function getStatusBadge($status) {
         </div>
     </div>
 </div>
+
+<script>
+document.getElementById('btnEmailInvoice')?.addEventListener('click', async function () {
+    const btn   = this;
+    const email = btn.dataset.customerEmail;
+    if (!email) return;
+    if (!confirm('Email this invoice to ' + email + '?')) return;
+
+    const icon = btn.querySelector('i');
+    btn.disabled = true;
+    if (icon) icon.setAttribute('data-lucide', 'loader');
+
+    try {
+        const res = await fetch('<?= BASE_URL ?>/api/send_invoice_email.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ invoice_id: Number(btn.dataset.invoiceId) })
+        });
+        const data = await res.json();
+
+        if (!res.ok || data.error) {
+            alert(data.error || ('Could not send the invoice (HTTP ' + res.status + ').'));
+            btn.disabled = false;
+            if (icon) { icon.setAttribute('data-lucide', 'mail'); window.lucide?.createIcons(); }
+            return;
+        }
+
+        // MAIL_DRIVER not set to smtp means the send was only logged, never
+        // actually delivered - say so rather than claiming it was sent.
+        alert(data.mail_status === 'logged'
+            ? 'Email logged but not delivered: ' + (data.note || 'mail sending is not configured.')
+            : 'Invoice emailed to ' + data.email + '.');
+        window.location.reload();
+    } catch (err) {
+        alert('Network error while sending: ' + err.message);
+        btn.disabled = false;
+        if (icon) { icon.setAttribute('data-lucide', 'mail'); window.lucide?.createIcons(); }
+    }
+});
+</script>

@@ -4,6 +4,17 @@ class Env
 {
     private static bool $loaded = false;
 
+    /**
+     * Business timezone. Pinned in code rather than left to php.ini because
+     * MySQL writes timestamps on the server clock while PHP uses its own
+     * setting - when the two disagree they land on different DATES for part
+     * of every day, which silently corrupts anything keyed on "today":
+     * receipt/sale number date prefixes, per-day sequence rollover, and every
+     * date-range report filter. XAMPP ships date.timezone=Europe/Berlin,
+     * which put PHP 8 hours ahead of the (Belize) server clock.
+     */
+    private const DEFAULT_TIMEZONE = 'America/Belize';
+
     public static function load(string $path): void
     {
         if (self::$loaded) {
@@ -11,6 +22,10 @@ class Env
         }
 
         self::$loaded = true;
+
+        // Applied before the .env parse so it still holds if the file is
+        // missing; APP_TIMEZONE below can override it.
+        date_default_timezone_set(self::DEFAULT_TIMEZONE);
 
         if (!is_file($path)) {
             return;
@@ -48,6 +63,13 @@ class Env
 
             $_ENV[$key]    = $value;
             $_SERVER[$key] = $value;
+        }
+
+        // Let a deployment override the default without a code change, but
+        // ignore a bad value rather than falling back to php.ini's guess.
+        $tz = trim((string)($_ENV['APP_TIMEZONE'] ?? ''));
+        if ($tz !== '' && in_array($tz, timezone_identifiers_list(), true)) {
+            date_default_timezone_set($tz);
         }
     }
 

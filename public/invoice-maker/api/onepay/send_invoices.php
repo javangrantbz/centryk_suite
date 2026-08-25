@@ -19,6 +19,7 @@
 require_once __DIR__ . '/_bootstrap.php';
 require_once __DIR__ . '/../../../../app/core/Env.php';
 require_once __DIR__ . '/../../../../app/services/MailerService.php';
+require_once __DIR__ . '/../../../../invoice-maker/app/helpers/invoice_email.php';
 
 $body      = onepay_request();
 $pdo       = DB::pdo();
@@ -57,23 +58,11 @@ $st->execute($params);
 $invoices = $st->fetchAll();
 
 // ── Company presentation (business name + currency) ─────────────────────────
-$settings = ['business_name' => '', 'currency_symbol' => '$'];
-$sst = $pdo->prepare('SELECT name FROM companies WHERE id = ?');
-$sst->execute([$companyId]);
-$companyName = (string)($sst->fetchColumn() ?: 'Your account');
-$sst2 = $pdo->prepare('SELECT business_name, currency_symbol FROM invoice_settings WHERE company_id = ?');
-$sst2->execute([$companyId]);
-if ($row = $sst2->fetch()) {
-    $settings['business_name']   = (string)($row['business_name'] ?? '');
-    $settings['currency_symbol'] = (string)($row['currency_symbol'] ?? '$') ?: '$';
-}
-$fromLabel = $settings['business_name'] !== '' ? $settings['business_name'] : $companyName;
-$cur       = $settings['currency_symbol'];
-
-// Public base for share links (server-side, so derive from Centryk's APP_URL).
 Env::load(__DIR__ . '/../../../../.env');
-$appUrl  = rtrim((string)($_ENV['APP_URL'] ?? getenv('APP_URL') ?: 'http://localhost/centryk/public'), '/');
-$shareBase = $appUrl . '/invoice-maker/share.php?t=';
+$sender    = inv_email_sender_label($pdo, $companyId);
+$fromLabel = $sender['from_label'];
+$cur       = $sender['currency'];
+$shareBase = inv_share_base();
 
 $mailer = new MailerService();
 $runId  = bin2hex(random_bytes(20));
@@ -83,8 +72,6 @@ $results = [];
 $summary = ['sent' => 0, 'failed' => 0, 'skipped' => 0];
 
 $markSent = $pdo->prepare("UPDATE invoices SET status = 'sent' WHERE id = ? AND status = 'draft'");
-$logStmt  = $pdo->prepare('INSERT INTO invoice_reminders (company_id, invoice_id, run_id, channel, to_email, status, error, sent_at)
-                           VALUES (:c, :i, :r, "email", :e, :s, :err, :sent)');
 
 foreach ($invoices as $inv) {
     $outstanding = max(0.0, (float)$inv['total'] - (float)$inv['amount_paid']);
@@ -123,14 +110,12 @@ foreach ($invoices as $inv) {
         if ($type === 'invoice') {
             $markSent->execute([(int)$inv['id']]);
         }
-        $logStmt->execute(['c' => $companyId, 'i' => (int)$inv['id'], 'r' => $runId,
-                           'e' => $email, 's' => 'sent', 'err' => null, 'sent' => date('Y-m-d H:i:s')]);
+        inv_log_reminder($pdo, $companyId, (int)$inv['id'], $runId, $email, 'sent', null);
         $summary['sent']++;
         $results[] = ['invoice_id' => (int)$inv['id'], 'invoice_number' => $inv['invoice_number'],
                       'customer' => $inv['customer_name'], 'email' => $email, 'status' => 'sent'];
     } catch (Throwable $e) {
-        $logStmt->execute(['c' => $companyId, 'i' => (int)$inv['id'], 'r' => $runId,
-                           'e' => $email, 's' => 'failed', 'err' => substr($e->getMessage(), 0, 250), 'sent' => null]);
+        inv_log_reminder($pdo, $companyId, (int)$inv['id'], $runId, $email, 'failed', $e->getMessage());
         $summary['failed']++;
         $results[] = ['invoice_id' => (int)$inv['id'], 'invoice_number' => $inv['invoice_number'],
                       'customer' => $inv['customer_name'], 'email' => $email,
@@ -151,31 +136,3 @@ if (isset($body['batch_id']) && (int)$body['batch_id'] > 0) {
 
 Response::ok(['run_id' => $runId, 'summary' => $summary, 'results' => $results]);
 
-/** Minimal branded HTML email body with a prominent "View invoice" button. */
-function invoice_email_html(string $from, string $customer, string $number,
-                            string $amount, ?string $due, string $link, string $type): string
-{
-    $from     = htmlspecialchars($from, ENT_QUOTES);
-    $customer = htmlspecialchars($customer ?: 'there', ENT_QUOTES);
-    $number   = htmlspecialchars($number, ENT_QUOTES);
-    $amount   = htmlspecialchars($amount, ENT_QUOTES);
-    $link     = htmlspecialchars($link, ENT_QUOTES);
-    $dueLine  = $due ? '<p style="margin:0 0 4px;color:#475569;">Due date: <strong>' . htmlspecialchars($due, ENT_QUOTES) . '</strong></p>' : '';
-    $intro    = $type === 'reminder'
-        ? 'This is a friendly reminder that the following invoice is still outstanding.'
-        : 'Please find your invoice below. You can view and download it using the button.';
-
-    return '<div style="font-family:Segoe UI,Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#0f172a;">'
-         . '<h2 style="margin:0 0 4px;font-size:20px;">' . $from . '</h2>'
-         . '<p style="margin:0 0 16px;color:#64748b;font-size:13px;">Invoice ' . $number . '</p>'
-         . '<p style="margin:0 0 12px;">Hi ' . $customer . ',</p>'
-         . '<p style="margin:0 0 16px;color:#334155;">' . $intro . '</p>'
-         . '<div style="background:#f1f5f9;border-radius:12px;padding:16px 18px;margin:0 0 18px;">'
-         . '<p style="margin:0 0 4px;color:#475569;">Amount due: <strong style="font-size:18px;color:#10b981;">' . $amount . '</strong></p>'
-         . $dueLine
-         . '</div>'
-         . '<a href="' . $link . '" style="display:inline-block;background:#10b981;color:#fff;text-decoration:none;'
-         . 'padding:12px 22px;border-radius:10px;font-weight:700;">View invoice</a>'
-         . '<p style="margin:20px 0 0;color:#94a3b8;font-size:12px;">If the button doesn\'t work, copy this link:<br>' . $link . '</p>'
-         . '</div>';
-}
