@@ -15,6 +15,14 @@ $_tvAllowlist = array_filter(array_map(
 ));
 $_tvUserEmail = strtolower(trim((string)($user['email'] ?? '')));
 $canUseTv = $_tvUserEmail !== '' && in_array($_tvUserEmail, $_tvAllowlist, true);
+$tvBaseUrl = (static function (): string {
+    $appUrl = rtrim((string)($_ENV['APP_URL'] ?? 'http://localhost/centryk/public'), '/');
+    $appPath = (string)parse_url($appUrl, PHP_URL_PATH);
+    if ($appPath !== '' && preg_match('#/public$#', $appPath) === 1) {
+        return preg_replace('#/public$#', '/tv', $appUrl) ?? ($appUrl . '/tv');
+    }
+    return $appUrl . '/tv';
+})();
 ?>
 <!doctype html>
 <html lang="en">
@@ -586,7 +594,7 @@ $canUseTv = $_tvUserEmail !== '' && in_array($_tvUserEmail, $_tvAllowlist, true)
         </div>
         <?php else: ?>
         <!-- Centryk TV — real link: either not production, or this viewer is on the early-access allowlist -->
-        <a href="/tv/" style="--i:<?= ($_appIdx ?? 0) + 4 ?>"
+        <a href="<?= htmlspecialchars($tvBaseUrl) ?>/" style="--i:<?= ($_appIdx ?? 0) + 4 ?>"
            class="dash-fade order-1 group flex flex-col overflow-hidden rounded-2xl border border-teal-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]">
             <div class="h-1.5 w-full bg-teal-600"></div>
             <div class="flex flex-1 flex-col p-3">

@@ -6,6 +6,14 @@ foreach ($companies as $company) {
         break;
     }
 }
+$tvBaseUrl = (static function (): string {
+    $appUrl = rtrim((string)($_ENV['APP_URL'] ?? 'http://localhost/centryk/public'), '/');
+    $appPath = (string)parse_url($appUrl, PHP_URL_PATH);
+    if ($appPath !== '' && preg_match('#/public$#', $appPath) === 1) {
+        return preg_replace('#/public$#', '/tv', $appUrl) ?? ($appUrl . '/tv');
+    }
+    return $appUrl . '/tv';
+})();
 ?>
 <div class="space-y-4 px-4 py-4">
   <section class="overflow-hidden rounded-3xl border border-slate-200 bg-slate-950 text-white shadow-sm">
@@ -84,7 +92,7 @@ foreach ($companies as $company) {
     </div>
   </section>
   <?php else: ?>
-  <a href="/tv/" class="flex items-center gap-3 rounded-3xl border border-teal-200 bg-white p-4 shadow-sm transition active:scale-[0.98]">
+  <a href="<?= h($tvBaseUrl) ?>/" class="flex items-center gap-3 rounded-3xl border border-teal-200 bg-white p-4 shadow-sm transition active:scale-[0.98]">
     <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-100 text-teal-700">
       <i data-lucide="tv" class="h-5 w-5"></i>
     </span>

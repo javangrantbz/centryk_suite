@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/includes/bootstrap.php';
+require_once __DIR__ . '/includes/page-shell.php';
 
 tv_gate_coming_soon();
 
@@ -15,22 +16,13 @@ if (!tv_can_watch_event($event, $user)) {
     if (!$user) {
         tv_redirect(centryk_public_url() . '/login.php?redirect=' . urlencode(tv_current_path()));
     }
-
     if ((string)($event['channel_visibility'] ?? '') === 'paid' && (float)($event['price_amount'] ?? 0) > 0) {
-        // No pretty-URL rewrite rule exists for this new route yet (see
-        // .htaccess - only watch/{slug}, dashboard/*, and a bare-slug
-        // organization catch-all are defined), so this stays query-string
-        // form rather than assuming one.
         tv_redirect(tv_url('paywall.php?event=' . $event['slug']));
     }
-
     http_response_code(403);
     exit('You do not have access to this event.');
 }
 
-// An ended event with a finished replay shows that instead of attempting
-// live playback (which is meaningless once the stream has stopped) - a
-// still-live or not-yet-replayed event falls back to the live URL as before.
 $isReplay = (string)($event['status'] ?? '') === 'ended' && (string)($event['replay_status'] ?? '') === 'available';
 $playbackUrl = $isReplay ? StreamingService::getReplayUrl($event) : StreamingService::getPlaybackUrl($event);
 $liveStatus = StreamingService::getStreamStatus($event);
@@ -55,114 +47,74 @@ $related = $related->fetchAll();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= e($event['title']) ?> | <?= e((string)tv_config('app_name')) ?></title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        brand: {
-                            200: '#99f6e4',
-                            300: '#5eead4'
-                        }
-                    }
-                }
-            }
-        };
-    </script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap'); body{font-family:'Plus Jakarta Sans',sans-serif;}</style>
 </head>
-<body class="bg-slate-950 text-white">
-    <main class="mx-auto max-w-7xl px-6 py-8">
-        <a href="<?= e(tv_url($event['organization_slug'])) ?>" class="text-xs font-bold uppercase tracking-[0.3em] text-brand-300">Back to <?= e($event['organization_name']) ?></a>
-        <div class="mt-5 grid gap-8 xl:grid-cols-[1.4fr_0.6fr]">
+<body class="bg-slate-50 text-slate-900">
+    <?php tv_render_page_header((string)$event['title'], (string)$event['organization_name'], [['href' => tv_url($event['organization_slug']), 'label' => 'Back']]); ?>
+    <main class="mx-auto max-w-[1400px] px-4 py-3 lg:px-5">
+        <div class="grid gap-4 xl:grid-cols-[1.45fr_0.55fr]">
             <section>
                 <div class="flex flex-wrap items-start justify-between gap-4">
                     <div>
-                        <p class="text-xs font-bold uppercase tracking-[0.28em] text-brand-300"><?= e($event['organization_name']) ?></p>
-                        <h1 class="mt-2 text-4xl font-black tracking-tight"><?= e($event['title']) ?></h1>
-                        <p class="mt-3 text-sm text-slate-400"><?= e(tv_format_datetime($event['start_at'])) ?></p>
+                        <p class="text-[10px] font-black uppercase tracking-[0.18em] text-brand-700"><?= e($event['organization_name']) ?></p>
+                        <h1 class="mt-1 text-xl font-black tracking-tight"><?= e($event['title']) ?></h1>
+                        <p class="mt-1 text-sm text-slate-500"><?= e(tv_format_datetime($event['start_at'])) ?></p>
                     </div>
-                    <div class="flex flex-wrap gap-3">
-                        <span class="rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] <?= e(tv_status_badge_class($liveStatus)) ?>"><?= e($liveStatus) ?></span>
-                        <span class="rounded-full border border-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-slate-200"><?= e($event['visibility']) ?></span>
+                    <div class="flex flex-wrap gap-2">
+                        <span class="rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] <?= e(tv_status_badge_class($liveStatus)) ?>"><?= e($liveStatus) ?></span>
+                        <span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-slate-600"><?= e($event['visibility']) ?></span>
                     </div>
                 </div>
 
-                <div class="mt-6 overflow-hidden rounded-[2rem] border border-white/10 bg-slate-900 shadow-2xl shadow-black/25">
+                <div class="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
                     <div class="aspect-video bg-black">
                         <?php if ($playbackUrl): ?>
                             <video id="tvPlayer" controls playsinline class="h-full w-full bg-black"></video>
                         <?php elseif ((string)($event['status'] ?? '') === 'ended' && (string)($event['replay_status'] ?? '') === 'processing'): ?>
-                            <div class="flex h-full items-center justify-center p-8 text-center">
-                                <div>
-                                    <p class="text-sm font-bold uppercase tracking-[0.3em] text-amber-300">Replay Processing</p>
-                                    <h2 class="mt-3 text-2xl font-black">This event just ended</h2>
-                                    <p class="mt-3 max-w-xl text-sm leading-7 text-slate-400">The replay is being prepared and will appear here shortly.</p>
-                                </div>
-                            </div>
+                            <div class="flex h-full items-center justify-center p-8 text-center"><div><p class="text-sm font-bold uppercase tracking-[0.18em] text-amber-500">Replay Processing</p><h2 class="mt-2 text-xl font-black text-white">This event just ended</h2><p class="mt-2 max-w-xl text-sm leading-6 text-slate-400">The replay is being prepared and will appear here shortly.</p></div></div>
                         <?php elseif ((string)($event['replay_status'] ?? '') === 'failed'): ?>
-                            <div class="flex h-full items-center justify-center p-8 text-center">
-                                <div>
-                                    <p class="text-sm font-bold uppercase tracking-[0.3em] text-rose-300">Replay Unavailable</p>
-                                    <h2 class="mt-3 text-2xl font-black">This replay could not be prepared</h2>
-                                    <p class="mt-3 max-w-xl text-sm leading-7 text-slate-400">Something went wrong while processing this recording. Contact the organization if you expected a replay here.</p>
-                                </div>
-                            </div>
+                            <div class="flex h-full items-center justify-center p-8 text-center"><div><p class="text-sm font-bold uppercase tracking-[0.18em] text-rose-400">Replay Unavailable</p><h2 class="mt-2 text-xl font-black text-white">This replay could not be prepared</h2><p class="mt-2 max-w-xl text-sm leading-6 text-slate-400">Something went wrong while processing this recording.</p></div></div>
                         <?php else: ?>
-                            <div class="flex h-full items-center justify-center p-8 text-center">
-                                <div>
-                                    <p class="text-sm font-bold uppercase tracking-[0.3em] text-amber-300">Playback Unavailable</p>
-                                    <h2 class="mt-3 text-2xl font-black">Streaming origin not connected</h2>
-                                    <p class="mt-3 max-w-xl text-sm leading-7 text-slate-400">This event is ready in Centryk TV, but no playback base URL is configured yet. The watch page is still recording access and viewer heartbeats.</p>
-                                </div>
-                            </div>
+                            <div class="flex h-full items-center justify-center p-8 text-center"><div><p class="text-sm font-bold uppercase tracking-[0.18em] text-amber-500">Playback Unavailable</p><h2 class="mt-2 text-xl font-black text-white">Streaming origin not connected</h2><p class="mt-2 max-w-xl text-sm leading-6 text-slate-400">This event is ready in Centryk TV, but no playback base URL is configured yet.</p></div></div>
                         <?php endif; ?>
                     </div>
-                    <div class="flex flex-wrap items-center justify-between gap-4 border-t border-white/10 px-5 py-4 text-sm text-slate-300">
+                    <div class="flex flex-wrap items-center justify-between gap-4 border-t border-slate-200 px-4 py-3 text-sm text-slate-600">
                         <div class="flex items-center gap-4">
                             <span id="viewerCount" class="font-semibold"><?= (int)$viewerCount ?> watching now</span>
                             <?php if (!empty($event['sport']) && !empty($event['home_team']) && !empty($event['away_team'])): ?>
-                                <span class="rounded-full border border-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-brand-200">
-                                    <?= e($event['home_team']) ?> <?= (int)$event['home_score'] ?> - <?= (int)$event['away_score'] ?> <?= e($event['away_team']) ?>
-                                </span>
+                                <span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-brand-700"><?= e($event['home_team']) ?> <?= (int)$event['home_score'] ?> - <?= (int)$event['away_score'] ?> <?= e($event['away_team']) ?></span>
                             <?php endif; ?>
                         </div>
                         <span><?= e($event['channel_name']) ?></span>
                     </div>
                 </div>
 
-                <div class="mt-8 rounded-[2rem] border border-white/10 bg-white/5 p-6">
-                    <h2 class="text-xl font-black">Event Information</h2>
-                    <p class="mt-4 text-sm leading-7 text-slate-300"><?= nl2br(e((string)($event['description'] ?: 'No description added yet.'))) ?></p>
+                <div class="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <h2 class="text-base font-black">Event Information</h2>
+                    <p class="mt-3 text-sm leading-6 text-slate-600"><?= nl2br(e((string)($event['description'] ?: 'No description added yet.'))) ?></p>
                     <?php if (!empty($event['sport'])): ?>
-                        <div class="mt-6 grid gap-4 md:grid-cols-2">
-                            <div class="rounded-2xl bg-black/20 p-4">
-                                <p class="text-xs font-bold uppercase tracking-[0.2em] text-brand-300">Competition</p>
-                                <p class="mt-2 text-lg font-bold"><?= e((string)($event['competition'] ?: 'Not set')) ?></p>
-                            </div>
-                            <div class="rounded-2xl bg-black/20 p-4">
-                                <p class="text-xs font-bold uppercase tracking-[0.2em] text-brand-300">Venue</p>
-                                <p class="mt-2 text-lg font-bold"><?= e((string)($event['venue'] ?: 'Not set')) ?></p>
-                            </div>
+                        <div class="mt-4 grid gap-3 md:grid-cols-2">
+                            <div class="rounded-lg border border-slate-200 bg-slate-50 p-3"><p class="text-[10px] font-black uppercase tracking-[0.12em] text-brand-700">Competition</p><p class="mt-1 text-base font-bold text-slate-900"><?= e((string)($event['competition'] ?: 'Not set')) ?></p></div>
+                            <div class="rounded-lg border border-slate-200 bg-slate-50 p-3"><p class="text-[10px] font-black uppercase tracking-[0.12em] text-brand-700">Venue</p><p class="mt-1 text-base font-bold text-slate-900"><?= e((string)($event['venue'] ?: 'Not set')) ?></p></div>
                         </div>
                     <?php endif; ?>
                 </div>
             </section>
 
-            <aside class="space-y-6">
-                <div class="rounded-[2rem] border border-white/10 bg-white/5 p-6">
-                    <p class="text-xs font-bold uppercase tracking-[0.28em] text-brand-300">Organization</p>
-                    <h2 class="mt-3 text-2xl font-black"><?= e($event['organization_name']) ?></h2>
-                    <a href="<?= e(tv_url($event['organization_slug'])) ?>" class="mt-4 inline-flex rounded-full border border-white/10 px-4 py-2 text-sm font-semibold text-white">Visit organization page</a>
+            <aside class="space-y-4">
+                <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <p class="text-[10px] font-black uppercase tracking-[0.18em] text-brand-700">Organization</p>
+                    <h2 class="mt-2 text-lg font-black"><?= e($event['organization_name']) ?></h2>
+                    <a href="<?= e(tv_url($event['organization_slug'])) ?>" class="mt-3 inline-flex rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700">Visit organization page</a>
                 </div>
-                <div class="rounded-[2rem] border border-white/10 bg-white/5 p-6">
-                    <p class="text-xs font-bold uppercase tracking-[0.28em] text-brand-300">Related Events</p>
-                    <div class="mt-4 space-y-4">
+                <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <p class="text-[10px] font-black uppercase tracking-[0.18em] text-brand-700">Related Events</p>
+                    <div class="mt-3 space-y-2">
                         <?php foreach ($related as $item): ?>
-                            <a href="<?= e(tv_url('watch/' . $item['slug'])) ?>" class="block rounded-2xl bg-black/20 px-4 py-4 transition hover:bg-black/30">
-                                <h3 class="font-bold"><?= e($item['title']) ?></h3>
-                                <p class="mt-1 text-xs uppercase tracking-[0.2em] text-slate-400"><?= e($item['status']) ?></p>
+                            <a href="<?= e(tv_url('watch/' . $item['slug'])) ?>" class="block rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 transition hover:bg-slate-100">
+                                <h3 class="font-bold text-slate-900"><?= e($item['title']) ?></h3>
+                                <p class="mt-1 text-[10px] uppercase tracking-[0.12em] text-slate-400"><?= e($item['status']) ?></p>
                             </a>
                         <?php endforeach; ?>
                     </div>
@@ -190,13 +142,8 @@ $related = $related->fetchAll();
         async function sendHeartbeat() {
             const response = await fetch('<?= e(tv_url('api/viewer/heartbeat.php')) ?>', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    event_id: eventId,
-                    session_token: ensureSessionToken()
-                })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ event_id: eventId, session_token: ensureSessionToken() })
             });
             const payload = await response.json();
             if (payload.success && viewerCount) {
@@ -206,8 +153,6 @@ $related = $related->fetchAll();
 
         if (playbackUrl && player) {
             if (isReplay) {
-                // A replay is a plain remuxed MP4, not an HLS manifest - every
-                // browser plays that natively, no hls.js involved.
                 player.src = playbackUrl;
             } else if (player.canPlayType('application/vnd.apple.mpegurl')) {
                 player.src = playbackUrl;
@@ -215,16 +160,12 @@ $related = $related->fetchAll();
                 const hls = new Hls();
                 hls.loadSource(playbackUrl);
                 hls.attachMedia(player);
-                hls.on(Hls.Events.ERROR, function (_, data) {
-                    if (data && data.fatal) {
-                        console.error('HLS fatal error', data);
-                    }
-                });
             }
         }
 
         sendHeartbeat().catch(console.error);
         setInterval(() => sendHeartbeat().catch(console.error), 30000);
     </script>
+    <?php tv_render_page_footer(); ?>
 </body>
 </html>
