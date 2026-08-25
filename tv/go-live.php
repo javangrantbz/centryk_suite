@@ -53,6 +53,7 @@ if ($channel && $channel['stream_key_encrypted']) {
 
 $whipBase = (string)tv_config('stream_whip_url');
 $whipUrl = ($whipBase !== '' && $rawKey) ? $whipBase . '/' . rawurlencode($rawKey) . '/whip' : null;
+$turnCredentials = StreamingService::generateTurnCredentials('user' . (int)$user['id']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -113,6 +114,11 @@ $whipUrl = ($whipBase !== '' && $rawKey) ? $whipBase . '/' . rawurlencode($rawKe
     <?php if (!empty($whipUrl)): ?>
     <script>
         const WHIP_URL = <?= json_encode($whipUrl) ?>;
+        // Ephemeral TURN credential (see StreamingService::generateTurnCredentials) -
+        // expires in a few hours, so it being visible in page source here
+        // isn't a standing risk to the relay. Falls back to STUN-only
+        // (phase 1 behavior) if TURN isn't configured on this environment.
+        const TURN_CREDENTIALS = <?= json_encode($turnCredentials) ?>;
         const video = document.getElementById('preview');
         const btnGoLive = document.getElementById('btnGoLive');
         const btnSwitch = document.getElementById('btnSwitchCamera');
@@ -148,9 +154,9 @@ $whipUrl = ($whipBase !== '' && $rawKey) ? $whipBase . '/' . rawurlencode($rawKe
             errorBox.classList.add('hidden');
 
             try {
-                pc = new RTCPeerConnection({
-                    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-                });
+                const iceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
+                if (TURN_CREDENTIALS) { iceServers.push(TURN_CREDENTIALS); }
+                pc = new RTCPeerConnection({ iceServers });
                 localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
 
                 const offer = await pc.createOffer();

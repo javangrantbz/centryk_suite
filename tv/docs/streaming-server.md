@@ -375,7 +375,7 @@ to have OneLink provisioned.
   to end against a real (or OneLink-provided sandbox) merchant account
   before relying on this in production.
 
-## Browser "Go Live" via WHIP (phase 1: wifi, no TURN yet)
+## Browser "Go Live" via WHIP (phase 1 + phase 2 TURN)
 
 OBS/RTMP requires a broadcaster to leave the app, find their stream key, and
 install unfamiliar software - fine for a hired AV operator with real camera
@@ -423,8 +423,20 @@ webrtcEncryption: true
 # TLS directly rather than needing an nginx reverse-proxy in front of it.
 webrtcServerKey: /etc/letsencrypt/live/stream.example.com/privkey.pem
 webrtcServerCert: /etc/letsencrypt/live/stream.example.com/fullchain.pem
+# STUN alone can't traverse carrier-grade NAT on cellular - the coturn
+# TURN server below (colocated on this same VPS) is the phase 2 fallback.
+# username: AUTH_SECRET tells MediaMTX to generate its own time-limited
+# credential per session via coturn's use-auth-secret scheme, keyed off
+# the real secret in the password field - see "TURN server (phase 2)"
+# further down for the coturn side of this.
 webrtcICEServers2:
   - url: stun:stun.l.google.com:19302
+  - url: turn:stream.example.com:3478
+    username: AUTH_SECRET
+    password: "<TURN_SHARED_SECRET>"
+  - url: turns:stream.example.com:5349
+    username: AUTH_SECRET
+    password: "<TURN_SHARED_SECRET>"
 webrtcLocalUDPAddress: :8189
 webrtcAllowOrigins: ["https://centryk.example"]
 
@@ -473,12 +485,111 @@ all. Worth an explicit external port-reachability check
 (`curl -v telnet://host:port`) as a standard step before considering any
 new listener "done," not just a config file that parses.
 
-**What's NOT done yet (phase 2/3)**:
-- **TURN server.** STUN alone (the only ICE server configured above) is
-  usually fine on wifi but unreliable on cellular/carrier-grade NAT - the
-  realistic case for a phone filming a game from the sideline. Add a TURN
-  relay (`coturn` is the standard choice) as a fallback path before trusting
-  this for anything on cellular data.
+### TURN server (phase 2)
+
+Self-hosted `coturn`, colocated on this same VPS - chosen over a managed
+TURN service (Twilio, Cloudflare Calls, etc.) specifically to avoid a new
+vendor/billing decision, and because relayed media never needs to leave the
+box: the browser hits the TURN relay over the public IP, which hands off to
+MediaMTX over loopback, so there's no second real network hop.
+
+```bash
+dnf install -y coturn
+```
+
+**Credentials**: coturn's `use-auth-secret` mode (time-limited, HMAC-based)
+rather than one fixed username/password. A static credential embedded in
+`go-live.php`'s own page source could otherwise be scraped and reused by
+anyone to relay unrelated traffic through the VPS indefinitely. Instead:
+- The browser side gets a fresh credential generated per page load by
+  `StreamingService::generateTurnCredentials()` (PHP, `TURN_SHARED_SECRET`
+  env var), expiring in a few hours.
+- MediaMTX's own side (`webrtcICEServers2` above) uses `username:
+  AUTH_SECRET` - MediaMTX computes its own ephemeral credential from the
+  same shared secret, per session, rather than a hardcoded value.
+
+Both sides authenticate against the same `static-auth-secret` in coturn's
+config - generate one with `php -r "echo bin2hex(random_bytes(32));"` and
+set it as `TURN_SHARED_SECRET` in the app's `.env` AND in
+`/etc/coturn/turnserver.conf` below.
+
+**TLS cert**: coturn runs as an unprivileged `coturn` user/group and can't
+read `/etc/letsencrypt/archive/.../privkey.pem` (root-only, 600). Rather
+than loosen that permission, copy the cert pair to a location `coturn` can
+read, and re-copy on every renewal via a certbot deploy hook:
+
+```bash
+mkdir -p /etc/coturn/certs
+cp /etc/letsencrypt/live/stream.example.com/{fullchain,privkey}.pem /etc/coturn/certs/
+chown coturn:coturn /etc/coturn/certs/*.pem
+chmod 640 /etc/coturn/certs/*.pem
+```
+
+`/etc/letsencrypt/renewal-hooks/deploy/copy-to-coturn.sh` (executable):
+
+```bash
+#!/bin/bash
+set -e
+cp /etc/letsencrypt/live/stream.example.com/{fullchain,privkey}.pem /etc/coturn/certs/
+chown coturn:coturn /etc/coturn/certs/*.pem
+chmod 640 /etc/coturn/certs/*.pem
+systemctl restart coturn
+```
+
+`/etc/coturn/turnserver.conf`:
+
+```
+listening-port=3478
+tls-listening-port=5349
+external-ip=<VPS public IP>
+realm=stream.example.com
+server-name=stream.example.com
+
+use-auth-secret
+static-auth-secret=<TURN_SHARED_SECRET>
+
+cert=/etc/coturn/certs/fullchain.pem
+pkey=/etc/coturn/certs/privkey.pem
+no-tlsv1
+no-tlsv1_1
+
+# Relay port range for actual media once an allocation is in use.
+min-port=49160
+max-port=49300
+
+fingerprint
+no-cli
+
+# Don't let this TURN server relay into internal/private address space -
+# standard hardening for anything internet-facing, otherwise a relayed
+# connection could be pointed at internal infra instead of just MediaMTX.
+denied-peer-ip=10.0.0.0-10.255.255.255
+denied-peer-ip=100.64.0.0-100.127.255.255
+denied-peer-ip=127.0.0.0-127.255.255.255
+denied-peer-ip=169.254.0.0-169.254.255.255
+denied-peer-ip=172.16.0.0-172.31.255.255
+denied-peer-ip=192.168.0.0-192.168.255.255
+```
+
+coturn ships its own systemd unit (`User=coturn`, `Type=notify`) - no custom
+unit needed here, unlike nginx/MediaMTX:
+
+```bash
+systemctl enable --now coturn
+```
+
+**Firewall**: same IONOS cloud-firewall step as every other port this build
+has needed (see below) - TCP+UDP `3478`, TCP+UDP `5349`, and UDP
+`49160-49300` for the relay range.
+
+**Verifying it actually works** (not just "the service is running"): STUN
+alone already works on wifi, so testing Go Live from a laptop on wifi proves
+nothing about TURN. The only real test is from an actual cellular
+connection - open `chrome://webrtc-internals` (or check the browser
+console) during a Go Live session and confirm the active ICE candidate
+pair's type is `relay`, not `srflx`/`host`, when on cellular data.
+
+**What's NOT done yet (phase 3)**:
 - **UI polish.** `go-live.php` is a minimal proof of concept: camera preview,
   a front/back camera switch, Go Live/Stop. No reconnect-on-drop handling,
   no bitrate/quality indicator, not yet integrated into the channel

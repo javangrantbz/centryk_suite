@@ -26,10 +26,11 @@ Centryk TV is a Centryk suite app for organization-owned live streaming and digi
   payment requirement
 - watch page heartbeat and viewer counting
 - analytics, audit logging, seed data, and deployment docs
-- browser "Go Live" via WHIP (`go-live.php`) - phase 1 (wifi): stream
-  straight from a phone/laptop's own browser, no OBS or app install. Bridged
-  through MediaMTX into the same RTMP ingest OBS uses, so nothing downstream
-  needed to change. Cellular/TURN reliability is a documented follow-up.
+- browser "Go Live" via WHIP (`go-live.php`), with a header shortcut for
+  broadcasters: stream straight from a phone/laptop's own browser, no OBS or
+  app install. Bridged through MediaMTX into the same RTMP ingest OBS uses,
+  so nothing downstream needed to change. A self-hosted TURN relay (coturn)
+  keeps this working on cellular data, not just wifi.
 
 See [`docs/streaming-server.md`](./docs/streaming-server.md) for the actual
 IONOS VPS / NGINX-RTMP configuration this app's ingest, playback, and

@@ -15,6 +15,11 @@ return [
     // stream_ingest_url (RTMP, for OBS/hardware encoders). See
     // go-live.php and docs/streaming-server.md's WHIP section.
     'stream_whip_url' => rtrim((string)($_ENV['STREAM_WHIP_URL'] ?? ''), '/'),
+    // TURN relay for Go Live on cellular networks, where STUN alone can't
+    // traverse carrier NAT. See StreamingService::generateTurnCredentials()
+    // and docs/streaming-server.md's TURN section.
+    'turn_host' => (string)($_ENV['TURN_HOST'] ?? ''),
+    'turn_shared_secret' => (string)($_ENV['TURN_SHARED_SECRET'] ?? ''),
     'stream_signing_secret' => (string)($_ENV['STREAM_SIGNING_SECRET'] ?? ''),
     'stream_cipher_key' => (string)($_ENV['TV_STREAM_CIPHER_KEY'] ?? ''),
     'viewer_active_window_seconds' => 90,

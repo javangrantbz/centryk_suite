@@ -108,6 +108,42 @@ class StreamingService
         return hash_hmac('sha256', $resourceId . '|' . $expires, $secret);
     }
 
+    /**
+     * Time-limited TURN credentials for the browser's Go Live page (see
+     * docs/streaming-server.md's TURN section), using coturn's standard
+     * use-auth-secret scheme: username is "<expiry>:<label>", password is
+     * HMAC-SHA1(secret, username) base64-encoded. coturn recomputes the
+     * same HMAC itself, so nothing needs to be stored - a credential just
+     * stops verifying once its embedded expiry has passed. This keeps a
+     * long-lived shared secret only in server config while what actually
+     * reaches the browser (and could be read from page source) expires in
+     * hours, not indefinitely.
+     */
+    public static function generateTurnCredentials(string $label, int $ttlSeconds = 21600): ?array
+    {
+        $secret = (string)tv_config('turn_shared_secret');
+        $host = (string)tv_config('turn_host');
+        if ($secret === '' || $host === '') {
+            return null;
+        }
+
+        $username = (string)(time() + $ttlSeconds) . ':' . $label;
+        $password = base64_encode(hash_hmac('sha1', $username, $secret, true));
+
+        return [
+            // Both a plain UDP entry and a TLS-over-TCP fallback (5349,
+            // reusing the same Let's Encrypt cert coturn was given) - the
+            // TLS path matters for cellular networks that block plain UDP
+            // outright, which is exactly the case TURN exists to cover.
+            'urls' => [
+                'turn:' . $host . ':3478?transport=udp',
+                'turns:' . $host . ':5349?transport=tcp',
+            ],
+            'username' => $username,
+            'credential' => $password,
+        ];
+    }
+
     public static function getPlaybackUrl(array $event, int $ttl = 300): ?string
     {
         $base = (string)tv_config('stream_playback_base_url');
