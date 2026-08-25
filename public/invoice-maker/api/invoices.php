@@ -131,6 +131,19 @@ if ($method === 'DELETE') {
         json_response(['error' => 'Invoice ID is required'], 400);
     }
 
+    // POS receipts mirror completed OnePay sales — deleting one here would
+    // leave OnePay's own sales row untouched and the two systems disagreeing.
+    $check = $pdo->prepare("SELECT source_app, source_ref FROM invoices WHERE id = ? AND company_id = ?");
+    $check->execute([$id, $companyId]);
+    $existing = $check->fetch();
+
+    if (!$existing) {
+        json_response(['error' => 'Invoice not found'], 404);
+    }
+    if (inv_is_pos_receipt($existing)) {
+        json_response(['error' => inv_pos_receipt_delete_message()], 403);
+    }
+
     $stmt = $pdo->prepare("DELETE FROM invoices WHERE id = ? AND company_id = ?");
     $stmt->execute([$id, $companyId]);
 

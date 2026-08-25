@@ -92,3 +92,25 @@ function inv_company_logo_path(?string $logo): ?string
         : rtrim(CENTRYK_PUBLIC_DIR, '/\\') . '/' . $logo;
     return is_file($path) ? $path : null;
 }
+/**
+ * True when an invoice is a mirror of a completed OnePay sale rather than a
+ * document created here.
+ *
+ * These are financial records of money that actually changed hands at a POS
+ * terminal. Deleting one from this app would not touch OnePay's own `sales`
+ * row, so the two systems would silently disagree about what was sold — with
+ * no trace left behind of the receipt that vanished. Corrections belong in
+ * OnePay (void/refund the sale), which then flows back through the bridge.
+ */
+function inv_is_pos_receipt(array $invoice): bool
+{
+    return ($invoice['source_app'] ?? '') === 'onepay'
+        && strpos((string)($invoice['source_ref'] ?? ''), 'sale:') === 0;
+}
+
+/** Guard message for a blocked POS-receipt deletion. */
+function inv_pos_receipt_delete_message(): string
+{
+    return 'This is a POS receipt from a completed OnePay sale and cannot be deleted here. '
+         . 'Void or refund the sale in OnePay instead.';
+}

@@ -23,6 +23,10 @@ $itemStmt = $pdo->prepare("SELECT * FROM invoice_items WHERE invoice_id = ?");
 $itemStmt->execute([$id]);
 $items = $itemStmt->fetchAll();
 
+$payStmt = $pdo->prepare("SELECT amount, payment_date, method, notes FROM payments WHERE invoice_id = ? ORDER BY payment_date DESC, id DESC");
+$payStmt->execute([$id]);
+$payments = $payStmt->fetchAll();
+
 // Paper trail: the quote this invoice was created from.
 $sourceQuote = null;
 if (!empty($invoice['quote_id'])) {
@@ -41,20 +45,101 @@ $invScheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https
 $shareUrl  = $invScheme . '://' . ($_SERVER['HTTP_HOST'] ?? '') . BASE_URL . '/share.php?t=' . $invoice['share_token'];
 $shareMsg  = 'Invoice ' . $invoice['invoice_number'] . ' (' . money($invoice['total']) . '): ' . $shareUrl;
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['mark_paid'])) {
-        $stmt = $pdo->prepare("
-            UPDATE invoices
-            SET status = 'paid', amount_paid = total
-            WHERE id = ? AND company_id = ?
-        ");
-        $stmt->execute([$id, current_company_id()]);
+/**
+ * Every payment is a row in `payments`; invoices.amount_paid is only ever a
+ * cached SUM of them. Recomputing from the ledger (instead of incrementing
+ * the column) means a deleted or corrected payment can never leave the
+ * invoice's balance out of step with its own history.
+ */
+$inv_apply_payment = function (PDO $pdo, int $invoiceId, int $companyId, float $amount,
+                               string $method, string $notes): void {
+    $pdo->beginTransaction();
+    try {
+        // Lock the invoice so two concurrent payments can't both read the
+        // same balance and jointly overpay it.
+        $lock = $pdo->prepare("SELECT total, amount_paid FROM invoices WHERE id = ? AND company_id = ? FOR UPDATE");
+        $lock->execute([$invoiceId, $companyId]);
+        $inv = $lock->fetch();
+        if (!$inv) {
+            throw new RuntimeException('Invoice not found.');
+        }
 
-        header('Location: ' . BASE_URL . '/?page=invoices-view&id=' . $id);
+        $balance = round((float)$inv['total'] - (float)$inv['amount_paid'], 2);
+        if ($amount > $balance + 0.005) {
+            throw new RuntimeException('Payment exceeds the ' . money($balance) . ' balance due.');
+        }
+
+        $pdo->prepare("INSERT INTO payments (invoice_id, amount, payment_date, method, notes)
+                       VALUES (?, ?, CURDATE(), ?, ?)")
+            ->execute([$invoiceId, number_format($amount, 2, '.', ''), $method ?: null, $notes ?: null]);
+
+        $paid  = (float)$pdo->query("SELECT COALESCE(SUM(amount), 0) FROM payments WHERE invoice_id = " . (int)$invoiceId)->fetchColumn();
+        $total = (float)$inv['total'];
+
+        // No 'partial' state exists in the status enum, so a part-paid
+        // invoice keeps its current status and shows its balance instead.
+        $pdo->prepare("UPDATE invoices
+                       SET amount_paid = ?,
+                           status = CASE WHEN ? THEN 'paid' ELSE status END
+                       WHERE id = ? AND company_id = ?")
+            ->execute([
+                number_format($paid, 2, '.', ''),
+                $paid >= $total - 0.005 ? 1 : 0,
+                $invoiceId,
+                $companyId,
+            ]);
+
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        throw $e;
+    }
+};
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['record_payment']) || isset($_POST['mark_paid'])) {
+        $balanceDue = round((float)$invoice['total'] - (float)$invoice['amount_paid'], 2);
+
+        // "Mark as Fully Paid" settles the remaining balance, but still goes
+        // through the ledger so the history is never missing a payment.
+        if (isset($_POST['mark_paid'])) {
+            $amount = $balanceDue;
+            $method = 'Marked paid';
+            $notes  = '';
+        } else {
+            $raw    = str_replace(',', '', trim((string)($_POST['payment_amount'] ?? '')));
+            $amount = round((float)$raw, 2);
+            $method = substr(trim((string)($_POST['payment_method'] ?? '')), 0, 100);
+            $notes  = substr(trim((string)($_POST['payment_notes'] ?? '')), 0, 500);
+
+            if (!is_numeric($raw) || $amount <= 0) {
+                header('Location: ' . BASE_URL . '/?page=invoices-view&id=' . $id . '&pay_err=' . rawurlencode('Enter a payment amount greater than zero.'));
+                exit;
+            }
+        }
+
+        if ($balanceDue <= 0.005) {
+            header('Location: ' . BASE_URL . '/?page=invoices-view&id=' . $id . '&pay_err=' . rawurlencode('This invoice is already fully paid.'));
+            exit;
+        }
+
+        try {
+            $inv_apply_payment($pdo, (int)$id, current_company_id(), $amount, $method, $notes);
+            header('Location: ' . BASE_URL . '/?page=invoices-view&id=' . $id . '&pay_ok=1');
+        } catch (Throwable $e) {
+            header('Location: ' . BASE_URL . '/?page=invoices-view&id=' . $id . '&pay_err=' . rawurlencode($e->getMessage()));
+        }
         exit;
     }
 
     if (isset($_POST['delete'])) {
+        // Enforced server-side, not just by hiding the button — the POST is
+        // reachable regardless of what the page rendered.
+        if (inv_is_pos_receipt($invoice)) {
+            header('Location: ' . BASE_URL . '/?page=invoices-view&id=' . $id . '&pay_err=' . rawurlencode(inv_pos_receipt_delete_message()));
+            exit;
+        }
+
         $stmt = $pdo->prepare("DELETE FROM invoices WHERE id = ? AND company_id = ?");
         $stmt->execute([$id, current_company_id()]);
 
@@ -115,11 +200,17 @@ function getStatusBadge($status) {
                 Download PDF
             </a>
             
-            <form method="POST" onsubmit="return confirm('Delete this invoice permanently?')">
-                <button name="delete" value="1" class="p-3 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-2xl transition-all" title="Delete Invoice">
-                    <i data-lucide="trash-2" class="w-5 h-5"></i>
-                </button>
-            </form>
+            <?php if (inv_is_pos_receipt($invoice)): ?>
+                <span class="p-3 text-slate-300 cursor-not-allowed rounded-2xl" title="<?= e(inv_pos_receipt_delete_message()) ?>">
+                    <i data-lucide="lock" class="w-5 h-5"></i>
+                </span>
+            <?php else: ?>
+                <form method="POST" onsubmit="return confirm('Delete this invoice permanently?')">
+                    <button name="delete" value="1" class="p-3 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-2xl transition-all" title="Delete Invoice">
+                        <i data-lucide="trash-2" class="w-5 h-5"></i>
+                    </button>
+                </form>
+            <?php endif; ?>
         </div>
     </div>
 </div>
@@ -218,6 +309,18 @@ function getStatusBadge($status) {
                 Payment
             </h3>
 
+            <?php if (!empty($_GET['pay_err'])): ?>
+                <div class="bg-rose-500/10 border border-rose-500/30 text-rose-300 px-3 py-2 rounded-xl text-xs font-bold">
+                    <?= e($_GET['pay_err']) ?>
+                </div>
+            <?php elseif (!empty($_GET['pay_ok'])): ?>
+                <div class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 px-3 py-2 rounded-xl text-xs font-bold">
+                    Payment recorded.
+                </div>
+            <?php endif; ?>
+
+            <?php $balanceDue = round((float)$invoice['total'] - (float)$invoice['amount_paid'], 2); ?>
+
             <div class="space-y-4">
                 <div class="flex justify-between text-sm">
                     <span class="text-gray-400">Already Paid</span>
@@ -225,15 +328,53 @@ function getStatusBadge($status) {
                 </div>
                 <div class="flex justify-between text-lg pt-2">
                     <span class="text-gray-400">Balance Due</span>
-                    <span class="font-black text-white"><?= money($invoice['total'] - $invoice['amount_paid']) ?></span>
+                    <span class="font-black text-white"><?= money($balanceDue) ?></span>
                 </div>
             </div>
 
-            <?php if ($invoice['status'] !== 'paid'): ?>
-                <form method="POST" class="pt-2">
+            <?php if ($payments): ?>
+            <div class="border-t border-white/10 pt-3">
+                <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Payment History</div>
+                <div class="space-y-1.5 max-h-44 overflow-y-auto">
+                    <?php foreach ($payments as $p): ?>
+                    <div class="flex items-start justify-between gap-2 text-xs">
+                        <div class="min-w-0">
+                            <div class="text-gray-300 font-semibold"><?= date('M j, Y', strtotime($p['payment_date'])) ?></div>
+                            <?php if (!empty($p['method']) || !empty($p['notes'])): ?>
+                            <div class="text-[10px] text-gray-500 truncate max-w-[150px]">
+                                <?= e(trim(($p['method'] ?? '') . (!empty($p['notes']) ? ' · ' . $p['notes'] : ''), ' ·')) ?>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                        <span class="shrink-0 font-black text-emerald-400"><?= money($p['amount']) ?></span>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <?php if ($balanceDue > 0.005): ?>
+                <form method="POST" class="pt-2 space-y-2 border-t border-white/10">
+                    <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 pt-3">Record a Payment</div>
+                    <div class="flex gap-2">
+                        <input type="number" step="0.01" min="0.01" max="<?= $balanceDue ?>" name="payment_amount"
+                               placeholder="<?= number_format($balanceDue, 2, '.', '') ?>" required
+                               class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-emerald-500 focus:outline-none">
+                        <input type="text" name="payment_method" placeholder="Cash, cheque…" maxlength="100"
+                               class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-emerald-500 focus:outline-none">
+                    </div>
+                    <input type="text" name="payment_notes" placeholder="Reference / note (optional)" maxlength="500"
+                           class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-emerald-500 focus:outline-none">
+                    <button name="record_payment" value="1" class="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-2.5 rounded-2xl transition-all flex items-center justify-center text-sm">
+                        <i data-lucide="plus-circle" class="w-4 h-4 mr-2"></i>
+                        Record Payment
+                    </button>
+                </form>
+
+                <form method="POST" onsubmit="return confirm('Settle the full <?= money($balanceDue) ?> balance now?')">
                     <button name="mark_paid" value="1" class="w-full bg-emerald-500 hover:bg-emerald-600 text-[#1a1a1a] font-black py-3 rounded-2xl transition-all shadow-lg shadow-emerald-900/20 flex items-center justify-center">
                         <i data-lucide="check-circle-2" class="w-5 h-5 mr-2"></i>
-                        Mark as Paid
+                        Mark as Fully Paid
                     </button>
                 </form>
             <?php else: ?>
