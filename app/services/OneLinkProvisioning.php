@@ -159,7 +159,7 @@ class OneLinkProvisioning
      * fail. Matched case-insensitively; the canonical spelling (OneLink's,
      * which matches ours) is what gets sent.
      */
-    private const SUPPORTED_BANKS = ['Belize Bank', 'Heritage Bank', 'Atlantic Bank'];
+    public const SUPPORTED_BANKS = ['Belize Bank', 'Heritage Bank', 'Atlantic Bank'];
 
     /**
      * Pushes a company's settlement bank account to OneLink via

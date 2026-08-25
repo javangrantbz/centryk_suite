@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../app/core/Auth.php';
 require_once __DIR__ . '/../app/core/DB.php';
 require_once __DIR__ . '/../app/services/AuthService.php';
+require_once __DIR__ . '/../app/services/OneLinkProvisioning.php';
 
 Auth::start();
 $user = Auth::user();
@@ -600,33 +601,18 @@ function profile_app_stat_card(array $app, int $companyCount, int $userCount, st
             <!-- Part A: Settlement bank account (self-service for any company admin) -->
             <div class="mb-6">
                 <h3 class="text-[11px] font-black text-white mb-0.5">Your Banking Information</h3>
-                <p class="text-[10px] text-white/35 mb-3">The bank account where your settled money is deposited.</p>
+                <p class="text-[10px] text-white/35 mb-3">The bank account where your settled money is deposited. Limited to the banks OneLink can actually settle to.</p>
 
                 <form id="bankAccountForm" class="space-y-3" novalidate>
                     <input type="hidden" id="baCompanyId" name="company_id" value="">
                     <div>
-                        <label class="block text-[10px] font-bold text-white/35 mb-1 uppercase tracking-wider">Bank / Credit Union</label>
+                        <label class="block text-[10px] font-bold text-white/35 mb-1 uppercase tracking-wider">Settlement Bank</label>
                         <select id="baBankName" name="bank_name" class="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-cyan-400 focus:outline-none">
                             <option value="">Select a bank…</option>
-                            <optgroup label="Banks">
-                                <option>Belize Bank</option>
-                                <option>Atlantic Bank</option>
-                                <option>Heritage Bank</option>
-                                <option>National Bank of Belize</option>
-                            </optgroup>
-                            <optgroup label="Credit Unions">
-                                <option>Holy Redeemer Credit Union</option>
-                                <option>St. John's Credit Union</option>
-                                <option>La Inmaculada Credit Union</option>
-                                <option>Toledo Teachers' Credit Union</option>
-                                <option>Citrus Growers &amp; Workers Credit Union</option>
-                                <option>Blue Creek Credit Union</option>
-                                <option>Belize Credit Union League</option>
-                            </optgroup>
-                            <option value="__other__">Other…</option>
+                            <?php foreach (OneLinkProvisioning::SUPPORTED_BANKS as $bank): ?>
+                            <option><?= htmlspecialchars($bank) ?></option>
+                            <?php endforeach; ?>
                         </select>
-                        <input id="baBankOther" name="bank_name_other" type="text" placeholder="Enter bank / credit union name"
-                            class="hidden mt-2 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/25 focus:border-cyan-400 focus:outline-none">
                     </div>
                     <div>
                         <label class="block text-[10px] font-bold text-white/35 mb-1 uppercase tracking-wider">Account Holder Name</label>
@@ -942,7 +928,6 @@ document.getElementById('updateNameForm').addEventListener('submit', async funct
     const acct = {
         companyId: document.getElementById('baCompanyId'),
         bank:      document.getElementById('baBankName'),
-        bankOther: document.getElementById('baBankOther'),
         holder:    document.getElementById('baHolder'),
         number:    document.getElementById('baNumber'),
         branch:    document.getElementById('baBranch'),
@@ -972,21 +957,11 @@ document.getElementById('updateNameForm').addEventListener('submit', async funct
         }
         el.classList.remove('hidden');
     }
-    acct.bank.addEventListener('change', function () {
-        const other = this.value === '__other__';
-        acct.bankOther.classList.toggle('hidden', !other);
-        if (other) acct.bankOther.focus();
-    });
+    // Every saved bank_name is already one of the picker's own options (the
+    // dropdown IS the supported-bank list), so this is just a plain select —
+    // no "Other" free-text fallback to reconcile against.
     function setBank(value) {
-        if (!value) { acct.bank.value = ''; acct.bankOther.classList.add('hidden'); acct.bankOther.value = ''; return; }
-        const opt = Array.from(acct.bank.options).find(o => (o.value || o.text) === value && o.value !== '__other__');
-        if (opt) {
-            acct.bank.value = opt.value || opt.text;
-            acct.bankOther.classList.add('hidden'); acct.bankOther.value = '';
-        } else {
-            acct.bank.value = '__other__';
-            acct.bankOther.classList.remove('hidden'); acct.bankOther.value = value;
-        }
+        acct.bank.value = value || '';
     }
 
     const cardStatus    = document.getElementById('cardStatus');      // non-admin status
@@ -1072,7 +1047,7 @@ document.getElementById('updateNameForm').addEventListener('submit', async funct
     acct.form.addEventListener('submit', async function (e) {
         e.preventDefault();
         const btn = document.getElementById('baSubmitBtn');
-        const bankName = acct.bank.value === '__other__' ? acct.bankOther.value.trim() : acct.bank.value;
+        const bankName = acct.bank.value;
         if (!bankName || !acct.holder.value.trim() || !acct.number.value.trim()) {
             return bkAlert('Bank, account holder and account number are required.', false);
         }

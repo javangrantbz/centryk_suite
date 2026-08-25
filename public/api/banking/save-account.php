@@ -46,6 +46,21 @@ if ($bankName === '' || $accountHolder === '' || $accountNumber === '') {
     Response::error('Bank name, account holder and account number are required.', 422);
 }
 
+// This field exists only to feed OneLink settlement (nothing else in the
+// codebase reads company_bank_accounts) - profile.php's picker now only
+// offers these three, so a mismatch here means the request bypassed the UI.
+$canonicalBank = null;
+foreach (OneLinkProvisioning::SUPPORTED_BANKS as $supported) {
+    if (strcasecmp($supported, $bankName) === 0) {
+        $canonicalBank = $supported;
+        break;
+    }
+}
+if ($canonicalBank === null) {
+    Response::error('Unsupported bank. Choose one of: ' . implode(', ', OneLinkProvisioning::SUPPORTED_BANKS) . '.', 422);
+}
+$bankName = $canonicalBank;
+
 $stmt = $pdo->prepare("
     INSERT INTO company_bank_accounts
         (company_id, bank_name, account_holder, account_number, branch)
