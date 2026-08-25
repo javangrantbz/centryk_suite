@@ -21,6 +21,25 @@ $channels = db()->prepare('SELECT id, name FROM tv_channels WHERE organization_i
 $channels->execute(['organization_id' => (int)$organization['id']]);
 $channels = $channels->fetchAll();
 
+// Go Live is meant to be zero-setup - a broadcaster shouldn't have to go
+// create a channel on a completely different page first just to start
+// streaming. Auto-name it after the company with a sequence suffix
+// (in practice always 001, since this only fires when the org has none
+// yet) so it isn't a bare "Untitled Channel" before anyone bothers to
+// rename it from the Channels page.
+if (!$channels && $channelId === 0) {
+    $companyName = trim((string)($organization['company_name'] ?? $organization['name'] ?? 'My Channel'));
+    $autoName = ($companyName !== '' ? $companyName : 'My Channel') . ' ' . str_pad((string)(count($channels) + 1), 3, '0', STR_PAD_LEFT);
+    try {
+        $created = TvManagementService::createChannel((int)$organization['id'], (int)$user['id'], ['name' => $autoName]);
+        tv_redirect(tv_url('go-live.php?channel_id=' . (int)$created['id']));
+    } catch (Throwable $e) {
+        // Falls through to the manual-creation messaging below if this
+        // somehow fails (e.g. a slug collision from an unlucky race) -
+        // the Channels page still works as a fallback.
+    }
+}
+
 $whipBase = (string)tv_config('stream_whip_url');
 $turnCredentials = StreamingService::generateTurnCredentials('user' . (int)$user['id']);
 ?>
@@ -41,7 +60,7 @@ $turnCredentials = StreamingService::generateTurnCredentials('user' . (int)$user
             <p class="mt-1 text-sm text-slate-500">Stream from this browser. Choose a channel, set a title if needed, and start the broadcast.</p>
 
             <?php if (!$channels): ?>
-                <div class="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">Create a channel first from the Channels page.</div>
+                <div class="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">Couldn't set up a channel automatically - create one from the Channels page, then come back here.</div>
             <?php else: ?>
                 <form method="get" class="mt-4">
                     <label class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Channel</label>
