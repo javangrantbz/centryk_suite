@@ -114,6 +114,12 @@ function tv_render_admin_header(string $pageTitle, string $active): void
                         <h2 class="mt-1 text-xl font-black tracking-tight lg:text-2xl"><?= e($pageTitle) ?></h2>
                     </div>
                     <div class="flex items-center gap-2">
+                        <?php if (tv_role_at_least('broadcaster')): ?>
+                            <a href="<?= e(tv_url('go-live.php')) ?>" class="flex items-center gap-1.5 rounded-2xl bg-rose-600 px-3 py-2 text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-rose-950/20 transition hover:bg-rose-500">
+                                <span class="inline-block h-1.5 w-1.5 rounded-full bg-white"></span>
+                                Go Live
+                            </a>
+                        <?php endif; ?>
                         <a href="<?= e(tv_url()) ?>" class="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-100">Public site</a>
                         <a href="<?= e(centryk_public_url() . '/profile.php') ?>" class="rounded-2xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white"><?= e((string)($user['display_name'] ?? 'Profile')) ?></a>
                     </div>

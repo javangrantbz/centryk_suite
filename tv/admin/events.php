@@ -109,6 +109,13 @@ tv_render_admin_header('Events', 'events');
                 <p class="mt-3 text-[11px] leading-5 text-slate-500">Your organization members can manage and watch their own events. Use visibility to control who outside the organization can access the event.</p>
             </div>
             <div><label class="text-sm font-semibold">Thumbnail</label><input type="file" name="thumbnail" accept="image/*" class="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm"></div>
+            <label class="flex items-start gap-3 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
+                <input type="checkbox" name="is_replay_enabled" value="1" class="mt-0.5 h-4 w-4 rounded border-slate-300">
+                <span>
+                    <span class="block text-sm font-semibold text-slate-900">Save a replay</span>
+                    <span class="block text-xs leading-5 text-slate-500">Once the broadcast ends, viewers can watch it back on the same event page. Off by default.</span>
+                </span>
+            </label>
             <div class="rounded-[1.5rem] bg-slate-50 p-4">
                 <p class="text-xs font-bold uppercase tracking-[0.2em] text-brand-700">Sports Details</p>
                 <div class="mt-4 grid gap-4 md:grid-cols-2">
@@ -149,7 +156,12 @@ tv_render_admin_header('Events', 'events');
                                 <p class="mt-3 text-sm font-semibold text-slate-700"><?= e($event['home_team']) ?> <?= (int)$event['home_score'] ?> - <?= (int)$event['away_score'] ?> <?= e($event['away_team']) ?></p>
                             <?php endif; ?>
                         </div>
-                        <span class="rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] <?= e(tv_status_badge_class((string)$event['status'])) ?>"><?= e($event['status']) ?></span>
+                        <div class="flex flex-col items-end gap-1.5">
+                            <span class="rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] <?= e(tv_status_badge_class((string)$event['status'])) ?>"><?= e($event['status']) ?></span>
+                            <?php if (!empty($event['is_replay_enabled'])): ?>
+                                <span class="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Replay: <?= e((string)($event['replay_status'] ?: 'none')) ?></span>
+                            <?php endif; ?>
+                        </div>
                     </div>
                     <div class="mt-5 grid gap-4 md:grid-cols-2">
                         <div class="rounded-2xl bg-slate-50 p-4">
