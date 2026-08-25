@@ -11,6 +11,10 @@ return [
     'stream_playback_base_url' => rtrim((string)($_ENV['STREAM_PLAYBACK_BASE_URL'] ?? ''), '/'),
     'stream_api_url' => (string)($_ENV['STREAM_API_URL'] ?? ''),
     'stream_api_key' => (string)($_ENV['STREAM_API_KEY'] ?? ''),
+    // Browser "Go Live" (WHIP) publish endpoint - separate from
+    // stream_ingest_url (RTMP, for OBS/hardware encoders). See
+    // go-live.php and docs/streaming-server.md's WHIP section.
+    'stream_whip_url' => rtrim((string)($_ENV['STREAM_WHIP_URL'] ?? ''), '/'),
     'stream_signing_secret' => (string)($_ENV['STREAM_SIGNING_SECRET'] ?? ''),
     'stream_cipher_key' => (string)($_ENV['TV_STREAM_CIPHER_KEY'] ?? ''),
     'viewer_active_window_seconds' => 90,

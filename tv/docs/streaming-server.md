@@ -375,6 +375,120 @@ to have OneLink provisioned.
   to end against a real (or OneLink-provided sandbox) merchant account
   before relying on this in production.
 
+## Browser "Go Live" via WHIP (phase 1: wifi, no TURN yet)
+
+OBS/RTMP requires a broadcaster to leave the app, find their stream key, and
+install unfamiliar software - fine for a hired AV operator with real camera
+gear, a real dealbreaker for "point a phone at a school game." WHIP
+(WebRTC-HTTP Ingestion) lets a browser tab capture camera/mic and publish
+directly - `go-live.php` is the page, no separate app needed.
+
+**Architecture**: [MediaMTX](https://github.com/bluenviron/mediamtx) runs
+alongside nginx on the same VPS, accepts the WHIP publish, and forwards it
+**natively** (a declarative `forward:` path setting - no ffmpeg subprocess)
+into the exact same RTMP ingest OBS already uses. Everything downstream -
+`on_publish.php`'s key validation and capacity guardrail, HLS, playback
+authorization, replay - applies identically regardless of whether the
+source was OBS or a browser tab, because as far as nginx-rtmp is concerned
+it's the same RTMP publish either way.
+
+Install (binary release, no compile needed - unlike nginx-rtmp, MediaMTX
+ships prebuilt for Linux):
+
+```bash
+cd /usr/local/src
+wget -q https://github.com/bluenviron/mediamtx/releases/download/v1.20.1/mediamtx_v1.20.1_linux_amd64.tar.gz
+mkdir mediamtx && tar xzf mediamtx_v1.20.1_linux_amd64.tar.gz -C mediamtx
+cp mediamtx/mediamtx /usr/local/bin/mediamtx
+mkdir -p /etc/mediamtx
+```
+
+`/etc/mediamtx/mediamtx.yml` - MediaMTX defaults to enabling its own RTMP
+server on `:1935`, which collides with nginx-rtmp already there; everything
+except WHIP is explicitly disabled:
+
+```yaml
+rtmp: false
+hls: false
+srt: false
+rtsp: false
+api: false
+
+webrtc: true
+webrtcAddress: :8889
+webrtcEncryption: true
+# Reuses the same Let's Encrypt cert nginx already has for this domain -
+# a browser fetching WHIP from an HTTPS page needs the WHIP endpoint itself
+# to also be HTTPS (mixed content is blocked), and MediaMTX can terminate
+# TLS directly rather than needing an nginx reverse-proxy in front of it.
+webrtcServerKey: /etc/letsencrypt/live/stream.example.com/privkey.pem
+webrtcServerCert: /etc/letsencrypt/live/stream.example.com/fullchain.pem
+webrtcICEServers2:
+  - url: stun:stun.l.google.com:19302
+webrtcLocalUDPAddress: :8189
+webrtcAllowOrigins: ["https://centryk.example"]
+
+paths:
+  all_others:
+    # $MTX_PATH is whatever path name the browser published to
+    # (https://stream.example.com:8889/<streamkey>/whip) - forwarding with
+    # the same value as the RTMP stream key means the browser path goes
+    # through the identical tv_stream_keys lookup OBS already does.
+    forward:
+      - dest: "rtmp://127.0.0.1:1935/live#$MTX_PATH"
+```
+
+Note the `forward` YAML shape - each entry is an object with a `dest:` key,
+not a plain string; `forward: ["rtmp://..."]` fails to parse.
+
+Systemd unit (`/etc/systemd/system/mediamtx.service`):
+
+```ini
+[Unit]
+Description=MediaMTX - WHIP (browser) ingest bridge for Centryk TV
+After=network.target nginx.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/mediamtx /etc/mediamtx/mediamtx.yml
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Then `systemctl daemon-reload && systemctl enable --now mediamtx`, and set
+`STREAM_WHIP_URL=https://stream.example.com:8889` in the app's `.env`.
+
+**Firewall**: this needs its own ports opened at the cloud/network level
+(IONOS's own firewall panel, not the VPS's OS - `firewalld` isn't even
+installed on this box). TCP `8889` (WHIP signaling) and UDP `8189`
+(WebRTC/ICE media) both need to be open, in addition to whatever was
+already opened for RTMP (`1935`). Confirmed the hard way: RTMP port 1935
+was ALSO blocked externally by the cloud firewall the whole time despite
+being correctly configured at the OS/nginx level - this went unnoticed
+until testing WHIP specifically prompted checking external reachability at
+all. Worth an explicit external port-reachability check
+(`curl -v telnet://host:port`) as a standard step before considering any
+new listener "done," not just a config file that parses.
+
+**What's NOT done yet (phase 2/3)**:
+- **TURN server.** STUN alone (the only ICE server configured above) is
+  usually fine on wifi but unreliable on cellular/carrier-grade NAT - the
+  realistic case for a phone filming a game from the sideline. Add a TURN
+  relay (`coturn` is the standard choice) as a fallback path before trusting
+  this for anything on cellular data.
+- **UI polish.** `go-live.php` is a minimal proof of concept: camera preview,
+  a front/back camera switch, Go Live/Stop. No reconnect-on-drop handling,
+  no bitrate/quality indicator, not yet integrated into the channel
+  dashboard as a first-class action.
+- **The MoQ listener MediaMTX starts by default** (ports `8892`/`8893`,
+  self-signed cert auto-generated on first run) was left running rather
+  than chased down for phase 1 - it's an unused protocol surface, not
+  something this build relies on, but worth explicitly disabling once the
+  correct config key is confirmed.
+
 ## Known gaps not yet covered here
 
 - **Token/session binding.** Playback tokens are valid for anyone who has
