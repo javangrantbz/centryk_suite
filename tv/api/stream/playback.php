@@ -7,9 +7,10 @@ if ($eventId <= 0) {
 }
 
 $stmt = db()->prepare(
-    'SELECT e.*, c.slug AS channel_slug, c.visibility AS channel_visibility
+    'SELECT e.*, c.slug AS channel_slug, c.visibility AS channel_visibility, sk.stream_key_encrypted
      FROM tv_events e
      JOIN tv_channels c ON c.id = e.channel_id
+     LEFT JOIN tv_stream_keys sk ON sk.id = e.stream_key_id
      WHERE e.id = :event_id LIMIT 1'
 );
 $stmt->execute(['event_id' => $eventId]);

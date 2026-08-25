@@ -151,7 +151,20 @@ class StreamingService
             return null;
         }
 
-        $resource = ($event['channel_slug'] ?? 'channel') . '.m3u8';
+        // nginx-rtmp names HLS output after the RTMP stream NAME the
+        // encoder actually published to, which is the event's raw stream
+        // key (see on_publish.php/authorizePublish()) - never the
+        // channel's slug. Building this URL from channel_slug requested a
+        // file that never existed, so playback silently 404'd for every
+        // event regardless of source (OBS or Go Live) until this was
+        // caught. Callers must include stream_key_encrypted in $event
+        // (tv_find_event_by_slug() already does; see playback.php).
+        $rawKey = self::decryptStreamKey($event['stream_key_encrypted'] ?? null);
+        if ($rawKey === null || $rawKey === '') {
+            return null;
+        }
+
+        $resource = $rawKey . '.m3u8';
         $expires = time() + $ttl;
         $token = self::generatePlaybackToken((string)$event['id'], $expires);
         return $base . '/' . rawurlencode($resource) . '?expires=' . $expires . '&token=' . urlencode($token) . '&event=' . (int)$event['id'];
