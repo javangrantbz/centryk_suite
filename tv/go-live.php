@@ -189,6 +189,27 @@ $turnCredentials = StreamingService::generateTurnCredentials('user' . (int)$user
                 if (TURN_CREDENTIALS) { iceServers.push(TURN_CREDENTIALS); }
                 pc = new RTCPeerConnection({ iceServers });
                 localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
+
+                // Prefer H264 for video - the streaming server transcodes
+                // audio (Opus -> AAC, required either way since RTMP never
+                // supports Opus) but passes video through untouched for
+                // speed, which only works if the browser sends H264 rather
+                // than VP8/VP9/AV1. Falls back to whatever the browser
+                // prefers if this API or a H264 encoder isn't available.
+                if (window.RTCRtpSender && RTCRtpSender.getCapabilities) {
+                    const videoTransceiver = pc.getTransceivers().find(
+                        (t) => t.sender && t.sender.track && t.sender.track.kind === 'video'
+                    );
+                    const caps = RTCRtpSender.getCapabilities('video');
+                    if (videoTransceiver && caps) {
+                        const h264 = caps.codecs.filter((c) => c.mimeType.toLowerCase() === 'video/h264');
+                        const rest = caps.codecs.filter((c) => c.mimeType.toLowerCase() !== 'video/h264');
+                        if (h264.length && videoTransceiver.setCodecPreferences) {
+                            videoTransceiver.setCodecPreferences([...h264, ...rest]);
+                        }
+                    }
+                }
+
                 const offer = await pc.createOffer();
                 await pc.setLocalDescription(offer);
                 const res = await fetch(whipUrl, { method: 'POST', headers: { 'Content-Type': 'application/sdp' }, body: offer.sdp });
