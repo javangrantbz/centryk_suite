@@ -78,9 +78,9 @@ $whipUrl = ($whipBase !== '' && $rawKey) ? $whipBase . '/' . rawurlencode($rawKe
                 <label class="text-xs font-bold uppercase tracking-widest text-slate-400">Channel</label>
                 <select name="channel_id" onchange="this.form.submit()"
                         class="mt-1.5 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none focus:border-teal-400">
-                    <option value="">Select a channel&hellip;</option>
+                    <option value="" class="text-slate-900">Select a channel&hellip;</option>
                     <?php foreach ($channels as $c): ?>
-                        <option value="<?= (int)$c['id'] ?>" <?= $channelId === (int)$c['id'] ? 'selected' : '' ?>><?= e($c['name']) ?></option>
+                        <option value="<?= (int)$c['id'] ?>" class="text-slate-900" <?= $channelId === (int)$c['id'] ? 'selected' : '' ?>><?= e($c['name']) ?></option>
                     <?php endforeach; ?>
                 </select>
             </form>
@@ -217,7 +217,15 @@ $whipUrl = ($whipBase !== '' && $rawKey) ? $whipBase . '/' . rawurlencode($rawKe
             if (wasLive) { await goLive(); }
         }
 
-        btnGoLive.addEventListener('click', goLive);
+        // Using .onclick consistently (never addEventListener for this button)
+        // matters here: goLive() and stopLive() reassign it to swap the
+        // button's behavior once live. addEventListener would have stacked
+        // an ADDITIONAL listener on top of that reassignment instead of
+        // replacing it, so a "Stop" click fired stopLive() (which closes
+        // pc and nulls it) AND the original goLive() handler at the same
+        // time, racing each other - the exact cause of both the
+        // "Cannot read properties of null" and "SDP does not match" errors.
+        btnGoLive.onclick = goLive;
         btnSwitch.addEventListener('click', switchCamera);
 
         startPreview().catch((err) => showError('Camera/microphone access is required: ' + err.message));
