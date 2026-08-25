@@ -976,13 +976,11 @@ require __DIR__ . '/../includes/header.php';
 
             <div class="space-y-3">
               <p class="max-w-md text-sm text-slate-200">Shared sample board using your company public information.</p>
-              <div class="grid grid-cols-1 gap-2 text-[11px] font-semibold text-slate-200 sm:max-w-[110px]">
-                <div class="rounded-2xl border border-white/10 bg-white/10 px-3 py-2">
-                  <span class="block text-[10px] uppercase tracking-[0.18em] text-slate-400">Items</span>
-                  <span class="mt-1 block text-base font-black text-white"><?= (int) $playlist['item_count'] ?></span>
-                </div>
-              </div>
-              <div class="flex flex-wrap items-center gap-2">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <span class="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/10 px-2.5 py-1 text-[10px] font-semibold text-slate-200">
+                  <span class="uppercase tracking-[0.14em] text-slate-400">Items</span>
+                  <span class="font-black text-white"><?= (int) $playlist['item_count'] ?></span>
+                </span>
                 <span class="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-slate-900">
                   <i data-lucide="arrow-right" class="h-3.5 w-3.5"></i> Open Board
                 </span>
@@ -1022,13 +1020,11 @@ require __DIR__ . '/../includes/header.php';
               <p class="max-w-md text-sm text-slate-200">
                 <?= !empty($playlist['description']) ? e($playlist['description']) : 'Build this board with media, item timing, and a display link for your screens.' ?>
               </p>
-              <div class="grid grid-cols-1 gap-2 text-[11px] font-semibold text-slate-200 sm:max-w-[110px]">
-                <div class="rounded-2xl border border-white/10 bg-white/10 px-3 py-2">
-                  <span class="block text-[10px] uppercase tracking-[0.18em] text-slate-400">Items</span>
-                  <span class="mt-1 block text-base font-black text-white"><?= (int) $playlist['item_count'] ?></span>
-                </div>
-              </div>
-              <div class="flex flex-wrap items-center gap-2">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <span class="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/10 px-2.5 py-1 text-[10px] font-semibold text-slate-200">
+                  <span class="uppercase tracking-[0.14em] text-slate-400">Items</span>
+                  <span class="font-black text-white"><?= (int) $playlist['item_count'] ?></span>
+                </span>
                 <span class="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-slate-900">
                   <i data-lucide="square-pen" class="h-3.5 w-3.5"></i> Edit
                 </span>
@@ -1102,87 +1098,97 @@ require __DIR__ . '/../includes/header.php';
   <?php if ($editing): ?>
     <?php $editingScreen = $playlistScreens[(int) $editing['id']] ?? null; ?>
     <section class="space-y-4">
-      <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-        <div class="flex flex-wrap items-start justify-between gap-3">
-          <div class="grid flex-1 gap-x-6 gap-y-2 sm:grid-cols-2 xl:grid-cols-3">
-            <div class="grid grid-cols-[140px_minmax(0,1fr)] items-start gap-3 text-sm">
-              <span class="font-bold text-slate-900">V Board Name:</span>
-              <span class="min-w-0 text-slate-700"><?= e(trim((string) ($editing['name'] ?? '')) ?: 'Untitled') ?></span>
-            </div>
-            <div class="grid grid-cols-[140px_minmax(0,1fr)] items-start gap-3 text-sm">
-              <span class="font-bold text-slate-900">ID:</span>
-              <span class="text-slate-700"><?= (int) $editing['id'] ?></span>
-            </div>
-            <div class="grid grid-cols-[140px_minmax(0,1fr)] items-start gap-3 text-sm">
-              <span class="font-bold text-slate-900">Media in Playlist:</span>
-              <span class="text-slate-700"><?= $playlistItemCount ?></span>
-            </div>
-            <div class="grid grid-cols-[140px_minmax(0,1fr)] items-start gap-3 text-sm">
-              <span class="font-bold text-slate-900">Duration:</span>
-              <span class="text-slate-700"><?= $playlistDurationSeconds ?> seconds</span>
-            </div>
-            <div class="grid grid-cols-[140px_minmax(0,1fr)] items-start gap-3 text-sm sm:col-span-2">
-              <span class="font-bold text-slate-900">URL:</span>
-              <div class="min-w-0 text-slate-700">
-                <?php if ($editingScreen && !empty($editingScreen['slug'])): ?>
-                  <div class="flex items-center gap-2">
-                    <span class="min-w-0 truncate"><?= e($shortBase . rawurlencode($editingScreen['slug'])) ?></span>
-                    <button
-                      type="button"
-                      class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800"
-                      data-copy-url="<?= e($shortBase . rawurlencode($editingScreen['slug'])) ?>"
-                      title="Copy short URL"
-                    >
-                      <i data-lucide="copy" class="h-3.5 w-3.5"></i>
-                    </button>
-                  </div>
+      <?php
+        $editingName = trim((string) ($editing['name'] ?? '')) ?: 'Untitled';
+        $editingShortUrl = ($editingScreen && !empty($editingScreen['slug'])) ? ($shortBase . rawurlencode($editingScreen['slug'])) : '';
+      ?>
+      <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <div class="border-b border-slate-200 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-800 px-4 py-3 text-white">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div class="min-w-0">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-200">V Board</span>
+                <span class="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-300">ID <?= (int) $editing['id'] ?></span>
+                <?php if ($isDemoBoard): ?>
+                  <span class="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-300">Read only</span>
                 <?php else: ?>
-                  <span class="text-slate-400">Not available</span>
+                  <span class="rounded-full bg-emerald-400/15 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-200">Editable</span>
                 <?php endif; ?>
               </div>
-            </div>
-            <div class="grid grid-cols-[140px_minmax(0,1fr)] items-start gap-3 text-sm xl:col-span-3">
-              <span class="font-bold text-slate-900">Scheduling:</span>
-              <div class="min-w-0 text-slate-700">
-                <?php if ($playlistSchedules): ?>
-                  <div class="flex flex-wrap items-center gap-2">
-                    <?php foreach ($playlistSchedules as $idx => $schedule): ?>
-                      <?php
-                        $scheduleBits = [];
-                        if (!empty($schedule['name'])) {
-                            $scheduleBits[] = trim((string) $schedule['name']);
-                        }
-                        if (!empty($schedule['start_time']) || !empty($schedule['end_time'])) {
-                            $scheduleBits[] = trim((string) ($schedule['start_time'] ?? '')) . ' - ' . trim((string) ($schedule['end_time'] ?? ''));
-                        }
-                        if (!empty($schedule['start_date']) || !empty($schedule['end_date'])) {
-                            $scheduleBits[] = trim((string) ($schedule['start_date'] ?? '')) . ' to ' . trim((string) ($schedule['end_date'] ?? ''));
-                        }
-                      ?>
-                      <span><?= e(implode(' | ', array_filter($scheduleBits))) ?></span><?= $idx < count($playlistSchedules) - 1 ? '<span class="text-slate-300">,</span>' : '' ?>
-                    <?php endforeach; ?>
-                    <a href="schedule.php?playlist_id=<?= (int) $editing['id'] ?>" class="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50">
-                      Open Schedule
-                    </a>
-                  </div>
-                <?php else: ?>
-                  <a href="schedule.php?playlist_id=<?= (int) $editing['id'] ?>" class="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50">
-                    Set Schedule
+              <h1 class="mt-2 text-2xl font-black tracking-tight text-white"><?= e($editingName) ?></h1>
+              <?php if ($editingShortUrl !== ''): ?>
+                <div class="mt-2 flex min-w-0 items-center gap-1.5 text-[11px]">
+                  <a href="<?= e($editingShortUrl) ?>" target="_blank" class="min-w-0 truncate text-slate-200 hover:text-white hover:underline"><?= e($editingShortUrl) ?></a>
+                  <button
+                    type="button"
+                    class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/10 text-slate-100 hover:bg-white/15"
+                    data-copy-url="<?= e($editingShortUrl) ?>"
+                    title="Copy short URL"
+                  >
+                    <i data-lucide="copy" class="h-3.5 w-3.5"></i>
+                  </button>
+                  <a href="<?= e($editingShortUrl) ?>" target="_blank" class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/10 text-slate-100 hover:bg-white/15" title="Open URL">
+                    <i data-lucide="external-link" class="h-3.5 w-3.5"></i>
                   </a>
+                </div>
+              <?php endif; ?>
+              <div class="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-200">
+                <?php if ($playlistItemCount > 0): ?>
+                  <span class="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/10 px-2 py-1">
+                    <span class="font-black text-white"><?= $playlistItemCount ?></span>
+                    <span>media<?= $playlistItemCount === 1 ? '' : 's' ?></span>
+                  </span>
+                <?php endif; ?>
+                <?php if ($playlistDurationSeconds > 0): ?>
+                  <span class="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/10 px-2 py-1">
+                    <span class="font-black text-white"><?= $playlistDurationSeconds ?></span>
+                    <span>seconds</span>
+                  </span>
                 <?php endif; ?>
               </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <a href="index.php" class="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/10 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-white/15 transition-colors">
+                <i data-lucide="chevron-left" class="h-3.5 w-3.5"></i> View all V Boards
+              </a>
+              <?php if (!$isDemoBoard): ?>
+                <button type="button" data-open-delete class="inline-flex items-center gap-1.5 rounded-xl border border-rose-300/30 bg-rose-500/10 px-2.5 py-1.5 text-xs font-semibold text-rose-100 hover:bg-rose-500/20 transition-colors">
+                  <i data-lucide="trash-2" class="h-3.5 w-3.5"></i> Delete
+                </button>
+              <?php endif; ?>
             </div>
           </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <?php if (!$isDemoBoard): ?>
-              <button type="button" data-open-delete class="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 transition-colors">
-                <i data-lucide="trash-2" class="h-3.5 w-3.5"></i> Delete
-              </button>
-            <?php else: ?>
-              <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Read only</span>
-            <?php endif; ?>
-            <a href="index.php" class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors">
-              <i data-lucide="chevron-left" class="h-3.5 w-3.5"></i> View all V Boards
+        </div>
+
+        <div class="px-4 py-2.5">
+          <div class="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
+            <div class="min-w-0 flex-1">
+              <p class="text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">Scheduling</p>
+              <?php if ($playlistSchedules): ?>
+                <div class="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-700">
+                  <?php foreach ($playlistSchedules as $schedule): ?>
+                    <?php
+                      $scheduleBits = [];
+                      if (!empty($schedule['name'])) {
+                          $scheduleBits[] = trim((string) $schedule['name']);
+                      }
+                      if (!empty($schedule['start_time']) || !empty($schedule['end_time'])) {
+                          $scheduleBits[] = trim((string) ($schedule['start_time'] ?? '')) . ' - ' . trim((string) ($schedule['end_time'] ?? ''));
+                      }
+                      if (!empty($schedule['start_date']) || !empty($schedule['end_date'])) {
+                          $scheduleBits[] = trim((string) ($schedule['start_date'] ?? '')) . ' to ' . trim((string) ($schedule['end_date'] ?? ''));
+                      }
+                    ?>
+                    <span class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700"><?= e(implode(' | ', array_filter($scheduleBits))) ?></span>
+                  <?php endforeach; ?>
+                </div>
+              <?php else: ?>
+                <p class="mt-1 text-sm text-slate-400">No schedule has been set for this vBoard.</p>
+              <?php endif; ?>
+            </div>
+            <a href="schedule.php?playlist_id=<?= (int) $editing['id'] ?>" class="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+              <i data-lucide="calendar-pen" class="h-3.5 w-3.5"></i>
+              <?= $playlistSchedules ? 'Open Schedule' : 'Set Schedule' ?>
             </a>
           </div>
         </div>
@@ -1202,8 +1208,8 @@ require __DIR__ . '/../includes/header.php';
                 <?php endif; ?>
               </div>
               <div class="p-3">
-                <p class="truncate text-sm font-semibold text-slate-800"><?= e($pi['title']) ?></p>
-                <p class="mt-1 text-xs text-slate-500"><?= (int) $eff ?> sec</p>
+                <p class="truncate text-base font-bold text-slate-800"><?= e($pi['title']) ?></p>
+                <p class="mt-1 text-sm font-medium text-slate-500"><?= (int) $eff ?> sec</p>
               </div>
             </article>
           <?php endforeach; ?>
@@ -1211,26 +1217,26 @@ require __DIR__ . '/../includes/header.php';
       <?php else: ?>
         <div class="grid gap-4 xl:grid-cols-2">
           <section class="rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div class="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+            <div class="flex items-center justify-between border-b border-slate-200 px-3 py-2.5">
               <div>
                 <h2 class="text-sm font-bold text-slate-900">Media Library</h2>
                 <p class="text-xs text-slate-500">All uploaded media for this company.</p>
               </div>
               <span class="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600"><?= count($mediaLibrary) ?></span>
             </div>
-            <div class="space-y-3 p-4">
-              <form method="post" enctype="multipart/form-data" class="space-y-3">
+            <div class="space-y-2.5 p-3">
+              <form method="post" enctype="multipart/form-data" class="space-y-2.5">
                 <?= csrf_field() ?>
                 <input type="hidden" name="action" value="upload_library_media">
                 <input type="hidden" name="playlist_id" value="<?= (int) $editing['id'] ?>">
-                <label class="flex min-h-[86px] cursor-pointer items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-4 text-center hover:border-rose-300 hover:bg-rose-50/40">
+                <label class="flex min-h-[72px] cursor-pointer items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-center hover:border-rose-300 hover:bg-rose-50/40">
                   <span class="space-y-1">
                     <span class="block text-sm font-semibold text-slate-700">Upload or drop media here</span>
                     <span class="block text-xs text-slate-500">Images and videos</span>
                   </span>
                   <input type="file" name="files[]" multiple accept="image/*,video/*" class="sr-only" data-library-file-input>
                 </label>
-                <div class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+                <div class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2">
                   <div class="min-w-0">
                     <p class="truncate text-sm font-semibold text-slate-800" data-library-file-name>No files selected</p>
                     <p class="text-xs text-slate-500" data-library-file-count>Choose media to add to the library.</p>
@@ -1241,9 +1247,9 @@ require __DIR__ . '/../includes/header.php';
                 </div>
               </form>
 
-              <div class="grid gap-3 sm:grid-cols-2">
+              <div class="grid gap-2 sm:grid-cols-3 xl:grid-cols-4">
                 <?php if (!$mediaLibrary): ?>
-                  <div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500 sm:col-span-2">No media uploaded yet.</div>
+                  <div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500 sm:col-span-3 xl:col-span-4">No media uploaded yet.</div>
                 <?php endif; ?>
                 <?php foreach ($mediaLibrary as $media):
                   $mid = (int) $media['id'];
@@ -1252,17 +1258,17 @@ require __DIR__ . '/../includes/header.php';
                   $durationLabel = $media['kind'] === 'video' ? 'Uses video runtime' : '10 sec';
                 ?>
                   <article class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-opacity duration-300" data-library-card="<?= $mid ?>">
-                    <div class="aspect-video bg-slate-100">
+                    <button type="button" class="block aspect-square w-full overflow-hidden bg-slate-100" data-open-media-preview="<?= $mid ?>">
                       <?php if ($media['kind'] === 'image'): ?>
                         <img src="<?= e($thumb) ?>" alt="" class="h-full w-full object-cover">
                       <?php else: ?>
                         <video src="<?= media_url($media['filename']) ?>" class="h-full w-full object-cover" muted preload="metadata" data-video-duration="<?= $mid ?>"></video>
                       <?php endif; ?>
-                    </div>
-                    <div class="space-y-2 p-3">
+                    </button>
+                    <div class="space-y-1.5 p-2.5">
                       <div class="flex items-start justify-between gap-2">
                         <div class="min-w-0">
-                          <p class="truncate text-sm font-semibold text-slate-800"><?= e($name) ?></p>
+                          <p class="truncate text-xs font-semibold text-slate-800"><?= e($name) ?></p>
                           <p class="text-xs text-slate-500"><?= e($durationLabel) ?></p>
                         </div>
                         <div class="flex items-center gap-1">
@@ -1272,7 +1278,7 @@ require __DIR__ . '/../includes/header.php';
                             <input type="hidden" name="playlist_id" value="<?= (int) $editing['id'] ?>">
                             <input type="hidden" name="media_id" value="<?= $mid ?>">
                             <input type="hidden" name="media_duration" value="<?= $media['kind'] === 'image' ? '10' : '0' ?>" data-media-duration-input="<?= $mid ?>">
-                            <button class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-rose-600 text-white hover:bg-rose-700" title="Add to vBoard">
+                            <button class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-rose-600 text-white hover:bg-rose-700" title="Add to vBoard">
                               <i data-lucide="plus" class="h-4 w-4"></i>
                             </button>
                           </form>
@@ -1281,7 +1287,7 @@ require __DIR__ . '/../includes/header.php';
                             <input type="hidden" name="action" value="delete_library_media">
                             <input type="hidden" name="playlist_id" value="<?= (int) $editing['id'] ?>">
                             <input type="hidden" name="media_id" value="<?= $mid ?>">
-                            <button class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-rose-600" title="Remove from library">
+                            <button class="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-rose-600" title="Remove from library">
                               <i data-lucide="trash-2" class="h-4 w-4"></i>
                             </button>
                           </form>
@@ -1325,6 +1331,24 @@ require __DIR__ . '/../includes/header.php';
                       <p class="truncate text-sm font-semibold text-slate-900"><?= e($pi['title']) ?></p>
                       <p class="mt-1 text-xs text-slate-500"><?= (int) $eff ?> sec</p>
                     </div>
+                    <form method="post" class="flex shrink-0 items-center gap-1.5">
+                      <?= csrf_field() ?>
+                      <input type="hidden" name="action" value="set_duration">
+                      <input type="hidden" name="playlist_id" value="<?= (int) $editing['id'] ?>">
+                      <input type="hidden" name="item_id" value="<?= (int) $pi['id'] ?>">
+                      <input
+                        type="number"
+                        name="duration_override"
+                        min="1"
+                        value="<?= (int) $eff ?>"
+                        class="w-16 rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-semibold text-slate-700"
+                        title="Duration in seconds"
+                      >
+                      <button class="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50" title="Save duration">
+                        <i data-lucide="clock-3" class="h-3.5 w-3.5"></i>
+                        Save
+                      </button>
+                    </form>
                     <div class="flex shrink-0 items-center gap-1">
                       <form method="post">
                         <?= csrf_field() ?>
@@ -1365,6 +1389,18 @@ require __DIR__ . '/../includes/header.php';
       <?php endif; ?>
     </section>
   <?php endif; ?>
+</div>
+
+<div id="mediaPreviewModal" class="fixed inset-0 z-[72] hidden">
+  <div class="absolute inset-0 bg-slate-950/70" data-close-media-preview></div>
+  <div class="relative flex min-h-full items-center justify-center p-4">
+    <div class="relative w-full max-w-4xl overflow-hidden rounded-3xl bg-slate-950 shadow-2xl">
+      <button type="button" class="absolute right-3 top-3 z-10 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-black/45 text-white hover:bg-black/60" data-close-media-preview>
+        <i data-lucide="x" class="h-4 w-4"></i>
+      </button>
+      <div id="mediaPreviewBody" class="flex min-h-[300px] items-center justify-center bg-slate-950 p-3"></div>
+    </div>
+  </div>
 </div>
 
 <div id="mediaPanel" class="fixed inset-y-0 right-0 z-50 hidden w-full max-w-[1180px] bg-white shadow-2xl ring-1 ring-slate-200">
@@ -1542,6 +1578,56 @@ require __DIR__ . '/../includes/header.php';
       libraryCount.textContent = files.length === 1 ? '1 file selected' : `${files.length} files selected`;
     });
   }
+})();
+
+(function () {
+  const modal = document.getElementById('mediaPreviewModal');
+  const body = document.getElementById('mediaPreviewBody');
+  const openers = document.querySelectorAll('[data-open-media-preview]');
+  const closers = document.querySelectorAll('[data-close-media-preview]');
+  if (!modal || !body || !openers.length) {
+    return;
+  }
+
+  function closePreview() {
+    modal.classList.add('hidden');
+    body.innerHTML = '';
+    document.body.classList.remove('overflow-hidden');
+  }
+
+  openers.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const card = btn.closest('[data-library-card]');
+      if (!card) {
+        return;
+      }
+      const image = card.querySelector('img');
+      const video = card.querySelector('video');
+      const title = card.querySelector('p');
+
+      if (image) {
+        body.innerHTML = `<img src="${image.getAttribute('src') || ''}" alt="" class="max-h-[82vh] w-auto max-w-full rounded-2xl object-contain">`;
+      } else if (video) {
+        body.innerHTML = `<video src="${video.getAttribute('src') || ''}" class="max-h-[82vh] w-auto max-w-full rounded-2xl bg-black" controls autoplay playsinline></video>`;
+      } else {
+        body.innerHTML = '<div class="text-sm font-semibold text-slate-300">Preview unavailable.</div>';
+      }
+
+      if (title) {
+        body.insertAdjacentHTML('beforeend', `<div class="absolute bottom-3 left-3 rounded-xl bg-black/55 px-3 py-1.5 text-xs font-semibold text-white">${title.textContent || ''}</div>`);
+      }
+
+      modal.classList.remove('hidden');
+      document.body.classList.add('overflow-hidden');
+    });
+  });
+
+  closers.forEach((btn) => btn.addEventListener('click', closePreview));
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !modal.classList.contains('hidden')) {
+      closePreview();
+    }
+  });
 })();
 
 (function () {

@@ -7,9 +7,12 @@ $organization = tv_active_organization();
 $stats = TvMetricsService::dashboardStats((int)$organization['id']);
 
 $liveEventsStmt = db()->prepare(
-    'SELECT title, slug, start_at
-     FROM tv_events
-     WHERE organization_id = :organization_id AND status = "live"
+    'SELECT e.title, e.slug, e.start_at
+     FROM tv_events e
+     JOIN tv_stream_keys sk ON sk.id = e.stream_key_id
+     WHERE e.organization_id = :organization_id
+       AND e.status = "live"
+       AND sk.is_publishing = 1
      ORDER BY start_at DESC
      LIMIT 5'
 );

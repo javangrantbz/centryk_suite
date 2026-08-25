@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="50%" stop-color="#1e3a8a"/>
+      <stop offset="100%" stop-color="#312e81"/>
+    </linearGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <circle cx="1690" cy="200" r="260" fill="rgba(255,255,255,.06)"/>
+  <circle cx="260" cy="910" r="330" fill="rgba(255,255,255,.05)"/>
+  <text x="140" y="210" font-family="Segoe UI, Arial, sans-serif" font-size="46" font-weight="800" fill="#fda4af" letter-spacing="4">QA VB Drawer Co</text>
+  <text x="140" y="430" font-family="Segoe UI, Arial, sans-serif" font-size="122" font-weight="800" fill="#ffffff">Visit Us</text>
+  <text x="140" y="610" font-family="Segoe UI, Arial, sans-serif" font-size="50" font-weight="600" fill="#f8fafc">Public address details can appear here.</text>
+</svg>

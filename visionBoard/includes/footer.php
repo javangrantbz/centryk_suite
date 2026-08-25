@@ -3,8 +3,48 @@
     </div><!-- /col -->
 </div><!-- /flex container -->
 
+<div id="vbToastWrap" class="pointer-events-none fixed right-6 top-6 z-[70] flex max-w-sm flex-col items-end gap-2"></div>
+
 <script>
     if (window.lucide) lucide.createIcons();
+</script>
+<script>
+(function () {
+    const wrap = document.getElementById('vbToastWrap');
+    if (!wrap) return;
+
+    function esc(value) {
+        return String(value == null ? '' : value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function showToast(message, type) {
+        const toast = document.createElement('div');
+        const isErr = type === 'error';
+        toast.className = 'pointer-events-auto flex items-center gap-2.5 rounded-xl px-4 py-3 text-sm font-semibold shadow-lg transition-all duration-300 '
+            + (isErr ? 'bg-rose-600 text-white' : 'bg-slate-900 text-white');
+        toast.innerHTML = (isErr
+            ? '<svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>'
+            : '<svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>')
+            + '<span>' + esc(message) + '</span>';
+        wrap.appendChild(toast);
+        setTimeout(function () {
+            toast.style.opacity = '0';
+            setTimeout(function () { toast.remove(); }, 300);
+        }, 4000);
+    }
+
+    document.querySelectorAll('[data-flash-toast]').forEach(function (node) {
+        const message = node.getAttribute('data-flash-message') || '';
+        const type = node.getAttribute('data-flash-type') || 'success';
+        if (message) {
+            showToast(message, type);
+        }
+    });
+})();
 </script>
 <script>
 // Cross-app (Centryk) notifications dropdown.

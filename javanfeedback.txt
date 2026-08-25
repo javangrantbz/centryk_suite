@@ -1,0 +1,17 @@
+- on app.php reduce spacing between header and main panel.
+- rename invite team button to Invite/Create Staff
+- i think the left menu panel texts are too small. 
+- i think try a light theme on the left menu bold text and color icons
+- on app.php?page=inventory. filter and item details are competing with products & services, especially since they are empty. perhaps only show them if there is content in them? or brighten the borders on the main section which is products & services?
+
+onepay feedback:
+
+on Open Reigster panel rename it to Start Cashierng Shift. Rename Choose Register to Select Cashier. replace select this register to enter the opening cash amount to. Select this cashier account to enter the opening cash amount
+
+on End Shift panel, if transactions is 0, net sales is 0 then don't show all the other things like cash, card, other. Simply say something like no transactions were recording during this shift. Expected in drawers amount since that is the opening balance. keep closing cash coount and notes. rename the button from Close Register & End Shift to simply End Shift. 
+
+on pos put calendar, lock, admin and logout in one action button like a gear or something. rename Admin to Admin Dashboard, and give names to Calendar and Lock PoS Screen
+
+if the admin open pos and they are the only account/user in onepay, then don't ask them to select a register to open but simply auto select it (there's no one else). same, if a cashier user logs in, they won't have other options to select a cashier so again, auto select them. but in the pos header don't use "Register" use Cashier. so since this will be auto selected for a regular user, then they will see the opening cash panel view.
+
+on pos.php hitting clear order notify that this will remove every item from the current cart. but it needs to check if the order was aready sent to the kitchen. and give options. cancel that that was sent to the kitchen.

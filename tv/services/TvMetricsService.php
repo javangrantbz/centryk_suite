@@ -66,7 +66,12 @@ class TvMetricsService
 
         $stmt = db()->prepare(
             'SELECT
-                SUM(CASE WHEN status = "live" THEN 1 ELSE 0 END) AS live_now,
+                SUM(CASE WHEN status = "live" AND EXISTS (
+                        SELECT 1
+                        FROM tv_stream_keys sk
+                        WHERE sk.id = tv_events.stream_key_id
+                          AND sk.is_publishing = 1
+                    ) THEN 1 ELSE 0 END) AS live_now,
                 SUM(CASE WHEN status = "scheduled" THEN 1 ELSE 0 END) AS upcoming_events,
                 COUNT(*) AS total_events
              FROM tv_events
@@ -154,4 +159,3 @@ class TvMetricsService
         return $stmt->fetchAll();
     }
 }
-

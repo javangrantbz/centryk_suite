@@ -47,13 +47,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // ---- Visitor QR codes ----
-    if ($action === 'qr_settings') {
-        set_setting('qr_enabled', isset($_POST['qr_enabled']) ? '1' : '0');
-        set_setting('qr_rotate_seconds', max(3, (int) ($_POST['qr_rotate_seconds'] ?? 10)));
-        log_activity('updated', 'settings', null, 'qr settings');
-        flash('QR settings saved.');
-        redirect($settingsReturnUrl);
-    }
     if ($action === 'qr_add') {
         $url = trim($_POST['url'] ?? '');
         if ($url === '') {
@@ -362,70 +355,10 @@ if (!$panelMode) {
       work offline; visitors only need internet to open the link.
     </p>
 
-    <div class="grid md:grid-cols-3 gap-4">
-      <!-- Global settings -->
-      <form method="post" class="space-y-3 md:col-span-1">
-        <?= csrf_field() ?>
-        <input type="hidden" name="action" value="qr_settings">
-        <label class="flex items-center gap-2 text-sm font-medium text-slate-700">
-          <input type="checkbox" name="qr_enabled" <?= get_setting('qr_enabled','0')==='1'?'checked':'' ?>>
-          Show QR codes on the display
-        </label>
-        <div>
-          <label class="block text-sm font-medium text-slate-600 mb-1">Seconds each code shows</label>
-          <input name="qr_rotate_seconds" type="number" min="3" value="<?= (int)get_setting('qr_rotate_seconds','10') ?>"
-                 class="w-full rounded-lg border border-slate-300 px-3 py-2">
-          <p class="text-xs text-slate-400 mt-1">Only matters when you have more than one code.</p>
-        </div>
-        <button class="bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl px-5 py-2 transition-colors">Save</button>
-      </form>
-
-      <!-- List + add -->
-      <div class="md:col-span-2 space-y-3">
-        <div id="qr-shortcuts" class="space-y-3 rounded-xl border border-slate-100 bg-slate-50/70 p-3">
-          <h3 class="text-sm font-semibold text-slate-700">Donation / feedback QR shortcuts</h3>
-          <div class="space-y-2">
-            <label class="flex items-center gap-2 text-sm font-medium text-slate-700">
-              <input type="checkbox" name="donation_qr_enabled" form="display-settings-form" <?= get_setting('donation_qr_enabled','0')==='1'?'checked':'' ?>>
-              Show donation QR
-            </label>
-            <div class="grid sm:grid-cols-3 gap-2">
-              <input name="donation_qr_caption" form="display-settings-form" value="<?= e(get_setting('donation_qr_caption', $defaultDonationCaption)) ?>" placeholder="Caption"
-                     class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
-              <input name="donation_qr_url" form="display-settings-form" value="<?= e(get_setting('donation_qr_url','')) ?>" placeholder="Donation link"
-                     class="sm:col-span-2 rounded-lg border border-slate-300 px-3 py-2 text-sm">
-            </div>
-          </div>
-          <div class="border-t border-slate-200 pt-3 space-y-2">
-            <label class="flex items-center gap-2 text-sm font-medium text-slate-700">
-              <input type="checkbox" name="feedback_qr_enabled" form="display-settings-form" <?= get_setting('feedback_qr_enabled','0')==='1'?'checked':'' ?>>
-              Show feedback QR
-            </label>
-            <div class="grid sm:grid-cols-3 gap-2">
-              <input name="feedback_qr_caption" form="display-settings-form" value="<?= e(get_setting('feedback_qr_caption', $defaultFeedbackCaption)) ?>" placeholder="Caption"
-                     class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
-              <input name="feedback_qr_url" form="display-settings-form" value="<?= e(get_setting('feedback_qr_url','')) ?>" placeholder="Feedback link"
-                     class="sm:col-span-2 rounded-lg border border-slate-300 px-3 py-2 text-sm">
-            </div>
-          </div>
-          <div class="pt-1">
-            <button type="submit" form="display-settings-form" class="bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold rounded-xl px-4 py-2 transition-colors">Save QR shortcuts</button>
-          </div>
-        </div>
-        <?php if ($qrList): ?>
-          <form method="post" data-sort-form class="text-right">
-            <?= csrf_field() ?>
-            <input type="hidden" name="action" value="qr_reorder">
-            <input type="hidden" name="order" value="">
-            <button class="text-sm bg-slate-100 hover:bg-slate-200 font-semibold rounded-lg px-3 py-1.5 transition-colors">Save QR order</button>
-          </form>
-        <?php endif; ?>
-        <div class="space-y-3" data-sortable-list>
+    <div class="space-y-3">
+        <div class="space-y-3">
           <?php foreach ($qrList as $q): ?>
-            <div class="flex flex-wrap items-center gap-2 border border-slate-100 rounded-xl p-2 bg-white <?= $q['is_active']?'':'opacity-60' ?>" draggable="true" data-sort-id="<?= $q['id'] ?>">
-              <button type="button" class="drag-handle text-slate-400 hover:text-slate-700 cursor-grab px-1" title="Drag to reorder">
-                <i data-lucide="grip-vertical" class="h-4 w-4"></i>
-              </button>
+            <div class="flex flex-wrap items-center gap-2 border border-slate-100 rounded-xl p-2 bg-white <?= $q['is_active']?'':'opacity-60' ?>">
               <div class="qr-admin-preview bg-white border border-slate-200 rounded p-1" data-qr-url="<?= e($q['url']) ?>"></div>
               <form method="post" class="flex flex-1 flex-wrap items-center gap-2">
                 <?= csrf_field() ?>
@@ -447,22 +380,6 @@ if (!$panelMode) {
                 <input type="hidden" name="id" value="<?= $q['id'] ?>">
                 <button class="text-red-500 hover:text-red-700 text-xs font-semibold px-1">Delete</button>
               </form>
-              <div class="flex items-center gap-0.5">
-                <form method="post">
-                  <?= csrf_field() ?>
-                  <input type="hidden" name="action" value="qr_move">
-                  <input type="hidden" name="id" value="<?= $q['id'] ?>">
-                  <input type="hidden" name="dir" value="up">
-                  <button class="text-slate-400 hover:text-slate-700 p-1" title="Move up"><i data-lucide="chevron-up" class="h-3.5 w-3.5"></i></button>
-                </form>
-                <form method="post">
-                  <?= csrf_field() ?>
-                  <input type="hidden" name="action" value="qr_move">
-                  <input type="hidden" name="id" value="<?= $q['id'] ?>">
-                  <input type="hidden" name="dir" value="down">
-                  <button class="text-slate-400 hover:text-slate-700 p-1" title="Move down"><i data-lucide="chevron-down" class="h-3.5 w-3.5"></i></button>
-                </form>
-              </div>
             </div>
           <?php endforeach; ?>
         </div>
@@ -474,9 +391,8 @@ if (!$panelMode) {
           <input name="caption" placeholder="Caption (e.g. Company website)" class="flex-1 min-w-[8rem] rounded-lg border border-slate-300 px-3 py-2 text-sm">
           <input name="url" placeholder="https://..." required class="flex-[2] min-w-[12rem] rounded-lg border border-slate-300 px-3 py-2 text-sm">
           <input name="display_seconds" type="number" min="3" placeholder="Seconds" class="w-28 rounded-lg border border-slate-300 px-3 py-2 text-sm">
-          <button class="bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold rounded-xl px-4 py-2 transition-colors">Add QR code</button>
+          <button class="bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold rounded-xl px-4 py-2 transition-colors">Add a New QR</button>
         </form>
-      </div>
     </div>
   </div>
   </div>
