@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../app/core/Auth.php';
 require_once __DIR__ . '/../../app/core/DB.php';
 require_once __DIR__ . '/../../app/services/AuthService.php';
+require_once __DIR__ . '/../../app/core/Env.php';
 
 Auth::start();
 $user = Auth::user();
@@ -9,6 +10,18 @@ if (!$user) {
     header('Location: login.php');
     exit;
 }
+
+Env::load(__DIR__ . '/../../.env');
+// Same early-access allowlist as tv/includes/functions.php's
+// tv_gate_coming_soon() and partials/dashboard.php's TV tile - kept as a
+// small duplicate here rather than a cross-module include, since this
+// mobile shell and the tv/ app are independently deployable.
+$_tvAllowlist = array_filter(array_map(
+    static fn (string $e): string => strtolower(trim($e)),
+    explode(',', (string)($_ENV['TV_COMING_SOON_ALLOWLIST'] ?? ''))
+));
+$_tvUserEmail = strtolower(trim((string)($user['email'] ?? '')));
+$canUseTv = $_tvUserEmail !== '' && in_array($_tvUserEmail, $_tvAllowlist, true);
 
 // ── App-switch action (header dropdown) ─────────────────────────────────────
 $allApps = AuthService::allAppsWithEnrollment((int)$user['id']);

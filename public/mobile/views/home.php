@@ -67,6 +67,36 @@ foreach ($companies as $company) {
     <?php endif; ?>
   </section>
 
+  <?php if (Env::isProduction() && !$canUseTv): ?>
+  <section class="rounded-3xl border border-teal-200/70 bg-teal-50/40 p-4 opacity-75">
+    <div class="flex items-center gap-3">
+      <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-100 text-teal-700">
+        <i data-lucide="tv" class="h-5 w-5"></i>
+      </span>
+      <div class="min-w-0">
+        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-teal-600/80">Live Streaming</div>
+        <div class="text-sm font-black text-slate-800">Centryk TV</div>
+      </div>
+      <span class="ml-auto flex items-center gap-1.5 rounded-full border border-teal-200 bg-teal-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-teal-700">
+        <i data-lucide="clock-3" class="h-3 w-3"></i>
+        Soon
+      </span>
+    </div>
+  </section>
+  <?php else: ?>
+  <a href="/tv/" class="flex items-center gap-3 rounded-3xl border border-teal-200 bg-white p-4 shadow-sm transition active:scale-[0.98]">
+    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-100 text-teal-700">
+      <i data-lucide="tv" class="h-5 w-5"></i>
+    </span>
+    <div class="min-w-0">
+      <div class="text-[10px] font-black uppercase tracking-[0.16em] text-teal-600/80">Live Streaming</div>
+      <div class="text-sm font-black text-slate-900">Centryk TV</div>
+      <div class="text-xs font-semibold text-slate-500">Watch, broadcast, or go live from this phone</div>
+    </div>
+    <i data-lucide="arrow-up-right" class="ml-auto h-4 w-4 shrink-0 text-teal-600"></i>
+  </a>
+  <?php endif; ?>
+
   <section class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
     <div class="mb-3">
       <h2 class="text-sm font-black text-slate-900">Your Apps</h2>
