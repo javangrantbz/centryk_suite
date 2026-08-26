@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS vb_media (
     filename VARCHAR(255) NOT NULL,
     thumbnail_filename VARCHAR(255) DEFAULT NULL,
     original_name VARCHAR(255) NOT NULL,
-    kind ENUM('image','video') NOT NULL,
+    kind ENUM('image','video','audio') NOT NULL,
     mime VARCHAR(100) NOT NULL,
     size_bytes BIGINT NOT NULL DEFAULT 0,
     uploaded_by INT DEFAULT NULL,

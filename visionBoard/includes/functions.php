@@ -55,12 +55,32 @@ function set_setting(string $key, $value): void
 }
 
 /**
- * Schema is created up front by database/add_signage_app.sql, so the old lazy
- * "ensure_*" creators are no-ops kept only so existing call sites don't fatal.
+ * Older installs may still have vb_media.kind limited to image/video only.
+ * Expand it in place so audio uploads do not 500 when they reach the insert.
  */
-function ensure_display_ops_tables(): void {}
+function ensure_display_ops_tables(): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+
+    try {
+        $stmt = db()->query("SHOW COLUMNS FROM vb_media LIKE 'kind'");
+        $column = $stmt ? $stmt->fetch() : null;
+        $type = strtolower((string) ($column['Type'] ?? ''));
+        if ($type !== '' && str_contains($type, 'enum(') && !str_contains($type, "'audio'")) {
+            db()->exec("ALTER TABLE vb_media MODIFY kind ENUM('image','video','audio') NOT NULL");
+        }
+    } catch (Throwable $e) {
+        // Leave requests working even if the schema probe cannot run here.
+    }
+}
 function ensure_content_enhancements_schema(): void {}
 function ensure_admin_qol_schema(): void {}
+
+ensure_display_ops_tables();
 
 /**
  * Resolve a TV screen from its pairing token (the device credential the
