@@ -53,7 +53,7 @@ $directoryTypeLabels = [
                 <p id="directoryNewFeature" class="mb-1 inline-flex rounded-full bg-blue-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.16em] text-blue-700">New Feature</p>
             <?php endif; ?>
             <p class="text-[9px] font-black uppercase tracking-[0.16em] text-blue-600">Centryk Directory</p>
-            <h2 class="mt-0.5 text-base font-black tracking-tight text-slate-950">Founding Members</h2>
+            <h2 class="mt-0.5 text-base font-black tracking-tight text-slate-950">Businesses</h2>
         </div>
         <button id="directoryClose"
                 type="button"
@@ -64,14 +64,6 @@ $directoryTypeLabels = [
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
             </svg>
         </button>
-    </div>
-
-    <div class="border-b border-slate-200 bg-slate-50/60 px-3 py-2.5">
-        <p class="text-[11px] font-semibold leading-snug text-slate-600">
-            <span class="font-black text-slate-900"><?= count($directoryBusinesses) ?></span>
-            business<?= count($directoryBusinesses) === 1 ? '' : 'es' ?> onboard ahead of our official January launch.
-            Every one below joined early.
-        </p>
     </div>
 
     <div class="border-b border-slate-200 px-3 py-2.5">
@@ -108,12 +100,9 @@ $directoryTypeLabels = [
                     <li class="directory-row" data-search="<?= htmlspecialchars(strtolower($searchText)) ?>">
                         <a href="<?= htmlspecialchars($storeUrl) ?>" class="block px-3 py-2 transition hover:bg-slate-50">
                             <div class="min-w-0">
-                                <div class="flex items-center gap-1.5">
-                                    <h3 class="truncate text-xs font-black tracking-tight text-slate-950">
-                                        <?= htmlspecialchars($name) ?><?php if ($typeLabel !== ''): ?><span class="font-semibold text-slate-400"> . <?= htmlspecialchars($typeLabel) ?></span><?php endif; ?>
-                                    </h3>
-                                    <span class="shrink-0 rounded-full bg-amber-50 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-amber-700">Founding</span>
-                                </div>
+                                <h3 class="truncate text-xs font-black tracking-tight text-slate-950">
+                                    <?= htmlspecialchars($name) ?><?php if ($typeLabel !== ''): ?><span class="font-semibold text-slate-400"> . <?= htmlspecialchars($typeLabel) ?></span><?php endif; ?>
+                                </h3>
                                 <div class="mt-0.5 space-y-0.5 text-[11px] font-semibold leading-snug text-slate-500">
                                     <?php if ($addressLine !== ''): ?>
                                         <p class="truncate"><?= htmlspecialchars($addressLine) ?></p>
@@ -130,17 +119,9 @@ $directoryTypeLabels = [
             <p id="directoryNoResults" class="hidden px-4 py-8 text-center text-sm font-bold text-slate-500">No matching businesses.</p>
         <?php else: ?>
             <div class="px-4 py-8 text-center">
-                <p class="text-sm font-bold text-slate-500">You're one of our first founding businesses.</p>
-                <p class="mt-1 text-xs font-semibold text-slate-400">More are joining before our January launch.</p>
+                <p class="text-sm font-bold text-slate-500">No businesses are listed yet.</p>
             </div>
         <?php endif; ?>
-    </div>
-
-    <div class="border-t border-slate-200 bg-slate-50/60 px-3 py-2.5">
-        <p class="text-[11px] font-semibold leading-snug text-slate-500">
-            Know a business that belongs here?
-            <a href="refer.php" class="font-black text-blue-600 hover:text-blue-700 hover:underline">Refer them →</a>
-        </p>
     </div>
 </aside>
 
