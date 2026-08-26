@@ -116,6 +116,7 @@
     }
 
     bgAudio.loop = true;
+    bgAudio.autoplay = true;
     bgAudio.volume = backgroundAudioConfig.volume;
     if (changed || bgAudio.getAttribute('src') !== backgroundAudioConfig.url) {
       bgAudio.src = backgroundAudioConfig.url;
@@ -126,7 +127,7 @@
 
   function ensureBackgroundAudioPlayback() {
     if (!backgroundAudioConfig || !bgAudio.getAttribute('src')) return;
-    bgAudio.muted = !soundAllowed;
+    bgAudio.muted = false;
     const playPromise = bgAudio.play();
     if (playPromise && typeof playPromise.catch === 'function') {
       playPromise.catch((e) => {
