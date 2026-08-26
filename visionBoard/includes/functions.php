@@ -397,7 +397,7 @@ function resolve_active_playlist(int $companyId, ?array $screen = null): array
             $playlist = $row;
 
             $itemsStmt = $pdo->prepare(
-                'SELECT ci.*, pi.duration_override, pi.position, m.filename, m.thumbnail_filename, m.kind AS media_kind, m.mime
+                'SELECT ci.*, pi.duration_override, pi.position, m.filename, m.thumbnail_filename, m.original_name, m.kind AS media_kind, m.mime
                  FROM vb_playlist_items pi
                  JOIN vb_content_items ci ON ci.id = pi.content_item_id AND ci.is_active = 1
                  LEFT JOIN vb_media m ON m.id = ci.media_id
@@ -466,7 +466,7 @@ function resolve_active_playlist(int $companyId, ?array $screen = null): array
 
     // Load ordered items.
     $itemsStmt = $pdo->prepare(
-        'SELECT ci.*, pi.duration_override, pi.position, m.filename, m.thumbnail_filename, m.kind AS media_kind, m.mime
+        'SELECT ci.*, pi.duration_override, pi.position, m.filename, m.thumbnail_filename, m.original_name, m.kind AS media_kind, m.mime
          FROM vb_playlist_items pi
          JOIN vb_content_items ci ON ci.id = pi.content_item_id AND ci.is_active = 1
          LEFT JOIN vb_media m ON m.id = ci.media_id
@@ -495,6 +495,7 @@ function items_to_payload(array $items): array
             'duration' => (int) $duration,
             'url'      => $it['filename'] ? media_url($it['filename']) : null,
             'thumb'    => !empty($it['thumbnail_filename']) ? thumbnail_url($it['thumbnail_filename']) : null,
+            'original_name' => $it['original_name'] ?? null,
             'mime'     => $it['mime'] ?? null,
         ];
     }

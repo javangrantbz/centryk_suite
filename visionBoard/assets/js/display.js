@@ -370,11 +370,26 @@
     return looksLikeFile ? '' : text;
   }
 
+  function normalizeName(value) {
+    return String(value || '')
+      .trim()
+      .toLowerCase()
+      .replace(/\.[a-z0-9]+$/i, '')
+      .replace(/[%_+\-.]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
   function displayText(item) {
     if (!item) return { title: '', subtitle: '' };
+    const title = cleanCaptionText(item.title);
+    const subtitle = cleanCaptionText(item.subtitle);
+    const originalStem = normalizeName(item.original_name);
+    const titleMatchesOriginal = title && originalStem && normalizeName(title) === originalStem;
+
     return {
-      title: cleanCaptionText(item.title),
-      subtitle: cleanCaptionText(item.subtitle)
+      title: titleMatchesOriginal ? '' : title,
+      subtitle
     };
   }
 
