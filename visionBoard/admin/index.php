@@ -201,6 +201,9 @@ function vb_attach_media_to_playlist(PDO $pdo, int $companyId, int $playlistId, 
     );
 
     foreach ($mediaRows as $media) {
+        if (($media['kind'] ?? '') === 'audio') {
+            continue;
+        }
         $mediaId = (int) $media['id'];
         $title = pathinfo((string) $media['original_name'], PATHINFO_FILENAME);
         $title = trim($title) !== '' ? trim($title) : ucfirst((string) $media['kind']);
@@ -1230,11 +1233,11 @@ require __DIR__ . '/../includes/header.php';
                 <input type="hidden" name="action" value="upload_library_media">
                 <input type="hidden" name="playlist_id" value="<?= (int) $editing['id'] ?>">
                 <label class="flex min-h-[72px] cursor-pointer items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-center hover:border-rose-300 hover:bg-rose-50/40">
-                  <span class="space-y-1">
-                    <span class="block text-sm font-semibold text-slate-700">Upload or drop media here</span>
-                    <span class="block text-xs text-slate-500">Images and videos</span>
+                    <span class="space-y-1">
+                      <span class="block text-sm font-semibold text-slate-700">Upload or drop media here</span>
+                    <span class="block text-xs text-slate-500">Images, videos, and audio for background music</span>
                   </span>
-                  <input type="file" name="files[]" multiple accept="image/*,video/*" class="sr-only" data-library-file-input>
+                  <input type="file" name="files[]" multiple accept="image/*,video/*,audio/*" class="sr-only" data-library-file-input>
                 </label>
                 <div class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2">
                   <div class="min-w-0">
@@ -1255,14 +1258,19 @@ require __DIR__ . '/../includes/header.php';
                   $mid = (int) $media['id'];
                   $thumb = thumbnail_url($media['thumbnail_filename']) ?: media_url($media['filename']);
                   $name = pathinfo((string) $media['original_name'], PATHINFO_FILENAME);
-                  $durationLabel = $media['kind'] === 'video' ? 'Uses video runtime' : '10 sec';
+                  $durationLabel = $media['kind'] === 'video' ? 'Uses video runtime' : ($media['kind'] === 'audio' ? 'Background audio track' : '10 sec');
                 ?>
                   <article class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-opacity duration-300" data-library-card="<?= $mid ?>">
                     <button type="button" class="block aspect-square w-full overflow-hidden bg-slate-100" data-open-media-preview="<?= $mid ?>">
                       <?php if ($media['kind'] === 'image'): ?>
                         <img src="<?= e($thumb) ?>" alt="" class="h-full w-full object-cover">
-                      <?php else: ?>
+                      <?php elseif ($media['kind'] === 'video'): ?>
                         <video src="<?= media_url($media['filename']) ?>" class="h-full w-full object-cover" muted preload="metadata" data-video-duration="<?= $mid ?>"></video>
+                      <?php else: ?>
+                        <span class="flex h-full w-full flex-col items-center justify-center gap-2 bg-slate-800 text-slate-200">
+                          <i data-lucide="music" class="h-8 w-8 text-rose-400"></i>
+                          <span class="px-2 text-center text-[11px] font-semibold uppercase tracking-wide">Background Audio</span>
+                        </span>
                       <?php endif; ?>
                     </button>
                     <div class="space-y-1.5 p-2.5">
@@ -1272,16 +1280,20 @@ require __DIR__ . '/../includes/header.php';
                           <p class="text-xs text-slate-500"><?= e($durationLabel) ?></p>
                         </div>
                         <div class="flex items-center gap-1">
-                          <form method="post">
-                            <?= csrf_field() ?>
-                            <input type="hidden" name="action" value="quick_add_media">
-                            <input type="hidden" name="playlist_id" value="<?= (int) $editing['id'] ?>">
-                            <input type="hidden" name="media_id" value="<?= $mid ?>">
-                            <input type="hidden" name="media_duration" value="<?= $media['kind'] === 'image' ? '10' : '0' ?>" data-media-duration-input="<?= $mid ?>">
-                            <button class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-rose-600 text-white hover:bg-rose-700" title="Add to vBoard">
-                              <i data-lucide="plus" class="h-4 w-4"></i>
-                            </button>
-                          </form>
+                          <?php if ($media['kind'] !== 'audio'): ?>
+                            <form method="post">
+                              <?= csrf_field() ?>
+                              <input type="hidden" name="action" value="quick_add_media">
+                              <input type="hidden" name="playlist_id" value="<?= (int) $editing['id'] ?>">
+                              <input type="hidden" name="media_id" value="<?= $mid ?>">
+                              <input type="hidden" name="media_duration" value="<?= $media['kind'] === 'image' ? '10' : '0' ?>" data-media-duration-input="<?= $mid ?>">
+                              <button class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-rose-600 text-white hover:bg-rose-700" title="Add to vBoard">
+                                <i data-lucide="plus" class="h-4 w-4"></i>
+                              </button>
+                            </form>
+                          <?php else: ?>
+                            <span class="inline-flex h-7 items-center rounded-lg bg-slate-100 px-2 text-[11px] font-semibold text-slate-500">Settings only</span>
+                          <?php endif; ?>
                           <form method="post" data-library-delete-form>
                             <?= csrf_field() ?>
                             <input type="hidden" name="action" value="delete_library_media">

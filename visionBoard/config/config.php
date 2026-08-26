@@ -28,6 +28,10 @@ $GLOBALS['ALLOWED_TYPES'] = [
     'webm' => ['video/webm', 'video'],
     'ogg'  => ['video/ogg',  'video'],
     'mov'  => ['video/quicktime', 'video'],
+    'mp3'  => ['audio/mpeg', 'audio'],
+    'm4a'  => ['audio/', 'audio'],
+    'wav'  => ['audio/', 'audio'],
+    'oga'  => ['audio/', 'audio'],
 ];
 
 date_default_timezone_set('America/Belize');

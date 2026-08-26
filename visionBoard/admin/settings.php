@@ -25,6 +25,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         set_setting('weather_latitude', trim($_POST['weather_latitude'] ?? '') ?: '17.3536');
         set_setting('weather_longitude', trim($_POST['weather_longitude'] ?? '') ?: '-88.5497');
         set_setting('marquee_scroll_seconds', (string) max(8, (int) ($_POST['marquee_scroll_seconds'] ?? 22)));
+        set_setting('background_audio_enabled', isset($_POST['background_audio_enabled']) ? '1' : '0');
+        set_setting('background_audio_media_id', (string) max(0, (int) ($_POST['background_audio_media_id'] ?? 0)));
+        set_setting('background_audio_volume', (string) min(100, max(0, (int) ($_POST['background_audio_volume'] ?? 35))));
         set_setting('qr_enabled', isset($_POST['qr_enabled']) ? '1' : '0');
         set_setting('qr_rotate_seconds', (string) max(3, (int) ($_POST['qr_rotate_seconds'] ?? 10)));
         set_setting('donation_qr_enabled', isset($_POST['donation_qr_enabled']) ? '1' : '0');
@@ -190,6 +193,9 @@ $qrList = $qrStmt->fetchAll();
 $mqStmt = $pdo->prepare('SELECT * FROM vb_marquee_messages WHERE company_id=? ORDER BY position ASC, id ASC');
 $mqStmt->execute([$companyId]);
 $marqueeList = $mqStmt->fetchAll();
+$audioStmt = $pdo->prepare("SELECT id, original_name, filename FROM vb_media WHERE company_id = ? AND kind = 'audio' ORDER BY created_at DESC, id DESC");
+$audioStmt->execute([$companyId]);
+$audioList = $audioStmt->fetchAll();
 if (!$panelMode) {
     require __DIR__ . '/../includes/header.php';
 } else {
@@ -355,6 +361,48 @@ if (!$panelMode) {
           </div>
         </div>
         <p class="text-xs text-slate-400">Uses Belize coordinates by default and falls back to local time if weather cannot load.</p>
+      </div>
+
+      <div class="border-t border-slate-200"></div>
+
+      <div id="background-audio" class="scroll-mt-6 space-y-3">
+        <h3 class="text-sm font-semibold text-slate-700">Background audio</h3>
+        <label class="flex items-center gap-2 text-sm font-medium text-slate-700">
+          <input type="checkbox" name="background_audio_enabled" form="display-settings-form" <?= get_setting('background_audio_enabled','0')==='1'?'checked':'' ?>>
+          Play looped background audio on the display
+        </label>
+        <div class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_9rem]">
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">Audio track</label>
+            <select name="background_audio_media_id" form="display-settings-form" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700">
+              <option value="0">No track selected</option>
+              <?php foreach ($audioList as $audio): ?>
+                <option value="<?= (int) $audio['id'] ?>" <?= (int) get_setting('background_audio_media_id', '0') === (int) $audio['id'] ? 'selected' : '' ?>>
+                  <?= e($audio['original_name']) ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+            <p class="mt-1 text-xs text-slate-400">
+              Upload MP3, M4A, WAV, or OGA files in the Media Library first.
+            </p>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">Volume</label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              name="background_audio_volume"
+              form="display-settings-form"
+              value="<?= e(get_setting('background_audio_volume', '35')) ?>"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            >
+            <p class="mt-1 text-xs text-slate-400">Percent from 0 to 100.</p>
+          </div>
+        </div>
+        <?php if (!$audioList): ?>
+          <p class="text-sm text-slate-500">No audio files uploaded yet. Add one in the Media Library, then return here.</p>
+        <?php endif; ?>
       </div>
 
       <button type="submit" form="display-settings-form" class="bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl px-5 py-2 transition-colors">Save</button>

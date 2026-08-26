@@ -28,6 +28,20 @@ $seen->execute([(int) $screen['id']]);
 
 $payload = items_to_payload($items);
 $announcement = get_active_announcement($companyId);
+$backgroundAudio = null;
+$backgroundAudioId = max(0, (int) get_setting('background_audio_media_id', '0', $companyId));
+if ($backgroundAudioId > 0) {
+    $audioStmt = db()->prepare("SELECT id, filename, original_name, mime FROM vb_media WHERE id = ? AND company_id = ? AND kind = 'audio' LIMIT 1");
+    $audioStmt->execute([$backgroundAudioId, $companyId]);
+    if ($audio = $audioStmt->fetch()) {
+        $backgroundAudio = [
+            'id' => (int) $audio['id'],
+            'url' => media_url($audio['filename']),
+            'title' => pathinfo((string) $audio['original_name'], PATHINFO_FILENAME),
+            'mime' => $audio['mime'] ?? null,
+        ];
+    }
+}
 
 // Active visitor QR codes for this company, in display order.
 $qrCodes = [];
@@ -73,6 +87,9 @@ echo json_encode([
         'weather_label' => get_setting('weather_label', $companyName, $companyId),
         'theme'      => get_setting('theme', 'jungle', $companyId),
         'transition' => get_setting('transition', 'fade', $companyId),
+        'background_audio_enabled' => get_setting('background_audio_enabled', '0', $companyId) === '1',
+        'background_audio_volume' => (int) get_setting('background_audio_volume', '35', $companyId),
+        'background_audio' => $backgroundAudio,
         'qr_enabled' => get_setting('qr_enabled', '1', $companyId) === '1',
         'qr_rotate_seconds' => (int) get_setting('qr_rotate_seconds', '10', $companyId),
         'qr_codes'   => $qrCodes,

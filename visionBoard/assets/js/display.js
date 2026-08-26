@@ -19,6 +19,7 @@
   const marquee = document.getElementById('marquee');
   const marqueeText = document.getElementById('marqueeText');
   const fsBtn   = document.getElementById('fsBtn');
+  const bgAudio = document.getElementById('bgAudio');
   const qrbox   = document.getElementById('qrbox');
   const qrEl    = document.getElementById('qrcode');
   const qrCap   = document.getElementById('qrcap');
@@ -42,6 +43,7 @@
   let weatherSettings = null;
   let weatherTimer = null;
   let lastWeatherFetch = 0;
+  let backgroundAudioConfig = null;
   const PLAYER_VERSION = 'ops-2026-07';
 
   // ---- Data ------------------------------------------------------------
@@ -90,8 +92,47 @@
     }
     clockEl.style.display = s.show_clock ? 'block' : 'none';
     applyWeatherSettings(s);
-
+    applyBackgroundAudioSettings(s);
     renderQR(s);
+  }
+
+  function applyBackgroundAudioSettings(s) {
+    const nextConfig = (s.background_audio_enabled && s.background_audio && s.background_audio.url)
+      ? {
+          id: Number(s.background_audio.id) || 0,
+          url: String(s.background_audio.url),
+          volume: Math.min(1, Math.max(0, (parseInt(s.background_audio_volume, 10) || 35) / 100))
+        }
+      : null;
+
+    const changed = JSON.stringify(nextConfig) !== JSON.stringify(backgroundAudioConfig);
+    backgroundAudioConfig = nextConfig;
+
+    if (!backgroundAudioConfig) {
+      bgAudio.pause();
+      bgAudio.removeAttribute('src');
+      bgAudio.load();
+      return;
+    }
+
+    bgAudio.loop = true;
+    bgAudio.volume = backgroundAudioConfig.volume;
+    if (changed || bgAudio.getAttribute('src') !== backgroundAudioConfig.url) {
+      bgAudio.src = backgroundAudioConfig.url;
+      bgAudio.load();
+    }
+    ensureBackgroundAudioPlayback();
+  }
+
+  function ensureBackgroundAudioPlayback() {
+    if (!backgroundAudioConfig || !bgAudio.getAttribute('src')) return;
+    bgAudio.muted = !soundAllowed;
+    const playPromise = bgAudio.play();
+    if (playPromise && typeof playPromise.catch === 'function') {
+      playPromise.catch((e) => {
+        console.warn('Background audio play blocked', e);
+      });
+    }
   }
 
   function applyWeatherSettings(s) {
@@ -327,7 +368,7 @@
       const v = document.createElement('video');
       v.src = item.url;
       v.autoplay = true;
-      v.muted = !soundAllowed;
+      v.muted = backgroundAudioConfig ? true : !soundAllowed;
       v.playsInline = true;
       v.addEventListener('ended', next, { once: true });
       // Safety net: if the video stalls, don't freeze the display forever.
@@ -449,6 +490,7 @@
   // ---- Fullscreen ------------------------------------------------------
   fsBtn.addEventListener('click', () => {
     soundAllowed = true; // user gesture — future videos may play with sound
+    ensureBackgroundAudioPlayback();
     const el = document.documentElement;
     if (!document.fullscreenElement) (el.requestFullscreen || el.webkitRequestFullscreen || function(){}).call(el);
     else document.exitFullscreen && document.exitFullscreen();

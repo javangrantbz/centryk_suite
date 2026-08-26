@@ -344,6 +344,7 @@ function write_resized_image(string $source, string $dest, string $ext, int $max
 function content_type_icon(string $type, string $class = 'h-4 w-4'): string
 {
     $name = match ($type) {
+        'audio'     => 'music',
         'video'     => 'film',
         'biography' => 'file-text',
         default     => 'image',

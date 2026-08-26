@@ -95,6 +95,7 @@ $feedQuery  = '?screen=' . rawurlencode($screen['pair_token']);
   </div>
 
   <div id="marquee" class="marquee"><span id="marqueeText"></span></div>
+  <audio id="bgAudio" preload="auto" loop></audio>
 
   <!-- Fullscreen hint (auto-hides) -->
   <button id="fsBtn" class="fs-btn" title="Toggle fullscreen">⛶ Fullscreen</button>

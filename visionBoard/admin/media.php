@@ -116,11 +116,11 @@ if (!$panelMode) {
   <input type="hidden" name="action" value="upload">
   <label class="flex items-center gap-2 font-semibold text-slate-700 mb-2">
     <i data-lucide="upload-cloud" class="h-5 w-5 text-rose-500"></i>
-    Drop photos & videos here, or choose files
+    Drop photos, videos, or audio here, or choose files
   </label>
-  <input type="file" name="files[]" multiple accept="image/*,video/*"
+  <input type="file" name="files[]" multiple accept="image/*,video/*,audio/*"
          class="block w-full text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-rose-600 file:text-white file:font-semibold hover:file:bg-rose-700 mb-3">
-  <p class="text-xs text-slate-400 mb-3">JPG, PNG, and WEBP images are resized to 1920px wide with thumbnails. GIFs and videos are stored as uploaded. Max <?= human_size(MAX_UPLOAD_BYTES) ?> each.</p>
+  <p class="text-xs text-slate-400 mb-3">JPG, PNG, and WEBP images are resized to 1920px wide with thumbnails. GIFs, videos, and audio are stored as uploaded. Max <?= human_size(MAX_UPLOAD_BYTES) ?> each.</p>
   <?php if (!function_exists('imagecreatetruecolor')): ?>
     <p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">
       PHP GD is not enabled, so images will upload without automatic resizing until GD is turned on.
@@ -138,8 +138,13 @@ if (!$panelMode) {
       <div class="aspect-video bg-slate-900 flex items-center justify-center">
         <?php if ($m['kind'] === 'image'): ?>
           <img src="<?= thumbnail_url($m['thumbnail_filename']) ?: media_url($m['filename']) ?>" class="w-full h-full object-cover" alt="">
-        <?php else: ?>
+        <?php elseif ($m['kind'] === 'video'): ?>
           <video src="<?= media_url($m['filename']) ?>" class="w-full h-full object-cover" muted></video>
+        <?php else: ?>
+          <div class="flex h-full w-full flex-col items-center justify-center gap-2 bg-slate-800 text-slate-200">
+            <i data-lucide="music" class="h-8 w-8 text-rose-400"></i>
+            <span class="px-2 text-center text-xs font-semibold uppercase tracking-wide">Audio</span>
+          </div>
         <?php endif; ?>
       </div>
       <div class="p-3">
