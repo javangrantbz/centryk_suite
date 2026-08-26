@@ -305,16 +305,23 @@
     let el;
 
     if (item.type === 'image') {
+      const text = displayText(item);
       el = document.createElement('div');
       el.className = 'media-slide';
+      const backdrop = document.createElement('div');
+      backdrop.className = 'media-backdrop';
+      backdrop.style.backgroundImage = `url("${item.url}")`;
       const img = document.createElement('img');
       img.src = item.url;
+      img.alt = text.title || text.subtitle || '';
+      el.appendChild(backdrop);
       el.appendChild(img);
-      if (item.title || item.subtitle) el.appendChild(caption(item));
+      if (text.title || text.subtitle) el.appendChild(caption(text));
       swapIn(el);
       scheduleAdvance(item.duration);
 
     } else if (item.type === 'video') {
+      const text = displayText(item);
       el = document.createElement('div');
       el.className = 'media-slide';
       const v = document.createElement('video');
@@ -326,18 +333,19 @@
       // Safety net: if the video stalls, don't freeze the display forever.
       v.addEventListener('error', () => scheduleAdvance(item.duration || 10), { once: true });
       el.appendChild(v);
-      if (item.title || item.subtitle) el.appendChild(caption(item));
+      if (text.title || text.subtitle) el.appendChild(caption(text));
       swapIn(el);
       v.play().catch(() => { v.muted = true; v.play().catch(()=>{}); });
       // Fallback advance in case 'ended' never fires (e.g. corrupt file).
       scheduleAdvance((item.duration || 60) + 600);
 
     } else { // biography / text card
+      const text = displayText(item);
       el = document.createElement('div');
       el.className = 'bio-slide';
       el.innerHTML =
-        (item.title ? `<h1>${escapeHtml(item.title)}</h1>` : '') +
-        (item.subtitle ? `<h2>${escapeHtml(item.subtitle)}</h2>` : '') +
+        (text.title ? `<h1>${escapeHtml(text.title)}</h1>` : '') +
+        (text.subtitle ? `<h2>${escapeHtml(text.subtitle)}</h2>` : '') +
         (item.body ? `<div class="bio-body">${escapeHtml(item.body).replace(/\n/g, '<br>')}</div>` : '');
       swapIn(el);
       scheduleAdvance(item.duration);
@@ -354,6 +362,21 @@
 
   function showIdle(msg) { idle.style.display = 'flex'; idleMsg.textContent = msg; }
   function hideIdle() { idle.style.display = 'none'; }
+
+  function cleanCaptionText(value) {
+    const text = String(value || '').trim();
+    if (!text) return '';
+    const looksLikeFile = /^[^\\\/]+\.(avif|bmp|gif|jpe?g|png|svg|webp|mp4|mov|m4v|webm|avi)$/i.test(text);
+    return looksLikeFile ? '' : text;
+  }
+
+  function displayText(item) {
+    if (!item) return { title: '', subtitle: '' };
+    return {
+      title: cleanCaptionText(item.title),
+      subtitle: cleanCaptionText(item.subtitle)
+    };
+  }
 
   function currentItem() {
     return items[index] || null;
