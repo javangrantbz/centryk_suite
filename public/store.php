@@ -634,6 +634,8 @@ $headerActionsHtml = ob_get_clean();
     </div>
 </aside>
 
+<?php include __DIR__ . '/partials/business_directory.php'; ?>
+
 <script src="https://unpkg.com/lucide@latest"></script>
 <script>
 if (window.lucide) { lucide.createIcons(); }
