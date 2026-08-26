@@ -188,6 +188,28 @@ $awCurrent  = 'centryk';
         </div>
     </section>
 
+    <!-- Centryk admin access -->
+    <section class="mb-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div class="border-b border-slate-100 px-5 py-4">
+            <h2 class="text-sm font-black tracking-tight">Centryk Admin Access</h2>
+            <p class="mt-0.5 text-xs font-semibold text-slate-400">Platform admins can manage every company, user, and admin-only tool in Centryk.</p>
+        </div>
+        <div class="p-5">
+            <div id="adminAlert" class="mb-3 hidden rounded-xl border p-3 text-xs font-semibold"></div>
+            <?php if ((int)$target['id'] === (int)$currentUser['id']): ?>
+            <p class="text-sm font-semibold text-slate-400">You can't change your own admin access from here — ask another admin.</p>
+            <?php elseif (!empty($target['is_admin'])): ?>
+            <button type="button" onclick="toggleAdmin(false)" id="btnToggleAdmin" class="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-rose-600 transition hover:bg-rose-100">
+                <i data-lucide="shield-off" class="h-3.5 w-3.5"></i> Remove Centryk Admin
+            </button>
+            <?php else: ?>
+            <button type="button" onclick="toggleAdmin(true)" id="btnToggleAdmin" class="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-slate-800">
+                <i data-lucide="shield-check" class="h-3.5 w-3.5"></i> Promote to Centryk Admin
+            </button>
+            <?php endif; ?>
+        </div>
+    </section>
+
     <!-- Reset password -->
     <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div class="border-b border-slate-100 px-5 py-4">
@@ -267,6 +289,42 @@ function copyResetLink() {
     const input = document.getElementById('resetLinkInput');
     input.select();
     navigator.clipboard?.writeText(input.value).catch(() => {});
+}
+
+function showAdminAlert(msg, ok) {
+    const el = document.getElementById('adminAlert');
+    el.textContent = msg;
+    el.className = 'mb-3 rounded-xl border p-3 text-xs font-semibold ' + (ok ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-red-200 bg-red-50 text-red-700');
+    el.classList.remove('hidden');
+}
+
+async function toggleAdmin(makeAdmin) {
+    const label = makeAdmin
+        ? 'Promote this user to Centryk admin? They will be able to manage every company, user, and admin-only tool.'
+        : 'Remove Centryk admin access from this user?';
+    if (!confirm(label)) return;
+
+    const btn = document.getElementById('btnToggleAdmin');
+    btn.disabled = true;
+
+    try {
+        const res = await fetch('api/admin/set-admin.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: TARGET_USER_ID, is_admin: makeAdmin }),
+        });
+        const data = await res.json();
+        if (!data.success) {
+            showAdminAlert(data.message || 'Could not update admin access.', false);
+            btn.disabled = false;
+        } else {
+            showAdminAlert(makeAdmin ? 'User promoted to Centryk admin.' : 'Centryk admin access removed.', true);
+            setTimeout(() => location.reload(), 900);
+        }
+    } catch (e) {
+        showAdminAlert('Network error. Please try again.', false);
+        btn.disabled = false;
+    }
 }
 </script>
 </body>
