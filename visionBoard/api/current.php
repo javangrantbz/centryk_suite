@@ -64,6 +64,7 @@ echo json_encode([
     'settings'  => [
         'marquee'    => get_setting('marquee', '', $companyId),
         'marquees'   => active_marquee_messages($companyId),
+        'marquee_scroll_seconds' => (int) get_setting('marquee_scroll_seconds', '22', $companyId),
         'animal_of_day' => get_setting('animal_of_day', '', $companyId),
         'show_clock' => get_setting('show_clock', '1', $companyId) === '1',
         'weather_widget_enabled' => get_setting('weather_widget_enabled', '0', $companyId) === '1',
@@ -72,7 +73,7 @@ echo json_encode([
         'weather_label' => get_setting('weather_label', $companyName, $companyId),
         'theme'      => get_setting('theme', 'jungle', $companyId),
         'transition' => get_setting('transition', 'fade', $companyId),
-        'qr_enabled' => get_setting('qr_enabled', '0', $companyId) === '1',
+        'qr_enabled' => get_setting('qr_enabled', '1', $companyId) === '1',
         'qr_rotate_seconds' => (int) get_setting('qr_rotate_seconds', '10', $companyId),
         'qr_codes'   => $qrCodes,
     ],

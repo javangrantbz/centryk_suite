@@ -74,6 +74,8 @@
   function applySettings(s) {
     if (s.theme) body.dataset.theme = s.theme;
     if (s.transition) stage.dataset.transition = s.transition;
+    const marqueeSeconds = Math.max(8, parseInt(s.marquee_scroll_seconds, 10) || 22);
+    marquee.style.setProperty('--marquee-duration', `${marqueeSeconds}s`);
 
     const marquees = Array.isArray(s.marquees)
       ? s.marquees.filter(m => m && String(m).trim()).map(m => String(m).trim())

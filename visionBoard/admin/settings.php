@@ -24,6 +24,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         set_setting('weather_label', trim($_POST['weather_label'] ?? '') ?: $defaultWeatherLabel);
         set_setting('weather_latitude', trim($_POST['weather_latitude'] ?? '') ?: '17.3536');
         set_setting('weather_longitude', trim($_POST['weather_longitude'] ?? '') ?: '-88.5497');
+        set_setting('marquee_scroll_seconds', (string) max(8, (int) ($_POST['marquee_scroll_seconds'] ?? 22)));
+        set_setting('qr_enabled', isset($_POST['qr_enabled']) ? '1' : '0');
+        set_setting('qr_rotate_seconds', (string) max(3, (int) ($_POST['qr_rotate_seconds'] ?? 10)));
         set_setting('donation_qr_enabled', isset($_POST['donation_qr_enabled']) ? '1' : '0');
         set_setting('donation_qr_caption', trim($_POST['donation_qr_caption'] ?? '') ?: $defaultDonationCaption);
         set_setting('donation_qr_url', trim($_POST['donation_qr_url'] ?? ''));
@@ -263,6 +266,20 @@ if (!$panelMode) {
             </label>
           </div>
         </div>
+        <div class="grid gap-2 sm:grid-cols-2">
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">Scroll speed</label>
+            <input
+              type="number"
+              min="8"
+              name="marquee_scroll_seconds"
+              form="display-settings-form"
+              value="<?= e(get_setting('marquee_scroll_seconds', '22')) ?>"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            >
+            <p class="mt-1 text-xs text-slate-400">Lower seconds scroll faster. Default is 22 seconds.</p>
+          </div>
+        </div>
         <form method="post" class="flex flex-wrap items-center gap-2">
           <?= csrf_field() ?>
           <input type="hidden" name="action" value="marquee_add">
@@ -356,6 +373,24 @@ if (!$panelMode) {
     </p>
 
     <div class="space-y-3">
+        <div class="grid gap-3 sm:grid-cols-2">
+          <label class="flex items-center gap-2 text-sm font-medium text-slate-700">
+            <input type="checkbox" name="qr_enabled" form="display-settings-form" <?= get_setting('qr_enabled','1')==='1'?'checked':'' ?>>
+            Show visitor QR codes on display
+          </label>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">Rotate every</label>
+            <input
+              type="number"
+              min="3"
+              name="qr_rotate_seconds"
+              form="display-settings-form"
+              value="<?= e(get_setting('qr_rotate_seconds', '10')) ?>"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            >
+            <p class="mt-1 text-xs text-slate-400">Used when an individual QR code does not have its own display time.</p>
+          </div>
+        </div>
         <div class="space-y-3">
           <?php foreach ($qrList as $q): ?>
             <div class="flex flex-wrap items-center gap-2 border border-slate-100 rounded-xl p-2 bg-white <?= $q['is_active']?'':'opacity-60' ?>">
