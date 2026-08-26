@@ -3,11 +3,7 @@ require_once __DIR__ . '/../app/core/Auth.php';
 require_once __DIR__ . '/../app/core/DB.php';
 
 Auth::start();
-$user = Auth::user();
-if (!$user) {
-    http_response_code(401);
-    exit;
-}
+$user = Auth::user(); // may be null - market/both images are public; only 'employee' audience needs a member below
 
 $itemId = isset($_GET['item_id']) ? (int)$_GET['item_id'] : 0;
 if ($itemId <= 0) {
@@ -37,6 +33,10 @@ if (!$listing) {
 
 $audience = (string)($listing['audience'] ?? '');
 if (!in_array($audience, ['market', 'both'], true)) {
+    if (!$user) {
+        http_response_code(404);
+        exit;
+    }
     $memberStmt = $pdo->prepare('
         SELECT id
         FROM company_members

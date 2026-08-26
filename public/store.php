@@ -4,12 +4,7 @@ require_once __DIR__ . '/../app/core/DB.php';
 require_once __DIR__ . '/../app/services/AuthService.php';
 
 Auth::start();
-$user = Auth::user();
-if (!$user) {
-    $qs = $_SERVER['QUERY_STRING'] ?? '';
-    header('Location: login.php?redirect=' . urlencode(basename(__FILE__) . ($qs !== '' ? '?' . $qs : '')));
-    exit;
-}
+$user = Auth::user(); // may be null - the storefront is public; membership/connect features below just no-op for a visitor
 
 $pdo = DB::pdo();
 $typeLabels = [
@@ -52,23 +47,27 @@ if (!$isFeed && !$company) {
 }
 
 $memberCompanyIds = [];
-$memberStmt = $pdo->prepare('
-    SELECT company_id
-    FROM company_members
-    WHERE user_id = :uid AND status = "active"
-');
-$memberStmt->execute(['uid' => (int)$user['id']]);
-foreach ($memberStmt->fetchAll(PDO::FETCH_COLUMN) as $memberCompanyId) {
-    $memberCompanyIds[(int)$memberCompanyId] = true;
+if ($user) {
+    $memberStmt = $pdo->prepare('
+        SELECT company_id
+        FROM company_members
+        WHERE user_id = :uid AND status = "active"
+    ');
+    $memberStmt->execute(['uid' => (int)$user['id']]);
+    foreach ($memberStmt->fetchAll(PDO::FETCH_COLUMN) as $memberCompanyId) {
+        $memberCompanyIds[(int)$memberCompanyId] = true;
+    }
 }
 
 $isMember = $company ? isset($memberCompanyIds[(int)$company['id']]) : false;
 
-// Centryk Connect status, for the Connect button when viewing another company's store.
+// Centryk Connect status, for the Connect button when viewing another company's
+// store. A visitor with no account has nothing to connect from, so this whole
+// block (and the button it drives) just stays empty for them.
 $connectFromCompanyId = null;
 $connectionStatus = null; // null | 'pending_out' | 'pending_in' | 'accepted'
 $connectionId = null;
-if ($company && !$isMember) {
+if ($user && $company && !$isMember) {
     $adminStmt = $pdo->prepare("SELECT company_id FROM company_members WHERE user_id=? AND status='active' AND role='admin' LIMIT 1");
     $adminStmt->execute([(int)$user['id']]);
     $connectFromCompanyId = $adminStmt->fetchColumn() ?: null;

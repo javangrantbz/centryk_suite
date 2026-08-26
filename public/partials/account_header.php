@@ -106,7 +106,12 @@ $awCurrent = $awCurrent ?? 'centryk';
 
         <div class="h-5 w-px bg-slate-200 shrink-0"></div>
 
-        <!-- Account dropdown -->
+        <!-- Account dropdown (or a Log in prompt on a public page with no session, e.g. store.php for a visitor) -->
+        <?php if (empty($_hdrUser)): ?>
+        <a href="login.php" class="shrink-0 rounded-xl bg-slate-950 px-4 py-2 text-sm font-bold text-white transition hover:bg-slate-800">
+            Log in
+        </a>
+        <?php else: ?>
         <div class="relative shrink-0" id="userMenuWrapper">
             <button id="userMenuBtn" class="flex items-center gap-2.5 rounded-xl px-3 py-2 transition hover:bg-slate-100">
                 <div class="js-hdr-initial flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[12px] font-black text-slate-700"><?= $_hdrInit ?></div>
@@ -142,6 +147,7 @@ $awCurrent = $awCurrent ?? 'centryk';
                 </div>
             </div>
         </div>
+        <?php endif; ?>
     </div>
 </header>
 
