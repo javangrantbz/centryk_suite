@@ -593,7 +593,13 @@ $headerActionsHtml = ob_get_clean();
                     Add items to your OnePay inventory and mark them for the storefront —
                     they’ll appear here for anyone with your link.
                 </p>
-                <a href="switch.php?app=onepay&amp;company_uuid=<?= htmlspecialchars($company['uuid']) ?>" target="_blank" rel="noopener"
+                <?php
+                // SSO into OnePay, landing straight on the inventory (products)
+                // page. OnePay's sso.php only honours a same-site relative
+                // ?redirect=, so this is passed through as one encoded value.
+                $onePayInventoryRedirect = rawurlencode('/app.php?page=inventory&tab=products');
+                ?>
+                <a href="switch.php?app=onepay&amp;company_uuid=<?= htmlspecialchars($company['uuid']) ?>&amp;redirect=<?= $onePayInventoryRedirect ?>" target="_blank" rel="noopener"
                    class="mt-5 inline-flex items-center gap-2 rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-black text-white shadow-sm transition hover:bg-violet-700">
                     <i data-lucide="arrow-up-right" class="h-4 w-4"></i> Add items in OnePay
                 </a>
