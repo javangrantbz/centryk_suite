@@ -1,5 +1,13 @@
 RewriteEngine On
 
+# Friendly error pages. The PHP layer (app/core/ErrorHandler.php) already
+# renders public/errors/500.html for any uncaught exception or fatal; these
+# are the backstop for faults that never reach PHP (bad .htaccess, PHP not
+# starting) and for plain missing-file 404s. Paths start with public/ so the
+# "route everything to public/" rule below leaves them alone.
+ErrorDocument 500 /public/errors/500.html
+ErrorDocument 404 /public/errors/404.html
+
 # Block direct access to sensitive files and directories
 RewriteRule ^(app|database)(/|$) - [F,L]
 

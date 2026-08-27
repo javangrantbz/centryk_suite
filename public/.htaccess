@@ -1,1 +1,7 @@
 Options -Indexes
+
+# Backstop error pages when the web root is public/ itself (some deploys map
+# the domain straight here rather than to the repo root). Harmless when the
+# repo-root .htaccess is the active one.
+ErrorDocument 500 /errors/500.html
+ErrorDocument 404 /errors/404.html

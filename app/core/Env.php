@@ -1,5 +1,8 @@
 <?php
 
+require_once __DIR__ . '/ErrorHandler.php';
+ErrorHandler::register();
+
 class Env
 {
     private static bool $loaded = false;
@@ -27,6 +30,15 @@ class Env
         // missing; APP_TIMEZONE below can override it.
         date_default_timezone_set(self::DEFAULT_TIMEZONE);
 
+        self::applyEnvFile($path);
+
+        // .env is parsed now (or absent) — let ErrorHandler settle whether
+        // errors show inline (local) or log-only (live).
+        ErrorHandler::applyDisplayPolicy();
+    }
+
+    private static function applyEnvFile(string $path): void
+    {
         if (!is_file($path)) {
             return;
         }
