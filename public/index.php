@@ -40,6 +40,28 @@ if ($me['authenticated']) {
         }
     } catch (Throwable $e) {}
 
+    // Onboarded, but the company profile is still missing phone / email /
+    // address. Nudge the admin back to the profile step until they fill it in
+    // or hit "Skip for now" (which snoozes this for ~14 days). Degrades to a
+    // no-op if the snooze column hasn't been migrated yet.
+    try {
+        $gap = DB::pdo()->prepare("
+            SELECT c.id FROM companies c
+            JOIN company_members cm ON cm.company_id = c.id
+            WHERE cm.user_id = :uid AND cm.role = 'admin' AND cm.status = 'active'
+              AND c.status = 'active' AND c.onboarded_at IS NOT NULL
+              AND (c.profile_prompt_snoozed_until IS NULL OR c.profile_prompt_snoozed_until < NOW())
+              AND (NULLIF(TRIM(c.phone), '')   IS NULL
+                OR NULLIF(TRIM(c.email), '')   IS NULL
+                OR NULLIF(TRIM(c.address), '') IS NULL)
+            ORDER BY c.created_at ASC LIMIT 1");
+        $gap->execute(['uid' => (int)$user['id']]);
+        if ($gap->fetchColumn()) {
+            header('Location: onboarding.php?resume=profile');
+            exit;
+        }
+    } catch (Throwable $e) {}
+
     $isCompanyAdmin = false;
     try {
         $caStmt = DB::pdo()->prepare("

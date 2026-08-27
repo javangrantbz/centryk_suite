@@ -2,8 +2,12 @@
 /**
  * First-login company setup wizard.
  * Shown to a company admin whose company hasn't been onboarded yet (see the
- * redirect in index.php). Two steps: nature of business → apps. Posts to
- * api/onboarding/complete.php, then returns to the dashboard.
+ * redirect in index.php). Three steps: nature of business → apps → company
+ * profile. Posts to api/onboarding/complete.php, then returns to the dashboard.
+ *
+ * ?resume=profile — "finish your profile" mode. The company is already
+ * onboarded but still has no phone / email / address; index.php redirects here
+ * until those are filled or the admin hits "Skip for now". Only Step 3 shows.
  */
 require_once __DIR__ . '/../app/core/Auth.php';
 require_once __DIR__ . '/../app/core/DB.php';
@@ -15,16 +19,33 @@ if (!$user) {
     exit;
 }
 
-// The company this admin still needs to set up (oldest un-onboarded first).
-$pdo  = DB::pdo();
-$stmt = $pdo->prepare('
-    SELECT c.id, c.name
-    FROM companies c
-    JOIN company_members cm ON cm.company_id = c.id
-    WHERE cm.user_id = :uid AND cm.role = "admin" AND cm.status = "active"
-      AND c.onboarded_at IS NULL
-    ORDER BY c.created_at ASC
-    LIMIT 1');
+$pdo           = DB::pdo();
+$resumeProfile = (($_GET['resume'] ?? '') === 'profile');
+
+if ($resumeProfile) {
+    // Any active company this admin owns whose profile is still incomplete.
+    $stmt = $pdo->prepare('
+        SELECT c.id, c.name, c.phone, c.email, c.address, c.logo
+        FROM companies c
+        JOIN company_members cm ON cm.company_id = c.id
+        WHERE cm.user_id = :uid AND cm.role = "admin" AND cm.status = "active"
+          AND c.status = "active" AND c.onboarded_at IS NOT NULL
+          AND (NULLIF(TRIM(c.phone), "")   IS NULL
+            OR NULLIF(TRIM(c.email), "")   IS NULL
+            OR NULLIF(TRIM(c.address), "") IS NULL)
+        ORDER BY c.created_at ASC
+        LIMIT 1');
+} else {
+    // The company this admin still needs to set up (oldest un-onboarded first).
+    $stmt = $pdo->prepare('
+        SELECT c.id, c.name, NULL AS phone, NULL AS email, NULL AS address, NULL AS logo
+        FROM companies c
+        JOIN company_members cm ON cm.company_id = c.id
+        WHERE cm.user_id = :uid AND cm.role = "admin" AND cm.status = "active"
+          AND c.onboarded_at IS NULL
+        ORDER BY c.created_at ASC
+        LIMIT 1');
+}
 $stmt->execute(['uid' => (int)$user['id']]);
 $company = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -136,13 +157,19 @@ $firstName = trim((string)($user['first_name'] ?? '')) ?: 'there';
             <path d="M14 30h33a4 4 0 0 1 4 4v6c0 10-7 17-17 17h-3c-8 0-13-4-16-11l-5-13a3.8 3.8 0 0 1 7-2.6L14 30z"/>
           </g>
         </svg></h1>
+        <?php if ($resumeProfile): ?>
+        <p class="mt-1 text-slate-500">One last thing for <span class="font-bold text-slate-700"><?= htmlspecialchars($company['name']) ?></span> — add your contact details so invoices and receipts look right.</p>
+        <?php else: ?>
         <p class="mt-1 text-slate-500">Let's set up <span class="font-bold text-slate-700"><?= htmlspecialchars($company['name']) ?></span> — takes about 30 seconds.</p>
+        <?php endif; ?>
       </div>
+      <?php if (!$resumeProfile): ?>
       <div class="flex items-center gap-2">
         <div id="dot1" class="h-1.5 flex-1 rounded-full bg-violet-600"></div>
         <div id="dot2" class="h-1.5 flex-1 rounded-full bg-slate-200"></div>
         <div id="dot3" class="h-1.5 flex-1 rounded-full bg-slate-200"></div>
       </div>
+      <?php endif; ?>
     </div>
   </div>
 
@@ -151,7 +178,7 @@ $firstName = trim((string)($user['first_name'] ?? '')) ?: 'there';
     <div class="flex-1 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
 
       <!-- ── Step 1: nature of business ─────────────────────────────────────── -->
-      <section id="step1">
+      <section id="step1" class="<?= $resumeProfile ? 'hidden' : '' ?>">
         <div class="mb-4 flex items-start justify-between gap-3">
           <div>
             <h2 class="text-lg font-black">What type of business do you run?</h2>
@@ -198,16 +225,21 @@ $firstName = trim((string)($user['first_name'] ?? '')) ?: 'there';
         </div>
       </section>
 
-      <!-- ── Step 3: company profile (all optional) ─────────────────────────── -->
-      <section id="step3" class="hidden">
+      <!-- ── Step 3: company profile ────────────────────────────────────────── -->
+      <section id="step3" class="<?= $resumeProfile ? '' : 'hidden' ?>">
         <div class="mb-4 flex items-start justify-between gap-3">
           <div>
+            <?php if ($resumeProfile): ?>
+            <h2 class="text-lg font-black">Finish your company profile</h2>
+            <p class="text-sm text-slate-500">Add your phone, email and address to continue. A logo is optional.</p>
+            <?php else: ?>
             <h2 class="text-lg font-black">Add your company details</h2>
             <p class="text-sm text-slate-500">Used on invoices, receipts &amp; your storefront. All optional — you can add these later.</p>
+            <?php endif; ?>
           </div>
           <button id="finishBtn" onclick="finish(true)"
                   class="shrink-0 rounded-lg bg-violet-600 px-5 py-2 text-sm font-bold text-white shadow-sm hover:bg-violet-700 disabled:bg-slate-200 disabled:text-slate-400">
-            Finish setup
+            <?= $resumeProfile ? 'Save &amp; continue' : 'Finish setup' ?>
           </button>
         </div>
 
@@ -216,10 +248,14 @@ $firstName = trim((string)($user['first_name'] ?? '')) ?: 'there';
             <label class="block text-[11px] font-bold uppercase tracking-wide text-slate-500">Logo</label>
             <div class="mt-1 flex items-center gap-3">
               <span id="logoPreview" class="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50 text-slate-300">
+                <?php if (!empty($company['logo'])): ?>
+                <img src="<?= htmlspecialchars($company['logo']) ?>" alt="" class="h-full w-full object-contain">
+                <?php else: ?>
                 <i data-lucide="image" class="h-5 w-5"></i>
+                <?php endif; ?>
               </span>
               <label class="cursor-pointer rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-600 hover:border-violet-400 hover:text-violet-600">
-                <span id="logoBtnLabel">Choose image</span>
+                <span id="logoBtnLabel"><?= !empty($company['logo']) ? 'Change image' : 'Choose image' ?></span>
                 <input id="coLogo" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" class="hidden">
               </label>
             </div>
@@ -228,28 +264,33 @@ $firstName = trim((string)($user['first_name'] ?? '')) ?: 'there';
 
           <div>
             <label class="block text-[11px] font-bold uppercase tracking-wide text-slate-500">Phone</label>
-            <input id="coPhone" type="tel" placeholder="+501 000-0000"
+            <input id="coPhone" type="tel" placeholder="+501 000-0000" value="<?= htmlspecialchars($company['phone'] ?? '') ?>"
                    class="mt-1 w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-violet-400 focus:outline-none">
           </div>
 
           <div>
             <label class="block text-[11px] font-bold uppercase tracking-wide text-slate-500">Email</label>
-            <input id="coEmail" type="email" placeholder="hello@yourbusiness.com"
+            <input id="coEmail" type="email" placeholder="hello@yourbusiness.com" value="<?= htmlspecialchars($company['email'] ?? '') ?>"
                    class="mt-1 w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-violet-400 focus:outline-none">
           </div>
 
           <div>
             <label class="block text-[11px] font-bold uppercase tracking-wide text-slate-500">Address</label>
             <textarea id="coAddress" rows="2" placeholder="Street, city, country"
-                      class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-violet-400 focus:outline-none"></textarea>
+                      class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-violet-400 focus:outline-none"><?= htmlspecialchars($company['address'] ?? '') ?></textarea>
           </div>
         </div>
 
         <div id="obError" class="mt-4 hidden rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700"></div>
 
         <div class="mt-6 flex items-center justify-between">
+          <?php if ($resumeProfile): ?>
+          <span></span>
+          <button id="skipBtn" onclick="finish(false)" class="text-sm font-semibold text-slate-400 hover:text-slate-600">Skip for now</button>
+          <?php else: ?>
           <button onclick="backStep2()" class="text-sm font-semibold text-slate-400 hover:text-slate-600">&larr; Back</button>
           <button id="skipBtn" onclick="finish(false)" class="text-sm font-semibold text-slate-400 hover:text-slate-600">Skip for now</button>
+          <?php endif; ?>
         </div>
       </section>
 
@@ -258,6 +299,7 @@ $firstName = trim((string)($user['first_name'] ?? '')) ?: 'there';
 
   <script>
     const COMPANY_ID = <?= (int)$company['id'] ?>;
+    const RESUME_PROFILE = <?= $resumeProfile ? 'true' : 'false' ?>;
 
     // Business type → default customer noun (mirrors api/onboarding/complete.php).
     const TYPES = [
@@ -427,17 +469,56 @@ $firstName = trim((string)($user['first_name'] ?? '')) ?: 'there';
     }
 
     async function finish(includeProfile){
-      const finishBtn = document.getElementById('finishBtn');
-      const skipBtn   = document.getElementById('skipBtn');
+      const finishBtn    = document.getElementById('finishBtn');
+      const skipBtn      = document.getElementById('skipBtn');
+      const finishLabel  = RESUME_PROFILE ? 'Save & continue' : 'Finish setup';
+      const reenable = () => {
+        finishBtn.disabled = false; skipBtn.disabled = false;
+        finishBtn.textContent = finishLabel; skipBtn.textContent = 'Skip for now';
+      };
       finishBtn.disabled = true; skipBtn.disabled = true;
       document.getElementById('obError').classList.add('hidden');
-      (includeProfile ? finishBtn : skipBtn).textContent = 'Setting up…';
+      (includeProfile ? finishBtn : skipBtn).textContent = 'Saving…';
 
+      // ── "Finish your profile" mode: company is already onboarded, so we only
+      //    save the four profile fields (or snooze) and go back to the dashboard.
+      if (RESUME_PROFILE){
+        const fd = new FormData();
+        fd.append('company_id', COMPANY_ID);
+        if (includeProfile){
+          const missing = ['coPhone', 'coEmail', 'coAddress']
+            .filter(id => !document.getElementById(id).value.trim());
+          if (missing.length){
+            reenable();
+            showObError('Please add your phone, email and address — or choose Skip for now.');
+            return;
+          }
+          fd.append('phone', document.getElementById('coPhone').value.trim());
+          fd.append('email', document.getElementById('coEmail').value.trim());
+          fd.append('address', document.getElementById('coAddress').value.trim());
+          if (logoInput.files[0]) fd.append('logo', logoInput.files[0]);
+        } else {
+          fd.append('snooze', '1');
+        }
+        let p;
+        try {
+          const r = await fetch('api/onboarding/save_profile.php', { method: 'POST', body: fd });
+          p = await r.json();
+        } catch (_) { p = null; }
+        if (!p || !p.success){
+          reenable();
+          showObError((p && p.message) || 'Could not save your company details.');
+          return;
+        }
+        window.location.href = 'index.php';
+        return;
+      }
+
+      // ── First-run wizard (steps 1–3) ──────────────────────────────────────
       if (includeProfile && profileHasInput()){
         const p = await submitProfile();
         if (!p || !p.success){
-          finishBtn.disabled = false; skipBtn.disabled = false;
-          finishBtn.textContent = 'Finish setup'; skipBtn.textContent = 'Skip for now';
+          reenable();
           showObError((p && p.message) || 'Could not save your company details.');
           return;
         }
@@ -452,8 +533,7 @@ $firstName = trim((string)($user['first_name'] ?? '')) ?: 'there';
         apps,
       });
       if (!res || !res.success){
-        finishBtn.disabled = false; skipBtn.disabled = false;
-        finishBtn.textContent = 'Finish setup'; skipBtn.textContent = 'Skip for now';
+        reenable();
         showObError(res && res.message);
         return;
       }

@@ -1042,7 +1042,7 @@ $tvBaseUrl = (static function (): string {
             // ── Setup progress ────────────────────────────────────────────
             var enrolledCount = document.querySelectorAll('.app-card[data-enrolled="1"]').length;
             var step1Done = true;
-            var step2Done = !!(c.logo || c.store_theme);
+            var step2Done = !!(String(c.phone || '').trim() && String(c.email || '').trim() && String(c.address || '').trim());
             var step3Done = n > 1;
             var step4Done = enrolledCount > 0;
             var stepsComplete = (step1Done ? 1 : 0) + (step2Done ? 1 : 0) + (step3Done ? 1 : 0) + (step4Done ? 1 : 0);

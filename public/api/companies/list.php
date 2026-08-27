@@ -11,7 +11,7 @@ if (!$user) {
 
 $pdo  = DB::pdo();
 $stmt = $pdo->prepare('
-    SELECT c.id, c.uuid, c.name, c.logo, c.store_theme, c.status, cm.role, c.created_at,
+    SELECT c.id, c.uuid, c.name, c.logo, c.store_theme, c.phone, c.email, c.address, c.status, cm.role, c.created_at,
            (SELECT COUNT(*) FROM company_members WHERE company_id = c.id AND status = "active") AS member_count
     FROM company_members cm
     JOIN companies c ON c.id = cm.company_id
