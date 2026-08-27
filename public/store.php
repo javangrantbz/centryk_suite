@@ -1,7 +1,9 @@
 <?php
 require_once __DIR__ . '/../app/core/Auth.php';
 require_once __DIR__ . '/../app/core/DB.php';
+require_once __DIR__ . '/../app/core/Env.php';
 require_once __DIR__ . '/../app/services/AuthService.php';
+require_once __DIR__ . '/../app/services/StoreLink.php';
 
 Auth::start();
 $user = Auth::user(); // may be null - the storefront is public; membership/connect features below just no-op for a visitor
@@ -47,19 +49,43 @@ if (!$isFeed && !$company) {
 }
 
 $memberCompanyIds = [];
+$adminCompanyIds  = [];
 if ($user) {
     $memberStmt = $pdo->prepare('
-        SELECT company_id
+        SELECT company_id, role
         FROM company_members
         WHERE user_id = :uid AND status = "active"
     ');
     $memberStmt->execute(['uid' => (int)$user['id']]);
-    foreach ($memberStmt->fetchAll(PDO::FETCH_COLUMN) as $memberCompanyId) {
-        $memberCompanyIds[(int)$memberCompanyId] = true;
+    foreach ($memberStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $cid = (int)$row['company_id'];
+        $memberCompanyIds[$cid] = true;
+        if (($row['role'] ?? '') === 'admin') {
+            $adminCompanyIds[$cid] = true;
+        }
     }
 }
 
-$isMember = $company ? isset($memberCompanyIds[(int)$company['id']]) : false;
+$isMember             = $company ? isset($memberCompanyIds[(int)$company['id']]) : false;
+$viewerIsCompanyAdmin = $company ? (!empty($user['is_admin']) || isset($adminCompanyIds[(int)$company['id']])) : false;
+
+// Short, shareable link for this storefront: centryk.bz/s/<slug>. Generated on
+// first view; every later view just reads it back.
+$storeSlug = '';
+$storeShortUrl = '';
+if ($company) {
+    try {
+        $storeSlug = StoreLink::ensure($pdo, (int)$company['id'], (string)$company['name']);
+    } catch (Throwable $e) {
+        $storeSlug = '';
+    }
+    Env::load(__DIR__ . '/../.env');
+    $appUrl = rtrim((string)($_ENV['APP_URL'] ?? ''), '/');
+    $siteRoot = preg_replace('#/public$#', '', $appUrl) ?: $appUrl;
+    if ($storeSlug !== '' && $siteRoot !== '') {
+        $storeShortUrl = $siteRoot . '/s/' . $storeSlug;
+    }
+}
 
 // Centryk Connect status, for the Connect button when viewing another company's
 // store. A visitor with no account has nothing to connect from, so this whole
@@ -502,6 +528,18 @@ $headerActionsHtml = ob_get_clean();
     </section>
     <?php endif; ?>
 
+    <?php
+    // Share strip for everyone — except the owner's empty store, which gets a
+    // richer card inside the call-to-action below (avoids a duplicate widget).
+    $showShareBar = $storeShortUrl !== '' && !($viewerIsCompanyAdmin && !$listings);
+    if ($showShareBar):
+        $shareVariant = 'bar';
+    ?>
+    <section class="mb-6">
+        <?php include __DIR__ . '/partials/store_share.php'; ?>
+    </section>
+    <?php endif; ?>
+
     <section>
         <?php if ($listings): ?>
             <div class="grid gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
@@ -545,6 +583,27 @@ $headerActionsHtml = ob_get_clean();
                     </article>
                 <?php endforeach; ?>
             </div>
+        <?php elseif ($viewerIsCompanyAdmin): ?>
+            <div class="rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm sm:p-9">
+                <span class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-50 text-violet-700">
+                    <i data-lucide="package-plus" class="h-7 w-7"></i>
+                </span>
+                <h2 class="text-lg font-black text-slate-950">Your store is empty</h2>
+                <p class="mx-auto mt-2 max-w-md text-sm font-semibold leading-relaxed text-slate-500">
+                    Add items to your OnePay inventory and mark them for the storefront —
+                    they’ll appear here for anyone with your link.
+                </p>
+                <a href="switch.php?app=onepay&amp;company_uuid=<?= htmlspecialchars($company['uuid']) ?>" target="_blank" rel="noopener"
+                   class="mt-5 inline-flex items-center gap-2 rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-black text-white shadow-sm transition hover:bg-violet-700">
+                    <i data-lucide="arrow-up-right" class="h-4 w-4"></i> Add items in OnePay
+                </a>
+            </div>
+            <?php if ($storeShortUrl !== ''): ?>
+            <p class="mt-6 text-center text-xs font-black uppercase tracking-[0.16em] text-slate-400">
+                Then share your store with clients, friends &amp; customers
+            </p>
+            <div class="mt-3"><?php $shareVariant = 'card'; include __DIR__ . '/partials/store_share.php'; ?></div>
+            <?php endif; ?>
         <?php else: ?>
             <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-5 py-10 text-center">
                 <p class="text-sm font-bold text-slate-500">No items are listed right now.</p>
