@@ -7,8 +7,8 @@
  * collapsed to a single hyphen. Globally unique; collisions get "-2", "-3", …
  *
  * Generated lazily the first time a company's store page is viewed
- * (see public/store.php) and backfilled by
- * database/backfill_company_store_slug.php.
+ * (see public/store.php); existing companies are backfilled by visiting
+ * public/admin-backfill-store-slugs.php once as a platform admin.
  */
 class StoreLink
 {
