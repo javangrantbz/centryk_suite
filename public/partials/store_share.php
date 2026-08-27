@@ -33,51 +33,78 @@ $icons = [
     'email' => '<path d="M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Zm1.4 2L12 12.2 19.6 7H4.4ZM20 8.6l-8 5.5-8-5.5V17h16V8.6Z"/>',
 ];
 
-$btnClass = $shareVariant === 'card'
+$isCard = $shareVariant === 'card';
+$isBanner = $shareVariant === 'banner';
+$btnClass = $isCard
     ? 'flex h-11 w-11 items-center justify-center rounded-xl text-white shadow-sm transition hover:opacity-90'
-    : 'flex h-9 w-9 items-center justify-center rounded-lg text-white transition hover:opacity-90';
-$iconSize = $shareVariant === 'card' ? 'h-5 w-5' : 'h-4 w-4';
+    : ($isBanner
+        ? 'flex h-9 w-9 items-center justify-center rounded-xl text-white shadow-sm ring-1 ring-black/5 transition hover:opacity-90'
+        : 'flex h-9 w-9 items-center justify-center rounded-lg text-white transition hover:opacity-90');
+$iconSize = $isCard ? 'h-5 w-5' : 'h-4 w-4';
 ?>
-<div class="store-share <?= $shareVariant === 'card' ? 'rounded-2xl border border-slate-200 bg-white p-5 shadow-sm' : 'rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm' ?>">
+<div class="store-share <?= $isCard ? 'rounded-2xl border border-slate-200 bg-white p-5 shadow-sm' : ($isBanner ? 'rounded-2xl border border-white/60 bg-white/88 p-3 shadow-lg backdrop-blur-sm' : 'rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm') ?>">
     <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
         <p class="text-[11px] font-black uppercase tracking-[0.16em] text-violet-600">
-            <?= $shareVariant === 'card' ? 'Share your store' : 'Share' ?>
+            <?= $isCard ? 'Share your store' : 'Share' ?>
         </p>
-        <div class="flex min-w-0 flex-1 items-center gap-2">
-            <input id="storeShareUrl" type="text" readonly value="<?= htmlspecialchars($storeShortUrl) ?>"
-                   class="min-w-0 flex-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-semibold text-slate-700 outline-none">
-            <button id="storeShareCopy" type="button" data-label="Copy"
-                    class="shrink-0 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-bold text-slate-600 transition hover:border-violet-400 hover:text-violet-600">
-                Copy
-            </button>
-        </div>
-        <div class="flex items-center gap-1.5">
-            <?php foreach ($targets as [$key, $label, $href, $color]): ?>
-            <a href="<?= htmlspecialchars($href) ?>" target="_blank" rel="noopener noreferrer"
-               aria-label="Share on <?= htmlspecialchars($label) ?>" title="Share on <?= htmlspecialchars($label) ?>"
-               class="<?= $btnClass ?>" style="background:<?= $color ?>">
-                <svg viewBox="0 0 24 24" fill="currentColor" class="<?= $iconSize ?>"><?= $icons[$key] ?></svg>
-            </a>
-            <?php endforeach; ?>
-        </div>
+        <?php if ($isBanner): ?>
+            <div class="flex flex-wrap items-center gap-1.5">
+                <span class="max-w-[min(48vw,280px)] truncate rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 shadow-sm">
+                    <?= htmlspecialchars($storeShortUrl) ?>
+                </span>
+                <button id="storeShareCopy" type="button" data-label="Copy link" data-copy-url="<?= htmlspecialchars($storeShortUrl, ENT_QUOTES, 'UTF-8') ?>"
+                        class="shrink-0 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-700 transition hover:border-violet-400 hover:text-violet-600">
+                    Copy link
+                </button>
+                <?php foreach (array_slice($targets, 0, 3) as [$key, $label, $href, $color]): ?>
+                <a href="<?= htmlspecialchars($href) ?>" target="_blank" rel="noopener noreferrer"
+                   aria-label="Share on <?= htmlspecialchars($label) ?>" title="Share on <?= htmlspecialchars($label) ?>"
+                   class="<?= $btnClass ?>" style="background:<?= $color ?>">
+                    <svg viewBox="0 0 24 24" fill="currentColor" class="<?= $iconSize ?>"><?= $icons[$key] ?></svg>
+                </a>
+                <?php endforeach; ?>
+            </div>
+        <?php else: ?>
+            <div class="flex min-w-0 flex-1 items-center gap-2">
+                <input id="storeShareUrl" type="text" readonly value="<?= htmlspecialchars($storeShortUrl) ?>"
+                       class="min-w-0 flex-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-semibold text-slate-700 outline-none">
+                <button id="storeShareCopy" type="button" data-label="Copy" data-copy-url="<?= htmlspecialchars($storeShortUrl, ENT_QUOTES, 'UTF-8') ?>"
+                        class="shrink-0 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-bold text-slate-600 transition hover:border-violet-400 hover:text-violet-600">
+                    Copy
+                </button>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <?php foreach ($targets as [$key, $label, $href, $color]): ?>
+                <a href="<?= htmlspecialchars($href) ?>" target="_blank" rel="noopener noreferrer"
+                   aria-label="Share on <?= htmlspecialchars($label) ?>" title="Share on <?= htmlspecialchars($label) ?>"
+                   class="<?= $btnClass ?>" style="background:<?= $color ?>">
+                    <svg viewBox="0 0 24 24" fill="currentColor" class="<?= $iconSize ?>"><?= $icons[$key] ?></svg>
+                </a>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
     </div>
 </div>
 <script>
 (function () {
     var copyBtn = document.getElementById('storeShareCopy');
     var urlField = document.getElementById('storeShareUrl');
-    if (!copyBtn || !urlField || copyBtn.dataset.wired) { return; }
+    if (!copyBtn || copyBtn.dataset.wired) { return; }
+    var copyUrl = copyBtn.getAttribute('data-copy-url') || (urlField ? (urlField.value || '') : '');
+    if (copyUrl === '') { return; }
     copyBtn.dataset.wired = '1';
     copyBtn.addEventListener('click', function () {
-        // Select first so the value is grabbable even if programmatic copy is
-        // blocked; then try execCommand (sync) and the async Clipboard API
-        // without awaiting it (it can hang in some embedded contexts).
-        urlField.focus();
-        urlField.select();
-        try { urlField.setSelectionRange(0, urlField.value.length); } catch (e) {}
-        try { document.execCommand('copy'); } catch (e) {}
+        if (urlField) {
+            // Select first so the value is grabbable even if programmatic copy is
+            // blocked; then try execCommand (sync) and the async Clipboard API
+            // without awaiting it (it can hang in some embedded contexts).
+            urlField.focus();
+            urlField.select();
+            try { urlField.setSelectionRange(0, urlField.value.length); } catch (e) {}
+            try { document.execCommand('copy'); } catch (e) {}
+        }
         if (navigator.clipboard && navigator.clipboard.writeText) {
-            try { navigator.clipboard.writeText(urlField.value).catch(function () {}); } catch (e) {}
+            try { navigator.clipboard.writeText(copyUrl).catch(function () {}); } catch (e) {}
         }
         var original = copyBtn.getAttribute('data-label') || 'Copy';
         copyBtn.textContent = 'Copied!';

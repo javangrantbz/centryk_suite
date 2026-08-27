@@ -28,6 +28,8 @@ $typeLabels = [
 ];
 
 $companyUuid = trim((string)($_GET['company_uuid'] ?? ''));
+$feedTypeKey = strtolower(trim((string)($_GET['type'] ?? '')));
+$feedTypeKey = array_key_exists($feedTypeKey, $typeLabels) ? $feedTypeKey : '';
 $company = null;
 $isFeed = $companyUuid === '';
 
@@ -161,9 +163,11 @@ $onePayImageUrl = static function (?string $imageUrl, $itemId = null) use ($oneP
 
 $listings = [];
 $feedStores = [];
+$businessTypePills = [];
+$relatedBusinesses = [];
 try {
     if ($isFeed) {
-        $listingStmt = $pdo->query('
+        $listingSql = '
             SELECT sl.title, sl.sku, sl.price, sl.summary, sl.audience, sl.source_item_id, sl.image_url,
                    c.id AS company_id, c.uuid AS company_uuid, c.name AS company_name,
                    c.logo AS company_logo, c.store_theme AS company_store_theme, c.business_type, c.address
@@ -174,9 +178,19 @@ try {
               AND sl.source_app = "onepay"
               AND sl.source_item_id IS NOT NULL
               AND (sl.starts_at IS NULL OR sl.starts_at <= NOW())
-              AND (sl.ends_at IS NULL OR sl.ends_at >= NOW())
+              AND (sl.ends_at IS NULL OR sl.ends_at >= NOW())';
+        if ($feedTypeKey !== '') {
+            $listingSql .= ' AND c.business_type = :business_type';
+        }
+        $listingSql .= '
             ORDER BY c.name ASC, sl.created_at DESC, sl.title ASC
-        ');
+        ';
+        $listingStmt = $pdo->prepare($listingSql);
+        $params = [];
+        if ($feedTypeKey !== '') {
+            $params['business_type'] = $feedTypeKey;
+        }
+        $listingStmt->execute($params);
 
         foreach ($listingStmt->fetchAll(PDO::FETCH_ASSOC) as $item) {
             $companyId = (int)$item['company_id'];
@@ -257,10 +271,79 @@ $theme = $safeTheme($theme);
 $hasLogo = $logo !== '';
 $hasTheme = $theme !== '';
 $hasContact = $address !== '' || !empty($phones) || $email !== '';
+$currentTypeKey = $isFeed ? $feedTypeKey : $typeKey;
+
+try {
+    $pillStmt = $pdo->query("
+        SELECT business_type, COUNT(*) AS total
+        FROM companies
+        WHERE status = 'active'
+          AND directory_visible = 1
+          AND business_type IS NOT NULL
+          AND business_type <> ''
+        GROUP BY business_type
+        ORDER BY total DESC, business_type ASC
+    ");
+    foreach ($pillStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $pillType = trim((string)($row['business_type'] ?? ''));
+        if ($pillType === '') {
+            continue;
+        }
+        $businessTypePills[] = [
+            'key' => $pillType,
+            'label' => $businessLabel($pillType),
+            'count' => max(0, (int)($row['total'] ?? 0)),
+            'href' => 'store.php?type=' . urlencode($pillType),
+        ];
+    }
+} catch (Throwable $e) {
+    $businessTypePills = [];
+}
+
+if ($company && $typeKey !== '') {
+    try {
+        $relatedStmt = $pdo->prepare("
+            SELECT uuid, name, email, phone, phone2, phone3, address, logo, business_type
+            FROM companies
+            WHERE status = 'active'
+              AND directory_visible = 1
+              AND business_type = :type
+              AND id <> :id
+            ORDER BY name ASC
+            LIMIT 6
+        ");
+        $relatedStmt->execute([
+            'type' => $typeKey,
+            'id' => (int)$company['id'],
+        ]);
+        foreach ($relatedStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $rowPhones = array_values(array_filter([
+                trim((string)($row['phone'] ?? '')),
+                trim((string)($row['phone2'] ?? '')),
+                trim((string)($row['phone3'] ?? '')),
+            ], static function (string $phone): bool {
+                return $phone !== '';
+            }));
+            $relatedBusinesses[] = [
+                'uuid' => (string)($row['uuid'] ?? ''),
+                'name' => trim((string)($row['name'] ?? '')),
+                'email' => trim((string)($row['email'] ?? '')),
+                'phones' => $rowPhones,
+                'address' => trim((string)($row['address'] ?? '')),
+                'logo' => trim((string)($row['logo'] ?? '')),
+                'type_label' => $businessLabel((string)($row['business_type'] ?? '')),
+            ];
+        }
+    } catch (Throwable $e) {
+        $relatedBusinesses = [];
+    }
+}
 
 $pageTitle = 'Store';
 $headerMaxW = 'max-w-7xl';
 $awCurrent = 'store';
+$headerShowBell = false;
+$headerShowCalendar = false;
 ob_start();
 ?>
 <div class="flex items-center gap-2">
@@ -327,11 +410,30 @@ $headerActionsHtml = ob_get_clean();
 <?php include __DIR__ . '/partials/account_header.php'; ?>
 
 <main class="mx-auto max-w-7xl px-6 pt-1 pb-5">
+    <?php if ($businessTypePills): ?>
+    <section class="mb-5 pt-4">
+        <div class="flex flex-wrap gap-2">
+            <a href="store.php" class="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-black uppercase tracking-[0.12em] transition <?= $currentTypeKey === '' ? 'border-violet-200 bg-violet-50 text-violet-700' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50' ?>">
+                <i data-lucide="layout-grid" class="h-3.5 w-3.5"></i> All Businesses
+            </a>
+            <?php foreach ($businessTypePills as $pill): ?>
+                <a href="<?= htmlspecialchars($pill['href']) ?>"
+                   class="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-black uppercase tracking-[0.12em] transition <?= $pill['key'] === $currentTypeKey ? 'border-violet-200 bg-violet-50 text-violet-700' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900' ?>">
+                    <span><?= htmlspecialchars($pill['label']) ?></span>
+                    <span class="rounded-full bg-black/5 px-1.5 py-0.5 text-[10px] leading-none"><?= (int)$pill['count'] ?></span>
+                </a>
+            <?php endforeach; ?>
+        </div>
+    </section>
+    <?php endif; ?>
+
     <?php if ($isFeed): ?>
     <section class="mb-4">
         <p class="text-[10px] font-black uppercase tracking-[0.18em] text-violet-600">Centryk Store</p>
-        <h1 class="mt-1 text-3xl font-black tracking-tight text-slate-950">Store Feed</h1>
-        <p class="mt-2 max-w-2xl text-sm font-semibold leading-relaxed text-slate-500">Browse active goods grouped by business. Open any business to view its dedicated store page.</p>
+        <h1 class="mt-1 text-3xl font-black tracking-tight text-slate-950"><?= htmlspecialchars($feedTypeKey !== '' ? ($businessLabel($feedTypeKey) . ' Businesses') : 'Store Feed') ?></h1>
+        <p class="mt-2 max-w-2xl text-sm font-semibold leading-relaxed text-slate-500">
+            <?= htmlspecialchars($feedTypeKey !== '' ? ('Browse active goods from ' . strtolower($businessLabel($feedTypeKey)) . ' businesses.') : 'Browse active goods grouped by business. Open any business to view its dedicated store page.') ?>
+        </p>
     </section>
 
     <?php if ($feedStores): ?>
@@ -421,6 +523,13 @@ $headerActionsHtml = ob_get_clean();
             <img src="<?= htmlspecialchars($theme) ?>" alt="" class="absolute inset-0 h-full w-full object-cover">
             <div class="absolute inset-0 bg-gradient-to-r from-white/92 via-white/72 to-white/25"></div>
             <div class="relative flex flex-col md:min-h-56 md:flex-row md:items-stretch">
+                <?php if ($storeShortUrl !== '' && !($viewerIsCompanyAdmin && !$listings)): ?>
+                <div class="pointer-events-none absolute right-4 top-4 z-10 max-w-full">
+                    <div class="pointer-events-auto">
+                        <?php $shareVariant = 'banner'; include __DIR__ . '/partials/store_share.php'; ?>
+                    </div>
+                </div>
+                <?php endif; ?>
                 <div class="flex h-44 w-full shrink-0 items-center justify-center overflow-hidden border-b border-slate-200 bg-white text-5xl font-black text-slate-600 shadow-sm md:h-auto md:w-64 md:border-b-0 md:border-r">
                     <?php if ($hasLogo): ?>
                         <img src="<?= htmlspecialchars($logo) ?>" alt="" class="h-full w-full object-cover">
@@ -453,7 +562,14 @@ $headerActionsHtml = ob_get_clean();
         </section>
     <?php elseif ($hasLogo): ?>
         <section class="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div class="flex flex-col md:min-h-32 md:flex-row md:items-stretch">
+            <div class="relative flex flex-col md:min-h-32 md:flex-row md:items-stretch">
+                <?php if ($storeShortUrl !== '' && !($viewerIsCompanyAdmin && !$listings)): ?>
+                <div class="pointer-events-none absolute right-4 top-4 z-10 max-w-full">
+                    <div class="pointer-events-auto">
+                        <?php $shareVariant = 'banner'; include __DIR__ . '/partials/store_share.php'; ?>
+                    </div>
+                </div>
+                <?php endif; ?>
                 <div class="flex h-32 w-full shrink-0 items-center justify-center overflow-hidden border-b border-slate-200 bg-white text-4xl font-black text-slate-600 md:h-auto md:w-44 md:border-b-0 md:border-r">
                     <img src="<?= htmlspecialchars($logo) ?>" alt="" class="h-full w-full object-cover">
                 </div>
@@ -481,7 +597,12 @@ $headerActionsHtml = ob_get_clean();
             </div>
         </section>
     <?php else: ?>
-        <section class="mb-6">
+        <section class="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <?php if ($storeShortUrl !== '' && !($viewerIsCompanyAdmin && !$listings)): ?>
+            <div class="mb-4 flex justify-end">
+                <?php $shareVariant = 'banner'; include __DIR__ . '/partials/store_share.php'; ?>
+            </div>
+            <?php endif; ?>
             <div class="flex flex-wrap items-center gap-2">
                 <h1 class="text-3xl font-black tracking-tight text-slate-950"><?= htmlspecialchars($name) ?></h1>
                 <span class="rounded-full bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-700 ring-1 ring-slate-200"><?= htmlspecialchars($typeLabel) ?></span>
@@ -531,7 +652,7 @@ $headerActionsHtml = ob_get_clean();
     <?php
     // Share strip for everyone — except the owner's empty store, which gets a
     // richer card inside the call-to-action below (avoids a duplicate widget).
-    $showShareBar = $storeShortUrl !== '' && !($viewerIsCompanyAdmin && !$listings);
+    $showShareBar = false;
     if ($showShareBar):
         $shareVariant = 'bar';
     ?>
@@ -611,9 +732,88 @@ $headerActionsHtml = ob_get_clean();
             <div class="mt-3"><?php $shareVariant = 'card'; include __DIR__ . '/partials/store_share.php'; ?></div>
             <?php endif; ?>
         <?php else: ?>
-            <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-5 py-10 text-center">
-                <p class="text-sm font-bold text-slate-500">No items are listed right now.</p>
+            <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-5 py-10 text-center">
+                <span class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-slate-400 shadow-sm">
+                    <i data-lucide="store" class="h-7 w-7"></i>
+                </span>
+                <h2 class="text-lg font-black text-slate-950">No items are listed right now</h2>
+                <p class="mx-auto mt-2 max-w-2xl text-sm font-semibold leading-relaxed text-slate-500">
+                    <?= htmlspecialchars($name) ?> does not have public store items yet.
+                    <?= $relatedBusinesses ? 'Browse other businesses in the same category below.' : 'Check back later for updates.' ?>
+                </p>
             </div>
+            <?php if ($relatedBusinesses): ?>
+            <div class="mt-6">
+                <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+                    <div>
+                        <p class="text-[10px] font-black uppercase tracking-[0.18em] text-violet-600">Same Business Type</p>
+                        <h3 class="mt-1 text-2xl font-black tracking-tight text-slate-950">Other <?= htmlspecialchars($typeLabel) ?> businesses</h3>
+                    </div>
+                    <a href="store.php?type=<?= urlencode($typeKey) ?>" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-700 transition hover:border-slate-300 hover:bg-slate-50">
+                        View all <i data-lucide="arrow-right" class="h-3.5 w-3.5"></i>
+                    </a>
+                </div>
+                <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    <?php foreach ($relatedBusinesses as $related): ?>
+                        <?php
+                            $relatedHref = 'store.php?company_uuid=' . urlencode($related['uuid']);
+                            $relatedInitial = $storeInitial($related['name']);
+                            $relatedAddress = trim((string)preg_replace('/\s+/', ' ', $related['address']));
+                        ?>
+                        <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                            <div class="flex items-start gap-3">
+                                <span class="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 text-base font-black text-slate-600">
+                                    <?php if ($related['logo'] !== ''): ?>
+                                        <img src="<?= htmlspecialchars($related['logo']) ?>" alt="" class="h-full w-full object-cover">
+                                    <?php else: ?>
+                                        <?= htmlspecialchars($relatedInitial) ?>
+                                    <?php endif; ?>
+                                </span>
+                                <div class="min-w-0 flex-1">
+                                    <h4 class="truncate text-base font-black tracking-tight text-slate-950"><?= htmlspecialchars($related['name']) ?></h4>
+                                    <p class="mt-1 text-[11px] font-black uppercase tracking-[0.14em] text-slate-400"><?= htmlspecialchars($related['type_label']) ?></p>
+                                </div>
+                            </div>
+                            <dl class="mt-4 space-y-2 text-sm">
+                                <div>
+                                    <dt class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Email</dt>
+                                    <dd class="mt-0.5 font-semibold text-slate-700">
+                                        <?php if ($related['email'] !== ''): ?>
+                                            <a href="mailto:<?= htmlspecialchars($related['email']) ?>" class="break-all hover:text-slate-950"><?= htmlspecialchars($related['email']) ?></a>
+                                        <?php else: ?>
+                                            <span class="text-slate-400">Not listed</span>
+                                        <?php endif; ?>
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Phone</dt>
+                                    <dd class="mt-0.5 font-semibold text-slate-700">
+                                        <?php if ($related['phones']): ?>
+                                            <?= htmlspecialchars(implode(' / ', $related['phones'])) ?>
+                                        <?php else: ?>
+                                            <span class="text-slate-400">Not listed</span>
+                                        <?php endif; ?>
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Contact</dt>
+                                    <dd class="mt-0.5 font-semibold leading-relaxed text-slate-700">
+                                        <?php if ($relatedAddress !== ''): ?>
+                                            <?= htmlspecialchars($relatedAddress) ?>
+                                        <?php else: ?>
+                                            <span class="text-slate-400">Not listed</span>
+                                        <?php endif; ?>
+                                    </dd>
+                                </div>
+                            </dl>
+                            <a href="<?= htmlspecialchars($relatedHref) ?>" class="mt-4 inline-flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2 text-sm font-black text-white transition hover:bg-slate-800">
+                                Visit Store <i data-lucide="arrow-up-right" class="h-4 w-4"></i>
+                            </a>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endif; ?>
         <?php endif; ?>
     </section>
     <?php endif; ?>

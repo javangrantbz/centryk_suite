@@ -26,6 +26,8 @@ $_hdrInit  = strtoupper(substr($_hdrUser['first_name'] ?? '?', 0, 1));
 $_hdrEmail = htmlspecialchars($_hdrUser['email'] ?? '');
 $_hdrAdmin = !empty($_hdrUser['is_admin']);
 $_hdrMaxW  = $headerMaxW ?? 'max-w-6xl';
+$_hdrShowBell = !isset($headerShowBell) || $headerShowBell;
+$_hdrShowCalendar = !isset($headerShowCalendar) || $headerShowCalendar;
 
 // Waffle config (consumed by app_switcher.php)
 $awAlign   = 'right';
@@ -95,11 +97,15 @@ $awCurrent = $awCurrent ?? 'centryk';
 
         <?php if (!empty($headerActionsHtml)): ?><?= $headerActionsHtml ?><?php endif; ?>
 
+        <?php if ($_hdrShowBell): ?>
         <!-- Notifications -->
         <?php include __DIR__ . '/notification_bell.php'; ?>
+        <?php endif; ?>
 
+        <?php if ($_hdrShowCalendar): ?>
         <!-- Calendar preview -->
         <?php include __DIR__ . '/calendar_preview.php'; ?>
+        <?php endif; ?>
 
         <!-- Waffle app switcher -->
         <?php include __DIR__ . '/app_switcher.php'; ?>
@@ -154,7 +160,9 @@ $awCurrent = $awCurrent ?? 'centryk';
 <!-- Calendar drawer (defines window.centrykAppLaunch → routes Calendar here). Kept
      outside <header> — that element's backdrop-blur makes it a containing block for
      position:fixed descendants, which trapped the drawer inside it. -->
+<?php if ($_hdrShowCalendar): ?>
 <?php include __DIR__ . '/calendar_drawer.php'; ?>
+<?php endif; ?>
 
 <script>
 // ── Shared header behaviour (waffle · account menu · theme · logout) ─────────
