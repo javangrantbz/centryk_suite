@@ -22,9 +22,13 @@ if (!$user) {
 $pdo           = DB::pdo();
 $resumeProfile = (($_GET['resume'] ?? '') === 'profile');
 
+$params = ['uid' => (int)$user['id']];
+
 if ($resumeProfile) {
-    // Any active company this admin owns whose profile is still incomplete.
-    $stmt = $pdo->prepare('
+    // An active company this admin owns whose profile is still incomplete.
+    // Prefer the one named by ?company=<uuid> (the dashboard passes the one
+    // being viewed); otherwise take the oldest incomplete one.
+    $sql = '
         SELECT c.id, c.name, c.phone, c.email, c.address, c.logo
         FROM companies c
         JOIN company_members cm ON cm.company_id = c.id
@@ -32,9 +36,14 @@ if ($resumeProfile) {
           AND c.status = "active" AND c.onboarded_at IS NOT NULL
           AND (NULLIF(TRIM(c.phone), "")   IS NULL
             OR NULLIF(TRIM(c.email), "")   IS NULL
-            OR NULLIF(TRIM(c.address), "") IS NULL)
-        ORDER BY c.created_at ASC
-        LIMIT 1');
+            OR NULLIF(TRIM(c.address), "") IS NULL)';
+    $wantUuid = trim((string)($_GET['company'] ?? ''));
+    if ($wantUuid !== '') {
+        $sql .= ' AND c.uuid = :uuid';
+        $params['uuid'] = $wantUuid;
+    }
+    $sql .= ' ORDER BY c.created_at ASC LIMIT 1';
+    $stmt = $pdo->prepare($sql);
 } else {
     // The company this admin still needs to set up (oldest un-onboarded first).
     $stmt = $pdo->prepare('
@@ -46,7 +55,7 @@ if ($resumeProfile) {
         ORDER BY c.created_at ASC
         LIMIT 1');
 }
-$stmt->execute(['uid' => (int)$user['id']]);
+$stmt->execute($params);
 $company = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$company) {

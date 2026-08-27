@@ -275,6 +275,11 @@ $tvBaseUrl = (static function (): string {
                         <i data-lucide="building-2" class="h-3.5 w-3.5"></i>
                         <span class="hidden sm:inline">Manage Company Profile</span>
                     </a>
+                    <a id="coFinishProfileBtn" href="onboarding.php?resume=profile"
+                       class="hidden items-center gap-1.5 rounded-xl border border-violet-300 bg-violet-100/80 px-3 py-2 text-xs font-black text-violet-800 backdrop-blur-sm transition hover:bg-violet-200/80 hover:border-violet-400">
+                        <i data-lucide="clipboard-check" class="h-3.5 w-3.5"></i>
+                        <span>Finish company profile</span>
+                    </a>
                     <?php if ($canUseOnelink): ?>
                     <a id="coOnelinkPaymentsBtn" href="onelink-payments.php"
                        class="flex items-center gap-1.5 rounded-xl border border-white/60 bg-white/50 px-3 py-2 text-xs font-black text-cyan-800 backdrop-blur-sm transition hover:bg-white/75 hover:border-white">
@@ -305,9 +310,9 @@ $tvBaseUrl = (static function (): string {
                     <span id="setupStep1" class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400">
                         <span class="h-2 w-2 rounded-full bg-slate-200"></span>Company created
                     </span>
-                    <span id="setupStep2" class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400">
+                    <a id="setupStep2" href="onboarding.php?resume=profile" class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400 hover:text-violet-600">
                         <span class="h-2 w-2 rounded-full bg-slate-200"></span>Set up company profile
-                    </span>
+                    </a>
                     <span id="setupStep3" class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400">
                         <span class="h-2 w-2 rounded-full bg-slate-200"></span>Team added
                     </span>
@@ -1039,10 +1044,28 @@ $tvBaseUrl = (static function (): string {
                 coAdvertiseBtn.classList.toggle('flex', canAdvertise);
             }
 
+            // "Finish company profile" — shown to admins/owners while phone,
+            // email or address is still blank. Points at the friendly
+            // profile-only wizard step for the company being viewed.
+            var profileComplete = !!(String(c.phone || '').trim() && String(c.email || '').trim() && String(c.address || '').trim());
+            var resumeUrl = 'onboarding.php?resume=profile' + (selectedUuid ? ('&company=' + encodeURIComponent(selectedUuid)) : '');
+            var coFinishProfileBtn = document.getElementById('coFinishProfileBtn');
+            if (coFinishProfileBtn) {
+                var canFinishProfile = ['owner', 'admin'].indexOf(String(c.role || '').toLowerCase()) !== -1 && !profileComplete;
+                coFinishProfileBtn.href = resumeUrl;
+                coFinishProfileBtn.classList.toggle('hidden', !canFinishProfile);
+                coFinishProfileBtn.classList.toggle('flex', canFinishProfile);
+            }
+            var setupStep2Link = document.getElementById('setupStep2');
+            if (setupStep2Link) {
+                setupStep2Link.href = resumeUrl;
+                setupStep2Link.classList.toggle('pointer-events-none', profileComplete);
+            }
+
             // ── Setup progress ────────────────────────────────────────────
             var enrolledCount = document.querySelectorAll('.app-card[data-enrolled="1"]').length;
             var step1Done = true;
-            var step2Done = !!(String(c.phone || '').trim() && String(c.email || '').trim() && String(c.address || '').trim());
+            var step2Done = profileComplete;
             var step3Done = n > 1;
             var step4Done = enrolledCount > 0;
             var stepsComplete = (step1Done ? 1 : 0) + (step2Done ? 1 : 0) + (step3Done ? 1 : 0) + (step4Done ? 1 : 0);
