@@ -44,6 +44,7 @@
   let weatherTimer = null;
   let lastWeatherFetch = 0;
   let backgroundAudioConfig = null;
+  const imagePreloadCache = new Map();
   const PLAYER_VERSION = 'ops-2026-07';
 
   // ---- Data ------------------------------------------------------------
@@ -326,6 +327,45 @@
     advanceTimer = setTimeout(next, Math.max(1, seconds) * 1000);
   }
 
+  function preloadImage(url) {
+    if (!url) {
+      return Promise.reject(new Error('Missing image URL'));
+    }
+    if (imagePreloadCache.has(url)) {
+      return imagePreloadCache.get(url);
+    }
+
+    const promise = new Promise((resolve, reject) => {
+      const img = new Image();
+      img.decoding = 'async';
+      img.onload = async () => {
+        try {
+          if (typeof img.decode === 'function') {
+            await img.decode();
+          }
+        } catch (_) {
+          // Some browsers reject decode even after onload. The pixels are usable.
+        }
+        resolve(img);
+      };
+      img.onerror = () => {
+        imagePreloadCache.delete(url);
+        reject(new Error(`Failed to load image: ${url}`));
+      };
+      img.src = url;
+    });
+
+    imagePreloadCache.set(url, promise);
+    return promise;
+  }
+
+  function warmUpcomingImage() {
+    const upcoming = nextItem();
+    if (upcoming && upcoming.type === 'image' && upcoming.url) {
+      preloadImage(upcoming.url).catch(() => {});
+    }
+  }
+
   function swapIn(el) {
     el.classList.add('slide');
     const old = stage.querySelector('.slide');
@@ -338,7 +378,7 @@
     }
   }
 
-  function play() {
+  async function play() {
     if (!items.length) { showIdle('No content is scheduled right now.'); return; }
     hideIdle();
 
@@ -353,14 +393,25 @@
       const backdrop = document.createElement('div');
       backdrop.className = 'media-backdrop';
       backdrop.style.backgroundImage = `url("${item.url}")`;
-      const img = document.createElement('img');
-      img.src = item.url;
+      let loaded;
+      try {
+        loaded = await preloadImage(item.url);
+      } catch (e) {
+        console.error('Image preload failed', e);
+        scheduleAdvance(Math.min(item.duration || 10, 5));
+        return;
+      }
+      if (items[index] !== item) {
+        return;
+      }
+      const img = loaded.cloneNode(false);
       img.alt = text.title || text.subtitle || '';
       el.appendChild(backdrop);
       el.appendChild(img);
       if (text.title || text.subtitle) el.appendChild(caption(text));
       swapIn(el);
       scheduleAdvance(item.duration);
+      warmUpcomingImage();
 
     } else if (item.type === 'video') {
       const text = displayText(item);
@@ -380,6 +431,7 @@
       v.play().catch(() => { v.muted = true; v.play().catch(()=>{}); });
       // Fallback advance in case 'ended' never fires (e.g. corrupt file).
       scheduleAdvance((item.duration || 60) + 600);
+      warmUpcomingImage();
 
     } else { // biography / text card
       const text = displayText(item);
@@ -391,6 +443,7 @@
         (item.body ? `<div class="bio-body">${escapeHtml(item.body).replace(/\n/g, '<br>')}</div>` : '');
       swapIn(el);
       scheduleAdvance(item.duration);
+      warmUpcomingImage();
     }
   }
 
