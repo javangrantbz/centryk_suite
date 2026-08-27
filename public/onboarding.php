@@ -51,14 +51,19 @@ $firstName = trim((string)($user['first_name'] ?? '')) ?: 'there';
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
     @keyframes centryk-logo-settle {
-      0%   { opacity: 0; transform: translateY(-2px) scale(0.965); filter: saturate(0.92); }
-      62%  { opacity: 1; transform: translateY(0) scale(1.018); filter: saturate(1.03); }
-      100% { opacity: 1; transform: translateY(0) scale(1); filter: saturate(1); }
+      0%   { opacity: 0; transform: translateY(6px) scale(0.86); filter: blur(3px) saturate(0.9); }
+      55%  { opacity: 1; transform: translateY(0) scale(1.03); filter: blur(0) saturate(1.04); }
+      75%  { transform: translateY(0) scale(0.99); }
+      100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0) saturate(1); }
+    }
+    @keyframes centryk-logo-float {
+      0%, 100% { transform: translateY(0); }
+      50%      { transform: translateY(-3px); }
     }
     @keyframes centryk-logo-sheen {
-      0%, 14% { opacity: 0; transform: translateX(-135%) skewX(-18deg); }
-      32%     { opacity: 0.34; }
-      100%    { opacity: 0; transform: translateX(165%) skewX(-18deg); }
+      0%, 12% { opacity: 0; transform: translateX(-140%) skewX(-18deg); }
+      30%     { opacity: 0.4; }
+      100%    { opacity: 0; transform: translateX(175%) skewX(-18deg); }
     }
     .centryk-logo-lockup {
       position: relative;
@@ -69,20 +74,43 @@ $firstName = trim((string)($user['first_name'] ?? '')) ?: 'there';
     .centryk-logo-lockup::after {
       content: '';
       position: absolute;
-      inset: -10% auto -10% -35%;
-      width: 32%;
-      background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.72) 50%, transparent 100%);
+      inset: -12% auto -12% -40%;
+      width: 34%;
+      background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.8) 50%, transparent 100%);
       opacity: 0;
       pointer-events: none;
-      animation: centryk-logo-sheen 900ms cubic-bezier(0.22, 1, 0.36, 1) 420ms 1 both;
+      animation: centryk-logo-sheen 1100ms cubic-bezier(0.22, 1, 0.36, 1) 620ms 1 both;
     }
     .centryk-logo-mark {
       transform-origin: center left;
-      animation: centryk-logo-settle 520ms cubic-bezier(0.22, 1, 0.36, 1) 1 both;
+      animation:
+        centryk-logo-settle 720ms cubic-bezier(0.34, 1.56, 0.64, 1) 1 both,
+        centryk-logo-float 5s ease-in-out 900ms infinite;
     }
+
+    /* Waving hand next to the greeting */
+    @keyframes centryk-wave {
+      0%, 65%, 100% { transform: rotate(0deg); }
+      10% { transform: rotate(16deg); }
+      20% { transform: rotate(-9deg); }
+      30% { transform: rotate(16deg); }
+      40% { transform: rotate(-6deg); }
+      50% { transform: rotate(11deg); }
+      60% { transform: rotate(0deg); }
+    }
+    .centryk-wave {
+      display: inline-block;
+      width: 1.05em;
+      height: 1.05em;
+      vertical-align: -0.16em;
+      transform-origin: 68% 72%;
+      animation: centryk-wave 2.6s ease-in-out 700ms infinite;
+    }
+
     @media (prefers-reduced-motion: reduce) {
       .centryk-logo-lockup::after,
-      .centryk-logo-mark {
+      .centryk-logo-mark,
+      .centryk-wave {
         animation: none !important;
       }
     }
@@ -95,9 +123,19 @@ $firstName = trim((string)($user['first_name'] ?? '')) ?: 'there';
     <div class="mx-auto max-w-2xl px-4 pb-4 pt-8">
       <div class="mb-6">
         <span class="centryk-logo-lockup">
-          <img src="assets/centryk_logo.png" alt="Centryk" class="centryk-logo-mark h-7 w-auto">
+          <img src="assets/centryk_logo.png" alt="Centryk" class="centryk-logo-mark h-11 w-auto sm:h-12">
         </span>
-        <h1 class="mt-4 text-2xl font-black tracking-tight">Welcome, <?= htmlspecialchars($firstName) ?> 👋</h1>
+        <h1 class="mt-4 text-2xl font-black tracking-tight sm:text-3xl">Welcome, <?= htmlspecialchars($firstName) ?><svg class="centryk-wave ml-2" viewBox="0 0 64 64" role="img" aria-label="waving hand">
+          <path d="M17 53h26a5 5 0 0 1 0 10H17a5 5 0 0 1 0-10z" fill="#7c5cfc"/>
+          <g fill="#f6b87f">
+            <rect x="5" y="27" width="7" height="18" rx="3.5" transform="rotate(-40 8.5 36)"/>
+            <rect x="16" y="13" width="7.5" height="25" rx="3.75"/>
+            <rect x="24" y="8" width="7.5" height="30" rx="3.75"/>
+            <rect x="32" y="10" width="7.5" height="29" rx="3.75"/>
+            <rect x="40" y="15" width="7.5" height="24" rx="3.75"/>
+            <path d="M14 30h33a4 4 0 0 1 4 4v6c0 10-7 17-17 17h-3c-8 0-13-4-16-11l-5-13a3.8 3.8 0 0 1 7-2.6L14 30z"/>
+          </g>
+        </svg></h1>
         <p class="mt-1 text-slate-500">Let's set up <span class="font-bold text-slate-700"><?= htmlspecialchars($company['name']) ?></span> — takes about 30 seconds.</p>
       </div>
       <div class="flex items-center gap-2">
