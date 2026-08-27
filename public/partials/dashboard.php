@@ -385,45 +385,80 @@ $tvBaseUrl = (static function (): string {
 
     <?php
     $_comingSoonAppKeys = Env::isProduction() ? ['tv' => true] : [];
+
+    // Apps whose every state is handled by a dedicated hand-built card further
+    // down, so they never render through the DB-driven loop.
+    $_gridSkipKeys = ['tv' => true];
+
     $_enrolledAppCount = 0;
-    $_otherAppCount = 0;
     foreach ($apps as $_app) {
-        if (isset($_comingSoonAppKeys[(string)($_app['key'] ?? '')])) {
+        $_k = (string)($_app['key'] ?? '');
+        if (isset($_comingSoonAppKeys[$_k]) || isset($_gridSkipKeys[$_k])) {
             continue;
         }
         if (!empty($_app['enrolled'])) {
             $_enrolledAppCount++;
-        } else {
-            $_otherAppCount++;
         }
     }
-    ?>
 
-    <section class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
+    // ── Group apps into categories ─────────────────────────────────────────
+    // Section render order follows the key order here.
+    $_catLabels = [
+        'business'  => 'Business',
+        'finance'   => 'Finance',
+        'marketing' => 'Marketing',
+        'insights'  => 'Insights',
+    ];
+    $_catApps = ['business' => [], 'finance' => [], 'marketing' => [], 'insights' => []];
+    foreach ($apps as $_app) {
+        $_k = (string)($_app['key'] ?? '');
+        if ($_k === '' || isset($_comingSoonAppKeys[$_k]) || isset($_gridSkipKeys[$_k])) {
+            continue;
+        }
+        $_cat = (string)($_app['category'] ?? 'business');
+        if (!isset($_catApps[$_cat])) {
+            $_cat = 'business';
+        }
+        $_catApps[$_cat][] = $_app;
+    }
+    // Within a section: enrolled first, then opt-in, then locked.
+    foreach ($_catApps as &$_bucket) {
+        usort($_bucket, static function ($a, $b) {
+            $rank = static fn ($x) => !empty($x['enrolled']) ? 0 : (!empty($x['opt_in']) ? 1 : 2);
+            return $rank($a) <=> $rank($b);
+        });
+    }
+    unset($_bucket);
 
-    <?php if ($_enrolledAppCount === 0): ?>
-    <div class="mb-4 rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-semibold text-slate-500">
-        You are not enrolled in any apps yet. Available apps are listed below.
-    </div>
-    <?php endif; ?>
+    // Drives the dash-fade entrance stagger across headers and cards alike.
+    $_gridIdx = 0;
 
-    <!-- Apps grid -->
-    <div id="appsGrid" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <?php $_appIdx = 0; foreach ($apps as $app):
-            if (isset($_comingSoonAppKeys[(string)($app['key'] ?? '')])) {
-                continue;
-            }
-            $_appIdx++;
-            $enrolled = !empty($app['enrolled']);
-            $optIn    = !empty($app['opt_in']);
+    // Full-width section header inside the grid.
+    $renderCatHeader = function (string $label) use (&$_gridIdx) {
+        $_gridIdx++;
         ?>
-        <button style="--i:<?= $_appIdx ?>" class="dash-fade app-card group <?= $enrolled ? 'order-1' : 'order-3' ?> flex flex-col overflow-hidden rounded-2xl border text-left shadow-sm transition
+        <div style="--i:<?= $_gridIdx ?>" class="dash-fade col-span-full mt-3 flex items-center gap-3 first:mt-0">
+            <h2 class="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400"><?= htmlspecialchars($label) ?></h2>
+            <span class="h-px flex-1 bg-slate-100"></span>
+        </div>
+        <?php
+    };
+
+    // One DB-backed app card. $cat is stamped on the element so the
+    // drag-to-reorder JS keeps a card within its own section.
+    $renderAppCard = function (array $app, string $cat) use (&$_gridIdx) {
+        $_gridIdx++;
+        $enrolled = !empty($app['enrolled']);
+        $optIn    = !empty($app['opt_in']);
+        ?>
+        <button style="--i:<?= $_gridIdx ?>" class="dash-fade app-card group flex flex-col overflow-hidden rounded-2xl border text-left shadow-sm transition
                     <?= $enrolled
                         ? 'border-slate-200 bg-white hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-y-0 disabled:shadow-sm'
                         : ($optIn
                             ? 'border-dashed border-slate-300 bg-white hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98]'
                             : 'border-slate-200/50 bg-slate-50 opacity-50 cursor-not-allowed') ?>"
                 data-app="<?= htmlspecialchars($app['key']) ?>"
+                data-category="<?= htmlspecialchars($cat) ?>"
                 data-enrolled="<?= $enrolled ? '1' : '0' ?>"
                 data-opt-in="<?= $optIn ? '1' : '0' ?>"
                 <?= $enrolled ? 'draggable="true"' : '' ?>
@@ -516,12 +551,62 @@ $tvBaseUrl = (static function (): string {
             </div>
             <?php endif; ?>
         </button>
-        <?php endforeach; ?>
+        <?php }; // end $renderAppCard ?>
 
-        <?php if ($canUseOnelink): ?>
-        <button type="button" style="--i:<?= ($_appIdx ?? 0) + 1 ?>" id="onelinkPaymentsCard"
-                class="dash-fade order-1 group flex flex-col overflow-hidden rounded-2xl border border-cyan-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]">
-            <div class="h-1.5 w-full bg-cyan-500"></div>
+        <section class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
+
+        <?php if ($_enrolledAppCount === 0): ?>
+        <div class="mb-4 rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-semibold text-slate-500">
+            You are not enrolled in any apps yet. Available apps are listed below.
+        </div>
+        <?php endif; ?>
+
+        <!-- Apps grid — grouped into category sections. DB-backed cards flow
+             through $renderAppCard; the hand-built cards (OneLink, TV, Store,
+             Case Management) are slotted into the matching section by hand. -->
+        <div id="appsGrid" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+
+            <?php
+            // ── Business ───────────────────────────────────────────────────
+            $renderCatHeader($_catLabels['business']);
+            foreach ($_catApps['business'] as $_a) { $renderAppCard($_a, 'business'); }
+            ?>
+            <!-- Case Management — coming soon (static, not in DB) -->
+            <div style="--i:<?= ++$_gridIdx ?>" class="dash-fade flex flex-col overflow-hidden rounded-2xl border border-blue-200/70 bg-blue-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
+                <div class="h-1.5 w-full bg-blue-500/50"></div>
+                <div class="flex flex-1 flex-col p-3">
+                    <div class="flex items-center gap-3">
+                        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100">
+                            <svg class="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 14.15v4.073a2.25 2.25 0 01-2.25 2.25H5.904a2.25 2.25 0 01-2.25-2.25V14.15M16.5 6.75V5.625a2.25 2.25 0 00-2.25-2.25h-2.25a2.25 2.25 0 00-2.25 2.25V6.75M3.375 6.75h17.25a1.125 1.125 0 011.125 1.125v3.026a48.34 48.34 0 01-10.5 1.299 48.34 48.34 0 01-10.5-1.299V7.875A1.125 1.125 0 013.375 6.75z"/>
+                            </svg>
+                        </span>
+                        <div>
+                            <div class="text-[10px] font-black uppercase tracking-[0.16em] text-blue-600/80">Cases &amp; Workflows</div>
+                            <div class="text-base font-black tracking-tight text-slate-800">Case Management</div>
+                        </div>
+                    </div>
+                    <p class="mt-2 text-xs font-semibold leading-relaxed text-slate-500">
+                        Track and resolve cases across your team — from intake to outcome — all in one place.
+                    </p>
+                    <div class="mt-4 flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] bg-blue-100 text-blue-700 border border-blue-200">
+                        <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2m6-2a10 10 0 1 1-20 0 10 10 0 0 1 20 0Z"/></svg>
+                        Coming Soon
+                    </div>
+                </div>
+            </div>
+
+            <?php
+            // ── Finance & Insights ─────────────────────────────────────────
+            // Kept as distinct categories in the DB and on each card
+            // (data-category), but shown under one heading while each holds
+            // only a card or two. Split back out when either fills up.
+            $renderCatHeader('Finance & Insights');
+            ?>
+            <?php if ($canUseOnelink): ?>
+            <button type="button" style="--i:<?= ++$_gridIdx ?>" id="onelinkPaymentsCard"
+                    class="dash-fade group flex flex-col overflow-hidden rounded-2xl border border-cyan-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]">
+                <div class="h-1.5 w-full bg-cyan-500"></div>
             <div class="flex flex-1 flex-col p-3">
                 <div class="flex items-center gap-3">
                     <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-100 text-cyan-700">
@@ -545,11 +630,9 @@ $tvBaseUrl = (static function (): string {
                 <i data-lucide="arrow-right" class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"></i>
             </div>
         </button>
-        <?php endif; ?>
-
-        <?php if (!$canUseOnelink): ?>
+        <?php else: ?>
         <!-- OneLink Payments — coming soon for users without company/platform admin access -->
-        <div style="--i:<?= ($_appIdx ?? 0) + 4 ?>" class="dash-fade order-3 flex flex-col overflow-hidden rounded-2xl border border-cyan-200/70 bg-cyan-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
+        <div style="--i:<?= ++$_gridIdx ?>" class="dash-fade flex flex-col overflow-hidden rounded-2xl border border-cyan-200/70 bg-cyan-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
             <div class="h-1.5 w-full bg-cyan-500/50"></div>
             <div class="flex flex-1 flex-col p-3">
                 <div class="flex items-center gap-3">
@@ -572,11 +655,22 @@ $tvBaseUrl = (static function (): string {
         </div>
         <?php endif; ?>
 
+        <?php
+        // Remaining Finance + Insights cards share the heading above.
+        foreach ($_catApps['finance'] as $_a)  { $renderAppCard($_a, 'finance'); }
+        foreach ($_catApps['insights'] as $_a) { $renderAppCard($_a, 'insights'); }
+        ?>
+
+        <?php
+        // ── Marketing ──────────────────────────────────────────────────────
+        $renderCatHeader($_catLabels['marketing']);
+        foreach ($_catApps['marketing'] as $_a) { $renderAppCard($_a, 'marketing'); }
+        ?>
         <?php if (Env::isProduction() && !$canUseTv): ?>
         <!-- Centryk TV — still "Coming Soon" for everyone not on the early-access
              allowlist, but clickable: lands on tv.php's teaser/pitch page instead
              of dead-ending, so interest can build ahead of the real rollout. -->
-        <a href="tv.php" style="--i:<?= ($_appIdx ?? 0) + 4 ?>" class="dash-fade order-3 group flex flex-col overflow-hidden rounded-2xl border border-teal-200/70 bg-teal-50/40 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md hover:bg-teal-50 active:scale-[0.98]">
+        <a href="tv.php" style="--i:<?= ++$_gridIdx ?>" class="dash-fade group flex flex-col overflow-hidden rounded-2xl border border-teal-200/70 bg-teal-50/40 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md hover:bg-teal-50 active:scale-[0.98]">
             <div class="h-1.5 w-full" style="background:#0f766e80"></div>
             <div class="flex flex-1 flex-col p-3">
                 <div class="flex items-center gap-3">
@@ -601,8 +695,8 @@ $tvBaseUrl = (static function (): string {
         </a>
         <?php else: ?>
         <!-- Centryk TV — real link: either not production, or this viewer is on the early-access allowlist -->
-        <a href="<?= htmlspecialchars($tvBaseUrl) ?>/" style="--i:<?= ($_appIdx ?? 0) + 4 ?>"
-           class="dash-fade order-1 group flex flex-col overflow-hidden rounded-2xl border border-teal-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]">
+        <a href="<?= htmlspecialchars($tvBaseUrl) ?>/" style="--i:<?= ++$_gridIdx ?>"
+           class="dash-fade group flex flex-col overflow-hidden rounded-2xl border border-teal-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]">
             <div class="h-1.5 w-full bg-teal-600"></div>
             <div class="flex flex-1 flex-col p-3">
                 <div class="flex items-center gap-3">
@@ -628,7 +722,7 @@ $tvBaseUrl = (static function (): string {
         <?php endif; ?>
 
         <!-- Store -->
-        <button type="button" style="--i:<?= ($_appIdx ?? 0) + 5 ?>" id="storeCard" class="dash-fade order-1 group flex flex-col overflow-hidden rounded-2xl border border-violet-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]">
+        <button type="button" style="--i:<?= ++$_gridIdx ?>" id="storeCard" class="dash-fade group flex flex-col overflow-hidden rounded-2xl border border-violet-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]">
             <div class="h-1.5 w-full bg-violet-500"></div>
             <div class="flex flex-1 flex-col p-3">
                 <div class="flex items-center gap-3">
@@ -654,30 +748,6 @@ $tvBaseUrl = (static function (): string {
             </div>
         </button>
 
-        <!-- Case Management — coming soon (static, not in DB) -->
-        <div style="--i:<?= ($_appIdx ?? 0) + 7 ?>" class="dash-fade order-3 flex flex-col overflow-hidden rounded-2xl border border-blue-200/70 bg-blue-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
-            <div class="h-1.5 w-full bg-blue-500/50"></div>
-            <div class="flex flex-1 flex-col p-3">
-                <div class="flex items-center gap-3">
-                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100">
-                        <svg class="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 14.15v4.073a2.25 2.25 0 01-2.25 2.25H5.904a2.25 2.25 0 01-2.25-2.25V14.15M16.5 6.75V5.625a2.25 2.25 0 00-2.25-2.25h-2.25a2.25 2.25 0 00-2.25 2.25V6.75M3.375 6.75h17.25a1.125 1.125 0 011.125 1.125v3.026a48.34 48.34 0 01-10.5 1.299 48.34 48.34 0 01-10.5-1.299V7.875A1.125 1.125 0 013.375 6.75z"/>
-                        </svg>
-                    </span>
-                    <div>
-                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-blue-600/80">Cases &amp; Workflows</div>
-                        <div class="text-base font-black tracking-tight text-slate-800">Case Management</div>
-                    </div>
-                </div>
-                <p class="mt-2 text-xs font-semibold leading-relaxed text-slate-500">
-                    Track and resolve cases across your team — from intake to outcome — all in one place.
-                </p>
-                <div class="mt-4 flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] bg-blue-100 text-blue-700 border border-blue-200">
-                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2m6-2a10 10 0 1 1-20 0 10 10 0 0 1 20 0Z"/></svg>
-                    Coming Soon
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- No-company notice (shown when no companies exist) -->
@@ -886,37 +956,32 @@ $tvBaseUrl = (static function (): string {
         });
     }
 
-    function activeAppBoundary() {
-        if (!appsGrid) { return null; }
-        var children = Array.prototype.slice.call(appsGrid.children);
-        for (var i = 0; i < children.length; i++) {
-            var child = children[i];
-            if (!(child.classList && child.classList.contains('app-card') && child.dataset.enrolled === '1')) {
-                return child;
-            }
-        }
-        return null;
-    }
-
+    // Re-apply a saved drag order. The grid is grouped into category sections,
+    // so cards are only reordered among their own section peers (same
+    // data-category) — that keeps every card inside its section.
     function applyAppOrder(order) {
         if (!appsGrid || !Array.isArray(order) || !order.length) { return; }
-        var cards = {};
+        var rank = {};
+        order.forEach(function (key, i) { rank[key] = i; });
+
+        var byCat = {};
         orderedActiveAppCards().forEach(function (card) {
-            cards[card.dataset.app] = card;
+            var cat = card.dataset.category || '';
+            (byCat[cat] = byCat[cat] || []).push(card);
         });
 
-        var arranged = [];
-        order.forEach(function (appKey) {
-            if (cards[appKey]) {
-                arranged.push(cards[appKey]);
-                delete cards[appKey];
-            }
-        });
-        Object.keys(cards).forEach(function (appKey) { arranged.push(cards[appKey]); });
-
-        var boundary = activeAppBoundary();
-        arranged.forEach(function (card) {
-            appsGrid.insertBefore(card, boundary);
+        Object.keys(byCat).forEach(function (cat) {
+            var group = byCat[cat];
+            // Anchor = whatever currently follows the group's last card. Every
+            // card is re-inserted just before it, in saved-rank order, so the
+            // group stays contiguous and in place.
+            var anchor = group[group.length - 1].nextSibling;
+            group.sort(function (a, b) {
+                var ra = (a.dataset.app in rank) ? rank[a.dataset.app] : Infinity;
+                var rb = (b.dataset.app in rank) ? rank[b.dataset.app] : Infinity;
+                return ra - rb;
+            });
+            group.forEach(function (card) { appsGrid.insertBefore(card, anchor); });
         });
     }
 
@@ -1371,6 +1436,8 @@ $tvBaseUrl = (static function (): string {
             if (!draggingAppCard) { return; }
             var target = e.target.closest('.app-card[data-enrolled="1"]');
             if (!target || target === draggingAppCard) { return; }
+            // Reordering is confined to a single category section.
+            if (target.dataset.category !== draggingAppCard.dataset.category) { return; }
 
             e.preventDefault();
             var rect = target.getBoundingClientRect();

@@ -35,6 +35,7 @@ class AuthService
     {
         $stmt = DB::pdo()->prepare(
             'SELECT a.key, a.label, a.description, a.url_local, a.url_production, a.icon, a.color,
+                    COALESCE(a.category, "business") AS category,
                     COALESCE(a.opt_in, 0) AS opt_in,
                     (ua.user_id IS NOT NULL) AS enrolled
              FROM apps a
