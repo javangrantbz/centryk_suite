@@ -1311,7 +1311,10 @@ $tvBaseUrl = (static function (): string {
 
     // ── App launch ────────────────────────────────────────────────────────────
     function openStore() {
-        window.location.href = 'store.php';
+        // Go to the selected company's own storefront (where the empty-state
+        // "add items" prompt and share tools live); fall back to the aggregate
+        // feed only when no company is selected.
+        window.location.href = 'store.php' + (selectedUuid ? ('?company_uuid=' + encodeURIComponent(selectedUuid)) : '');
     }
 
     function launchApp(appKey) {
