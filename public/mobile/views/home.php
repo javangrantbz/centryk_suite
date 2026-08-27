@@ -76,21 +76,19 @@ $tvBaseUrl = (static function (): string {
   </section>
 
   <?php if (Env::isProduction() && !$canUseTv): ?>
-  <section class="rounded-3xl border border-teal-200/70 bg-teal-50/40 p-4 opacity-75">
-    <div class="flex items-center gap-3">
-      <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-100 text-teal-700">
-        <i data-lucide="tv" class="h-5 w-5"></i>
-      </span>
-      <div class="min-w-0">
-        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-teal-600/80">Live Streaming</div>
-        <div class="text-sm font-black text-slate-800">Centryk TV</div>
-      </div>
-      <span class="ml-auto flex items-center gap-1.5 rounded-full border border-teal-200 bg-teal-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-teal-700">
-        <i data-lucide="clock-3" class="h-3 w-3"></i>
-        Soon
-      </span>
+  <a href="/tv.php" class="flex items-center gap-3 rounded-3xl border border-teal-200/70 bg-teal-50/40 p-4 active:scale-[0.98]">
+    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-100 text-teal-700">
+      <i data-lucide="tv" class="h-5 w-5"></i>
+    </span>
+    <div class="min-w-0">
+      <div class="text-[10px] font-black uppercase tracking-[0.16em] text-teal-600/80">Live Streaming</div>
+      <div class="text-sm font-black text-slate-800">Centryk TV</div>
     </div>
-  </section>
+    <span class="ml-auto flex items-center gap-1.5 rounded-full border border-teal-200 bg-teal-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-teal-700">
+      <i data-lucide="clock-3" class="h-3 w-3"></i>
+      Soon
+    </span>
+  </a>
   <?php else: ?>
   <a href="<?= h($tvBaseUrl) ?>/" class="flex items-center gap-3 rounded-3xl border border-teal-200 bg-white p-4 shadow-sm transition active:scale-[0.98]">
     <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-100 text-teal-700">

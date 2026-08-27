@@ -568,8 +568,10 @@ $tvBaseUrl = (static function (): string {
         <?php endif; ?>
 
         <?php if (Env::isProduction() && !$canUseTv): ?>
-        <!-- Centryk TV — coming soon on production for everyone not on the early-access allowlist -->
-        <div style="--i:<?= ($_appIdx ?? 0) + 4 ?>" class="dash-fade order-3 flex flex-col overflow-hidden rounded-2xl border border-teal-200/70 bg-teal-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
+        <!-- Centryk TV — still "Coming Soon" for everyone not on the early-access
+             allowlist, but clickable: lands on tv.php's teaser/pitch page instead
+             of dead-ending, so interest can build ahead of the real rollout. -->
+        <a href="tv.php" style="--i:<?= ($_appIdx ?? 0) + 4 ?>" class="dash-fade order-3 group flex flex-col overflow-hidden rounded-2xl border border-teal-200/70 bg-teal-50/40 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md hover:bg-teal-50 active:scale-[0.98]">
             <div class="h-1.5 w-full" style="background:#0f766e80"></div>
             <div class="flex flex-1 flex-col p-3">
                 <div class="flex items-center gap-3">
@@ -586,12 +588,12 @@ $tvBaseUrl = (static function (): string {
                 <p class="mt-2 text-xs font-semibold leading-relaxed text-slate-500">
                     Watch live broadcasts and replays from participating organizations.
                 </p>
-                <div class="mt-4 flex items-center justify-center gap-1.5 rounded-xl border border-teal-200 bg-teal-100 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-teal-700">
+                <div class="mt-4 flex items-center justify-center gap-1.5 rounded-xl border border-teal-200 bg-teal-100 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-teal-700 transition-colors group-hover:bg-teal-200">
                     <i data-lucide="clock-3" class="h-3 w-3"></i>
                     Coming Soon
                 </div>
             </div>
-        </div>
+        </a>
         <?php else: ?>
         <!-- Centryk TV — real link: either not production, or this viewer is on the early-access allowlist -->
         <a href="<?= htmlspecialchars($tvBaseUrl) ?>/" style="--i:<?= ($_appIdx ?? 0) + 4 ?>"
