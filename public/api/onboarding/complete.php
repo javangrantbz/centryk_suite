@@ -75,6 +75,19 @@ $default = $NOUNS[$businessType] ?? ['Customer', 'Customers'];
 $nounS = trim((string)($body['customer_noun_singular'] ?? '')) ?: $default[0];
 $nounP = trim((string)($body['customer_noun_plural']   ?? '')) ?: $default[1];
 
+// Is this the caller's first time through onboarding? Only then does the
+// wizard's app selection become authoritative — i.e. we revoke the managed
+// apps they deselected. App access is per-user and global, so once the caller
+// already has an onboarded company we stay purely additive here to avoid a
+// second company's wizard stripping access the first one relies on.
+$otherOnboarded = $pdo->prepare('SELECT 1 FROM company_members cm
+                                 JOIN companies c ON c.id = cm.company_id
+                                 WHERE cm.user_id = :uid AND cm.status = "active"
+                                   AND c.id <> :cid AND c.onboarded_at IS NOT NULL
+                                 LIMIT 1');
+$otherOnboarded->execute(['uid' => (int)$caller['id'], 'cid' => $companyId]);
+$wizardAuthoritative = !$otherOnboarded->fetch();
+
 $pdo->prepare('UPDATE companies
                SET business_type = :bt, customer_noun_singular = :ns,
                    customer_noun_plural = :np, onboarded_at = NOW()
@@ -91,13 +104,32 @@ $want = array_values(array_unique(array_merge(
     array_filter(array_map(static fn($k) => strtolower(trim((string)$k)), (array)($body['apps'] ?? [])))
 )));
 
+$MANAGED = ['onepay', 'mypay', 'calendar', 'invoice', 'visionboard', 'tv'];
+
 $grant   = $pdo->prepare('INSERT IGNORE INTO user_app_access (user_id, app_id)
                           SELECT :uid, id FROM apps WHERE `key` = :key AND status = "active"');
 $granted = [];
 foreach ($want as $key) {
-    if (!in_array($key, ['onepay', 'mypay', 'calendar', 'invoice', 'visionboard', 'tv'], true)) continue;
+    if (!in_array($key, $MANAGED, true)) continue;
     $grant->execute(['uid' => (int)$caller['id'], 'key' => $key]);
     $granted[] = $key;
+}
+
+// First run: the wizard is the source of truth, so revoke the managed apps the
+// owner deselected. Accounts are provisioned with every app on (see
+// api/requests/{submit,provision}.php), which is why unchecked apps would
+// otherwise still show in the waffle. Scoped to this caller only; Calendar is
+// never revoked (every company keeps it).
+$revoked = [];
+if ($wizardAuthoritative) {
+    $revoked = array_values(array_diff($MANAGED, $want, ['calendar']));
+    if ($revoked) {
+        $ph  = implode(',', array_fill(0, count($revoked), '?'));
+        $del = $pdo->prepare("DELETE ua FROM user_app_access ua
+                              JOIN apps a ON a.id = ua.app_id
+                              WHERE ua.user_id = ? AND a.`key` IN ($ph)");
+        $del->execute(array_merge([(int)$caller['id']], $revoked));
+    }
 }
 
 // Push the fresh profile (business type + noun) to OnePay now. No-op unless the
@@ -109,4 +141,5 @@ Response::ok([
     'customer_noun_singular' => $nounS,
     'customer_noun_plural'   => $nounP,
     'apps_granted'           => $granted,
+    'apps_revoked'           => $revoked,
 ]);

@@ -141,11 +141,12 @@ $firstName = trim((string)($user['first_name'] ?? '')) ?: 'there';
       <div class="flex items-center gap-2">
         <div id="dot1" class="h-1.5 flex-1 rounded-full bg-violet-600"></div>
         <div id="dot2" class="h-1.5 flex-1 rounded-full bg-slate-200"></div>
+        <div id="dot3" class="h-1.5 flex-1 rounded-full bg-slate-200"></div>
       </div>
     </div>
   </div>
 
-  <div class="mx-auto flex min-h-screen max-w-2xl flex-col px-4 pb-8 pt-[210px]">
+  <div class="mx-auto flex min-h-screen max-w-2xl flex-col px-4 pb-8 pt-[228px]">
 
     <div class="flex-1 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
 
@@ -184,18 +185,71 @@ $firstName = trim((string)($user['first_name'] ?? '')) ?: 'there';
             <h2 class="text-lg font-black">Which apps will you use?</h2>
             <p class="text-sm text-slate-500">On by default — turn off anything you don't need.</p>
           </div>
-          <button id="finishBtn" onclick="finish()"
+          <button id="toStep3" onclick="goStep3()"
                   class="shrink-0 rounded-lg bg-violet-600 px-5 py-2 text-sm font-bold text-white shadow-sm hover:bg-violet-700">
-            Finish setup
+            Continue
           </button>
         </div>
 
         <div id="appList" class="space-y-2"></div>
 
-        <div id="obError" class="mt-4 hidden rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700"></div>
-
         <div class="mt-6">
           <button onclick="backStep1()" class="text-sm font-semibold text-slate-400 hover:text-slate-600">&larr; Back</button>
+        </div>
+      </section>
+
+      <!-- ── Step 3: company profile (all optional) ─────────────────────────── -->
+      <section id="step3" class="hidden">
+        <div class="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-black">Add your company details</h2>
+            <p class="text-sm text-slate-500">Used on invoices, receipts &amp; your storefront. All optional — you can add these later.</p>
+          </div>
+          <button id="finishBtn" onclick="finish(true)"
+                  class="shrink-0 rounded-lg bg-violet-600 px-5 py-2 text-sm font-bold text-white shadow-sm hover:bg-violet-700 disabled:bg-slate-200 disabled:text-slate-400">
+            Finish setup
+          </button>
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wide text-slate-500">Logo</label>
+            <div class="mt-1 flex items-center gap-3">
+              <span id="logoPreview" class="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50 text-slate-300">
+                <i data-lucide="image" class="h-5 w-5"></i>
+              </span>
+              <label class="cursor-pointer rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-600 hover:border-violet-400 hover:text-violet-600">
+                <span id="logoBtnLabel">Choose image</span>
+                <input id="coLogo" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" class="hidden">
+              </label>
+            </div>
+            <p class="mt-1 text-xs text-slate-400">PNG, JPG, WEBP or SVG — up to 2MB.</p>
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wide text-slate-500">Phone</label>
+            <input id="coPhone" type="tel" placeholder="+501 000-0000"
+                   class="mt-1 w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-violet-400 focus:outline-none">
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wide text-slate-500">Email</label>
+            <input id="coEmail" type="email" placeholder="hello@yourbusiness.com"
+                   class="mt-1 w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-violet-400 focus:outline-none">
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wide text-slate-500">Address</label>
+            <textarea id="coAddress" rows="2" placeholder="Street, city, country"
+                      class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-violet-400 focus:outline-none"></textarea>
+          </div>
+        </div>
+
+        <div id="obError" class="mt-4 hidden rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700"></div>
+
+        <div class="mt-6 flex items-center justify-between">
+          <button onclick="backStep2()" class="text-sm font-semibold text-slate-400 hover:text-slate-600">&larr; Back</button>
+          <button id="skipBtn" onclick="finish(false)" class="text-sm font-semibold text-slate-400 hover:text-slate-600">Skip for now</button>
         </div>
       </section>
 
@@ -314,17 +368,29 @@ $firstName = trim((string)($user['first_name'] ?? '')) ?: 'there';
     onepayCheck.addEventListener('change', syncOnepaySubRows);
     syncOnepaySubRows();
 
+    // ── Step 3: company profile (logo preview) ───────────────────────────────
+    const logoInput = document.getElementById('coLogo');
+    logoInput.addEventListener('change', () => {
+      const f = logoInput.files[0];
+      const box = document.getElementById('logoPreview');
+      document.getElementById('logoBtnLabel').textContent = f ? 'Change image' : 'Choose image';
+      if (f) {
+        box.innerHTML = `<img src="${URL.createObjectURL(f)}" alt="" class="h-full w-full object-contain">`;
+      } else {
+        box.innerHTML = '<i data-lucide="image" class="h-5 w-5"></i>';
+        if (window.lucide) lucide.createIcons();
+      }
+    });
+
     // ── Navigation ────────────────────────────────────────────────────────────
-    function goStep2(){
-      document.getElementById('step1').classList.add('hidden');
-      document.getElementById('step2').classList.remove('hidden');
-      document.getElementById('dot2').classList.replace('bg-slate-200', 'bg-violet-600');
-    }
-    function backStep1(){
-      document.getElementById('step2').classList.add('hidden');
-      document.getElementById('step1').classList.remove('hidden');
-      document.getElementById('dot2').classList.replace('bg-violet-600', 'bg-slate-200');
-    }
+    const show = (id, on) => document.getElementById(id).classList.toggle('hidden', !on);
+    const litDot = (id, on) => document.getElementById(id)
+      .classList.replace(on ? 'bg-slate-200' : 'bg-violet-600', on ? 'bg-violet-600' : 'bg-slate-200');
+
+    function goStep2(){ show('step1', false); show('step2', true); litDot('dot2', true); }
+    function backStep1(){ show('step2', false); show('step1', true); litDot('dot2', false); }
+    function goStep3(){ show('step2', false); show('step3', true); litDot('dot3', true); }
+    function backStep2(){ show('step3', false); show('step2', true); litDot('dot3', false); }
 
     async function post(payload){
       const r = await fetch('api/onboarding/complete.php', {
@@ -333,9 +399,50 @@ $firstName = trim((string)($user['first_name'] ?? '')) ?: 'there';
       return r.json();
     }
 
-    async function finish(){
-      const btn = document.getElementById('finishBtn');
-      btn.disabled = true; btn.textContent = 'Setting up…';
+    function showObError(msg){
+      const e = document.getElementById('obError');
+      e.textContent = msg || 'Something went wrong.'; e.classList.remove('hidden');
+    }
+
+    function profileHasInput(){
+      return ['coPhone', 'coEmail', 'coAddress'].some(id => document.getElementById(id).value.trim())
+        || logoInput.files.length > 0;
+    }
+
+    // Company details go through the existing profile endpoint. We pass the
+    // business type + noun from step 1 too, since that endpoint rewrites all
+    // profile columns and would otherwise blank them.
+    async function submitProfile(){
+      const fd = new FormData();
+      fd.append('company_id', COMPANY_ID);
+      fd.append('business_type', chosenType || '');
+      fd.append('customer_noun_singular', document.getElementById('nounS').value.trim());
+      fd.append('customer_noun_plural', document.getElementById('nounP').value.trim());
+      fd.append('phone', document.getElementById('coPhone').value.trim());
+      fd.append('email', document.getElementById('coEmail').value.trim());
+      fd.append('address', document.getElementById('coAddress').value.trim());
+      if (logoInput.files[0]) fd.append('logo', logoInput.files[0]);
+      const r = await fetch('api/companies/update-profile.php', { method: 'POST', body: fd });
+      return r.json();
+    }
+
+    async function finish(includeProfile){
+      const finishBtn = document.getElementById('finishBtn');
+      const skipBtn   = document.getElementById('skipBtn');
+      finishBtn.disabled = true; skipBtn.disabled = true;
+      document.getElementById('obError').classList.add('hidden');
+      (includeProfile ? finishBtn : skipBtn).textContent = 'Setting up…';
+
+      if (includeProfile && profileHasInput()){
+        const p = await submitProfile();
+        if (!p || !p.success){
+          finishBtn.disabled = false; skipBtn.disabled = false;
+          finishBtn.textContent = 'Finish setup'; skipBtn.textContent = 'Skip for now';
+          showObError((p && p.message) || 'Could not save your company details.');
+          return;
+        }
+      }
+
       const apps = [...document.querySelectorAll('.app-check:checked')].map(c => c.value);
       const res = await post({
         company_id: COMPANY_ID,
@@ -344,10 +451,10 @@ $firstName = trim((string)($user['first_name'] ?? '')) ?: 'there';
         customer_noun_plural: document.getElementById('nounP').value.trim(),
         apps,
       });
-      if (!res.success){
-        btn.disabled = false; btn.textContent = 'Finish setup';
-        const e = document.getElementById('obError');
-        e.textContent = res.message || 'Something went wrong.'; e.classList.remove('hidden');
+      if (!res || !res.success){
+        finishBtn.disabled = false; skipBtn.disabled = false;
+        finishBtn.textContent = 'Finish setup'; skipBtn.textContent = 'Skip for now';
+        showObError(res && res.message);
         return;
       }
       window.location.href = 'index.php';
