@@ -21,6 +21,11 @@ RewriteRule ^vb/([a-zA-Z0-9-]+)/?$ visionBoard/short.php?slug=$1 [L,QSA]
 # Short links for public store pages (centryk.bz/s/<company-slug> → 301 to store.php)
 RewriteRule ^s/([a-zA-Z0-9-]+)/?$ public/store-link.php?slug=$1 [L,QSA]
 
+# Memorable public entry points
+RewriteRule ^store/?$     public/store.php     [L,QSA]
+RewriteRule ^jobs/?$      public/jobs.php      [L,QSA]
+RewriteRule ^directory/?$ public/directory.php [L,QSA]
+
 # Route everything to public/
 RewriteRule ^$ public/ [L]
 RewriteRule ^((?!public/|visionBoard/).*) public/$1 [L]

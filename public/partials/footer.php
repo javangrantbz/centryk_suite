@@ -99,12 +99,15 @@
 
             <!-- ── Company ── -->
             <div>
-                <h3 class="text-[10px] font-black uppercase tracking-[0.22em] text-white/30 mb-6">Company</h3>
+                <h3 class="text-[10px] font-black uppercase tracking-[0.22em] text-white/30 mb-6">Explore</h3>
                 <ul class="space-y-3.5">
+                    <li><a href="store.php"           class="text-sm font-semibold text-white/55 transition hover:text-white">Marketplace</a></li>
+                    <li><a href="jobs.php"            class="text-sm font-semibold text-white/55 transition hover:text-white">Job Board</a></li>
+                    <li><a href="directory.php"       class="text-sm font-semibold text-white/55 transition hover:text-white">Business Directory</a></li>
                     <li><a href="contact.php"         class="text-sm font-semibold text-white/55 transition hover:text-white">Contact Us</a></li>
-                    <li><a href="refer.php"            class="text-sm font-semibold text-white/55 transition hover:text-white">Refer a Business</a></li>
-                    <li><a href="terms.php"            class="text-sm font-semibold text-white/55 transition hover:text-white">Terms of Service</a></li>
-                    <li><a href="terms.php#privacy"    class="text-sm font-semibold text-white/55 transition hover:text-white">Privacy Policy</a></li>
+                    <li><a href="refer.php"           class="text-sm font-semibold text-white/55 transition hover:text-white">Refer a Business</a></li>
+                    <li><a href="terms.php"           class="text-sm font-semibold text-white/55 transition hover:text-white">Terms of Service</a></li>
+                    <li><a href="terms.php#privacy"   class="text-sm font-semibold text-white/55 transition hover:text-white">Privacy Policy</a></li>
                 </ul>
             </div>
 

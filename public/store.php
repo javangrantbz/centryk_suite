@@ -89,6 +89,16 @@ if ($company) {
     }
 }
 
+// "We're hiring" badge. The role count comes from a cross-app call to MyPay,
+// made client-side (see the script by the badge markup) so a slow or
+// unreachable MyPay never blocks this page. Skipped for the feed and for a
+// visitor looking at their own company.
+$hiringCheckUrl = '';
+if ($company && !$isMember) {
+    require_once __DIR__ . '/../app/core/AppLinks.php';
+    $hiringCheckUrl = AppLinks::jobOpeningsEndpoint((string)$company['uuid']);
+}
+
 // Centryk Connect status, for the Connect button when viewing another company's
 // store. A visitor with no account has nothing to connect from, so this whole
 // block (and the button it drives) just stays empty for them.
@@ -436,6 +446,23 @@ $headerActionsHtml = ob_get_clean();
         </p>
     </section>
 
+    <?php
+    require_once __DIR__ . '/../app/core/AppLinks.php';
+    $jobBoardUrl = AppLinks::jobBoard();
+    if ($jobBoardUrl !== ''):
+    ?>
+    <a href="<?= htmlspecialchars($jobBoardUrl) ?>"
+       class="mb-5 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm transition hover:border-orange-300 hover:shadow-md">
+        <span class="flex items-center gap-2.5">
+            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-100 text-orange-700">
+                <i data-lucide="briefcase" class="h-4 w-4"></i>
+            </span>
+            <span class="text-sm font-bold text-slate-700">Businesses on Centryk are hiring</span>
+        </span>
+        <span class="text-xs font-black uppercase tracking-[0.1em] text-orange-600">Job Board &rarr;</span>
+    </a>
+    <?php endif; ?>
+
     <?php if ($feedStores): ?>
         <div class="space-y-6">
             <?php foreach ($feedStores as $store): ?>
@@ -623,6 +650,36 @@ $headerActionsHtml = ob_get_clean();
                 </div>
             <?php endif; ?>
         </section>
+    <?php endif; ?>
+
+    <?php if ($hiringCheckUrl !== ''): ?>
+    <a id="storeHiringBadge" href="#" hidden
+       class="mb-6 flex items-center justify-between gap-3 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 transition hover:border-orange-300 hover:bg-orange-100">
+        <span class="flex items-center gap-2.5">
+            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-orange-700 shadow-sm">
+                <i data-lucide="briefcase" class="h-4 w-4"></i>
+            </span>
+            <span id="storeHiringText" class="text-sm font-black text-orange-900"></span>
+        </span>
+        <span class="shrink-0 text-xs font-black uppercase tracking-[0.1em] text-orange-700">View &amp; apply &rarr;</span>
+    </a>
+    <script>
+    (function () {
+        var badge = document.getElementById('storeHiringBadge');
+        if (!badge) { return; }
+        fetch(<?= json_encode($hiringCheckUrl) ?>)
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (d) {
+                var n = d && d.success ? (parseInt(d.count, 10) || 0) : 0;
+                if (n < 1) { return; }
+                document.getElementById('storeHiringText').textContent =
+                    <?= json_encode($name) ?> + ' is hiring — ' + n + ' open ' + (n === 1 ? 'role' : 'roles');
+                if (d.board_url) { badge.href = d.board_url; }
+                badge.hidden = false;
+            })
+            .catch(function () {});
+    })();
+    </script>
     <?php endif; ?>
 
     <?php if ($company && !$isMember): ?>

@@ -23,6 +23,10 @@ $tvBaseUrl = (static function (): string {
     }
     return $appUrl . '/tv';
 })();
+
+// Public-facing TV entry: the teaser while TV is coming-soon for this viewer,
+// the live "what's on" board otherwise. Powers the "Watch" chip on the card.
+$tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/');
 ?>
 <!doctype html>
 <html lang="en">
@@ -523,6 +527,24 @@ $tvBaseUrl = (static function (): string {
                 <p class="mt-2 text-xs font-semibold leading-relaxed text-slate-500">
                     <?= htmlspecialchars($app['description']) ?>
                 </p>
+                <?php
+                // MyPay carries a public job board — link straight to it, separate
+                // from the SSO launch the rest of the card triggers. A <span> (not
+                // <a>) because this sits inside a <button>; only on an active card
+                // because a disabled <button> swallows clicks on its children.
+                if ($app['key'] === 'mypay' && ($enrolled || $optIn)):
+                    $_mpRaw  = Env::isProduction()
+                        ? (($app['url_production'] ?? '') ?: ($app['url_local'] ?? ''))
+                        : (($app['url_local'] ?? '') ?: ($app['url_production'] ?? ''));
+                    $_mpBase = rtrim((string)preg_replace('#/[^/]*\.php$#', '', rtrim((string)$_mpRaw, '/')), '/');
+                    if ($_mpBase !== ''):
+                ?>
+                <span role="link" tabindex="0"
+                      class="mypay-board-link mt-2.5 inline-flex cursor-pointer items-center gap-1 self-start rounded-full border border-orange-200 bg-orange-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-orange-700 transition hover:bg-orange-100"
+                      data-board-url="<?= htmlspecialchars($_mpBase . '/views/careers/index.php') ?>">
+                    <i data-lucide="briefcase" class="h-3 w-3"></i> Job Board
+                </span>
+                <?php endif; endif; ?>
                 <?php if ($enrolled): ?>
                 <div id="app-count-<?= htmlspecialchars($app['key']) ?>" class="app-count-badge mt-2.5 flex items-center gap-1.5">
                     <span class="app-count-dot inline-block h-1.5 w-1.5 rounded-full bg-slate-300"></span>
@@ -754,6 +776,11 @@ $tvBaseUrl = (static function (): string {
                 <p class="mt-2 text-xs font-semibold leading-relaxed text-slate-500">
                     Watch live broadcasts and replays from participating organizations.
                 </p>
+                <span role="link" tabindex="0"
+                      class="tv-watch-link mt-2.5 inline-flex cursor-pointer items-center gap-1 self-start rounded-full border border-teal-200 bg-teal-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-teal-700 transition hover:bg-teal-100"
+                      data-watch-url="<?= htmlspecialchars($tvWatchUrl) ?>">
+                    <i data-lucide="play-circle" class="h-3 w-3"></i> Watch
+                </span>
                 <div class="mt-4 flex items-center justify-center gap-1.5 rounded-xl border border-teal-200 bg-teal-100 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-teal-700 transition-colors group-hover:bg-teal-200">
                     <i data-lucide="clock-3" class="h-3 w-3"></i>
                     Coming Soon
@@ -780,6 +807,11 @@ $tvBaseUrl = (static function (): string {
                 <p class="mt-2 text-xs font-semibold leading-relaxed text-slate-500">
                     Watch live broadcasts and replays from participating organizations.
                 </p>
+                <span role="link" tabindex="0"
+                      class="tv-watch-link mt-2.5 inline-flex cursor-pointer items-center gap-1 self-start rounded-full border border-teal-200 bg-teal-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-teal-700 transition hover:bg-teal-100"
+                      data-watch-url="<?= htmlspecialchars($tvWatchUrl) ?>">
+                    <i data-lucide="play-circle" class="h-3 w-3"></i> Watch
+                </span>
             </div>
             <div class="flex items-center justify-between border-t border-teal-100 px-4 py-3 text-xs font-bold text-teal-700 transition-colors group-hover:text-teal-900">
                 <span>Open Centryk TV</span>
@@ -804,6 +836,16 @@ $tvBaseUrl = (static function (): string {
                 <p class="mt-2 text-xs font-semibold leading-relaxed text-slate-500">
                     Browse employee offers and Centryk Market listings from participating companies.
                 </p>
+                <?php
+                // The card opens this company's own storefront; this chip jumps
+                // straight to the public marketplace feed (all companies). A
+                // <span>, not <a>, because it sits inside the card's <button>.
+                ?>
+                <span role="link" tabindex="0"
+                      class="store-feed-link mt-2.5 inline-flex cursor-pointer items-center gap-1 self-start rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-violet-700 transition hover:bg-violet-100"
+                      data-store-feed-url="store.php">
+                    <i data-lucide="layout-grid" class="h-3 w-3"></i> Browse all stores
+                </span>
                 <div class="mt-2.5 flex items-center gap-1.5">
                     <span class="inline-block h-1.5 w-1.5 rounded-full bg-violet-500"></span>
                     <span class="text-[11px] font-bold text-violet-700">Company listings</span>
@@ -1630,6 +1672,47 @@ $tvBaseUrl = (static function (): string {
     if (storeCard) {
         storeCard.addEventListener('click', openStore);
     }
+
+    // "Job Board" chip inside the MyPay card — opens the public board in a new
+    // tab without triggering the card's SSO launch.
+    document.querySelectorAll('.mypay-board-link').forEach(function (el) {
+        var open = function (e) {
+            e.stopPropagation();
+            var url = el.getAttribute('data-board-url');
+            if (url) { window.open(url, '_blank', 'noopener'); }
+        };
+        el.addEventListener('click', open);
+        el.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(e); }
+        });
+    });
+
+    // "Browse all stores" chip inside the Store card — the public marketplace
+    // feed, as opposed to the card's own-storefront default.
+    document.querySelectorAll('.store-feed-link').forEach(function (el) {
+        var open = function (e) {
+            e.stopPropagation();
+            window.location.href = el.getAttribute('data-store-feed-url') || 'store.php';
+        };
+        el.addEventListener('click', open);
+        el.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(e); }
+        });
+    });
+
+    // "Watch" chip inside the Centryk TV card — the public-facing TV page.
+    document.querySelectorAll('.tv-watch-link').forEach(function (el) {
+        var open = function (e) {
+            e.stopPropagation();
+            e.preventDefault();
+            var url = el.getAttribute('data-watch-url');
+            if (url) { window.open(url, '_blank', 'noopener'); }
+        };
+        el.addEventListener('click', open);
+        el.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') { open(e); }
+        });
+    });
 
     var onelinkPaymentsCard = document.getElementById('onelinkPaymentsCard');
     if (onelinkPaymentsCard) {

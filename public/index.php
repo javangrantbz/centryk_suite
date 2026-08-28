@@ -94,6 +94,17 @@ if ($me['authenticated']) {
     exit;
 }
 
+// ── Public entry points (shown to logged-out visitors) ───────────────────────
+// Storefront and directory are Centryk's own; the job board lives in the MyPay
+// app (base resolved from the apps registry). TV shows its teaser in production
+// and the real "what's on" board otherwise.
+require_once __DIR__ . '/../app/core/AppLinks.php';
+$publicStoreUrl = 'store.php';
+$publicJobsUrl  = AppLinks::jobBoard();
+$publicTvUrl    = Env::isProduction()
+    ? 'tv.php'
+    : (preg_replace('#/public$#', '/tv', rtrim((string)($_ENV['APP_URL'] ?? ''), '/')) ?: 'tv.php') . '/';
+
 ?>
 <!doctype html>
 <html lang="en">
@@ -224,16 +235,56 @@ if ($me['authenticated']) {
         <div class="hidden md:flex items-center gap-2">
             <?php $awAlign = 'left'; include __DIR__ . '/partials/app_switcher.php'; ?>
             <div class="h-4 w-px bg-slate-200"></div>
+            <a href="<?= htmlspecialchars($publicStoreUrl) ?>" class="px-3 py-1.5 rounded-lg text-sm font-semibold text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition">Store</a>
+            <?php if ($publicJobsUrl !== ''): ?>
+            <a href="<?= htmlspecialchars($publicJobsUrl) ?>" class="px-3 py-1.5 rounded-lg text-sm font-semibold text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition">Jobs</a>
+            <?php endif; ?>
+            <a href="directory.php" class="px-3 py-1.5 rounded-lg text-sm font-semibold text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition">Directory</a>
+            <?php if ($publicTvUrl !== ''): ?>
+            <a href="<?= htmlspecialchars($publicTvUrl) ?>" class="px-3 py-1.5 rounded-lg text-sm font-semibold text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition">Watch</a>
+            <?php endif; ?>
             <a href="about.php"   class="px-3 py-1.5 rounded-lg text-sm font-semibold text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition">About</a>
             <a href="contact.php" class="px-3 py-1.5 rounded-lg text-sm font-semibold text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition">Contact</a>
         </div>
+
+        <button id="navMobileToggle" type="button"
+                class="md:hidden flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100"
+                aria-label="Menu" aria-expanded="false" aria-controls="navMobilePanel">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
 
         <a href="login.php"
            class="ml-3 rounded-lg bg-slate-900 px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-white shadow-sm shadow-slate-900/20 transition hover:bg-slate-700">
             Sign In
         </a>
     </div>
+
+    <!-- Mobile menu -->
+    <div id="navMobilePanel" class="hidden md:hidden border-t border-slate-200 bg-white px-4 py-2">
+        <a href="<?= htmlspecialchars($publicStoreUrl) ?>" class="block rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900">Store</a>
+        <?php if ($publicJobsUrl !== ''): ?>
+        <a href="<?= htmlspecialchars($publicJobsUrl) ?>" class="block rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900">Jobs</a>
+        <?php endif; ?>
+        <a href="directory.php" class="block rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900">Directory</a>
+        <?php if ($publicTvUrl !== ''): ?>
+        <a href="<?= htmlspecialchars($publicTvUrl) ?>" class="block rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900">Watch</a>
+        <?php endif; ?>
+        <a href="about.php"   class="block rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900">About</a>
+        <a href="contact.php" class="block rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900">Contact</a>
+    </div>
 </nav>
+
+<script>
+(function () {
+    var t = document.getElementById('navMobileToggle');
+    var p = document.getElementById('navMobilePanel');
+    if (!t || !p) { return; }
+    t.addEventListener('click', function () {
+        var hidden = p.classList.toggle('hidden');
+        t.setAttribute('aria-expanded', hidden ? 'false' : 'true');
+    });
+})();
+</script>
 
 
 <!-- ── HERO ───────────────────────────────────────────────────────────────── -->
@@ -314,11 +365,18 @@ if ($me['authenticated']) {
                     </a>
                 </div>
             </div>
-            <div class="mt-4 flex justify-center md:justify-start">
+            <div class="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 md:justify-start">
                 <a href="login.php#request"
                    class="rounded-xl bg-white px-5 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-slate-900 shadow-lg transition hover:bg-slate-100">
                     Get Started - It's Free
                 </a>
+                <span class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-white/40">
+                    <span>Just browsing?</span>
+                    <a href="store.php" class="text-white/70 underline underline-offset-2 transition hover:text-white">Explore the Store</a>
+                    <?php if ($publicJobsUrl !== ''): ?>
+                    <a href="<?= htmlspecialchars($publicJobsUrl) ?>" class="text-white/70 underline underline-offset-2 transition hover:text-white">See open jobs</a>
+                    <?php endif; ?>
+                </span>
             </div>
         </div>
     </div>
