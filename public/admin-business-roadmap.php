@@ -56,20 +56,21 @@ $board = [
             ['Entitlements enforcement class — FULL / READ / NONE, lifecycle, audit', 'app/core/Entitlements.php'],
             ['Admin grant console — grant, suspend, resume, cancel, triage', 'admin-business-packages.php'],
             ['Customer "Explore more services" page + request → lead + notify admins', 'business.php'],
+            ['Indicative package pricing', 'database/set_business_package_prices.sql'],
+            ['Receivables v1 — customer ledger, aging, credit limit/terms/hold, receipts auto-applied oldest-due-first', 'receivables.php'],
             ['This tracker', 'admin-business-roadmap.php'],
         ],
     ],
     'In progress' => [
         'accent' => 'sky',
         'items'  => [
-            ['Wire entitlements into AuthService::me() so app nav hides/greys locked features', null],
-            ['Indicative pricing on the catalog (business_packages.monthly_price still 0)', null],
+            ['Receivables — statement PDF / email, collections reminders, credit-hold enforcement on new invoices', null],
+            ['Surface a Receivables card on the dashboard grid when the company is entitled', null],
         ],
     ],
     'Planned' => [
         'accent' => 'violet',
         'items'  => [
-            ['Receivables module — customer ledger, statements, aging, collections, credit hold', null],
             ['Reconciliation workbench — import bank CSV/OFX/MT940, payment refs, match queue', null],
             ['Field Sales & Routes — route delivery, driver settlement, cash-in-transit (spoke app)', null],
             ['Enterprise — company_groups + companies.group_id, group admin, consolidated reporting', null],
