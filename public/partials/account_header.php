@@ -139,6 +139,9 @@ $awCurrent = $awCurrent ?? 'centryk';
                     <a href="connections.php" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition">
                         <i data-lucide="handshake" class="h-4 w-4 shrink-0"></i> Centryk Connect
                     </a>
+                    <a href="business.php" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition">
+                        <i data-lucide="briefcase" class="h-4 w-4 shrink-0"></i> Centryk Business
+                    </a>
                     <a href="profile.php" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition">
                         <i data-lucide="user-cog" class="h-4 w-4 shrink-0"></i> Manage your Centryk Account
                     </a>

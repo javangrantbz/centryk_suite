@@ -33,7 +33,7 @@ $headerActionsHtml = ob_get_clean();
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
-    <title>Centryk Business - Centryk</title>
+    <title>Business Packages - Centryk</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -49,8 +49,11 @@ $headerActionsHtml = ob_get_clean();
     <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-950 px-5 py-5 text-white">
             <div>
-                <h1 class="text-xl font-black tracking-tight">Centryk Business</h1>
-                <p class="mt-1 text-xs font-semibold text-white/55">Grant paid packages, manage subscriptions, and triage service requests.</p>
+                <h1 class="text-xl font-black tracking-tight">Business Packages</h1>
+                <p class="mt-1 text-xs font-semibold text-white/55">
+                    <a href="admin-business-roadmap.php" class="underline decoration-white/30 hover:decoration-white">Centryk Business</a>
+                    · grant packages, manage subscriptions, triage requests.
+                </p>
             </div>
             <button onclick="loadOverview()" class="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/8 px-4 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-white/15">Refresh</button>
         </div>
