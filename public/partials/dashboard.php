@@ -438,19 +438,14 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
     }
     unset($_bucket);
 
-    // Drives the dash-fade entrance stagger across headers and cards alike.
+    // Drives the dash-fade entrance stagger, one step per card.
     $_gridIdx = 0;
 
-    // Full-width section header inside the grid.
-    $renderCatHeader = function (string $label) use (&$_gridIdx) {
-        $_gridIdx++;
-        ?>
-        <div style="--i:<?= $_gridIdx ?>" class="dash-fade col-span-full mt-3 flex items-center gap-3 first:mt-0">
-            <h2 class="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400"><?= htmlspecialchars($label) ?></h2>
-            <span class="h-px flex-1 bg-slate-100"></span>
-        </div>
-        <?php
-    };
+    // Categories still drive render order (business → finance → insights →
+    // marketing) and the drag-to-reorder scope, but there is no visual divider:
+    // the grid flows 4-up continuously so a row can hold cards from two
+    // categories instead of leaving a short row wherever a category ends.
+    $renderCatHeader = static function (string $label): void {};
 
     // One DB-backed app card. $cat is stamped on the element so the
     // drag-to-reorder JS keeps a card within its own section.
@@ -590,7 +585,7 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
         <!-- Apps grid — grouped into category sections. DB-backed cards flow
              through $renderAppCard; the hand-built cards (OneLink, TV, Store,
              Case Management) are slotted into the matching section by hand. -->
-        <div id="appsGrid" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div id="appsGrid" class="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
 
             <?php
             // ── Business ───────────────────────────────────────────────────
