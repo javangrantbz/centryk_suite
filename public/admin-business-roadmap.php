@@ -61,6 +61,7 @@ $board = [
             ['Reconciliation v1 — CSV bank import, dedupe, suggested matches, one-click match posts a receipt', 'reconciliation.php'],
             ['Field Sales & Routes v1 — routes, trips, per-stop collections, driver cash settlement w/ variance, cash-in-transit', 'routes.php'],
             ['Enterprise v1 — company_groups + companies.group_id, group members, group-level entitlements members inherit, consolidated view', 'groups.php'],
+            ['Dashboard grid cards for each module, shown when the selected company is entitled', 'partials/dashboard.php'],
             ['This tracker', 'admin-business-roadmap.php'],
         ],
     ],
@@ -71,7 +72,6 @@ $board = [
             ['Reconciliation — OFX/MT940 formats, per-invoice payment references, live bank feed adapter', null],
             ['Routes — mobile/field UI, route sequencing/maps, per-driver commission, supervisor approval step', null],
             ['Enterprise — maker-checker approvals, group-scoped audit view, inter-company transactions', null],
-            ['Surface Receivables/Reconciliation/Routes/Groups cards on the dashboard grid when entitled', null],
         ],
     ],
     'Planned' => [
