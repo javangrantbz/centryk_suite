@@ -166,7 +166,9 @@ $headerActionsHtml = ob_get_clean();
 
                 <div class="mt-4 flex items-center justify-between gap-3">
                     <span class="text-xs font-black uppercase tracking-[0.1em] text-slate-400"><?= $fmtPrice($p) ?></span>
-                    <?php if ($state === 'active'): ?>
+                    <?php if ($state === 'active' && $key === 'receivables'): ?>
+                        <a href="receivables.php?company_id=<?= (int)$activeCompany['id'] ?>" class="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-white hover:bg-emerald-700">Open ledger</a>
+                    <?php elseif ($state === 'active'): ?>
                         <span class="text-xs font-bold text-slate-400">On your plan</span>
                     <?php elseif ($state === 'suspended'): ?>
                         <button data-package="<?= htmlspecialchars($key) ?>" class="reqBtn rounded-xl bg-amber-500 px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-white hover:bg-amber-600">Reactivate</button>
