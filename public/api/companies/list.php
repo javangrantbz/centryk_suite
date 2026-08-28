@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../../app/core/Auth.php';
 require_once __DIR__ . '/../../../app/core/DB.php';
 require_once __DIR__ . '/../../../app/core/Response.php';
+require_once __DIR__ . '/../../../app/core/Entitlements.php';
 
 Auth::start();
 $user = Auth::user();
@@ -45,7 +46,12 @@ if ($companies) {
 }
 
 foreach ($companies as &$c) {
-    $c['app_counts'] = isset($appCounts[(int)$c['id']]) ? $appCounts[(int)$c['id']] : (object)[];
+    $cid = (int)$c['id'];
+    $c['app_counts'] = isset($appCounts[$cid]) ? $appCounts[$cid] : (object)[];
+    // Centryk Business packages this company holds (own or inherited from its
+    // group) — the dashboard uses this to show the module cards.
+    $ent = Entitlements::forCompany($cid);
+    $c['entitlements'] = $ent === [] ? (object)[] : $ent;
 }
 unset($c);
 
