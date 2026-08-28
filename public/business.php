@@ -167,7 +167,7 @@ $headerActionsHtml = ob_get_clean();
                 <div class="mt-4 flex items-center justify-between gap-3">
                     <span class="text-xs font-black uppercase tracking-[0.1em] text-slate-400"><?= $fmtPrice($p) ?></span>
                     <?php
-                    $moduleLinks = ['receivables' => ['receivables.php', 'Open ledger'], 'reconciliation' => ['reconciliation.php', 'Open workbench']];
+                    $moduleLinks = ['receivables' => ['receivables.php', 'Open ledger'], 'reconciliation' => ['reconciliation.php', 'Open workbench'], 'routes' => ['routes.php', 'Open routes']];
                     ?>
                     <?php if ($state === 'active' && isset($moduleLinks[$key])): ?>
                         <a href="<?= $moduleLinks[$key][0] ?>?company_id=<?= (int)$activeCompany['id'] ?>" class="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-white hover:bg-emerald-700"><?= $moduleLinks[$key][1] ?></a>
