@@ -587,30 +587,6 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
         </div>
         <?php endif; ?>
 
-        <!-- Centryk Business promo — revealed by selectCompany() only for an
-             admin/manager of the selected company that holds no Business
-             package yet. Dismissible per browser. -->
-        <div id="bizPromo" class="mb-4 hidden items-center gap-3 rounded-2xl border border-violet-200 bg-gradient-to-r from-violet-50 to-white px-5 py-4">
-            <a href="business.php" class="group flex min-w-0 flex-1 items-center gap-3">
-                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-700">
-                    <i data-lucide="briefcase" class="h-5 w-5"></i>
-                </span>
-                <span class="min-w-0">
-                    <span class="block text-sm font-black text-slate-900">
-                        Centryk Business
-                        <span class="ml-1 align-middle text-[10px] font-black uppercase tracking-[0.12em] text-violet-600">add-ons</span>
-                    </span>
-                    <span class="block text-xs font-semibold text-slate-500">Customer ledger, bank reconciliation, delivery-route settlement and multi-company reporting.</span>
-                </span>
-                <span class="ml-auto hidden shrink-0 items-center gap-1 text-xs font-black uppercase tracking-[0.12em] text-violet-700 group-hover:text-violet-900 sm:flex">
-                    Explore <i data-lucide="arrow-right" class="h-3.5 w-3.5"></i>
-                </span>
-            </a>
-            <button type="button" id="bizPromoDismiss" title="Dismiss" class="shrink-0 rounded-lg p-1 text-slate-300 transition hover:text-slate-500">
-                <i data-lucide="x" class="h-4 w-4"></i>
-            </button>
-        </div>
-
         <!-- Apps grid — grouped into category sections. DB-backed cards flow
              through $renderAppCard; the hand-built cards (OneLink, TV, Store,
              Case Management) are slotted into the matching section by hand. -->
@@ -857,6 +833,20 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
             </div>
         </button>
 
+    </div>
+
+    <!-- Centryk Business note — a quiet line under the apps, revealed by
+         selectCompany() only for an admin/manager of the selected company that
+         holds no Business package yet. Dismissible per browser. -->
+    <div id="bizPromo" class="mt-5 hidden items-center gap-2 border-t border-slate-100 px-1 pt-4 text-xs font-semibold text-slate-400">
+        <i data-lucide="briefcase" class="h-3.5 w-3.5 shrink-0"></i>
+        <span class="min-w-0 flex-1">
+            Need receivables, bank reconciliation, delivery routes or multi-company reporting?
+            <a href="business.php" class="font-bold text-slate-600 underline decoration-slate-300 underline-offset-2 hover:text-violet-700 hover:decoration-violet-400">See Centryk Business</a>.
+        </span>
+        <button type="button" id="bizPromoDismiss" title="Dismiss" class="shrink-0 rounded p-1 text-slate-300 transition hover:text-slate-500">
+            <i data-lucide="x" class="h-3.5 w-3.5"></i>
+        </button>
     </div>
 
     <!-- No-company notice (shown when no companies exist) -->
