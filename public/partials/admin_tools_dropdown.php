@@ -12,6 +12,9 @@
         <a href="registered-companies.php" class="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900">
             <i data-lucide="building-2" class="h-4 w-4 shrink-0"></i> Companies
         </a>
+        <a href="admin-business-roadmap.php" class="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900">
+            <i data-lucide="briefcase" class="h-4 w-4 shrink-0"></i> Centryk Business
+        </a>
         <a href="onelink-api-accounts.php" class="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900">
             <i data-lucide="credit-card" class="h-4 w-4 shrink-0"></i> OneLink API Accounts
         </a>
