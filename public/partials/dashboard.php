@@ -187,6 +187,10 @@ $tvBaseUrl = (static function (): string {
                         <i data-lucide="user-cog" class="h-4 w-4 shrink-0"></i>
                         Manage your Centryk Account
                     </a>
+                    <a href="business.php" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition">
+                        <i data-lucide="briefcase" class="h-4 w-4 shrink-0"></i>
+                        Centryk Business
+                    </a>
                     <?php if (!empty($user['is_admin'])): ?>
                     <a href="profile.php#companies" class="flex sm:hidden items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition">
                         <i data-lucide="building-2" class="h-4 w-4 shrink-0"></i>
@@ -560,6 +564,30 @@ $tvBaseUrl = (static function (): string {
             You are not enrolled in any apps yet. Available apps are listed below.
         </div>
         <?php endif; ?>
+
+        <!-- Centryk Business promo — revealed by selectCompany() only for an
+             admin/manager of the selected company that holds no Business
+             package yet. Dismissible per browser. -->
+        <div id="bizPromo" class="mb-4 hidden items-center gap-3 rounded-2xl border border-violet-200 bg-gradient-to-r from-violet-50 to-white px-5 py-4">
+            <a href="business.php" class="group flex min-w-0 flex-1 items-center gap-3">
+                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-700">
+                    <i data-lucide="briefcase" class="h-5 w-5"></i>
+                </span>
+                <span class="min-w-0">
+                    <span class="block text-sm font-black text-slate-900">
+                        Centryk Business
+                        <span class="ml-1 align-middle text-[10px] font-black uppercase tracking-[0.12em] text-violet-600">add-ons</span>
+                    </span>
+                    <span class="block text-xs font-semibold text-slate-500">Customer ledger, bank reconciliation, delivery-route settlement and multi-company reporting.</span>
+                </span>
+                <span class="ml-auto hidden shrink-0 items-center gap-1 text-xs font-black uppercase tracking-[0.12em] text-violet-700 group-hover:text-violet-900 sm:flex">
+                    Explore <i data-lucide="arrow-right" class="h-3.5 w-3.5"></i>
+                </span>
+            </a>
+            <button type="button" id="bizPromoDismiss" title="Dismiss" class="shrink-0 rounded-lg p-1 text-slate-300 transition hover:text-slate-500">
+                <i data-lucide="x" class="h-4 w-4"></i>
+            </button>
+        </div>
 
         <!-- Apps grid — grouped into category sections. DB-backed cards flow
              through $renderAppCard; the hand-built cards (OneLink, TV, Store,
@@ -1164,6 +1192,16 @@ $tvBaseUrl = (static function (): string {
                     if (dot) { dot.className = 'inline-block h-1.5 w-1.5 rounded-full bg-violet-500'; }
                 }
             });
+
+            // Promo strip — only for an admin/manager of a company with no package.
+            var bizPromo = document.getElementById('bizPromo');
+            if (bizPromo) {
+                var promoDismissed = false;
+                try { promoDismissed = localStorage.getItem('centryk_bizpromo_dismissed') === '1'; } catch (e) {}
+                var showPromo = bizRole && Object.keys(bizEnts).length === 0 && !promoDismissed;
+                bizPromo.classList.toggle('hidden', !showPromo);
+                bizPromo.classList.toggle('flex', showPromo);
+            }
             if (window.lucide) { lucide.createIcons(); }
 
             var advertiseUrl = 'sell.php' + (selectedUuid ? ('?company_uuid=' + encodeURIComponent(selectedUuid)) : '');
@@ -1637,6 +1675,17 @@ $tvBaseUrl = (static function (): string {
             window.location.reload();
         });
     });
+
+    var bizPromoDismiss = document.getElementById('bizPromoDismiss');
+    if (bizPromoDismiss) {
+        bizPromoDismiss.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            try { localStorage.setItem('centryk_bizpromo_dismissed', '1'); } catch (e2) {}
+            var p = document.getElementById('bizPromo');
+            if (p) { p.classList.add('hidden'); p.classList.remove('flex'); }
+        });
+    }
 
     loadCompanies();
 
