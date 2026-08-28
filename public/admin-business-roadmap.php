@@ -58,6 +58,7 @@ $board = [
             ['Customer "Explore more services" page + request → lead + notify admins', 'business.php'],
             ['Indicative package pricing', 'database/set_business_package_prices.sql'],
             ['Receivables v1 — customer ledger, aging, credit limit/terms/hold, receipts auto-applied oldest-due-first', 'receivables.php'],
+            ['Reconciliation v1 — CSV bank import, dedupe, suggested matches, one-click match posts a receipt', 'reconciliation.php'],
             ['This tracker', 'admin-business-roadmap.php'],
         ],
     ],
@@ -65,13 +66,13 @@ $board = [
         'accent' => 'sky',
         'items'  => [
             ['Receivables — statement PDF / email, collections reminders, credit-hold enforcement on new invoices', null],
-            ['Surface a Receivables card on the dashboard grid when the company is entitled', null],
+            ['Reconciliation — OFX/MT940 formats, per-invoice payment references, live bank feed adapter', null],
+            ['Surface Receivables + Reconciliation cards on the dashboard grid when the company is entitled', null],
         ],
     ],
     'Planned' => [
         'accent' => 'violet',
         'items'  => [
-            ['Reconciliation workbench — import bank CSV/OFX/MT940, payment refs, match queue', null],
             ['Field Sales & Routes — route delivery, driver settlement, cash-in-transit (spoke app)', null],
             ['Enterprise — company_groups + companies.group_id, group admin, consolidated reporting', null],
             ['Billing — company_subscription_charges, invoice via invoice-maker, dunning cron → past_due', null],
