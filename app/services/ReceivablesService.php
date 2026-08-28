@@ -301,8 +301,11 @@ class ReceivablesService
             throw new RuntimeException('Customer not found.');
         }
 
+        $ownTxn = !$pdo->inTransaction();
         try {
-            $pdo->beginTransaction();
+            if ($ownTxn) {
+                $pdo->beginTransaction();
+            }
 
             $pdo->prepare("
                 INSERT INTO ar_payments (company_id, customer_id, received_on, amount, method, reference, notes, created_by)
@@ -370,9 +373,11 @@ class ReceivablesService
                 ],
             ]);
 
-            $pdo->commit();
+            if ($ownTxn) {
+                $pdo->commit();
+            }
         } catch (Throwable $e) {
-            if ($pdo->inTransaction()) {
+            if ($ownTxn && $pdo->inTransaction()) {
                 $pdo->rollBack();
             }
             throw $e;
@@ -402,8 +407,11 @@ class ReceivablesService
             throw new RuntimeException('Receipt not found.');
         }
 
+        $ownTxn = !$pdo->inTransaction();
         try {
-            $pdo->beginTransaction();
+            if ($ownTxn) {
+                $pdo->beginTransaction();
+            }
 
             $allocs = $pdo->prepare("SELECT invoice_id, amount FROM ar_payment_allocations WHERE ar_payment_id = :pid");
             $allocs->execute(['pid' => $paymentId]);
@@ -430,9 +438,11 @@ class ReceivablesService
                 'metadata'      => ['payment_id' => $paymentId, 'amount' => (float)$pay['amount']],
             ]);
 
-            $pdo->commit();
+            if ($ownTxn) {
+                $pdo->commit();
+            }
         } catch (Throwable $e) {
-            if ($pdo->inTransaction()) {
+            if ($ownTxn && $pdo->inTransaction()) {
                 $pdo->rollBack();
             }
             throw $e;
