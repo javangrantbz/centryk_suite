@@ -60,6 +60,7 @@ $board = [
             ['Receivables v1 — customer ledger, aging, credit limit/terms/hold, receipts auto-applied oldest-due-first', 'receivables.php'],
             ['Reconciliation v1 — CSV bank import, dedupe, suggested matches, one-click match posts a receipt', 'reconciliation.php'],
             ['Field Sales & Routes v1 — routes, trips, per-stop collections, driver cash settlement w/ variance, cash-in-transit', 'routes.php'],
+            ['Enterprise v1 — company_groups + companies.group_id, group members, group-level entitlements members inherit, consolidated view', 'groups.php'],
             ['This tracker', 'admin-business-roadmap.php'],
         ],
     ],
@@ -69,13 +70,13 @@ $board = [
             ['Receivables — statement PDF / email, collections reminders, credit-hold enforcement on new invoices', null],
             ['Reconciliation — OFX/MT940 formats, per-invoice payment references, live bank feed adapter', null],
             ['Routes — mobile/field UI, route sequencing/maps, per-driver commission, supervisor approval step', null],
-            ['Surface Receivables + Reconciliation + Routes cards on the dashboard grid when the company is entitled', null],
+            ['Enterprise — maker-checker approvals, group-scoped audit view, inter-company transactions', null],
+            ['Surface Receivables/Reconciliation/Routes/Groups cards on the dashboard grid when entitled', null],
         ],
     ],
     'Planned' => [
         'accent' => 'violet',
         'items'  => [
-            ['Enterprise — company_groups + companies.group_id, group admin, consolidated reporting', null],
             ['Billing — company_subscription_charges, invoice via invoice-maker, dunning cron → past_due', null],
             ['Standalone public pricing / marketing page (once prices are locked)', null],
         ],

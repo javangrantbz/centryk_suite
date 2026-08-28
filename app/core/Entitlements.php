@@ -42,17 +42,37 @@ class Entitlements
         }
 
         $stmt = DB::pdo()->prepare(
-            'SELECT state, expires_at
-               FROM company_entitlements
-              WHERE company_id = :company_id AND package_key = :package_key
+            'SELECT ce.state, ce.expires_at
+               FROM company_entitlements ce
+              WHERE ce.company_id = :company_id AND ce.package_key = :package_key
               LIMIT 1'
         );
         $stmt->execute(['company_id' => $companyId, 'package_key' => $packageKey]);
-        $row = $stmt->fetch();
+        $own = self::resolve($stmt->fetch() ?: null);
 
-        $level = self::resolve($row ?: null);
-        self::$memo[$cacheKey] = $level;
-        return $level;
+        // A company also inherits any package its parent group holds.
+        if ($own !== self::FULL) {
+            $g = DB::pdo()->prepare(
+                'SELECT cge.state
+                   FROM company_group_entitlements cge
+                   JOIN companies c ON c.group_id = cge.group_id
+                  WHERE c.id = :company_id AND cge.package_key = :package_key
+                  LIMIT 1'
+            );
+            $g->execute(['company_id' => $companyId, 'package_key' => $packageKey]);
+            $inherited = self::resolve($g->fetch() ?: null);
+            $own = self::best($own, $inherited);
+        }
+
+        self::$memo[$cacheKey] = $own;
+        return $own;
+    }
+
+    /** Higher of two levels (FULL > READ > NONE). */
+    private static function best(string $a, string $b): string
+    {
+        $rank = [self::NONE => 0, self::READ => 1, self::FULL => 2];
+        return ($rank[$a] ?? 0) >= ($rank[$b] ?? 0) ? $a : $b;
     }
 
     /**
@@ -105,16 +125,55 @@ class Entitlements
     public static function forCompany(int $companyId): array
     {
         $stmt = DB::pdo()->prepare(
-            'SELECT package_key, state, expires_at
+            "SELECT package_key, state, expires_at, 'own' AS src
                FROM company_entitlements
-              WHERE company_id = :company_id'
+              WHERE company_id = :cid1
+             UNION ALL
+             SELECT cge.package_key, cge.state, NULL AS expires_at, 'group' AS src
+               FROM company_group_entitlements cge
+               JOIN companies c ON c.group_id = cge.group_id
+              WHERE c.id = :cid2"
         );
-        $stmt->execute(['company_id' => $companyId]);
+        $stmt->execute(['cid1' => $companyId, 'cid2' => $companyId]);
 
         $out = [];
         foreach ($stmt->fetchAll() as $row) {
             $level = self::resolve($row);
-            self::$memo[$companyId . ':' . $row['package_key']] = $level;
+            $key = $row['package_key'];
+            $out[$key] = isset($out[$key]) ? self::best($out[$key], $level) : $level;
+        }
+        foreach ($out as $key => $level) {
+            self::$memo[$companyId . ':' . $key] = $level;
+            if ($level === self::NONE) {
+                unset($out[$key]);
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * Resolve a group's own access level for a package (no inheritance upward).
+     */
+    public static function groupLevel(int $groupId, string $packageKey): string
+    {
+        $stmt = DB::pdo()->prepare(
+            'SELECT state FROM company_group_entitlements
+              WHERE group_id = :gid AND package_key = :key LIMIT 1'
+        );
+        $stmt->execute(['gid' => $groupId, 'key' => $packageKey]);
+        return self::resolve($stmt->fetch() ?: null);
+    }
+
+    /** @return array<string,string> a group's non-NONE packages */
+    public static function forGroup(int $groupId): array
+    {
+        $stmt = DB::pdo()->prepare(
+            'SELECT package_key, state FROM company_group_entitlements WHERE group_id = :gid'
+        );
+        $stmt->execute(['gid' => $groupId]);
+        $out = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $level = self::resolve($row);
             if ($level !== self::NONE) {
                 $out[$row['package_key']] = $level;
             }
@@ -197,6 +256,66 @@ class Entitlements
     public static function revoke(int $companyId, string $packageKey, ?int $actorUserId = null): void
     {
         self::transition($companyId, $packageKey, 'revoked', 'entitlement.revoked', $actorUserId, 'Revoked');
+    }
+
+    // ── Group-level entitlements (Enterprise) ───────────────────────────────
+
+    /**
+     * Grant / re-activate a package for a whole company group. Member companies
+     * inherit it. Idempotent on (group_id, package_key).
+     */
+    public static function grantGroup(int $groupId, string $packageKey, ?int $actorUserId = null, string $notes = ''): void
+    {
+        DB::pdo()->prepare(
+            'INSERT INTO company_group_entitlements (group_id, package_key, state, granted_by, notes)
+             VALUES (:gid, :key, "active", :by, :notes)
+             ON DUPLICATE KEY UPDATE state = "active", granted_by = VALUES(granted_by),
+                                     notes = VALUES(notes), revoked_at = NULL'
+        )->execute(['gid' => $groupId, 'key' => $packageKey, 'by' => $actorUserId, 'notes' => $notes]);
+
+        self::$memo = [];
+        Audit::log([
+            'actor_user_id' => $actorUserId,
+            'event_type'    => 'entitlement.group.granted',
+            'summary'       => "Granted group #{$groupId} the {$packageKey} package",
+            'metadata'      => ['group_id' => $groupId, 'package_key' => $packageKey],
+        ]);
+    }
+
+    public static function suspendGroup(int $groupId, string $packageKey, ?int $actorUserId = null): void
+    {
+        self::groupTransition($groupId, $packageKey, 'suspended', 'entitlement.group.suspended', $actorUserId, 'Suspended');
+    }
+
+    public static function resumeGroup(int $groupId, string $packageKey, ?int $actorUserId = null): void
+    {
+        self::groupTransition($groupId, $packageKey, 'active', 'entitlement.group.resumed', $actorUserId, 'Resumed');
+    }
+
+    public static function revokeGroup(int $groupId, string $packageKey, ?int $actorUserId = null): void
+    {
+        self::groupTransition($groupId, $packageKey, 'revoked', 'entitlement.group.revoked', $actorUserId, 'Revoked');
+    }
+
+    private static function groupTransition(int $groupId, string $packageKey, string $newState, string $eventType, ?int $actorUserId, string $verb): void
+    {
+        $sql = 'UPDATE company_group_entitlements SET state = :state';
+        $sql .= $newState === 'revoked' ? ', revoked_at = NOW()' : ', revoked_at = NULL';
+        $sql .= ' WHERE group_id = :gid AND package_key = :key';
+
+        $stmt = DB::pdo()->prepare($sql);
+        $stmt->execute(['state' => $newState, 'gid' => $groupId, 'key' => $packageKey]);
+        if ($stmt->rowCount() === 0) {
+            return;
+        }
+
+        self::$memo = [];
+        Audit::log([
+            'actor_user_id' => $actorUserId,
+            'event_type'    => $eventType,
+            'summary'       => "{$verb} group #{$groupId} package: {$packageKey}",
+            'metadata'      => ['group_id' => $groupId, 'package_key' => $packageKey],
+        ]);
     }
 
     /**
