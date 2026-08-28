@@ -313,6 +313,10 @@ class ReceivablesService
             ]);
             $paymentId = (int)$pdo->lastInsertId();
 
+            // A caller (e.g. bank reconciliation) can name the invoice this
+            // receipt clears; it's filled first, then the rest ages oldest-first.
+            $targetInvoiceId = (int)($data['target_invoice_id'] ?? 0);
+
             $open = $pdo->prepare("
                 SELECT i.id, i.total, i.amount_paid,
                        COALESCE(i.due_date, DATE_ADD(i.issue_date, INTERVAL COALESCE(c.payment_terms_days,0) DAY)) AS effective_due
@@ -320,9 +324,9 @@ class ReceivablesService
                 JOIN customers c ON c.id = i.customer_id
                 WHERE i.company_id = :cid AND i.customer_id = :cust AND i.status IN ('sent','overdue')
                   AND (i.total - i.amount_paid) > 0
-                ORDER BY effective_due ASC, i.id ASC
+                ORDER BY (i.id = :target) DESC, effective_due ASC, i.id ASC
             ");
-            $open->execute(['cid' => $companyId, 'cust' => $customerId]);
+            $open->execute(['cid' => $companyId, 'cust' => $customerId, 'target' => $targetInvoiceId]);
 
             $remaining = $amount;
             $touched = 0;
@@ -380,5 +384,58 @@ class ReceivablesService
             'credit'     => round($remaining, 2),
             'invoices'   => $touched,
         ];
+    }
+
+    /**
+     * Reverse a receipt: undo each allocation (drop invoice.amount_paid, reopen
+     * status) and delete the ar_payments row (allocations cascade).
+     * Used when a bank-reconciliation match is undone.
+     */
+    public static function voidPayment(int $companyId, int $paymentId, ?int $actorId): void
+    {
+        $pdo = DB::pdo();
+
+        $pay = $pdo->prepare("SELECT id, amount FROM ar_payments WHERE id = :id AND company_id = :cid LIMIT 1");
+        $pay->execute(['id' => $paymentId, 'cid' => $companyId]);
+        $pay = $pay->fetch(PDO::FETCH_ASSOC);
+        if (!$pay) {
+            throw new RuntimeException('Receipt not found.');
+        }
+
+        try {
+            $pdo->beginTransaction();
+
+            $allocs = $pdo->prepare("SELECT invoice_id, amount FROM ar_payment_allocations WHERE ar_payment_id = :pid");
+            $allocs->execute(['pid' => $paymentId]);
+            foreach ($allocs->fetchAll(PDO::FETCH_ASSOC) as $a) {
+                $inv = $pdo->prepare("SELECT total, amount_paid FROM invoices WHERE id = :id AND company_id = :cid LIMIT 1");
+                $inv->execute(['id' => (int)$a['invoice_id'], 'cid' => $companyId]);
+                $row = $inv->fetch(PDO::FETCH_ASSOC);
+                if (!$row) {
+                    continue;
+                }
+                $newPaid = max(0, round((float)$row['amount_paid'] - (float)$a['amount'], 2));
+                $newStatus = $newPaid + 0.004 >= (float)$row['total'] ? 'paid' : 'sent';
+                $pdo->prepare("UPDATE invoices SET amount_paid = :paid, status = :st WHERE id = :id")
+                    ->execute(['paid' => $newPaid, 'st' => $newStatus, 'id' => (int)$a['invoice_id']]);
+            }
+
+            $pdo->prepare("DELETE FROM ar_payments WHERE id = :id")->execute(['id' => $paymentId]);
+
+            Audit::log([
+                'actor_user_id' => $actorId,
+                'company_id'    => $companyId,
+                'event_type'    => 'receivables.payment.voided',
+                'summary'       => 'Voided receipt #' . $paymentId . ' (' . number_format((float)$pay['amount'], 2) . ')',
+                'metadata'      => ['payment_id' => $paymentId, 'amount' => (float)$pay['amount']],
+            ]);
+
+            $pdo->commit();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
     }
 }
