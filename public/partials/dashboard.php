@@ -656,6 +656,45 @@ $tvBaseUrl = (static function (): string {
         <?php endif; ?>
 
         <?php
+        // ── Centryk Business modules ───────────────────────────────────────
+        // Hidden by default; selectCompany() reveals the ones the chosen
+        // company holds (its own grant or one inherited from its group) when
+        // the viewer is an admin/manager of it.
+        $_bizCards = [
+            ['key' => 'receivables',    'href' => 'receivables.php',    'param' => 'company_id', 'label' => 'Receivables',         'icon' => 'wallet',     'blurb' => 'Customer ledger, balances and aging for this company.'],
+            ['key' => 'reconciliation', 'href' => 'reconciliation.php', 'param' => 'company_id', 'label' => 'Reconciliation',      'icon' => 'scale',      'blurb' => 'Match bank deposits to open customer invoices.'],
+            ['key' => 'routes',         'href' => 'routes.php',         'param' => 'company_id', 'label' => 'Field Sales & Routes', 'icon' => 'truck',      'blurb' => 'Delivery runs and end-of-day driver cash settlement.'],
+            ['key' => 'enterprise',     'href' => 'groups.php',         'param' => '',          'label' => 'Company Groups',       'icon' => 'building-2', 'blurb' => "A consolidated view across the group's companies."],
+        ];
+        foreach ($_bizCards as $_bc): ?>
+        <a href="<?= htmlspecialchars($_bc['href']) ?>" data-biz-card="<?= htmlspecialchars($_bc['key']) ?>" data-biz-param="<?= htmlspecialchars($_bc['param']) ?>"
+           style="--i:<?= $_gridIdx ?>"
+           class="biz-module-card dash-fade group hidden flex-col overflow-hidden rounded-2xl border border-violet-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]">
+            <div class="h-1.5 w-full bg-violet-500"></div>
+            <div class="flex flex-1 flex-col p-3">
+                <div class="flex items-center gap-3">
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-700">
+                        <i data-lucide="<?= htmlspecialchars($_bc['icon']) ?>" class="h-5 w-5"></i>
+                    </span>
+                    <div>
+                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-violet-600/80">Centryk Business</div>
+                        <div class="text-base font-black tracking-tight text-slate-900"><?= htmlspecialchars($_bc['label']) ?></div>
+                    </div>
+                </div>
+                <p class="mt-2 text-xs font-semibold leading-relaxed text-slate-500"><?= htmlspecialchars($_bc['blurb']) ?></p>
+                <div class="mt-2.5 flex items-center gap-1.5">
+                    <span data-biz-dot class="inline-block h-1.5 w-1.5 rounded-full bg-violet-500"></span>
+                    <span data-biz-state class="text-[11px] font-bold text-violet-700">Active</span>
+                </div>
+            </div>
+            <div class="flex items-center justify-between border-t border-violet-100 px-4 py-3 text-xs font-bold text-violet-700 transition-colors group-hover:text-violet-900">
+                <span>Open</span>
+                <i data-lucide="arrow-right" class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"></i>
+            </div>
+        </a>
+        <?php endforeach; ?>
+
+        <?php
         // Remaining Finance + Insights cards share the heading above.
         foreach ($_catApps['finance'] as $_a)  { $renderAppCard($_a, 'finance'); }
         foreach ($_catApps['insights'] as $_a) { $renderAppCard($_a, 'insights'); }
@@ -1099,6 +1138,33 @@ $tvBaseUrl = (static function (): string {
             var onelinkUrl = 'onelink-payments.php' + (selectedUuid ? ('?company_uuid=' + encodeURIComponent(selectedUuid)) : '');
             var coOnelinkBtn = document.getElementById('coOnelinkPaymentsBtn');
             if (coOnelinkBtn) { coOnelinkBtn.href = onelinkUrl; }
+
+            // ── Centryk Business module cards ─────────────────────────────
+            var bizRole = ['owner', 'admin', 'manager'].indexOf(String(c.role || '').toLowerCase()) !== -1;
+            var bizEnts = (c.entitlements && typeof c.entitlements === 'object') ? c.entitlements : {};
+            document.querySelectorAll('.biz-module-card').forEach(function (card) {
+                var key = card.getAttribute('data-biz-card');
+                var lvl = bizEnts[key];                 // 'full' | 'read' | undefined
+                var show = bizRole && !!lvl;
+                card.classList.toggle('hidden', !show);
+                card.classList.toggle('flex', show);
+                if (!show) { return; }
+
+                var base  = card.getAttribute('href').split('?')[0];
+                var param = card.getAttribute('data-biz-param');
+                card.setAttribute('href', base + (param ? ('?' + param + '=' + encodeURIComponent(selectedId)) : ''));
+
+                var st  = card.querySelector('[data-biz-state]');
+                var dot = card.querySelector('[data-biz-dot]');
+                if (lvl === 'read') {
+                    if (st)  { st.textContent = 'Paused'; st.className = 'text-[11px] font-bold text-amber-600'; }
+                    if (dot) { dot.className = 'inline-block h-1.5 w-1.5 rounded-full bg-amber-500'; }
+                } else {
+                    if (st)  { st.textContent = 'Active'; st.className = 'text-[11px] font-bold text-violet-700'; }
+                    if (dot) { dot.className = 'inline-block h-1.5 w-1.5 rounded-full bg-violet-500'; }
+                }
+            });
+            if (window.lucide) { lucide.createIcons(); }
 
             var advertiseUrl = 'sell.php' + (selectedUuid ? ('?company_uuid=' + encodeURIComponent(selectedUuid)) : '');
             var coAdvertiseBtn = document.getElementById('coAdvertiseBtn');
