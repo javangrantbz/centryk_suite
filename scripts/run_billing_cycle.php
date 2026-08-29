@@ -14,3 +14,6 @@ require __DIR__ . '/../app/services/BillingService.php';
 $asOf = $argv[1] ?? null;
 $r = BillingService::runCycle($asOf, null);
 echo "Billing cycle {$r['month']}: {$r['created']} charge(s) created, {$r['skipped']} skipped.\n";
+
+$d = BillingService::runDunning($asOf, null);
+echo "Dunning {$d['as_of']}: {$d['past_due']} moved to past-due, {$d['recovered']} recovered.\n";

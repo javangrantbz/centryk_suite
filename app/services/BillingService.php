@@ -12,6 +12,9 @@ require_once __DIR__ . '/../core/Audit.php';
  */
 class BillingService
 {
+    /** A subscription flips to past_due once a charge is this many days past due_on. */
+    private const PAST_DUE_GRACE_DAYS = 7;
+
     private static function monthlyAmount(array $sub): float
     {
         $price = (float)$sub['price'];
@@ -66,6 +69,86 @@ class BillingService
         ]);
 
         return ['created' => $created, 'skipped' => $skipped, 'month' => $periodStart];
+    }
+
+    /**
+     * Dunning sweep. Two transitions, both idempotent:
+     *   - an 'active' subscription with a 'due' charge more than
+     *     PAST_DUE_GRACE_DAYS past its due_on  ->  'past_due'
+     *     (Entitlements::syncFromSubscription then drops it to READ)
+     *   - a 'past_due' subscription whose charges are all settled
+     *     (nothing 'due')  ->  back to 'active'  (entitlement resumes FULL)
+     * Revoking outright stays a deliberate admin action.
+     *
+     * @return array{past_due:int, recovered:int, as_of:string}
+     */
+    public static function runDunning(?string $asOf = null, ?int $actorId = null): array
+    {
+        require_once __DIR__ . '/../core/Entitlements.php';
+        $pdo  = DB::pdo();
+        $asOf = $asOf && preg_match('/^\d{4}-\d{2}-\d{2}$/', $asOf) ? $asOf : date('Y-m-d');
+
+        // ── active -> past_due ────────────────────────────────────────────
+        $toPastDue = $pdo->prepare("
+            SELECT s.id, s.company_id, s.package_key,
+                   MIN(sc.due_on) AS oldest_due, SUM(sc.amount) AS owed
+            FROM company_subscriptions s
+            JOIN company_subscription_charges sc
+              ON sc.subscription_id = s.id AND sc.status = 'due'
+             AND sc.due_on < DATE_SUB(:asof1, INTERVAL :grace DAY)
+            WHERE s.status = 'active'
+            GROUP BY s.id, s.company_id, s.package_key
+        ");
+        $toPastDue->execute(['asof1' => $asOf, 'grace' => self::PAST_DUE_GRACE_DAYS]);
+        $pastDue = 0;
+        foreach ($toPastDue->fetchAll(PDO::FETCH_ASSOC) as $s) {
+            $pdo->prepare("UPDATE company_subscriptions SET status = 'past_due' WHERE id = :id")
+                ->execute(['id' => $s['id']]);
+            Entitlements::syncFromSubscription((int)$s['id'], $actorId);
+            Audit::log([
+                'actor_user_id' => $actorId,
+                'company_id'    => (int)$s['company_id'],
+                'event_type'    => 'billing.subscription.past_due',
+                'summary'       => "Subscription #{$s['id']} ({$s['package_key']}) past due — "
+                    . number_format((float)$s['owed'], 2) . " owed since {$s['oldest_due']}; access dropped to read-only",
+                'metadata'      => ['subscription_id' => (int)$s['id'], 'owed' => round((float)$s['owed'], 2), 'oldest_due' => $s['oldest_due']],
+            ]);
+            $pastDue++;
+        }
+
+        // ── past_due -> active (nothing 'due' left) ───────────────────────
+        $toActive = $pdo->query("
+            SELECT s.id, s.company_id, s.package_key
+            FROM company_subscriptions s
+            WHERE s.status = 'past_due'
+              AND NOT EXISTS (
+                  SELECT 1 FROM company_subscription_charges sc
+                  WHERE sc.subscription_id = s.id AND sc.status = 'due'
+              )
+        ")->fetchAll(PDO::FETCH_ASSOC);
+        $recovered = 0;
+        foreach ($toActive as $s) {
+            $pdo->prepare("UPDATE company_subscriptions SET status = 'active' WHERE id = :id")
+                ->execute(['id' => $s['id']]);
+            Entitlements::syncFromSubscription((int)$s['id'], $actorId);
+            Audit::log([
+                'actor_user_id' => $actorId,
+                'company_id'    => (int)$s['company_id'],
+                'event_type'    => 'billing.subscription.recovered',
+                'summary'       => "Subscription #{$s['id']} ({$s['package_key']}) back in good standing — full access restored",
+                'metadata'      => ['subscription_id' => (int)$s['id']],
+            ]);
+            $recovered++;
+        }
+
+        Audit::log([
+            'actor_user_id' => $actorId,
+            'event_type'    => 'billing.dunning.run',
+            'summary'       => "Dunning sweep {$asOf}: {$pastDue} to past-due, {$recovered} recovered",
+            'metadata'      => ['as_of' => $asOf, 'past_due' => $pastDue, 'recovered' => $recovered],
+        ]);
+
+        return ['past_due' => $pastDue, 'recovered' => $recovered, 'as_of' => $asOf];
     }
 
     public static function summary(): array
@@ -134,7 +217,7 @@ class BillingService
     {
         $pdo = DB::pdo();
         $c = $pdo->prepare("
-            SELECT sc.id, sc.status, sc.amount, sc.company_id, c.name AS company_name
+            SELECT sc.id, sc.status, sc.amount, sc.company_id, sc.subscription_id, c.name AS company_name
             FROM company_subscription_charges sc JOIN companies c ON c.id = sc.company_id
             WHERE sc.id = :id LIMIT 1
         ");
@@ -179,5 +262,31 @@ class BillingService
                 . number_format((float)$charge['amount'], 2) . ')',
             'metadata'      => ['charge_id' => $chargeId, 'from' => $charge['status'], 'action' => $action],
         ]);
+
+        // Clearing the last outstanding charge on a past-due subscription
+        // restores it (and full access) straight away.
+        if (in_array($action, ['paid', 'waive', 'void'], true) && !empty($charge['subscription_id'])) {
+            $sid = (int)$charge['subscription_id'];
+            $stillDue = $pdo->prepare("
+                SELECT s.status,
+                       (SELECT COUNT(*) FROM company_subscription_charges sc
+                         WHERE sc.subscription_id = s.id AND sc.status = 'due') AS due_left
+                FROM company_subscriptions s WHERE s.id = :id LIMIT 1
+            ");
+            $stillDue->execute(['id' => $sid]);
+            $sub = $stillDue->fetch(PDO::FETCH_ASSOC);
+            if ($sub && $sub['status'] === 'past_due' && (int)$sub['due_left'] === 0) {
+                require_once __DIR__ . '/../core/Entitlements.php';
+                $pdo->prepare("UPDATE company_subscriptions SET status = 'active' WHERE id = :id")->execute(['id' => $sid]);
+                Entitlements::syncFromSubscription($sid, $actorId);
+                Audit::log([
+                    'actor_user_id' => $actorId,
+                    'company_id'    => (int)$charge['company_id'],
+                    'event_type'    => 'billing.subscription.recovered',
+                    'summary'       => "Subscription #{$sid} for {$charge['company_name']} back in good standing — full access restored",
+                    'metadata'      => ['subscription_id' => $sid, 'trigger' => 'charge.' . $action],
+                ]);
+            }
+        }
     }
 }

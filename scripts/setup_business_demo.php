@@ -252,5 +252,30 @@ if ($u9) {
     say("user #{$u9} added to BHI Group as viewer");
 }
 
+/* ── subscription billing — a couple of months, mostly paid ───────────── */
+require_once __DIR__ . '/../app/services/BillingService.php';
+$madeCharges = (int)$pdo->query("
+    SELECT COUNT(*) FROM company_subscription_charges WHERE company_id IN (1,3)
+")->fetchColumn();
+if ($madeCharges === 0) {
+    BillingService::runCycle(date('Y-m-01', strtotime('-1 month')), 1);
+    BillingService::runCycle(date('Y-m-01'), 1);
+    // Settle everything except the newest charge for each company, so the
+    // billing console has a small "due" list to work and dunning has a target.
+    $rows = $pdo->query("
+        SELECT id, company_id FROM company_subscription_charges
+        WHERE company_id IN (1,3) ORDER BY company_id, period_start DESC, id DESC
+    ")->fetchAll(PDO::FETCH_ASSOC);
+    $keptOpen = [];
+    foreach ($rows as $r) {
+        $c = (int)$r['company_id'];
+        if (($keptOpen[$c] ?? 0) < 1) { $keptOpen[$c] = 1; continue; }   // leave one open
+        BillingService::updateCharge((int)$r['id'], 'paid', ['method' => 'bank transfer', 'paid_on' => date('Y-m-d', strtotime('-10 days'))], 1);
+    }
+    say("seeded billing — 2 monthly cycles, all but the latest charge per company marked paid");
+} else {
+    say("billing charges already exist — skipping");
+}
+
 say("\nDone. Log in as webdevelopment@bhilimited.com → pick 'J Bells Grocery' → all four modules are live.");
 say("groups.php will show 'BHI Group' with both companies rolled up.");
