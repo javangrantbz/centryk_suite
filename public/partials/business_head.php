@@ -115,6 +115,15 @@
   .biz-t-blue  { color: #2563eb; }
   .biz-t-amber { color: #b45309; }
 
+  /* Tabs */
+  .biz-tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--bz-line); }
+  .biz-tab {
+    padding: 6px 12px; font: inherit; font-size: 12px; font-weight: 600; color: var(--bz-muted);
+    background: none; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer;
+  }
+  .biz-tab:hover { color: var(--bz-fg); }
+  .biz-tab.is-active { color: var(--bz-accent-d); border-bottom-color: var(--bz-accent); }
+
   /* Segmented control (e.g. company / status switch) */
   .biz-seg { display: inline-flex; border: 1px solid var(--bz-line); border-radius: 3px; overflow: hidden; }
   .biz-seg > * { padding: 3px 9px; font-size: 11px; font-weight: 600; color: var(--bz-muted); background: #fff; border-left: 1px solid var(--bz-line); }

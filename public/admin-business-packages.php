@@ -29,87 +29,70 @@ $headerActionsHtml = ob_get_clean();
 ?>
 <!doctype html>
 <html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="icon" type="image/svg+xml" href="favicon.svg">
-    <title>Business Packages - Centryk</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] } } } }</script>
-</head>
-<body class="min-h-screen bg-slate-100 text-slate-900 font-sans antialiased">
+<head><?php $bizTitle = 'Business Packages'; include __DIR__ . '/partials/business_head.php'; ?></head>
+<body class="min-h-screen bg-slate-50 antialiased">
 <?php $pageTitle = 'Centryk Business'; $headerMaxW = 'max-w-6xl'; $awCurrent = 'centryk'; include __DIR__ . '/partials/account_header.php'; ?>
 
-<div class="mx-auto max-w-6xl px-4 pt-1 pb-10">
+<div class="biz mx-auto max-w-6xl px-4 py-4">
 
-    <div id="pageAlert" class="mb-4 hidden rounded-xl border p-3 text-sm font-semibold"></div>
+    <div id="pageAlert" class="biz-notice mb-3 hidden"></div>
 
-    <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-950 px-5 py-5 text-white">
-            <div>
-                <h1 class="text-xl font-black tracking-tight">Business Packages</h1>
-                <p class="mt-1 text-xs font-semibold text-white/55">
-                    <a href="admin-business-roadmap.php" class="underline decoration-white/30 hover:decoration-white">Centryk Business</a>
-                    · grant packages, manage subscriptions, triage requests.
-                </p>
-            </div>
-            <button onclick="loadOverview()" class="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/8 px-4 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-white/15">Refresh</button>
+    <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <div>
+            <p class="biz-kicker"><a href="admin-business-roadmap.php" class="underline">Centryk Business</a> · internal</p>
+            <h1 class="mt-0.5">Business packages</h1>
         </div>
+        <button onclick="loadOverview()" class="biz-btn biz-btn-ghost">Refresh</button>
+    </div>
 
-        <div class="flex gap-1 border-b border-slate-200 px-5 pt-4">
-            <button data-tab="companies" class="tabBtn -mb-px border-b-2 border-violet-600 px-4 py-2.5 text-sm font-black text-violet-700">Companies</button>
-            <button data-tab="requests" class="tabBtn -mb-px border-b-2 border-transparent px-4 py-2.5 text-sm font-black text-slate-400 hover:text-slate-700">
-                Requests <span id="reqBadge" class="ml-1 hidden rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black text-amber-700"></span>
-            </button>
-            <button data-tab="groups" class="tabBtn -mb-px border-b-2 border-transparent px-4 py-2.5 text-sm font-black text-slate-400 hover:text-slate-700">Groups</button>
-        </div>
+    <div class="biz-tabs mb-3">
+        <button data-tab="companies" class="tabBtn is-active">Companies</button>
+        <button data-tab="requests" class="tabBtn">Requests <span id="reqBadge" class="biz-chip biz-c-amber ml-1 hidden"></span></button>
+        <button data-tab="groups" class="tabBtn">Groups</button>
+    </div>
 
-        <!-- ── Companies tab ─────────────────────────────────────────────── -->
-        <div id="tab-companies" class="p-5">
-            <div class="grid gap-6 lg:grid-cols-[320px_1fr]">
+    <!-- ── Companies tab ─────────────────────────────────────────────── -->
+    <div id="tab-companies">
+        <div class="grid gap-3 lg:grid-cols-[300px_minmax(0,1fr)]">
+            <div class="space-y-3">
                 <div>
-                    <label class="block text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">Find a company</label>
-                    <input id="searchBox" type="text" placeholder="Company name…" autocomplete="off"
-                        class="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-semibold focus:border-violet-400 focus:bg-white focus:outline-none">
-                    <div id="searchResults" class="mt-2 space-y-1"></div>
-
-                    <p class="mt-6 text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">Business customers</p>
-                    <div id="customerList" class="mt-2 space-y-1">
-                        <div class="px-1 py-3 text-xs text-slate-400">Loading…</div>
-                    </div>
+                    <label class="biz-label">Find a company</label>
+                    <input id="searchBox" type="text" placeholder="Company name…" autocomplete="off" class="biz-input">
+                    <div id="searchResults" class="mt-1 space-y-1"></div>
                 </div>
-
-                <div id="companyPanel" class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 p-8 text-center text-sm text-slate-400">
-                    Pick a company to view and grant packages.
+                <div class="biz-panel">
+                    <div class="biz-panel-head">Business customers</div>
+                    <div id="customerList" class="biz-list"><div class="biz-panel-empty">Loading…</div></div>
                 </div>
             </div>
+            <div id="companyPanel" class="biz-panel biz-panel-empty self-start">Pick a company to view and grant packages.</div>
         </div>
+    </div>
 
-        <!-- ── Requests tab ─────────────────────────────────────────────── -->
-        <div id="tab-requests" class="hidden p-5">
-            <div id="requestList" class="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200">
-                <div class="px-5 py-8 text-center text-sm text-slate-400">Loading…</div>
-            </div>
+    <!-- ── Requests tab ─────────────────────────────────────────────── -->
+    <div id="tab-requests" class="hidden">
+        <div class="biz-panel">
+            <div class="biz-panel-head">Service requests</div>
+            <div id="requestList" class="biz-list"><div class="biz-panel-empty">Loading…</div></div>
         </div>
+    </div>
 
-        <!-- ── Groups tab ───────────────────────────────────────────────── -->
-        <div id="tab-groups" class="hidden p-5">
-            <div class="grid gap-6 lg:grid-cols-[300px_1fr]">
-                <div>
-                    <form id="newGroupForm" class="rounded-xl border border-violet-200 bg-violet-50/50 p-3">
-                        <p class="text-[11px] font-black uppercase tracking-[0.12em] text-violet-700">New group</p>
-                        <input name="name" required placeholder="Group name" class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold">
-                        <input name="admin_email" type="email" placeholder="first group admin (email, optional)" class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold">
-                        <button class="mt-2 w-full rounded-lg bg-violet-600 px-3 py-2 text-xs font-black uppercase tracking-[0.1em] text-white">Create</button>
-                    </form>
-                    <div id="groupList" class="mt-3 space-y-1"><div class="px-1 py-3 text-xs text-slate-400">Loading…</div></div>
-                </div>
-                <div id="groupPanel" class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 p-8 text-center text-sm text-slate-400">
-                    Pick a group to manage its companies, packages and people.
+    <!-- ── Groups tab ───────────────────────────────────────────────── -->
+    <div id="tab-groups" class="hidden">
+        <div class="grid gap-3 lg:grid-cols-[280px_minmax(0,1fr)]">
+            <div class="space-y-3">
+                <form id="newGroupForm" class="biz-panel biz-panel-body" style="background:var(--bz-head)">
+                    <p class="biz-kicker">New group</p>
+                    <input name="name" required placeholder="Group name" class="biz-input mt-2">
+                    <input name="admin_email" type="email" placeholder="first group admin (email, optional)" class="biz-input mt-2">
+                    <button class="biz-btn biz-btn-primary mt-2 w-full">Create</button>
+                </form>
+                <div class="biz-panel">
+                    <div class="biz-panel-head">Groups</div>
+                    <div id="groupList" class="biz-list"><div class="biz-panel-empty">Loading…</div></div>
                 </div>
             </div>
+            <div id="groupPanel" class="biz-panel biz-panel-empty self-start">Pick a group to manage its companies, packages and people.</div>
         </div>
     </div>
 </div>
@@ -126,7 +109,7 @@ function esc(s) {
 }
 function fmtDate(s) {
     if (!s) return '—';
-    return new Date(s.replace(' ', 'T')).toLocaleDateString('en-BZ', { month: 'short', day: 'numeric', year: 'numeric' });
+    return new Date(s.replace(' ', 'T')).toLocaleDateString('en-BZ', { year: '2-digit', month: 'short', day: 'numeric' });
 }
 function money(v, cur) {
     const n = Number(v || 0);
@@ -140,9 +123,7 @@ function pkgLabel(key) {
 function showAlert(msg, type) {
     const el = document.getElementById('pageAlert');
     el.textContent = msg;
-    el.className = type === 'error'
-        ? 'mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700'
-        : 'mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-700';
+    el.className = 'biz-notice mb-3 ' + (type === 'error' ? 'biz-notice-red' : 'biz-notice-green');
     el.classList.remove('hidden');
     clearTimeout(showAlert._t);
     showAlert._t = setTimeout(() => el.classList.add('hidden'), 4500);
@@ -164,12 +145,7 @@ async function api(path, body) {
 // ── Tabs ────────────────────────────────────────────────────────────────
 document.querySelectorAll('.tabBtn').forEach(btn => {
     btn.addEventListener('click', () => {
-        document.querySelectorAll('.tabBtn').forEach(b => {
-            b.classList.toggle('border-violet-600', b === btn);
-            b.classList.toggle('text-violet-700', b === btn);
-            b.classList.toggle('border-transparent', b !== btn);
-            b.classList.toggle('text-slate-400', b !== btn);
-        });
+        document.querySelectorAll('.tabBtn').forEach(b => b.classList.toggle('is-active', b === btn));
         document.getElementById('tab-companies').classList.toggle('hidden', btn.dataset.tab !== 'companies');
         document.getElementById('tab-requests').classList.toggle('hidden', btn.dataset.tab !== 'requests');
         document.getElementById('tab-groups').classList.toggle('hidden', btn.dataset.tab !== 'groups');
@@ -192,10 +168,12 @@ async function loadGroups() {
 function renderGroupList() {
     const el = document.getElementById('groupList');
     el.innerHTML = GROUPS.length ? GROUPS.map(g => `
-        <button onclick="openGroup(${g.id})" class="block w-full rounded-lg border px-3 py-2 text-left hover:border-violet-300 hover:bg-violet-50 ${OPEN_GROUP === g.id ? 'border-violet-300 bg-violet-50' : 'border-slate-200 bg-white'}">
-            <span class="block truncate text-sm font-bold">${esc(g.name)}</span>
-            <span class="mt-0.5 block text-[11px] font-semibold text-slate-400">${g.company_count} companies · ${Object.keys(g.entitlements || {}).join(', ') || 'no packages'}</span>
-        </button>`).join('') : '<p class="px-1 py-2 text-xs text-slate-400">No groups yet.</p>';
+        <button onclick="openGroup(${g.id})" class="biz-row ${OPEN_GROUP === g.id ? 'is-active' : ''}">
+            <span class="min-w-0 flex-1">
+                <span class="block truncate" style="font-weight:600">${esc(g.name)}</span>
+                <span class="block biz-muted" style="font-size:11px">${g.company_count} companies · ${Object.keys(g.entitlements || {}).join(', ') || 'no packages'}</span>
+            </span>
+        </button>`).join('') : '<div class="biz-panel-empty">No groups yet.</div>';
 }
 function openGroup(id) { OPEN_GROUP = id; renderGroupList(); renderGroupPanel(GROUPS.find(g => g.id === id)); }
 
@@ -204,43 +182,39 @@ function renderGroupPanel(g) {
     const packages = DATA.catalog.map(p => {
         const st = (g.entitlements || {})[p.key];
         const btns = st === 'full'
-            ? `<button onclick="groupGrant(${g.id},'${p.key}','suspend')" class="rounded bg-amber-100 px-2 py-0.5 text-[10px] font-black text-amber-700">Suspend</button>
-               <button onclick="groupGrant(${g.id},'${p.key}','revoke')" class="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-black text-slate-500">Revoke</button>`
+            ? `<button onclick="groupGrant(${g.id},'${p.key}','suspend')" class="biz-btn biz-btn-ghost biz-btn-sm">Suspend</button>
+               <button onclick="groupGrant(${g.id},'${p.key}','revoke')" class="biz-btn biz-btn-danger biz-btn-sm">Revoke</button>`
             : st === 'read'
-            ? `<button onclick="groupGrant(${g.id},'${p.key}','resume')" class="rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-black text-emerald-700">Resume</button>`
-            : `<button onclick="groupGrant(${g.id},'${p.key}','grant')" class="rounded bg-violet-600 px-2 py-0.5 text-[10px] font-black text-white">Grant</button>`;
-        return `<div class="flex items-center justify-between gap-2 border-t border-slate-100 px-3 py-2 first:border-t-0">
-            <span class="text-sm font-bold">${esc(p.label)} ${st ? stateBadge(st === 'read' ? 'suspended' : 'active') : ''}</span>
+            ? `<button onclick="groupGrant(${g.id},'${p.key}','resume')" class="biz-btn biz-btn-ghost biz-btn-sm">Resume</button>`
+            : `<button onclick="groupGrant(${g.id},'${p.key}','grant')" class="biz-btn biz-btn-primary biz-btn-sm">Grant</button>`;
+        return `<div class="biz-row" style="cursor:default">
+            <span class="flex-1" style="font-weight:600">${esc(p.label)} ${st ? stateBadge(st === 'read' ? 'suspended' : 'active') : ''}</span>
             <span class="flex gap-1">${btns}</span></div>`;
     }).join('');
 
     const companies = (g.companies || []).map(c => `
-        <div class="flex items-center justify-between gap-2 border-t border-slate-100 px-3 py-2 first:border-t-0">
-            <span class="text-sm font-bold">${esc(c.name)}</span>
-            <button onclick="groupCompany(${g.id}, ${c.id}, 'detach')" class="text-[10px] font-black uppercase text-slate-400 hover:text-red-600">Remove</button>
-        </div>`).join('') || '<p class="px-3 py-2 text-sm text-slate-400">No companies.</p>';
+        <div class="biz-row" style="cursor:default">
+            <span class="flex-1" style="font-weight:600">${esc(c.name)}</span>
+            <button onclick="groupCompany(${g.id}, ${c.id}, 'detach')" class="biz-btn biz-btn-ghost biz-btn-sm">Remove</button>
+        </div>`).join('') || '<div class="biz-panel-empty">No companies.</div>';
 
-    const members = (g.members || []).map(m => `<span class="rounded bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500">${esc(m.email)} · ${m.role === 'group_admin' ? 'admin' : 'viewer'}</span>`).join(' ');
+    const members = (g.members || []).map(m => `<span class="biz-chip biz-c-slate">${esc(m.email)} · ${m.role === 'group_admin' ? 'admin' : 'viewer'}</span>`).join(' ');
 
-    document.getElementById('groupPanel').className = 'space-y-4';
+    document.getElementById('groupPanel').className = 'biz-panel self-start';
     document.getElementById('groupPanel').innerHTML = `
-        <h2 class="text-lg font-black">${esc(g.name)}</h2>
-        <div class="overflow-hidden rounded-xl border border-slate-200">
-            <div class="bg-slate-50 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">Group packages (members inherit)</div>
-            ${packages}
+        <div class="biz-panel-body" style="border-bottom:1px solid var(--bz-line)"><h2>${esc(g.name)}</h2></div>
+        <div class="biz-panel-head">Group packages (members inherit)</div>
+        <div class="biz-list">${packages}</div>
+        <div class="biz-panel-head" style="border-top:1px solid var(--bz-line)">Companies</div>
+        <div class="biz-list">${companies}</div>
+        <div class="biz-panel-body" style="border-top:1px solid var(--bz-line)">
+            <input id="grpCoSearch" placeholder="Attach a company by name…" class="biz-input">
+            <div id="grpCoResults" class="mt-1 space-y-1"></div>
         </div>
-        <div class="overflow-hidden rounded-xl border border-slate-200">
-            <div class="flex items-center justify-between bg-slate-50 px-3 py-1.5">
-                <span class="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">Companies</span>
-            </div>
-            ${companies}
-            <div class="border-t border-slate-100 px-3 py-2">
-                <input id="grpCoSearch" placeholder="Attach a company by name…" class="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm font-semibold">
-                <div id="grpCoResults" class="mt-1 space-y-1"></div>
-            </div>
-        </div>
-        <div><p class="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">People</p><div class="mt-1 flex flex-wrap gap-1">${members || '<span class="text-xs text-slate-400">none</span>'}</div></div>
-    `;
+        <div class="biz-panel-body" style="border-top:1px solid var(--bz-line)">
+            <p class="biz-tile-l">People</p>
+            <div class="mt-1 flex flex-wrap gap-1">${members || '<span class="biz-muted" style="font-size:11px">none</span>'}</div>
+        </div>`;
     const s = document.getElementById('grpCoSearch');
     let tmr;
     s.addEventListener('input', () => {
@@ -250,7 +224,7 @@ function renderGroupPanel(g) {
         tmr = setTimeout(async () => {
             const d = await api('overview.php', { q });
             document.getElementById('grpCoResults').innerHTML = (d.search_results || []).map(c =>
-                `<button onclick="groupCompany(${g.id}, ${c.id}, 'attach')" class="block w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-left text-sm font-semibold hover:border-violet-300">${esc(c.name)}</button>`).join('');
+                `<button onclick="groupCompany(${g.id}, ${c.id}, 'attach')" class="block w-full text-left" style="border:1px solid var(--bz-line);border-radius:3px;background:#fff;padding:4px 8px;font-size:12px;font-weight:600">${esc(c.name)}</button>`).join('');
         }, 250);
     });
 }
@@ -298,11 +272,11 @@ document.getElementById('searchBox').addEventListener('input', (e) => {
             const rows = data.search_results || [];
             document.getElementById('searchResults').innerHTML = rows.length
                 ? rows.map(c => `
-                    <button onclick="openCompany(${c.id})" class="flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left text-sm font-semibold hover:border-violet-300 hover:bg-violet-50">
+                    <button onclick="openCompany(${c.id})" class="flex w-full items-center justify-between gap-2 text-left" style="border:1px solid var(--bz-line);border-radius:3px;background:#fff;padding:4px 8px;font-size:12px;font-weight:600">
                         <span class="truncate">${esc(c.name)}</span>
-                        <span class="shrink-0 text-[10px] font-black uppercase ${c.status === 'active' ? 'text-emerald-500' : 'text-slate-300'}">${esc(c.status)}</span>
+                        <span class="biz-chip ${c.status === 'active' ? 'biz-c-green' : 'biz-c-slate'}">${esc(c.status)}</span>
                     </button>`).join('')
-                : '<p class="px-1 py-2 text-xs text-slate-400">No matches.</p>';
+                : '<p class="biz-muted" style="font-size:11px;padding:4px 2px">No matches.</p>';
         } catch (err) { showAlert(err.message, 'error'); }
     }, 250);
 });
@@ -310,17 +284,19 @@ document.getElementById('searchBox').addEventListener('input', (e) => {
 function renderCustomers() {
     const el = document.getElementById('customerList');
     if (!DATA.customers.length) {
-        el.innerHTML = '<p class="px-1 py-2 text-xs text-slate-400">No companies on Centryk Business yet.</p>';
+        el.innerHTML = '<div class="biz-panel-empty">No companies on Centryk Business yet.</div>';
         return;
     }
     el.innerHTML = DATA.customers.map(c => {
         const pkgs = (c.packages || '').split(',').filter(Boolean);
         const suspended = Number(c.suspended_count || 0);
         return `
-        <button onclick="openCompany(${c.id})" class="block w-full rounded-lg border px-3 py-2 text-left hover:border-violet-300 hover:bg-violet-50 ${SELECTED === c.id ? 'border-violet-300 bg-violet-50' : 'border-slate-200 bg-white'}">
-            <span class="block truncate text-sm font-bold">${esc(c.name)}</span>
-            <span class="mt-0.5 block text-[11px] font-semibold text-slate-400">
-                ${pkgs.map(esc).join(' · ')}${suspended ? ` · <span class="text-amber-600">${suspended} suspended</span>` : ''}
+        <button onclick="openCompany(${c.id})" class="biz-row ${SELECTED === c.id ? 'is-active' : ''}">
+            <span class="min-w-0 flex-1">
+                <span class="block truncate" style="font-weight:600">${esc(c.name)}</span>
+                <span class="block biz-muted" style="font-size:11px">
+                    ${pkgs.map(esc).join(' · ')}${suspended ? ` · <span class="biz-t-amber">${suspended} suspended</span>` : ''}
+                </span>
             </span>
         </button>`;
     }).join('');
@@ -339,19 +315,12 @@ async function openCompany(id) {
 }
 
 function stateBadge(state) {
-    const map = {
-        active:    'border-emerald-200 bg-emerald-50 text-emerald-700',
-        suspended: 'border-amber-200 bg-amber-50 text-amber-700',
-        revoked:   'border-slate-200 bg-slate-100 text-slate-500',
-    };
-    return `<span class="rounded-full border px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] ${map[state] || map.revoked}">${esc(state)}</span>`;
+    const map = { active: 'biz-c-green', suspended: 'biz-c-amber', revoked: 'biz-c-slate' };
+    return `<span class="biz-chip ${map[state] || 'biz-c-slate'}">${esc(state)}</span>`;
 }
 function subStatusBadge(s) {
-    const map = {
-        trialing: 'text-sky-600', active: 'text-emerald-600', past_due: 'text-amber-600',
-        paused: 'text-amber-600', canceled: 'text-slate-400',
-    };
-    return `<span class="text-[11px] font-black uppercase ${map[s] || 'text-slate-400'}">${esc(s.replace('_', ' '))}</span>`;
+    const map = { trialing: 'biz-t-blue', active: 'biz-t-green', past_due: 'biz-t-amber', paused: 'biz-t-amber', canceled: 'biz-muted' };
+    return `<span class="${map[s] || 'biz-muted'}" style="font-size:11px;font-weight:700;text-transform:uppercase">${esc(s.replace('_', ' '))}</span>`;
 }
 
 function renderCompanyPanel() {
@@ -364,87 +333,74 @@ function renderCompanyPanel() {
     const entRows = ents.length ? ents.map(e => {
         const sub = subs.find(s => s.id === e.subscription_id);
         return `
-        <div class="flex flex-wrap items-center gap-2 border-t border-slate-100 px-4 py-3 first:border-t-0">
+        <div class="biz-row" style="cursor:default;flex-wrap:wrap">
             <div class="min-w-0 flex-1">
-                <span class="text-sm font-bold">${esc(e.label)}</span>
-                ${e.notes ? `<span class="ml-2 text-[11px] text-slate-400">${esc(e.notes)}</span>` : ''}
-                <span class="mt-0.5 block text-[11px] font-semibold text-slate-400">
+                <span style="font-weight:600">${esc(e.label)}</span>
+                ${e.notes ? `<span class="biz-muted" style="font-size:11px">&nbsp;${esc(e.notes)}</span>` : ''}
+                <span class="block biz-muted" style="font-size:11px">
                     granted ${fmtDate(e.granted_at)}${sub ? ` · ${money(sub.price, sub.currency)}/${esc(sub.billing_interval)}` : ''}${sub && sub.contract_ref ? ` · ${esc(sub.contract_ref)}` : ''}
                 </span>
             </div>
             ${stateBadge(e.state)}
-            <div class="flex gap-1">
-                ${sub ? subActionButtons(sub) : ''}
-            </div>
+            <div class="flex gap-1">${sub ? subActionButtons(sub) : ''}</div>
         </div>`;
-    }).join('') : '<p class="px-4 py-4 text-sm text-slate-400">No packages granted yet.</p>';
+    }).join('') : '<div class="biz-panel-empty">No packages granted yet.</div>';
 
     const historyRows = subs.length ? subs.map(s => `
-        <div class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 py-2 text-[11px] first:border-t-0">
-            <span class="font-bold text-slate-600">${esc(s.label)}</span>
-            <span class="text-slate-400">${money(s.price, s.currency)}/${esc(s.billing_interval)}</span>
+        <div class="biz-row" style="cursor:default;font-size:11px;flex-wrap:wrap;gap:6px">
+            <span style="font-weight:600">${esc(s.label)}</span>
+            <span class="biz-muted biz-num">${money(s.price, s.currency)}/${esc(s.billing_interval)}</span>
             <span>${subStatusBadge(s.status)}</span>
-            <span class="text-slate-400">since ${fmtDate(s.started_at)}${s.canceled_at ? ` · ended ${fmtDate(s.canceled_at)}` : ''}</span>
+            <span class="biz-muted">since ${fmtDate(s.started_at)}${s.canceled_at ? ` · ended ${fmtDate(s.canceled_at)}` : ''}</span>
         </div>`).join('') : '';
 
-    document.getElementById('companyPanel').className = 'space-y-5';
+    document.getElementById('companyPanel').className = 'biz-panel self-start';
     document.getElementById('companyPanel').innerHTML = `
-        <div class="flex items-start justify-between gap-3">
-            <div>
-                <h2 class="text-lg font-black">${esc(c.name)}</h2>
-                <p class="text-xs font-semibold text-slate-400">
-                    ${esc(c.owner_name || 'No owner')}${c.owner_email ? ` · ${esc(c.owner_email)}` : ''} · company #${c.id} · ${esc(c.status)}
-                </p>
+        <div class="biz-panel-body" style="border-bottom:1px solid var(--bz-line)">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <h2>${esc(c.name)}</h2>
+                    <p class="biz-muted" style="font-size:11px;margin-top:2px">
+                        ${esc(c.owner_name || 'No owner')}${c.owner_email ? ` · ${esc(c.owner_email)}` : ''} · company #${c.id} · ${esc(c.status)}
+                    </p>
+                </div>
+                <a href="registered-companies.php" class="biz-kicker" style="text-decoration:none">Registry ↗</a>
             </div>
-            <a href="registered-companies.php" class="text-[11px] font-black uppercase tracking-[0.1em] text-slate-400 hover:text-violet-600">Registry ↗</a>
         </div>
 
-        <div class="overflow-hidden rounded-xl border border-slate-200">
-            <div class="bg-slate-50 px-4 py-2 text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">Packages</div>
-            ${entRows}
-        </div>
+        <div class="biz-panel-head">Packages</div>
+        <div class="biz-list">${entRows}</div>
 
         ${grantable.length ? `
-        <form id="grantForm" class="rounded-xl border border-violet-200 bg-violet-50/50 p-4">
-            <p class="text-[11px] font-black uppercase tracking-[0.12em] text-violet-700">Grant a package</p>
-            <div class="mt-3 grid gap-3 sm:grid-cols-2">
-                <label class="block">
-                    <span class="text-[11px] font-bold text-slate-500">Package</span>
-                    <select name="package_key" required class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold">
+        <form id="grantForm" class="biz-panel-body" style="border-top:1px solid var(--bz-line);background:var(--bz-head)">
+            <p class="biz-kicker" style="color:var(--bz-accent-d)">Grant a package</p>
+            <div class="mt-2 grid gap-2 sm:grid-cols-2">
+                <label class="block"><span class="biz-label">Package</span>
+                    <select name="package_key" required class="biz-select">
                         ${grantable.map(p => `<option value="${esc(p.key)}">${esc(p.label)}${Number(p.is_app) ? ' (provisions app)' : ''}</option>`).join('')}
-                    </select>
-                </label>
-                <label class="block">
-                    <span class="text-[11px] font-bold text-slate-500">Price</span>
-                    <div class="mt-1 flex gap-2">
-                        <input name="price" type="number" min="0" step="0.01" value="0" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold">
-                        <select name="billing_interval" class="rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm font-semibold">
+                    </select></label>
+                <label class="block"><span class="biz-label">Price</span>
+                    <div class="flex gap-2">
+                        <input name="price" type="number" min="0" step="0.01" value="0" class="biz-input">
+                        <select name="billing_interval" class="biz-select" style="width:auto">
                             <option value="monthly">/mo</option>
                             <option value="annual">/yr</option>
                         </select>
-                    </div>
+                    </div></label>
+                <label class="block"><span class="biz-label">Contract / quote ref</span>
+                    <input name="contract_ref" type="text" placeholder="optional" class="biz-input"></label>
+                <label class="block"><span class="biz-label">Internal note</span>
+                    <input name="notes" type="text" placeholder="optional" class="biz-input"></label>
+                <label class="flex items-center gap-2" style="font-size:12px;font-weight:500;color:var(--bz-fg)">
+                    <input name="trial" type="checkbox" id="trialChk"> Start as trial
                 </label>
-                <label class="block">
-                    <span class="text-[11px] font-bold text-slate-500">Contract / quote ref</span>
-                    <input name="contract_ref" type="text" placeholder="optional" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold">
-                </label>
-                <label class="block">
-                    <span class="text-[11px] font-bold text-slate-500">Internal note</span>
-                    <input name="notes" type="text" placeholder="optional" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold">
-                </label>
-                <label class="flex items-center gap-2 text-sm font-semibold text-slate-600">
-                    <input name="trial" type="checkbox" id="trialChk" class="h-4 w-4 rounded border-slate-300">
-                    Start as trial
-                </label>
-                <label class="block">
-                    <span class="text-[11px] font-bold text-slate-500">Trial ends</span>
-                    <input name="trial_ends_at" type="date" id="trialDate" disabled class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold disabled:opacity-40">
-                </label>
+                <label class="block"><span class="biz-label">Trial ends</span>
+                    <input name="trial_ends_at" type="date" id="trialDate" disabled class="biz-input"></label>
             </div>
-            <button type="submit" class="mt-4 rounded-xl bg-violet-600 px-5 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-white hover:bg-violet-700">Grant package</button>
-        </form>` : '<p class="rounded-xl border border-dashed border-slate-200 p-4 text-center text-xs text-slate-400">Every catalog package already has an open subscription for this company.</p>'}
+            <button type="submit" class="biz-btn biz-btn-primary mt-3">Grant package</button>
+        </form>` : '<div class="biz-panel-empty">Every catalog package already has an open subscription for this company.</div>'}
 
-        ${historyRows ? `<div><p class="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">Subscription history</p><div class="mt-1">${historyRows}</div></div>` : ''}
+        ${historyRows ? `<div class="biz-panel-head" style="border-top:1px solid var(--bz-line)">Subscription history</div><div class="biz-list">${historyRows}</div>` : ''}
     `;
 
     const chk = document.getElementById('trialChk');
@@ -463,18 +419,16 @@ function renderCompanyPanel() {
 }
 
 function subActionButtons(sub) {
-    const btn = (label, cls, fn) => `<button onclick="${fn}" class="rounded-lg px-2.5 py-1 text-[11px] font-black ${cls}">${label}</button>`;
+    const btn = (label, cls, fn) => `<button onclick="${fn}" class="biz-btn ${cls} biz-btn-sm">${label}</button>`;
     const id = sub.id;
     if (['active', 'trialing'].includes(sub.status)) {
-        return btn('Suspend', 'bg-amber-100 text-amber-700 hover:bg-amber-200', `setSub(${id},'paused')`)
-             + btn('Cancel', 'bg-slate-100 text-slate-500 hover:bg-red-100 hover:text-red-600', `cancelSub(${id})`);
+        return btn('Suspend', 'biz-btn-ghost', `setSub(${id},'paused')`) + btn('Cancel', 'biz-btn-danger', `cancelSub(${id})`);
     }
     if (['past_due', 'paused'].includes(sub.status)) {
-        return btn('Resume', 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200', `setSub(${id},'active')`)
-             + btn('Cancel', 'bg-slate-100 text-slate-500 hover:bg-red-100 hover:text-red-600', `cancelSub(${id})`);
+        return btn('Resume', 'biz-btn-primary', `setSub(${id},'active')`) + btn('Cancel', 'biz-btn-danger', `cancelSub(${id})`);
     }
     if (sub.status === 'canceled') {
-        return btn('Reopen', 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200', `setSub(${id},'active')`);
+        return btn('Reopen', 'biz-btn-primary', `setSub(${id},'active')`);
     }
     return '';
 }
@@ -529,19 +483,19 @@ function renderRequests() {
 
     const el = document.getElementById('requestList');
     if (!DATA.requests.length) {
-        el.innerHTML = '<div class="px-5 py-8 text-center text-sm text-slate-400">No service requests.</div>';
+        el.innerHTML = '<div class="biz-panel-empty">No service requests.</div>';
         return;
     }
     el.innerHTML = DATA.requests.map(r => `
-        <div class="flex flex-wrap items-center gap-3 px-5 py-3.5">
+        <div class="biz-row" style="cursor:default;flex-wrap:wrap">
             <div class="min-w-0 flex-1">
-                <p class="text-sm font-bold">
-                    <button onclick="openCompany(${r.company_id}); document.querySelector('.tabBtn[data-tab=companies]').click();" class="hover:text-violet-700 hover:underline">${esc(r.company_name)}</button>
-                    <span class="ml-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-black uppercase text-slate-500">${esc(r.package_key || 'general')}</span>
+                <p style="font-size:12px;font-weight:600">
+                    <button onclick="openCompany(${r.company_id}); document.querySelector('.tabBtn[data-tab=companies]').click();" class="underline" style="background:none">${esc(r.company_name)}</button>
+                    <span class="biz-chip biz-c-slate ml-1">${esc(r.package_key || 'general')}</span>
                 </p>
-                <p class="mt-0.5 text-xs text-slate-500">${r.message ? esc(r.message) + ' · ' : ''}${esc(r.requested_by_name || r.requested_by_email || 'unknown')} · ${fmtDate(r.created_at)}</p>
+                <p class="biz-muted" style="font-size:11px">${r.message ? esc(r.message) + ' · ' : ''}${esc(r.requested_by_name || r.requested_by_email || 'unknown')} · ${fmtDate(r.created_at)}</p>
             </div>
-            <select onchange="setRequest(${r.id}, this.value)" class="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-black">
+            <select onchange="setRequest(${r.id}, this.value)" class="biz-select" style="width:auto">
                 ${['pending','contacted','converted','declined'].map(s => `<option value="${s}"${s === r.status ? ' selected' : ''}>${s}</option>`).join('')}
             </select>
         </div>`).join('');
