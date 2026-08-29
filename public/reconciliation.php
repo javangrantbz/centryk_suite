@@ -97,13 +97,14 @@ $headerActionsHtml = ob_get_clean();
 
         <?php if ($level === Entitlements::FULL): ?>
         <details class="biz-panel mt-3">
-            <summary style="cursor:pointer;padding:6px 10px;font-size:12px;font-weight:600;color:#334155">Import a bank statement (CSV)</summary>
+            <summary style="cursor:pointer;padding:6px 10px;font-size:12px;font-weight:600;color:#334155">Import a bank statement — CSV, OFX/QFX or MT940</summary>
             <div class="biz-panel-body" style="border-top:1px solid var(--bz-line)">
                 <p class="biz-muted" style="font-size:11px">
-                    Paste the CSV or choose a file. A header row is required. Date, description and amount columns
-                    are auto-detected (or one "Credit" + one "Debit" column); override below if needed.
+                    Choose a file or paste it. The format is auto-detected. For CSV a header row is required;
+                    date, description and amount columns are auto-detected (or one "Credit" + one "Debit" column),
+                    override below if needed.
                 </p>
-                <input type="file" id="csvFile" accept=".csv,text/csv" class="mt-2 block w-full text-xs">
+                <input type="file" id="csvFile" accept=".csv,.ofx,.qfx,.sta,.txt,text/csv" class="mt-2 block w-full text-xs">
                 <textarea id="csvText" rows="5" placeholder="Date,Description,Amount&#10;2026-08-20,DEPOSIT J BELLS,250.00" class="biz-input mt-2" style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px"></textarea>
                 <div class="mt-2 grid gap-2 sm:grid-cols-3">
                     <input id="mapDate" placeholder="date column" class="biz-input">
@@ -207,7 +208,7 @@ async function doImport(){
     if (document.getElementById('mapAmount').value.trim()) mapping.amount = document.getElementById('mapAmount').value.trim();
     try {
         const r = await api('import.php', { csv, filename: (csvFile && csvFile.files[0]) ? csvFile.files[0].name : '', mapping });
-        let msg = `Imported ${r.imported} line(s)` + (r.skipped ? `, skipped ${r.skipped} (duplicate or zero)` : '') + '.';
+        let msg = `${(r.format || 'file').toUpperCase()}: imported ${r.imported} line(s)` + (r.skipped ? `, skipped ${r.skipped} (duplicate or zero)` : '') + '.';
         showAlert(msg + (r.errors.length ? ' Some rows had issues.' : ''), r.errors.length ? 'error' : 'ok');
         if (r.errors.length) console.warn('Import issues:', r.errors);
         document.getElementById('csvText').value = '';
