@@ -38,17 +38,36 @@ $TARGETS = [
 
 function say(string $s): void { echo $s . "\n"; }
 
-/* ── grant the packages ───────────────────────────────────────────────── */
+/* ── grant the packages (real subscription + entitlement, like the console) ── */
+$prices = [];
+foreach ($pdo->query("SELECT `key`, monthly_price, currency FROM business_packages")->fetchAll(PDO::FETCH_ASSOC) as $r) {
+    $prices[$r['key']] = ['price' => (float)$r['monthly_price'], 'currency' => $r['currency'] ?: 'BZD'];
+}
+
 foreach ($TARGETS as $cid => $t) {
     $co = $pdo->prepare('SELECT id, name FROM companies WHERE id = :id LIMIT 1');
     $co->execute(['id' => $cid]);
     if (!$co->fetch()) { say("skip company #{$cid} (not found)"); continue; }
 
     foreach ($PACKAGES as $pkg) {
-        if (Entitlements::level($cid, $pkg) === Entitlements::FULL) { continue; }
-        Entitlements::grant($cid, $pkg, null, $t['actor'], 'admin_grant', null, 'demo setup');
+        // an open subscription already? then it's set up
+        $has = $pdo->prepare("SELECT id FROM company_subscriptions WHERE company_id=:c AND package_key=:k AND status IN ('trialing','active','past_due','paused') LIMIT 1");
+        $has->execute(['c' => $cid, 'k' => $pkg]);
+        if ($has->fetch()) { continue; }
+
+        $pr = $prices[$pkg] ?? ['price' => 0, 'currency' => 'BZD'];
+        $pdo->prepare("
+            INSERT INTO company_subscriptions
+                (company_id, package_key, status, price, currency, billing_interval, current_period_start, current_period_end, contract_ref, created_by)
+            VALUES (:c, :k, 'active', :price, :cur, 'monthly', :ps, :pe, 'DEMO', :by)
+        ")->execute([
+            'c' => $cid, 'k' => $pkg, 'price' => $pr['price'], 'cur' => $pr['currency'],
+            'ps' => date('Y-m-01'), 'pe' => date('Y-m-t'), 'by' => $t['actor'],
+        ]);
+        $subId = (int)$pdo->lastInsertId();
+        Entitlements::grant($cid, $pkg, $subId, $t['actor'], 'admin_grant', null, 'demo setup');
     }
-    say("granted all 4 packages to #{$cid} {$t['label']}");
+    say("granted all 4 packages to #{$cid} {$t['label']} (with subscriptions)");
 }
 
 /* ── make javangrantbz@gmail.com (user 9) a manager of Miss Bella Shop ── */
