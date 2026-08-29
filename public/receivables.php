@@ -48,32 +48,22 @@ $headerActionsHtml = ob_get_clean();
 ?>
 <!doctype html>
 <html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="icon" type="image/svg+xml" href="favicon.svg">
-    <title>Receivables</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] } } } }</script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-</head>
-<body class="min-h-screen bg-slate-100 text-slate-900 font-sans antialiased">
+<head><?php $bizTitle = 'Receivables'; include __DIR__ . '/partials/business_head.php'; ?></head>
+<body class="min-h-screen bg-slate-50 antialiased">
 <?php $pageTitle = 'Receivables'; $headerMaxW = 'max-w-6xl'; $awCurrent = 'centryk'; include __DIR__ . '/partials/account_header.php'; ?>
 
-<div class="mx-auto max-w-6xl px-4 pt-4 pb-14">
+<div class="biz mx-auto max-w-6xl px-4 py-4">
 
-    <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div>
-            <p class="text-[10px] font-black uppercase tracking-[0.18em] text-violet-600">Centryk Business · Receivables</p>
-            <h1 class="mt-0.5 text-2xl font-black tracking-tight text-slate-950">Customer ledger</h1>
+            <p class="biz-kicker">Centryk Business · Receivables</p>
+            <h1 class="mt-0.5">Customer ledger</h1>
         </div>
         <?php if (count($companies) > 1): ?>
-            <div class="flex flex-wrap items-center gap-2">
+            <div class="biz-seg">
                 <?php foreach ($companies as $c): ?>
                     <a href="receivables.php?company_id=<?= (int)$c['id'] ?>"
-                       class="rounded-lg border px-3 py-1.5 text-xs font-bold <?= $activeCompany && (int)$c['id'] === (int)$activeCompany['id'] ? 'border-violet-300 bg-violet-50 text-violet-700' : 'border-slate-200 bg-white text-slate-500 hover:border-violet-200' ?>">
+                       class="<?= $activeCompany && (int)$c['id'] === (int)$activeCompany['id'] ? 'is-active' : '' ?>">
                         <?= htmlspecialchars($c['name']) ?>
                     </a>
                 <?php endforeach; ?>
@@ -82,51 +72,43 @@ $headerActionsHtml = ob_get_clean();
     </div>
 
     <?php if (!$companies): ?>
-        <div class="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-12 text-center">
-            <p class="text-sm font-bold text-slate-500">You need to be an admin or manager of a company to use Receivables.</p>
-        </div>
+        <div class="biz-panel biz-panel-empty">You need to be an admin or manager of a company to use Receivables.</div>
     <?php elseif ($level === Entitlements::NONE): ?>
-        <div class="rounded-2xl border border-violet-200 bg-white px-6 py-12 text-center">
-            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
-                <i data-lucide="wallet" class="h-6 w-6"></i>
+        <div class="biz-panel" style="padding:28px 16px;text-align:center">
+            <div style="margin:0 auto;display:flex;height:36px;width:36px;align-items:center;justify-content:center;border-radius:4px;background:#eef2ff;color:#4f46e5">
+                <i data-lucide="wallet" style="height:18px;width:18px"></i>
             </div>
-            <h2 class="mt-4 text-lg font-black">Receivables is part of Centryk Business</h2>
-            <p class="mx-auto mt-1 max-w-md text-sm font-semibold text-slate-500">
+            <h2 style="margin-top:10px;font-size:15px">Receivables is part of Centryk Business</h2>
+            <p class="biz-muted" style="margin:4px auto 0;max-width:26rem;font-size:12px">
                 Track what every customer owes you, age the balances, and record receipts against
                 their account. Ask a Centryk advisor to switch it on for <?= htmlspecialchars($activeCompany['name']) ?>.
             </p>
-            <a href="business.php?company_id=<?= (int)$activeCompany['id'] ?>" class="mt-5 inline-flex items-center gap-2 rounded-xl bg-violet-600 px-5 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-white hover:bg-violet-700">
-                Explore Centryk Business
-            </a>
+            <a href="business.php?company_id=<?= (int)$activeCompany['id'] ?>" class="biz-btn biz-btn-primary" style="margin-top:12px">Explore Centryk Business</a>
         </div>
     <?php else: ?>
 
         <?php if ($level === Entitlements::READ): ?>
-            <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-800">
-                Your Receivables subscription is paused — the ledger is read-only until billing is resolved.
-            </div>
+            <div class="biz-notice biz-notice-amber mb-3">Your Receivables subscription is paused — the ledger is read-only until billing is resolved.</div>
         <?php endif; ?>
 
-        <div id="alert" class="mb-4 hidden rounded-xl border p-3 text-sm font-semibold"></div>
+        <div id="alert" class="biz-notice mb-3 hidden"></div>
 
-        <div id="agingStrip" class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6"></div>
+        <div id="agingStrip" class="grid grid-cols-3 gap-2 sm:grid-cols-6"></div>
 
-        <div class="mt-4 grid gap-5 lg:grid-cols-[1fr_1fr]">
-            <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                <div class="flex items-center justify-between bg-slate-50 px-4 py-2.5">
-                    <span class="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">Customers</span>
+        <div class="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            <div class="biz-panel self-start">
+                <div class="biz-panel-head">
+                    <span>Customers</span>
                     <?php if ($level === Entitlements::FULL): ?>
-                        <button onclick="newCustomer()" class="rounded-lg bg-slate-950 px-2.5 py-1 text-[11px] font-black text-white hover:bg-slate-800">+ New</button>
+                        <button onclick="newCustomer()" class="biz-btn biz-btn-ghost biz-btn-sm">+ New</button>
                     <?php endif; ?>
                 </div>
-                <div id="customerRows" class="max-h-[60vh] divide-y divide-slate-100 overflow-y-auto">
-                    <div class="px-4 py-8 text-center text-sm text-slate-400">Loading…</div>
+                <div id="customerRows" class="biz-list max-h-[62vh] overflow-y-auto">
+                    <div class="biz-panel-empty">Loading…</div>
                 </div>
             </div>
 
-            <div id="statementPanel" class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 p-8 text-center text-sm text-slate-400">
-                Select a customer to see their statement.
-            </div>
+            <div id="statementPanel" class="biz-panel biz-panel-empty self-start">Select a customer to see their statement.</div>
         </div>
 
     <?php endif; ?>
@@ -143,13 +125,12 @@ const METHODS = { cash: 'Cash', card: 'Card', bank_transfer: 'Bank transfer', xf
 
 function esc(s){ return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function m(v){ return Number(v || 0).toLocaleString('en-BZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
-function fmtDate(s){ if(!s) return '—'; return new Date(String(s).replace(' ','T')).toLocaleDateString('en-BZ',{month:'short',day:'numeric',year:'numeric'}); }
+function fmtDate(s){ if(!s) return '—'; return new Date(String(s).replace(' ','T')).toLocaleDateString('en-BZ',{year:'2-digit',month:'short',day:'numeric'}); }
 
 function showAlert(msg, type){
     const el = document.getElementById('alert'); if(!el) return;
     el.textContent = msg;
-    el.className = 'mb-4 rounded-xl border p-3 text-sm font-semibold ' + (type==='error'
-        ? 'border-red-200 bg-red-50 text-red-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700');
+    el.className = 'biz-notice mb-3 ' + (type === 'error' ? 'biz-notice-red' : 'biz-notice-green');
     el.classList.remove('hidden');
     clearTimeout(showAlert._t); showAlert._t = setTimeout(()=>el.classList.add('hidden'), 4500);
 }
@@ -175,145 +156,128 @@ async function load(){
 }
 
 function tile(label, value, tone){
-    return `<div class="rounded-2xl border border-slate-200 bg-white p-3">
-        <p class="text-[10px] font-black uppercase tracking-[0.1em] text-slate-400">${esc(label)}</p>
-        <p class="mt-1 text-lg font-black ${tone || ''}">${m(value)}</p>
-    </div>`;
+    return `<div class="biz-tile"><div class="biz-tile-l">${esc(label)}</div><div class="biz-tile-v ${tone || ''}">${m(value)}</div></div>`;
 }
 function renderAging(){
     const t = PORTFOLIO.totals || {};
     document.getElementById('agingStrip').innerHTML =
         tile('Outstanding', t.balance) +
-        tile('Overdue', t.overdue, (t.overdue > 0 ? 'text-red-600' : '')) +
+        tile('Overdue', t.overdue, (t.overdue > 0 ? 'biz-t-red' : '')) +
         tile('1–30', t.b_1_30) +
         tile('31–60', t.b_31_60) +
         tile('61–90', t.b_61_90) +
-        tile('90+', t.b_90p, (t.b_90p > 0 ? 'text-red-600' : ''));
+        tile('90+', t.b_90p, (t.b_90p > 0 ? 'biz-t-red' : ''));
 }
 
 function renderCustomers(){
     const el = document.getElementById('customerRows');
     const rows = PORTFOLIO.customers || [];
-    if (!rows.length){
-        el.innerHTML = '<div class="px-4 py-8 text-center text-sm text-slate-400">No customers yet.</div>';
-        return;
-    }
+    if (!rows.length){ el.innerHTML = '<div class="biz-panel-empty">No customers yet.</div>'; return; }
     el.innerHTML = rows.map(c => `
-        <button onclick="openCustomer(${c.id})" class="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 ${OPEN_CUSTOMER === c.id ? 'bg-violet-50/60' : ''}">
-            <div class="min-w-0 flex-1">
-                <p class="truncate text-sm font-bold">${esc(c.name)}
-                    ${c.on_hold ? '<span class="ml-1 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-black uppercase text-red-600">Hold</span>' : ''}
-                    ${c.over_limit ? '<span class="ml-1 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-black uppercase text-amber-700">Over limit</span>' : ''}
-                </p>
-                <p class="mt-0.5 text-[11px] font-semibold text-slate-400">
+        <button onclick="openCustomer(${c.id})" class="biz-row ${OPEN_CUSTOMER === c.id ? 'is-active' : ''}">
+            <span class="min-w-0 flex-1">
+                <span class="block truncate" style="font-weight:600">${esc(c.name)}
+                    ${c.on_hold ? '<span class="biz-chip biz-c-red">Hold</span>' : ''}
+                    ${c.over_limit ? '<span class="biz-chip biz-c-amber">Over limit</span>' : ''}
+                </span>
+                <span class="block biz-muted" style="font-size:11px">
                     ${c.payment_terms_days ? 'net ' + c.payment_terms_days + 'd' : 'no terms'}${c.credit_limit != null ? ' · limit ' + m(c.credit_limit) : ''}
-                </p>
-            </div>
-            <div class="shrink-0 text-right">
-                <p class="text-sm font-black ${c.balance > 0 ? '' : 'text-emerald-600'}">${m(c.balance)}</p>
-                ${c.overdue > 0 ? `<p class="text-[11px] font-bold text-red-600">${m(c.overdue)} overdue</p>` : ''}
-            </div>
+                </span>
+            </span>
+            <span class="shrink-0 text-right">
+                <span class="block biz-num ${c.balance > 0 ? '' : 'biz-t-green'}" style="font-weight:700">${m(c.balance)}</span>
+                ${c.overdue > 0 ? `<span class="block biz-num biz-t-red" style="font-size:11px;font-weight:600">${m(c.overdue)} overdue</span>` : ''}
+            </span>
         </button>`).join('');
 }
 
 async function openCustomer(id){
     OPEN_CUSTOMER = id;
     renderCustomers();
-    try {
-        const s = await api('customer.php', { customer_id: id });
-        renderStatement(s);
-    } catch (e){ showAlert(e.message, 'error'); }
+    try { renderStatement(await api('customer.php', { customer_id: id })); }
+    catch (e){ showAlert(e.message, 'error'); }
 }
 
-function invStatusChip(st){
-    const map = { paid: 'bg-emerald-50 text-emerald-700', overdue: 'bg-red-50 text-red-600', sent: 'bg-slate-100 text-slate-500', draft: 'bg-slate-100 text-slate-400' };
-    return `<span class="rounded px-1.5 py-0.5 text-[10px] font-black uppercase ${map[st] || 'bg-slate-100 text-slate-500'}">${esc(st)}</span>`;
+function invChip(st){
+    const map = { paid: 'biz-c-green', overdue: 'biz-c-red', sent: 'biz-c-slate', draft: 'biz-c-slate' };
+    return `<span class="biz-chip ${map[st] || 'biz-c-slate'}">${esc(st)}</span>`;
 }
 
 function renderStatement(s){
     const c = s.customer;
     const panel = document.getElementById('statementPanel');
-    panel.className = 'rounded-2xl border border-slate-200 bg-white p-5 space-y-5';
+    panel.className = 'biz-panel self-start';
 
     const invoices = (s.invoices || []).map(i => `
-        <div class="flex items-center gap-3 border-t border-slate-100 py-2 text-sm first:border-t-0">
-            <div class="min-w-0 flex-1">
-                <span class="font-bold">${esc(i.invoice_number)}</span> ${invStatusChip(i.status)}
-                <span class="ml-1 text-[11px] text-slate-400">due ${fmtDate(i.effective_due)}${Number(i.days_overdue) > 0 && i.status !== 'paid' ? ' · ' + i.days_overdue + 'd late' : ''}</span>
-            </div>
-            <div class="shrink-0 text-right">
-                <p class="font-bold">${m(i.total)}</p>
-                ${Number(i.outstanding) > 0.004 && i.status !== 'paid' ? `<p class="text-[11px] text-red-600">${m(i.outstanding)} open</p>` : ''}
-            </div>
-        </div>`).join('') || '<p class="py-2 text-sm text-slate-400">No invoices.</p>';
+        <div class="biz-row" style="font-size:12px">
+            <span class="min-w-0 flex-1">
+                <span style="font-weight:600">${esc(i.invoice_number)}</span> ${invChip(i.status)}
+                <span class="biz-muted" style="font-size:11px">&nbsp;due ${fmtDate(i.effective_due)}${Number(i.days_overdue) > 0 && i.status !== 'paid' ? ' · ' + i.days_overdue + 'd late' : ''}</span>
+            </span>
+            <span class="shrink-0 text-right">
+                <span class="block biz-num" style="font-weight:600">${m(i.total)}</span>
+                ${Number(i.outstanding) > 0.004 && i.status !== 'paid' ? `<span class="block biz-num biz-t-red" style="font-size:11px">${m(i.outstanding)} open</span>` : ''}
+            </span>
+        </div>`).join('') || '<div class="biz-panel-empty">No invoices.</div>';
 
     const payments = (s.payments || []).map(p => `
-        <div class="flex items-center gap-3 border-t border-slate-100 py-2 text-sm first:border-t-0">
-            <div class="min-w-0 flex-1">
-                <span class="font-bold">${m(p.amount)}</span>
-                <span class="text-[11px] text-slate-400">${esc(METHODS[p.method] || p.method)} · ${fmtDate(p.received_on)}${p.reference ? ' · ' + esc(p.reference) : ''}</span>
-            </div>
-            ${Number(p.amount) - Number(p.allocated) > 0.004 ? `<span class="shrink-0 text-[11px] font-bold text-sky-600">${m(Number(p.amount) - Number(p.allocated))} on account</span>` : ''}
-        </div>`).join('') || '<p class="py-2 text-sm text-slate-400">No receipts.</p>';
+        <div class="biz-row" style="font-size:12px">
+            <span class="min-w-0 flex-1">
+                <span class="biz-num" style="font-weight:600">${m(p.amount)}</span>
+                <span class="biz-muted" style="font-size:11px">&nbsp;${esc(METHODS[p.method] || p.method)} · ${fmtDate(p.received_on)}${p.reference ? ' · ' + esc(p.reference) : ''}</span>
+            </span>
+            ${Number(p.amount) - Number(p.allocated) > 0.004 ? `<span class="shrink-0 biz-num biz-t-blue" style="font-size:11px;font-weight:600">${m(Number(p.amount) - Number(p.allocated))} on acct</span>` : ''}
+        </div>`).join('') || '<div class="biz-panel-empty">No receipts.</div>';
 
     panel.innerHTML = `
-        <div class="flex items-start justify-between gap-3">
-            <div>
-                <h2 class="text-lg font-black">${esc(c.name)}${c.on_hold ? ' <span class="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-black uppercase text-red-600 align-middle">On hold</span>' : ''}</h2>
-                <p class="text-xs font-semibold text-slate-400">
-                    ${c.email ? esc(c.email) + ' · ' : ''}${c.payment_terms_days ? 'net ' + c.payment_terms_days + ' days' : 'no terms'}${c.credit_limit != null ? ' · limit ' + m(c.credit_limit) : ''}
-                </p>
+        <div class="biz-panel-body" style="border-bottom:1px solid var(--bz-line)">
+            <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                    <h2 class="truncate">${esc(c.name)}${c.on_hold ? ' <span class="biz-chip biz-c-red">On hold</span>' : ''}</h2>
+                    <p class="biz-muted" style="font-size:11px;margin-top:2px">
+                        ${c.email ? esc(c.email) + ' · ' : ''}${c.payment_terms_days ? 'net ' + c.payment_terms_days + ' days' : 'no terms'}${c.credit_limit != null ? ' · limit ' + m(c.credit_limit) : ''}
+                    </p>
+                </div>
+                <div class="shrink-0 text-right">
+                    <div class="biz-tile-l">Balance</div>
+                    <div class="biz-num" style="font-size:18px;font-weight:700;${s.balance > 0 ? '' : 'color:#059669'}">${m(s.balance)}</div>
+                    ${s.unallocated_credit > 0.004 ? `<div class="biz-num biz-t-blue" style="font-size:11px;font-weight:600">incl. ${m(s.unallocated_credit)} on acct</div>` : ''}
+                </div>
             </div>
-            <div class="text-right">
-                <p class="text-[10px] font-black uppercase tracking-[0.1em] text-slate-400">Balance</p>
-                <p class="text-xl font-black ${s.balance > 0 ? '' : 'text-emerald-600'}">${m(s.balance)}</p>
-                ${s.unallocated_credit > 0.004 ? `<p class="text-[11px] font-bold text-sky-600">incl. ${m(s.unallocated_credit)} on account</p>` : ''}
-            </div>
+            ${CAN_WRITE ? `
+            <div class="mt-2 flex flex-wrap gap-2">
+                <button onclick="paymentForm(${c.id})" class="biz-btn biz-btn-primary">Record payment</button>
+                <button onclick="editCustomer(${c.id})" class="biz-btn biz-btn-ghost">Edit</button>
+                <button onclick="toggleHold(${c.id}, ${c.on_hold ? 'false' : 'true'})" class="biz-btn ${c.on_hold ? 'biz-btn-ghost' : 'biz-btn-danger'}">
+                    ${c.on_hold ? 'Release hold' : 'Place on hold'}
+                </button>
+            </div>` : ''}
+            <div id="inlineForm" class="mt-2"></div>
         </div>
-
-        ${CAN_WRITE ? `
-        <div class="flex flex-wrap gap-2">
-            <button onclick="paymentForm(${c.id})" class="rounded-xl bg-violet-600 px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-white hover:bg-violet-700">Record payment</button>
-            <button onclick="editCustomer(${c.id})" class="rounded-xl border border-slate-200 px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-slate-500 hover:border-slate-300">Edit</button>
-            <button onclick="toggleHold(${c.id}, ${c.on_hold ? 'false' : 'true'})" class="rounded-xl border px-4 py-2 text-xs font-black uppercase tracking-[0.1em] ${c.on_hold ? 'border-emerald-200 text-emerald-700 hover:bg-emerald-50' : 'border-red-200 text-red-600 hover:bg-red-50'}">
-                ${c.on_hold ? 'Release hold' : 'Place on hold'}
-            </button>
-        </div>` : ''}
-
-        <div id="inlineForm"></div>
-
-        <div>
-            <p class="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">Invoices</p>
-            <div class="mt-1">${invoices}</div>
-        </div>
-        <div>
-            <p class="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">Receipts</p>
-            <div class="mt-1">${payments}</div>
-        </div>`;
+        <div class="biz-panel-head">Invoices</div>
+        <div class="biz-list">${invoices}</div>
+        <div class="biz-panel-head" style="border-top:1px solid var(--bz-line)">Receipts</div>
+        <div class="biz-list">${payments}</div>`;
 }
 
 /* ── write actions ─────────────────────────────────────────────────────── */
+function fld(label, inner){ return `<label class="block"><span class="biz-label">${label}</span>${inner}</label>`; }
+
 function paymentForm(customerId){
     const today = new Date().toISOString().slice(0,10);
     document.getElementById('inlineForm').innerHTML = `
-        <form onsubmit="submitPayment(event, ${customerId})" class="rounded-xl border border-violet-200 bg-violet-50/50 p-4 space-y-3">
-            <p class="text-[11px] font-black uppercase tracking-[0.12em] text-violet-700">Record payment</p>
-            <div class="grid gap-3 sm:grid-cols-2">
-                <label class="block"><span class="text-[11px] font-bold text-slate-500">Amount</span>
-                    <input name="amount" type="number" step="0.01" min="0.01" required class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold"></label>
-                <label class="block"><span class="text-[11px] font-bold text-slate-500">Method</span>
-                    <select name="method" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold">
-                        ${Object.entries(METHODS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}
-                    </select></label>
-                <label class="block"><span class="text-[11px] font-bold text-slate-500">Received on</span>
-                    <input name="received_on" type="date" value="${today}" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold"></label>
-                <label class="block"><span class="text-[11px] font-bold text-slate-500">Reference</span>
-                    <input name="reference" type="text" placeholder="optional" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold"></label>
+        <form onsubmit="submitPayment(event, ${customerId})" class="biz-panel" style="background:var(--bz-head);padding:10px">
+            <p class="biz-kicker" style="color:var(--bz-accent-d)">Record payment</p>
+            <div class="mt-2 grid gap-2 sm:grid-cols-2">
+                ${fld('Amount', '<input name="amount" type="number" step="0.01" min="0.01" required class="biz-input">')}
+                ${fld('Method', `<select name="method" class="biz-select">${Object.entries(METHODS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select>`)}
+                ${fld('Received on', `<input name="received_on" type="date" value="${today}" class="biz-input">`)}
+                ${fld('Reference', '<input name="reference" type="text" placeholder="optional" class="biz-input">')}
             </div>
-            <p class="text-[11px] font-semibold text-slate-400">Applied to open invoices, oldest due first. Any surplus sits on account.</p>
-            <div class="flex gap-2">
-                <button type="submit" class="rounded-xl bg-violet-600 px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-white hover:bg-violet-700">Save receipt</button>
-                <button type="button" onclick="document.getElementById('inlineForm').innerHTML=''" class="rounded-xl border border-slate-200 px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-slate-400">Cancel</button>
+            <p class="biz-muted mt-2" style="font-size:11px">Applied to open invoices, oldest due first. Any surplus sits on account.</p>
+            <div class="mt-2 flex gap-2">
+                <button type="submit" class="biz-btn biz-btn-primary">Save receipt</button>
+                <button type="button" onclick="document.getElementById('inlineForm').innerHTML=''" class="biz-btn biz-btn-ghost">Cancel</button>
             </div>
         </form>`;
 }
@@ -322,8 +286,7 @@ async function submitPayment(e, customerId){
     const f = e.target;
     try {
         const r = await api('record_payment.php', {
-            customer_id: customerId,
-            amount: f.amount.value, method: f.method.value,
+            customer_id: customerId, amount: f.amount.value, method: f.method.value,
             received_on: f.received_on.value, reference: f.reference.value,
         });
         showAlert(`Receipt saved — applied ${m(r.allocated)} to ${r.invoices} invoice(s)` + (r.credit > 0.004 ? `, ${m(r.credit)} on account` : '') + '.', 'ok');
@@ -335,36 +298,29 @@ async function submitPayment(e, customerId){
 function customerForm(cust){
     const c = cust || {};
     document.getElementById('inlineForm').innerHTML = `
-        <form onsubmit="submitCustomer(event, ${c.id || 0})" class="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
-            <p class="text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">${c.id ? 'Edit customer' : 'New customer'}</p>
-            <div class="grid gap-3 sm:grid-cols-2">
-                <label class="block"><span class="text-[11px] font-bold text-slate-500">Name</span>
-                    <input name="name" required value="${esc(c.name || '')}" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold"></label>
-                <label class="block"><span class="text-[11px] font-bold text-slate-500">Email</span>
-                    <input name="email" type="email" value="${esc(c.email || '')}" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold"></label>
-                <label class="block"><span class="text-[11px] font-bold text-slate-500">Credit limit</span>
-                    <input name="credit_limit" type="number" step="0.01" min="0" value="${c.credit_limit ?? ''}" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold"></label>
-                <label class="block"><span class="text-[11px] font-bold text-slate-500">Payment terms (days)</span>
-                    <input name="payment_terms_days" type="number" min="0" value="${c.payment_terms_days ?? 0}" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold"></label>
-                <label class="block"><span class="text-[11px] font-bold text-slate-500">Opening balance</span>
-                    <input name="opening_balance" type="number" step="0.01" value="${c.opening_balance ?? 0}" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold"></label>
+        <form onsubmit="submitCustomer(event, ${c.id || 0})" class="biz-panel" style="background:var(--bz-head);padding:10px">
+            <p class="biz-kicker">${c.id ? 'Edit customer' : 'New customer'}</p>
+            <div class="mt-2 grid gap-2 sm:grid-cols-2">
+                ${fld('Name', `<input name="name" required value="${esc(c.name || '')}" class="biz-input">`)}
+                ${fld('Email', `<input name="email" type="email" value="${esc(c.email || '')}" class="biz-input">`)}
+                ${fld('Credit limit', `<input name="credit_limit" type="number" step="0.01" min="0" value="${c.credit_limit ?? ''}" class="biz-input">`)}
+                ${fld('Payment terms (days)', `<input name="payment_terms_days" type="number" min="0" value="${c.payment_terms_days ?? 0}" class="biz-input">`)}
+                ${fld('Opening balance', `<input name="opening_balance" type="number" step="0.01" value="${c.opening_balance ?? 0}" class="biz-input">`)}
             </div>
-            <div class="flex gap-2">
-                <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-white hover:bg-slate-800">Save</button>
-                <button type="button" onclick="document.getElementById('inlineForm').innerHTML=''" class="rounded-xl border border-slate-200 px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-slate-400">Cancel</button>
+            <div class="mt-2 flex gap-2">
+                <button type="submit" class="biz-btn biz-btn-primary">Save</button>
+                <button type="button" onclick="document.getElementById('inlineForm').innerHTML=''" class="biz-btn biz-btn-ghost">Cancel</button>
             </div>
         </form>`;
 }
 function newCustomer(){
     OPEN_CUSTOMER = null;
-    document.getElementById('statementPanel').className = 'rounded-2xl border border-slate-200 bg-white p-5';
-    document.getElementById('statementPanel').innerHTML = '<div id="inlineForm"></div>';
+    const p = document.getElementById('statementPanel');
+    p.className = 'biz-panel';
+    p.innerHTML = '<div class="biz-panel-body"><div id="inlineForm"></div></div>';
     customerForm(null);
 }
-function editCustomer(id){
-    const c = (PORTFOLIO.customers || []).find(x => x.id === id);
-    customerForm(c);
-}
+function editCustomer(id){ customerForm((PORTFOLIO.customers || []).find(x => x.id === id)); }
 async function submitCustomer(e, id){
     e.preventDefault();
     const f = e.target;
