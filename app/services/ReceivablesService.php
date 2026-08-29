@@ -586,6 +586,49 @@ class ReceivablesService
     }
 
     /**
+     * Month-end statement run: email a statement to every active customer with
+     * an outstanding balance. $mode = 'all' | 'overdue' (only accounts with
+     * something past due). Skips accounts with no email on file.
+     *
+     * @return array{sent:int, skipped_no_email:int, failed:int, no_email:array<string>}
+     */
+    public static function statementRun(int $companyId, ?int $actorId, string $mode = 'all'): array
+    {
+        $p = self::portfolio($companyId);
+        $out = ['sent' => 0, 'skipped_no_email' => 0, 'failed' => 0, 'no_email' => []];
+
+        foreach ($p['customers'] as $c) {
+            if (abs((float)$c['balance']) <= 0.004) {
+                continue;
+            }
+            if ($mode === 'overdue' && (float)$c['overdue'] <= 0.004) {
+                continue;
+            }
+            if (!filter_var(trim((string)($c['email'] ?? '')), FILTER_VALIDATE_EMAIL)) {
+                $out['skipped_no_email']++;
+                $out['no_email'][] = $c['name'];
+                continue;
+            }
+            try {
+                self::emailStatement($companyId, (int)$c['id'], $actorId);
+                $out['sent']++;
+            } catch (Throwable $e) {
+                $out['failed']++;
+            }
+        }
+
+        Audit::log([
+            'actor_user_id' => $actorId,
+            'company_id'    => $companyId,
+            'event_type'    => 'receivables.statement_run',
+            'summary'       => "Statement run ({$mode}): {$out['sent']} sent, {$out['skipped_no_email']} without email, {$out['failed']} failed",
+            'metadata'      => $out,
+        ]);
+
+        return $out;
+    }
+
+    /**
      * Credit standing for a customer — for other apps to gate new orders/invoices.
      * @return array{status:string, balance:float, credit_limit:?float, available:?float, on_hold:bool}
      */

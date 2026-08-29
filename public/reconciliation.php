@@ -127,6 +127,7 @@ $headerActionsHtml = ob_get_clean();
                     <span>Lines</span>
                     <span class="flex gap-2 items-center">
                         <?php if ($level === Entitlements::FULL): ?><button onclick="autoMatch()" class="biz-btn biz-btn-ghost biz-btn-sm">Auto-match</button><?php endif; ?>
+                        <button onclick="exportLines()" class="biz-btn biz-btn-ghost biz-btn-sm">Export CSV</button>
                         <select id="fStatus" onchange="loadTxns()" class="biz-select" style="height:22px;width:auto;font-size:11px">
                             <option value="unmatched">Unmatched</option>
                             <option value="matched">Matched</option>
@@ -232,6 +233,12 @@ async function loadRefs(){
                 <span class="shrink-0 biz-num biz-muted" style="width:88px;text-align:right">${m(r.outstanding)}</span>
             </div>`).join('') : '<div class="biz-panel-empty">No open invoices.</div>';
     } catch (e){ REFS_LOADED = false; showAlert(e.message, 'error'); }
+}
+
+function exportLines(){
+    if (CID === null) return;
+    const status = document.getElementById('fStatus').value || 'unmatched';
+    window.location = 'api/reconciliation/export.php?company_id=' + CID + '&status=' + encodeURIComponent(status);
 }
 
 async function autoMatch(){
