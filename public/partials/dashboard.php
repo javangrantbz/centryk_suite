@@ -443,8 +443,9 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
 
     // Categories still drive render order (business → finance → insights →
     // marketing) and the drag-to-reorder scope, but there is no visual divider:
-    // the grid flows 4-up continuously so a row can hold cards from two
+    // the grid flows up to 5-up continuously so a row can hold cards from two
     // categories instead of leaving a short row wherever a category ends.
+    // TODO (Javan): wants the category headers back without the stubby rows.
     $renderCatHeader = static function (string $label): void {};
 
     // One DB-backed app card. $cat is stamped on the element so the
@@ -585,7 +586,7 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
         <!-- Apps grid — grouped into category sections. DB-backed cards flow
              through $renderAppCard; the hand-built cards (OneLink, TV, Store,
              Case Management) are slotted into the matching section by hand. -->
-        <div id="appsGrid" class="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        <div id="appsGrid" class="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
 
             <?php
             // ── Business ───────────────────────────────────────────────────
