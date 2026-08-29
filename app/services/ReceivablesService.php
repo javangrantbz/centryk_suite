@@ -714,6 +714,98 @@ class ReceivablesService
         return $id;
     }
 
+    /**
+     * Bulk-load an AR customer list from CSV — for onboarding a company that
+     * already has a book of accounts. Columns (header row, case-insensitive,
+     * order-free): name (required), company, email, phone, credit_limit,
+     * payment_terms_days, opening_balance. Existing customers are matched by
+     * name (case-insensitive) within the company and updated; the rest are
+     * created. Nothing is deleted.
+     *
+     * @return array{created:int, updated:int, skipped:int, errors:array<string>}
+     */
+    public static function importCustomers(int $companyId, string $csv, ?int $actorId): array
+    {
+        $csv = trim(str_replace(["\r\n", "\r"], "\n", $csv));
+        $lines = array_values(array_filter(explode("\n", $csv), static fn ($l) => trim($l) !== ''));
+        if (count($lines) < 2) {
+            throw new InvalidArgumentException('Need a header row and at least one customer.');
+        }
+
+        $header = array_map(static fn ($h) => strtolower(trim($h, " \t\"'")), str_getcsv(array_shift($lines)));
+        $alias = [
+            'name' => ['name', 'customer', 'customer name', 'account', 'account name'],
+            'company' => ['company', 'business', 'business name', 'trading name'],
+            'email' => ['email', 'e-mail', 'email address'],
+            'phone' => ['phone', 'telephone', 'tel', 'mobile', 'contact'],
+            'credit_limit' => ['credit_limit', 'credit limit', 'limit'],
+            'payment_terms_days' => ['payment_terms_days', 'terms', 'payment terms', 'terms days', 'net'],
+            'opening_balance' => ['opening_balance', 'opening balance', 'balance', 'opening', 'brought forward'],
+        ];
+        $col = [];
+        foreach ($alias as $key => $names) {
+            foreach ($names as $n) {
+                $i = array_search($n, $header, true);
+                if ($i !== false) { $col[$key] = $i; break; }
+            }
+        }
+        if (!isset($col['name'])) {
+            throw new InvalidArgumentException('Could not find a "name" column in the header.');
+        }
+
+        $pdo = DB::pdo();
+        $existing = [];
+        $ex = $pdo->prepare("SELECT id, LOWER(TRIM(name)) AS n FROM customers WHERE company_id = :cid");
+        $ex->execute(['cid' => $companyId]);
+        foreach ($ex->fetchAll(PDO::FETCH_ASSOC) as $r) { $existing[$r['n']] = (int)$r['id']; }
+
+        $num = static function ($v) {
+            $v = trim((string)$v);
+            if ($v === '') { return null; }
+            $v = preg_replace('/[^0-9.\-]/', '', str_replace(',', '', $v));
+            return $v === '' ? null : (float)$v;
+        };
+
+        $out = ['created' => 0, 'updated' => 0, 'skipped' => 0, 'errors' => []];
+        $rowNo = 1;
+        foreach ($lines as $line) {
+            $rowNo++;
+            $cells = str_getcsv($line);
+            $name = trim((string)($cells[$col['name']] ?? ''));
+            if ($name === '') { $out['skipped']++; $out['errors'][] = "Row {$rowNo}: no name"; continue; }
+
+            $data = ['name' => $name];
+            foreach (['company', 'email', 'phone'] as $f) {
+                if (isset($col[$f])) { $data[$f] = trim((string)($cells[$col[$f]] ?? '')); }
+            }
+            if (isset($col['credit_limit']))       { $data['credit_limit'] = $num($cells[$col['credit_limit']] ?? ''); }
+            if (isset($col['payment_terms_days'])) { $data['payment_terms_days'] = (int)($num($cells[$col['payment_terms_days']] ?? '') ?? 0); }
+            if (isset($col['opening_balance']))    { $data['opening_balance'] = $num($cells[$col['opening_balance']] ?? '') ?? 0; }
+
+            $key = mb_strtolower($name);
+            if (isset($existing[$key])) { $data['id'] = $existing[$key]; }
+
+            try {
+                self::saveCustomer($companyId, $data, $actorId);
+                isset($data['id']) ? $out['updated']++ : $out['created']++;
+            } catch (Throwable $e) {
+                $out['skipped']++;
+                $out['errors'][] = "Row {$rowNo} ({$name}): " . $e->getMessage();
+            }
+        }
+
+        Audit::log([
+            'actor_user_id' => $actorId,
+            'company_id'    => $companyId,
+            'event_type'    => 'receivables.customers.imported',
+            'summary'       => "Customer import: {$out['created']} created, {$out['updated']} updated, {$out['skipped']} skipped",
+            'metadata'      => ['created' => $out['created'], 'updated' => $out['updated'], 'skipped' => $out['skipped']],
+        ]);
+
+        $out['errors'] = array_slice($out['errors'], 0, 20);
+        return $out;
+    }
+
     public static function setHold(int $companyId, int $customerId, bool $onHold, ?int $actorId): void
     {
         $pdo = DB::pdo();
