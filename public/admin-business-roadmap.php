@@ -77,6 +77,8 @@ $board = [
             ['Collections reminders — email the reminder to the customer + record it as sent', 'receivables.php'],
             ['Statement — email the full statement of account to the customer', 'receivables.php'],
             ['Billing dunning — overdue subscription → past-due (read-only), auto-recovers on payment', 'admin-business-billing.php'],
+            ['Credit control — invoice-maker API blocks issuing to a held / over-limit customer (audited override)', 'invoice-maker/api/invoices.php'],
+            ['Month-end statement run — email a statement to every account with a balance in one action', 'receivables.php'],
             ['This tracker', 'admin-business-roadmap.php'],
         ],
     ],

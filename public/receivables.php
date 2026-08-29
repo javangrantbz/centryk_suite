@@ -105,6 +105,7 @@ $headerActionsHtml = ob_get_clean();
                     <span class="flex gap-1">
                         <a href="receivables_aging.php?company_id=<?= (int)$activeCompany['id'] ?>" target="_blank" rel="noopener" class="biz-btn biz-btn-ghost biz-btn-sm">Aging report</a>
                         <?php if ($level === Entitlements::FULL): ?>
+                        <button onclick="statementRun()" class="biz-btn biz-btn-ghost biz-btn-sm">Send statements</button>
                         <button onclick="newCustomer()" class="biz-btn biz-btn-ghost biz-btn-sm">+ New</button>
                         <?php endif; ?>
                     </span>
@@ -432,6 +433,19 @@ async function reminderForm(customerId){
                 <button type="button" onclick="document.getElementById('inlineForm').innerHTML=''" class="biz-btn biz-btn-ghost">Cancel</button>
             </div>
         </form>`;
+}
+async function statementRun(){
+    const n = (PORTFOLIO.customers || []).filter(c => Math.abs(c.balance) > 0.004 && c.email).length;
+    if (!confirm(`Email a statement of account to ${n} customer${n === 1 ? '' : 's'} with an outstanding balance now?`)) return;
+    try {
+        showAlert('Sending statements…', 'ok');
+        const r = await api('statement_run.php', { mode: 'all' });
+        let msg = `${r.sent} statement(s) sent`;
+        if (r.skipped_no_email) msg += ` · ${r.skipped_no_email} skipped (no email)`;
+        if (r.failed) msg += ` · ${r.failed} failed`;
+        showAlert(msg, r.failed ? 'error' : 'ok');
+        load();
+    } catch (e){ showAlert(e.message, 'error'); }
 }
 async function emailStatement(customerId){
     if (!confirm('Email this customer their full statement of account now?')) return;
