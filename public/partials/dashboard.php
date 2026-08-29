@@ -707,6 +707,7 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
                     <span data-biz-dot class="inline-block h-1.5 w-1.5 rounded-full bg-violet-500"></span>
                     <span data-biz-state class="text-[11px] font-bold text-violet-700">Active</span>
                 </div>
+                <div data-biz-metric class="mt-1.5 hidden text-[11px] font-semibold text-slate-500"></div>
             </div>
             <div class="flex items-center justify-between border-t border-violet-100 px-4 py-3 text-xs font-bold text-violet-700 transition-colors group-hover:text-violet-900">
                 <span>Open</span>
@@ -1109,6 +1110,59 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
         });
     }
 
+    // Pull the one-line health number for each entitled Business card.
+    function loadBizSnapshot(companyId) {
+        var money = function (v) {
+            return 'BZD ' + (Number(v) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        };
+        var set = function (key, text, tone) {
+            var card = document.querySelector('.biz-module-card[data-biz-card="' + key + '"]');
+            if (!card) { return; }
+            var el = card.querySelector('[data-biz-metric]');
+            if (!el) { return; }
+            if (!text) { el.classList.add('hidden'); el.textContent = ''; return; }
+            el.textContent = text;
+            el.className = 'mt-1.5 text-[11px] font-semibold ' + (tone || 'text-slate-500');
+        };
+        fetch('api/business/company_snapshot.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ company_id: companyId })
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (res) {
+            if (!res || !res.success) { return; }
+            if (companyId != selectedId) { return; }   // switched away mid-flight
+            var d = res;
+
+            if (d.receivables) {
+                var ar = d.receivables;
+                set('receivables',
+                    ar.overdue > 0.004
+                        ? money(ar.overdue) + ' overdue of ' + money(ar.outstanding)
+                        : money(ar.outstanding) + ' outstanding',
+                    ar.overdue > 0.004 ? 'text-rose-600' : 'text-slate-500');
+            }
+            if (d.reconciliation) {
+                var rc = d.reconciliation;
+                set('reconciliation',
+                    rc.unmatched_credits > 0
+                        ? rc.unmatched_credits + ' unmatched · ' + money(rc.unmatched_value)
+                        : 'All deposits matched',
+                    rc.unmatched_credits > 0 ? 'text-amber-600' : 'text-slate-500');
+            }
+            if (d.routes) {
+                var rt = d.routes;
+                set('routes',
+                    rt.awaiting_approval > 0
+                        ? rt.awaiting_approval + ' awaiting approval'
+                        : (rt.out > 0 ? rt.out + ' on the road · ' + money(rt.cash_in_transit) + ' in transit' : 'No active runs'),
+                    rt.awaiting_approval > 0 ? 'text-amber-600' : 'text-slate-500');
+            }
+        })
+        .catch(function () {});
+    }
+
     // ── Company picker ────────────────────────────────────────────────────────
     function selectCompany(id) {
         selectedId   = id;
@@ -1219,6 +1273,15 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
                     if (dot) { dot.className = 'inline-block h-1.5 w-1.5 rounded-full bg-violet-500'; }
                 }
             });
+
+            // One-line health numbers per entitled card. One call per switch.
+            if (bizRole && Object.keys(bizEnts).length > 0) {
+                loadBizSnapshot(selectedId);
+            } else {
+                document.querySelectorAll('[data-biz-metric]').forEach(function (el) {
+                    el.classList.add('hidden'); el.textContent = '';
+                });
+            }
 
             // Promo strip — only for an admin/manager of a company with no package.
             var bizPromo = document.getElementById('bizPromo');
