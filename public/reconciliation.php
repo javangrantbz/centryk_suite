@@ -125,7 +125,8 @@ $headerActionsHtml = ob_get_clean();
             <div class="biz-panel self-start">
                 <div class="biz-panel-head">
                     <span>Lines</span>
-                    <span class="flex gap-2">
+                    <span class="flex gap-2 items-center">
+                        <?php if ($level === Entitlements::FULL): ?><button onclick="autoMatch()" class="biz-btn biz-btn-ghost biz-btn-sm">Auto-match</button><?php endif; ?>
                         <select id="fStatus" onchange="loadTxns()" class="biz-select" style="height:22px;width:auto;font-size:11px">
                             <option value="unmatched">Unmatched</option>
                             <option value="matched">Matched</option>
@@ -231,6 +232,15 @@ async function loadRefs(){
                 <span class="shrink-0 biz-num biz-muted" style="width:88px;text-align:right">${m(r.outstanding)}</span>
             </div>`).join('') : '<div class="biz-panel-empty">No open invoices.</div>';
     } catch (e){ REFS_LOADED = false; showAlert(e.message, 'error'); }
+}
+
+async function autoMatch(){
+    if (!confirm('Auto-match every unmatched deposit that has one clear, exact match?')) return;
+    try {
+        const r = await api('automatch.php');
+        showAlert(`Auto-matched ${r.matched} of ${r.reviewed} deposit(s). The rest need a look.`, 'ok');
+        loadSummary(); loadTxns();
+    } catch (e){ showAlert(e.message, 'error'); }
 }
 
 async function loadTxns(){

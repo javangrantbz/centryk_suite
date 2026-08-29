@@ -436,6 +436,56 @@ class ReconciliationService
     }
 
     /**
+     * Auto-match every unmatched deposit whose best candidate is unambiguous and
+     * high-confidence — an exact-amount or payment-reference hit, well clear of
+     * the runner-up. Everything else is left for a person.
+     *
+     * @return array{matched:int, reviewed:int}
+     */
+    public static function autoMatch(int $companyId, ?int $actorId, int $minScore = 120): array
+    {
+        $ids = DB::pdo()->prepare("
+            SELECT id FROM bank_transactions
+            WHERE company_id = :cid AND status = 'unmatched' AND direction = 'credit'
+            ORDER BY txn_date ASC, id ASC
+        ");
+        $ids->execute(['cid' => $companyId]);
+
+        $matched = 0;
+        $reviewed = 0;
+        foreach ($ids->fetchAll(PDO::FETCH_COLUMN) as $txnId) {
+            $reviewed++;
+            $s = self::suggestions($companyId, (int)$txnId);
+            $cands = $s['invoices'] ?? [];
+            if (!$cands) { continue; }
+
+            $top = $cands[0];
+            $second = $cands[1]['score'] ?? 0;
+            $strong = in_array('exact amount', $top['reasons'], true)
+                   || in_array('payment reference matches', $top['reasons'], true);
+
+            if ($top['score'] >= $minScore && $strong && ($top['score'] - $second) >= 30) {
+                try {
+                    self::match($companyId, (int)$txnId, 'invoice', (int)$top['invoice_id'], $actorId);
+                    $matched++;
+                } catch (Throwable $e) {
+                    // leave it for review
+                }
+            }
+        }
+
+        Audit::log([
+            'actor_user_id' => $actorId,
+            'company_id'    => $companyId,
+            'event_type'    => 'reconciliation.automatch',
+            'summary'       => "Auto-matched {$matched} of {$reviewed} unmatched deposit(s)",
+            'metadata'      => ['matched' => $matched, 'reviewed' => $reviewed],
+        ]);
+
+        return ['matched' => $matched, 'reviewed' => $reviewed];
+    }
+
+    /**
      * Link a bank line to an invoice (posts a receipt) or to an existing receipt.
      * $type: 'invoice' | 'ar_payment'.
      */
