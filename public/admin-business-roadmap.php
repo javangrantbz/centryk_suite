@@ -83,6 +83,7 @@ $board = [
             ['Enterprise — printable consolidated AR aging across the whole group', 'groups_aging.php'],
             ['Routes — phone-first driver view: assigned runs, tick off stops, hand in cash (settlement still admin-approved)', 'routes_field.php'],
             ['Receivables — bulk customer import from CSV (name/limit/terms/opening balance), upsert by name', 'receivables.php'],
+            ['Routes — driver performance panel: trips, stops, cash vs electronic, net variance, flags (30d)', 'routes.php'],
             ['This tracker', 'admin-business-roadmap.php'],
         ],
     ],

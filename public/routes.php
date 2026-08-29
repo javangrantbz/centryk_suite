@@ -97,6 +97,11 @@ $headerActionsHtml = ob_get_clean();
 
         <div id="summaryStrip" class="grid grid-cols-2 gap-2 sm:grid-cols-4"></div>
 
+        <details class="biz-panel mt-3" ontoggle="if(this.open) loadDrivers()">
+            <summary style="cursor:pointer;padding:6px 10px;font-size:12px;font-weight:600;color:#334155">Driver performance (last 30 days)</summary>
+            <div id="driverRows" class="biz-list" style="max-height:40vh;overflow-y:auto"><div class="biz-panel-empty">Open to load…</div></div>
+        </details>
+
         <div class="mt-3 grid gap-3 lg:grid-cols-[320px_minmax(0,1fr)]">
             <div class="space-y-3">
                 <div class="biz-panel">
@@ -481,6 +486,28 @@ async function settleTrip(e, tripId){
         openTrip(tripId); load();
     } catch (err){ showAlert(err.message, 'error'); }
 }
+async function loadDrivers(){
+    const box = document.getElementById('driverRows');
+    try {
+        const d = await api('drivers.php', { days: 30 });
+        const rows = d.drivers || [];
+        if (!rows.length){ box.innerHTML = '<div class="biz-panel-empty">No settled trips in the last 30 days.</div>'; return; }
+        box.innerHTML = rows.map(r => {
+            const off = Math.abs(r.net_variance) > 0.01;
+            return `<div class="biz-row" style="display:block">
+                <div class="flex items-center justify-between gap-2">
+                    <span style="font-weight:600">${esc(r.driver)}</span>
+                    <span class="biz-num" style="font-weight:700">${money(r.total_collected)}</span>
+                </div>
+                <div class="biz-muted" style="font-size:11px">
+                    ${r.trips} trip${r.trips === 1 ? '' : 's'} · ${r.stops_done} stops · cash ${money(r.cash_collected)} · electronic ${money(r.electronic_collected)}
+                    · <span class="${off ? 'biz-t-red' : ''}">variance ${money(r.net_variance)}</span>${r.flagged ? ` · ${r.flagged} flagged` : ''}
+                </div>
+            </div>`;
+        }).join('');
+    } catch (e){ box.innerHTML = '<div class="biz-panel-empty">' + esc(e.message) + '</div>'; }
+}
+
 async function assignDriver(tripId, driverUserId){
     try {
         await api('assign_driver.php', { trip_id: tripId, driver_user_id: driverUserId || null });

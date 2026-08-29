@@ -197,7 +197,18 @@ foreach ($TARGETS as $cid => $t) {
         RoutesService::recordStop($cid, $sid, ['status' => 'paid', 'amount_collected' => $amt, 'method' => 'cash'], $t['actor']);
     }
     RoutesService::setTripStatus($cid, $tripA, 'out', $t['actor']);
-    RoutesService::submitSettlement($cid, $tripA, 4300.00, 'Short BZD 50 — customer paid partial', $t['actor']); // expected 4350, variance -50
+    RoutesService::submitSettlement($cid, $tripA, 4300.00, 'Short BZD 50 — customer paid partial', $t['actor']); // expected 4350, variance -50; left awaiting approval
+
+    // An older trip, fully settled — gives the driver-performance report some history
+    $tripC = RoutesService::createTrip($cid, $routeId, (new DateTime('-8 days'))->format('Y-m-d'), 'Marlon Cruz', $t['actor']);
+    foreach ([['Belmopan Wholesale Ltd', 3100.00], ['Corozal Cash & Carry', 2450.00]] as [$name, $amt]) {
+        if (!isset($cust[$name])) { continue; }
+        $sid = RoutesService::addStop($cid, $tripC, $cust[$name], $t['actor']);
+        RoutesService::recordStop($cid, $sid, ['status' => 'paid', 'amount_collected' => $amt, 'method' => 'cash'], $t['actor']);
+    }
+    RoutesService::setTripStatus($cid, $tripC, 'out', $t['actor']);
+    RoutesService::submitSettlement($cid, $tripC, 5550.00, '', $t['actor']); // exact
+    RoutesService::approveSettlement($cid, $tripC, $t['actor']);
 
     // Trip B — out on the road today, cash still in transit
     $tripB = RoutesService::createTrip($cid, $routeId, date('Y-m-d'), 'Marlon Cruz', $t['actor']);
