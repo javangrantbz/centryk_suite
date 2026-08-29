@@ -12,6 +12,10 @@ vendor/
 public/invoice-maker/uploads/
 invoice-maker/storage/documents/
 
+# Local scratch — reference images, scraped assets, integration keys. Never source.
+gitignore/
+xfer/
+
 # OS / editor
 .DS_Store
 Thumbs.db

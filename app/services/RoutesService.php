@@ -125,6 +125,111 @@ class RoutesService
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    /**
+     * Trips assigned to this user as the driver, across every company they
+     * belong to — the feed for the phone-first field view. Open trips first,
+     * then anything settled in the last few days.
+     */
+    public static function myTrips(int $userId): array
+    {
+        $stmt = DB::pdo()->prepare("
+            SELECT t.id, t.company_id, co.name AS company_name,
+                   r.name AS route_name, t.trip_date, t.status,
+                   t.cash_expected, t.cash_declared, t.cash_variance,
+                   t.settlement_submitted_at, t.settlement_approved_at,
+                   (SELECT COUNT(*) FROM route_stops s WHERE s.trip_id = t.id) AS stop_count,
+                   (SELECT COUNT(*) FROM route_stops s WHERE s.trip_id = t.id AND s.status IN ('paid','delivered','skipped')) AS done_count
+            FROM route_trips t
+            JOIN routes r     ON r.id = t.route_id
+            JOIN companies co ON co.id = t.company_id
+            JOIN company_members cm ON cm.company_id = t.company_id AND cm.user_id = :uid AND cm.status = 'active'
+            WHERE t.driver_user_id = :uid2
+              AND (t.status IN ('planned','out','settling')
+                   OR (t.status = 'settled' AND t.settled_at >= DATE_SUB(NOW(), INTERVAL 3 DAY)))
+            ORDER BY FIELD(t.status,'out','settling','planned','settled'), t.trip_date DESC, t.id DESC
+            LIMIT 50
+        ");
+        $stmt->execute(['uid' => $userId, 'uid2' => $userId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /** Active members of the company — candidates for the trip driver picker. */
+    public static function companyMembers(int $companyId): array
+    {
+        $stmt = DB::pdo()->prepare("
+            SELECT u.id,
+                   TRIM(CONCAT(COALESCE(u.first_name,''),' ',COALESCE(u.last_name,''))) AS name,
+                   cm.role
+            FROM company_members cm
+            JOIN users u ON u.id = cm.user_id
+            WHERE cm.company_id = :cid AND cm.status = 'active' AND u.status = 'active'
+            ORDER BY name ASC
+        ");
+        $stmt->execute(['cid' => $companyId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * May this user run (record stops / submit settlement for) this trip?
+     * True for the assigned driver, or any admin/manager of the company.
+     */
+    public static function userCanRunTrip(int $companyId, int $tripId, int $userId): bool
+    {
+        $t = DB::pdo()->prepare("SELECT driver_user_id FROM route_trips WHERE id = :id AND company_id = :cid LIMIT 1");
+        $t->execute(['id' => $tripId, 'cid' => $companyId]);
+        $row = $t->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            return false;
+        }
+        if ((int)($row['driver_user_id'] ?? 0) === $userId) {
+            return true;
+        }
+        $m = DB::pdo()->prepare("
+            SELECT 1 FROM company_members
+            WHERE company_id = :cid AND user_id = :uid AND status = 'active' AND role IN ('admin','manager') LIMIT 1
+        ");
+        $m->execute(['cid' => $companyId, 'uid' => $userId]);
+        return (bool)$m->fetchColumn();
+    }
+
+    /** Assign (or clear, with null) the driver on a trip. The user must be an active member. */
+    public static function assignDriver(int $companyId, int $tripId, ?int $driverUserId, ?int $actorId): void
+    {
+        $pdo = DB::pdo();
+        $trip = self::lockableTrip($pdo, $companyId, $tripId);
+        if ($trip['status'] === 'settled') {
+            throw new RuntimeException('This trip is settled and locked.');
+        }
+
+        $name = '';
+        if ($driverUserId !== null) {
+            $u = $pdo->prepare("
+                SELECT TRIM(CONCAT(COALESCE(u.first_name,''),' ',COALESCE(u.last_name,''))) AS name
+                FROM users u
+                JOIN company_members cm ON cm.user_id = u.id AND cm.company_id = :cid AND cm.status = 'active'
+                WHERE u.id = :uid LIMIT 1
+            ");
+            $u->execute(['cid' => $companyId, 'uid' => $driverUserId]);
+            $name = trim((string)$u->fetchColumn());
+            if ($name === '' && $u->rowCount() === 0) {
+                throw new RuntimeException('That person is not a member of this company.');
+            }
+        }
+
+        $pdo->prepare("
+            UPDATE route_trips
+            SET driver_user_id = :uid, driver_name = CASE WHEN :uid2 IS NULL THEN driver_name ELSE :name END
+            WHERE id = :id
+        ")->execute(['uid' => $driverUserId, 'uid2' => $driverUserId, 'name' => $name ?: 'Driver', 'id' => $tripId]);
+
+        Audit::log([
+            'actor_user_id' => $actorId, 'company_id' => $companyId,
+            'event_type' => 'routes.trip.driver_assigned',
+            'summary' => $driverUserId ? "Assigned {$name} to trip #{$tripId}" : "Cleared the driver on trip #{$tripId}",
+            'metadata' => ['trip_id' => $tripId, 'driver_user_id' => $driverUserId],
+        ]);
+    }
+
     public static function createTrip(int $companyId, int $routeId, string $date, string $driver, ?int $actorId): int
     {
         $pdo = DB::pdo();

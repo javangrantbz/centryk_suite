@@ -80,6 +80,8 @@ $board = [
             ['Credit control — invoice-maker API blocks issuing to a held / over-limit customer (audited override)', 'invoice-maker/api/invoices.php'],
             ['Month-end statement run — email a statement to every account with a balance in one action', 'receivables.php'],
             ['Reconciliation — export the bank-line list (unmatched / matched / ignored) to CSV', 'reconciliation.php'],
+            ['Enterprise — printable consolidated AR aging across the whole group', 'groups_aging.php'],
+            ['Routes — phone-first driver view: assigned runs, tick off stops, hand in cash (settlement still admin-approved)', 'routes_field.php'],
             ['This tracker', 'admin-business-roadmap.php'],
         ],
     ],
@@ -94,7 +96,7 @@ $board = [
     'Planned' => [
         'accent' => 'violet',
         'items'  => [
-            ['Routes — mobile/field UI for drivers, maps, per-driver commission', null],
+            ['Routes — driver field view is shipped; still planned: maps / route optimisation, per-driver commission', null],
             ['Enterprise — maker-checker on package grants / write-offs, inter-company transactions', null],
             ['Standalone public pricing / marketing page (once prices are locked)', null],
         ],

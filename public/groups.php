@@ -92,7 +92,12 @@ $headerActionsHtml = ob_get_clean();
         <div id="rollupStrip" class="grid grid-cols-2 gap-2 sm:grid-cols-4"></div>
 
         <div class="biz-panel mt-3">
-            <div class="biz-panel-head">By company</div>
+            <div class="biz-panel-head">
+                <span>By company</span>
+                <?php if ($activeGroup): ?>
+                <a href="groups_aging.php?group_id=<?= (int)$activeGroup['id'] ?>" target="_blank" rel="noopener" class="biz-btn biz-btn-ghost biz-btn-sm">Consolidated aging</a>
+                <?php endif; ?>
+            </div>
             <div id="companyRollup" class="biz-list"><div class="biz-panel-empty">Loading…</div></div>
         </div>
 

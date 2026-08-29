@@ -140,6 +140,57 @@ class GroupsService
     }
 
     /**
+     * Consolidated AR aging across every member company that holds Receivables.
+     * Per-company aging buckets + a group total that sums them.
+     *
+     * @return array{companies:array<array>, totals:array<string,float>}
+     */
+    public static function consolidatedAging(int $groupId): array
+    {
+        $pdo = DB::pdo();
+        $co = $pdo->prepare("SELECT id, name FROM companies WHERE group_id = :gid AND status = 'active' ORDER BY name ASC");
+        $co->execute(['gid' => $groupId]);
+
+        $companies = [];
+        $t = ['current' => 0.0, 'b_1_30' => 0.0, 'b_31_60' => 0.0, 'b_61_90' => 0.0, 'b_90p' => 0.0,
+              'balance' => 0.0, 'overdue' => 0.0, 'accounts' => 0];
+
+        foreach ($co->fetchAll(PDO::FETCH_ASSOC) as $c) {
+            $cid = (int)$c['id'];
+            if (Entitlements::level($cid, 'receivables') === Entitlements::NONE) {
+                $companies[] = ['company_id' => $cid, 'name' => $c['name'], 'entitled' => false];
+                continue;
+            }
+            $p = ReceivablesService::portfolio($cid);
+            $pt = $p['totals'];
+            $accounts = 0;
+            foreach ($p['customers'] as $cust) {
+                if (abs((float)$cust['balance']) > 0.004) { $accounts++; }
+            }
+            $companies[] = [
+                'company_id' => $cid,
+                'name'       => $c['name'],
+                'entitled'   => true,
+                'current'    => $pt['current'],
+                'b_1_30'     => $pt['b_1_30'],
+                'b_31_60'    => $pt['b_31_60'],
+                'b_61_90'    => $pt['b_61_90'],
+                'b_90p'      => $pt['b_90p'],
+                'balance'    => $pt['balance'],
+                'overdue'    => $pt['overdue'],
+                'accounts'   => $accounts,
+            ];
+            foreach (['current', 'b_1_30', 'b_31_60', 'b_61_90', 'b_90p', 'balance', 'overdue'] as $k) {
+                $t[$k] += (float)$pt[$k];
+            }
+            $t['accounts'] += $accounts;
+        }
+        foreach ($t as $k => $v) { $t[$k] = is_float($v) ? round($v, 2) : $v; }
+
+        return ['companies' => $companies, 'totals' => $t];
+    }
+
+    /**
      * Recent activity across the group — audit events for any member company,
      * plus the group's own entitlement / membership changes.
      */

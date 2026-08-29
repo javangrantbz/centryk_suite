@@ -211,6 +211,12 @@ foreach ($TARGETS as $cid => $t) {
     }
     RoutesService::setTripStatus($cid, $tripB, 'out', $t['actor']);
 
+    // Assign javangrantbz (user 9) as the driver of the out trip on Miss Bella
+    // Shop so they can test the phone-first field view (routes_field.php).
+    if ($cid === 3 && $u9) {
+        RoutesService::assignDriver($cid, $tripB, (int)$u9, $t['actor']);
+    }
+
     say("#{$cid} {$t['label']}: route 'Northern Distribution', 1 trip awaiting approval, 1 out with cash in transit");
 }
 
