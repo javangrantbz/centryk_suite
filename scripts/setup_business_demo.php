@@ -171,7 +171,30 @@ foreach ($TARGETS as $cid => $t) {
         'amount' => 1000, 'method' => 'cash', 'received_on' => (new DateTime('-1 day'))->format('Y-m-d'),
     ], $t['actor']);
 
-    say("#{$cid} {$t['label']}: seeded 6 customers, 14 invoices, 2 receipts");
+    // Write-offs: one approved (a small overdue invoice gone bad) + one pending
+    // (damaged goods on a Dangriga invoice, waiting for an admin).
+    $openInv = $pdo->prepare("
+        SELECT id, (total - amount_paid) AS outstanding FROM invoices
+        WHERE company_id = :c AND customer_id = :cust AND status IN ('sent','overdue')
+        ORDER BY (total - amount_paid) ASC LIMIT 1
+    ");
+    $openInv->execute(['c' => $cid, 'cust' => $custIds['Dangriga Trading Post']]);
+    if ($small = $openInv->fetch(PDO::FETCH_ASSOC)) {
+        $w = ReceivablesService::proposeWriteoff($cid, [
+            'invoice_id' => (int)$small['id'], 'amount' => round($small['outstanding'], 2),
+            'kind' => 'bad_debt', 'reason' => 'customer ceased trading',
+        ], $t['actor']);
+        ReceivablesService::decideWriteoff($cid, $w, 'approve', ['note' => 'confirmed with the rep'], $t['actor']);
+    }
+    $openInv->execute(['c' => $cid, 'cust' => $custIds['Belmopan Wholesale Ltd']]);
+    if ($big = $openInv->fetch(PDO::FETCH_ASSOC)) {
+        ReceivablesService::proposeWriteoff($cid, [
+            'invoice_id' => (int)$big['id'], 'amount' => 1500,
+            'kind' => 'damaged_goods', 'reason' => 'two pallets water-damaged in transit',
+        ], $t['actor']);
+    }
+
+    say("#{$cid} {$t['label']}: seeded 6 customers, 14 invoices, 2 receipts, 1 write-off + 1 pending");
 }
 
 /* ── delivery routes + a settlement awaiting approval ─────────────────── */

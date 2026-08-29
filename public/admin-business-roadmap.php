@@ -85,6 +85,7 @@ $board = [
             ['Receivables — bulk customer import from CSV (name/limit/terms/opening balance), upsert by name', 'receivables.php'],
             ['Routes — driver performance panel: trips, stops, cash vs electronic, net variance, flags (30d)', 'routes.php'],
             ['business.php — "Recent activity" feed across a company\'s Business modules', 'app/services/BusinessActivity.php'],
+            ['Receivables — write-offs & credit adjustments (maker-checker): propose -> admin approves; full or partial; reversible; bad-debt report', 'database/add_writeoffs.sql'],
             ['This tracker', 'admin-business-roadmap.php'],
         ],
     ],
@@ -93,6 +94,7 @@ $board = [
         'items'  => [
             ['Credit-hold enforcement — hub api/invoice-maker/api/invoices.php blocks issuing to a held / over-limit customer (override is audited); still to wire: the invoice-maker UI form in the sibling repo + OnePay checkout', null],
             ['Billing — generate a real invoice through invoice-maker (dunning → past_due is done)', null],
+            ['Write-offs — reverse the GST/sales-tax portion on a bad-debt (needs per-line tax on invoices)', null],
             ['Reconciliation — live bank feed adapter (needs Centryk Bank / a bank API)', null],
         ],
     ],
