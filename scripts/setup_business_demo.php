@@ -233,6 +233,17 @@ foreach ($TARGETS as $cid => $t) {
     RoutesService::submitSettlement($cid, $tripC, 5550.00, '', $t['actor']); // exact
     RoutesService::approveSettlement($cid, $tripC, $t['actor']);
 
+    // Trip D — settled, mixed payment methods so commission on electronic shows.
+    $tripD = RoutesService::createTrip($cid, $routeId, (new DateTime('-5 days'))->format('Y-m-d'), 'Marlon Cruz', $t['actor']);
+    foreach ([['Orange Walk Distributors', 2600.00, 'bank_transfer'], ['San Pedro Provisions', 1400.00, 'card'], ['Dangriga Trading Post', 900.00, 'cash']] as [$name, $amt, $mth]) {
+        if (!isset($cust[$name])) { continue; }
+        $sid = RoutesService::addStop($cid, $tripD, $cust[$name], $t['actor']);
+        RoutesService::recordStop($cid, $sid, ['status' => 'paid', 'amount_collected' => $amt, 'method' => $mth], $t['actor']);
+    }
+    RoutesService::setTripStatus($cid, $tripD, 'out', $t['actor']);
+    RoutesService::submitSettlement($cid, $tripD, 900.00, '', $t['actor']);
+    RoutesService::approveSettlement($cid, $tripD, $t['actor']);
+
     // Trip B — out on the road today, cash still in transit
     $tripB = RoutesService::createTrip($cid, $routeId, date('Y-m-d'), 'Marlon Cruz', $t['actor']);
     foreach ([['Belmopan Wholesale Ltd', 2200.00], ['Dangriga Trading Post', 780.00]] as [$name, $amt]) {
@@ -251,7 +262,19 @@ foreach ($TARGETS as $cid => $t) {
         RoutesService::assignDriver($cid, $tripB, (int)$u9, $t['actor']);
     }
 
-    say("#{$cid} {$t['label']}: route 'Northern Distribution', 1 trip awaiting approval, 1 out with cash in transit");
+    // Commission: a 2% company default + a route rule that pays 5% on
+    // electronic collections (the incentive to move drivers off cash).
+    if (!$pdo->query("SELECT id FROM route_commission_rules WHERE company_id = " . (int)$cid . " LIMIT 1")->fetch()) {
+        RoutesService::saveCommissionRule($cid, [
+            'scope' => 'company', 'basis' => 'collections_total', 'rate' => 2, 'note' => 'standard route commission',
+        ], $t['actor']);
+        RoutesService::saveCommissionRule($cid, [
+            'scope' => 'route', 'route_id' => $routeId, 'basis' => 'collections_electronic', 'rate' => 5,
+            'note' => 'higher rate for card / transfer collections',
+        ], $t['actor']);
+    }
+
+    say("#{$cid} {$t['label']}: route 'Northern Distribution', 1 trip awaiting approval, 1 out with cash in transit, commission rules");
 }
 
 /* ── unmatched bank deposits for the reconciliation workbench ─────────── */

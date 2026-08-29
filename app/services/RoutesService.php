@@ -99,9 +99,254 @@ class RoutesService
                 'total_collected'      => round((float)$r['total_collected'], 2),
                 'net_variance'         => round((float)$r['net_variance'], 2),
                 'flagged'              => (int)$r['flagged'],
+                'commission'           => 0.0,
             ];
         }
+
+        // Fold in commission for the same window, keyed the same way.
+        if (self::hasCommissionRules($companyId)) {
+            $comm = self::commissionStatement(
+                $companyId,
+                date('Y-m-d', strtotime("-{$days} days")),
+                date('Y-m-d')
+            );
+            $byKey = [];
+            foreach ($comm['drivers'] as $d) {
+                $byKey[($d['driver_user_id'] ?? 'n') . '|' . $d['driver']] = $d['commission'];
+            }
+            foreach ($rows as &$row) {
+                $k = ($row['driver_user_id'] ?? 'n') . '|' . $row['driver'];
+                $row['commission'] = $byKey[$k] ?? 0.0;
+            }
+            unset($row);
+        }
+
         return ['days' => $days, 'drivers' => $rows];
+    }
+
+    // ── Per-driver commission ──────────────────────────────────────────────
+
+    private const COMMISSION_BASES = ['collections_total', 'collections_cash', 'collections_electronic', 'stops_delivered'];
+
+    private static function hasCommissionRules(int $companyId): bool
+    {
+        $s = DB::pdo()->prepare("SELECT 1 FROM route_commission_rules WHERE company_id = :c AND active = 1 LIMIT 1");
+        $s->execute(['c' => $companyId]);
+        return (bool)$s->fetchColumn();
+    }
+
+    /** All commission rules for the company (active + inactive), newest first. */
+    public static function commissionRules(int $companyId): array
+    {
+        $stmt = DB::pdo()->prepare("
+            SELECT cr.id, cr.scope, cr.route_id, r.name AS route_name, cr.driver_user_id,
+                   TRIM(CONCAT(COALESCE(u.first_name,''),' ',COALESCE(u.last_name,''))) AS driver_name,
+                   cr.basis, cr.rate, cr.note, cr.active
+            FROM route_commission_rules cr
+            LEFT JOIN routes r ON r.id = cr.route_id
+            LEFT JOIN users u  ON u.id = cr.driver_user_id
+            WHERE cr.company_id = :c
+            ORDER BY cr.active DESC, FIELD(cr.scope,'driver','route','company'), cr.id DESC
+        ");
+        $stmt->execute(['c' => $companyId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /** Create / update a commission rule. Deactivates the existing rule with the same scope target. */
+    public static function saveCommissionRule(int $companyId, array $d, ?int $actorId): int
+    {
+        $pdo   = DB::pdo();
+        $id    = (int)($d['id'] ?? 0);
+        $scope = in_array($d['scope'] ?? '', ['company', 'route', 'driver'], true) ? $d['scope'] : 'company';
+        $basis = in_array($d['basis'] ?? '', self::COMMISSION_BASES, true) ? $d['basis'] : 'collections_total';
+        $rate  = round((float)($d['rate'] ?? 0), 4);
+        $note  = mb_substr(trim((string)($d['note'] ?? '')), 0, 255);
+        $routeId  = $scope === 'route'  ? (int)($d['route_id'] ?? 0) : null;
+        $driverId = $scope === 'driver' ? (int)($d['driver_user_id'] ?? 0) : null;
+
+        if ($rate <= 0) {
+            throw new InvalidArgumentException('Enter a rate greater than zero.');
+        }
+        if ($basis !== 'stops_delivered' && $rate > 100) {
+            throw new InvalidArgumentException('A percentage rate cannot be over 100.');
+        }
+        if ($scope === 'route' && !$routeId) {
+            throw new InvalidArgumentException('Choose a route.');
+        }
+        if ($scope === 'driver' && !$driverId) {
+            throw new InvalidArgumentException('Choose a driver.');
+        }
+        if ($routeId) {
+            $chk = $pdo->prepare("SELECT 1 FROM routes WHERE id = :r AND company_id = :c LIMIT 1");
+            $chk->execute(['r' => $routeId, 'c' => $companyId]);
+            if (!$chk->fetchColumn()) { throw new RuntimeException('Route not found.'); }
+        }
+        if ($driverId) {
+            $chk = $pdo->prepare("SELECT 1 FROM company_members WHERE user_id = :u AND company_id = :c AND status = 'active' LIMIT 1");
+            $chk->execute(['u' => $driverId, 'c' => $companyId]);
+            if (!$chk->fetchColumn()) { throw new RuntimeException('That person is not a member of this company.'); }
+        }
+
+        // One active rule per scope target.
+        $dupe = $pdo->prepare("
+            UPDATE route_commission_rules SET active = 0
+            WHERE company_id = :c AND active = 1 AND scope = :scope
+              AND COALESCE(route_id,0) = :rid AND COALESCE(driver_user_id,0) = :did
+              AND id <> :id
+        ");
+        $dupe->execute(['c' => $companyId, 'scope' => $scope, 'rid' => (int)$routeId, 'did' => (int)$driverId, 'id' => $id]);
+
+        if ($id > 0) {
+            $upd = $pdo->prepare("
+                UPDATE route_commission_rules
+                SET scope = :scope, route_id = :rid, driver_user_id = :did, basis = :basis,
+                    rate = :rate, note = :note, active = 1
+                WHERE id = :id AND company_id = :c
+            ");
+            $upd->execute([
+                'scope' => $scope, 'rid' => $routeId, 'did' => $driverId, 'basis' => $basis,
+                'rate' => $rate, 'note' => $note, 'id' => $id, 'c' => $companyId,
+            ]);
+            if ($upd->rowCount() === 0 && !$pdo->query("SELECT 1 FROM route_commission_rules WHERE id = " . (int)$id . " AND company_id = " . (int)$companyId)->fetchColumn()) {
+                throw new RuntimeException('Rule not found.');
+            }
+        } else {
+            $pdo->prepare("
+                INSERT INTO route_commission_rules (company_id, scope, route_id, driver_user_id, basis, rate, note, created_by)
+                VALUES (:c, :scope, :rid, :did, :basis, :rate, :note, :by)
+            ")->execute([
+                'c' => $companyId, 'scope' => $scope, 'rid' => $routeId, 'did' => $driverId,
+                'basis' => $basis, 'rate' => $rate, 'note' => $note, 'by' => $actorId,
+            ]);
+            $id = (int)$pdo->lastInsertId();
+        }
+
+        Audit::log([
+            'actor_user_id' => $actorId, 'company_id' => $companyId,
+            'event_type' => 'routes.commission.rule_saved',
+            'summary' => 'Commission rule (' . $scope . '): ' . $rate
+                . ($basis === 'stops_delivered' ? ' per stop' : '% of ' . str_replace('collections_', '', $basis)),
+            'metadata' => ['rule_id' => $id, 'scope' => $scope, 'basis' => $basis, 'rate' => $rate],
+        ]);
+        return $id;
+    }
+
+    public static function deleteCommissionRule(int $companyId, int $ruleId, ?int $actorId): void
+    {
+        $upd = DB::pdo()->prepare("UPDATE route_commission_rules SET active = 0 WHERE id = :id AND company_id = :c");
+        $upd->execute(['id' => $ruleId, 'c' => $companyId]);
+        if ($upd->rowCount() === 0) {
+            throw new RuntimeException('Rule not found.');
+        }
+        Audit::log([
+            'actor_user_id' => $actorId, 'company_id' => $companyId,
+            'event_type' => 'routes.commission.rule_removed',
+            'summary' => 'Removed commission rule #' . $ruleId,
+            'metadata' => ['rule_id' => $ruleId],
+        ]);
+    }
+
+    /** The applicable rule for a trip: driver rule > route rule > company default. */
+    private static function resolveCommissionRule(array $rules, int $routeId, ?int $driverUserId): ?array
+    {
+        foreach ($rules as $r) {
+            if ($r['scope'] === 'driver' && $driverUserId !== null && (int)$r['driver_user_id'] === $driverUserId) {
+                return $r;
+            }
+        }
+        foreach ($rules as $r) {
+            if ($r['scope'] === 'route' && (int)$r['route_id'] === $routeId) {
+                return $r;
+            }
+        }
+        foreach ($rules as $r) {
+            if ($r['scope'] === 'company') {
+                return $r;
+            }
+        }
+        return null;
+    }
+
+    private static function tripCommission(array $trip, array $rule): float
+    {
+        $rate = (float)$rule['rate'];
+        switch ($rule['basis']) {
+            case 'collections_cash':       return round($rate / 100 * (float)$trip['cash_expected'], 2);
+            case 'collections_electronic': return round($rate / 100 * (float)$trip['electronic_total'], 2);
+            case 'stops_delivered':        return round($rate * (int)$trip['stops_done'], 2);
+            case 'collections_total':
+            default:
+                return round($rate / 100 * ((float)$trip['cash_expected'] + (float)$trip['electronic_total']), 2);
+        }
+    }
+
+    /**
+     * Per-driver commission over a date range (settled trips), for payroll.
+     * Returns each driver with their trips and the commission earned, plus a
+     * per-trip breakdown.
+     *
+     * @return array{from:string, to:string, drivers:array<array>, total:float}
+     */
+    public static function commissionStatement(int $companyId, ?string $from = null, ?string $to = null): array
+    {
+        $from = $from && preg_match('/^\d{4}-\d{2}-\d{2}$/', $from) ? $from : date('Y-m-01');
+        $to   = $to && preg_match('/^\d{4}-\d{2}-\d{2}$/', $to) ? $to : date('Y-m-d');
+
+        $rules = array_values(array_filter(self::commissionRules($companyId), static fn ($r) => (int)$r['active'] === 1));
+
+        $trips = DB::pdo()->prepare("
+            SELECT t.id, t.route_id, r.name AS route_name, t.trip_date, t.driver_user_id,
+                   COALESCE(NULLIF(TRIM(CONCAT(COALESCE(u.first_name,''),' ',COALESCE(u.last_name,''))),''), t.driver_name, 'Unassigned') AS driver,
+                   t.cash_expected, t.electronic_total,
+                   (SELECT COUNT(*) FROM route_stops s WHERE s.trip_id = t.id AND s.status IN ('paid','delivered')) AS stops_done
+            FROM route_trips t
+            JOIN routes r ON r.id = t.route_id
+            LEFT JOIN users u ON u.id = t.driver_user_id
+            WHERE t.company_id = :c AND t.status = 'settled'
+              AND t.settled_at >= :from AND t.settled_at < DATE_ADD(:to, INTERVAL 1 DAY)
+            ORDER BY t.trip_date ASC, t.id ASC
+        ");
+        $trips->execute(['c' => $companyId, 'from' => $from, 'to' => $to]);
+
+        $drivers = [];
+        $grand = 0.0;
+        foreach ($trips->fetchAll(PDO::FETCH_ASSOC) as $t) {
+            $driverId = $t['driver_user_id'] !== null ? (int)$t['driver_user_id'] : null;
+            $rule = $rules ? self::resolveCommissionRule($rules, (int)$t['route_id'], $driverId) : null;
+            $amount = $rule ? self::tripCommission($t, $rule) : 0.0;
+            $grand += $amount;
+
+            $key = ($driverId ?? 'n') . '|' . $t['driver'];
+            if (!isset($drivers[$key])) {
+                $drivers[$key] = [
+                    'driver' => $t['driver'], 'driver_user_id' => $driverId,
+                    'trips' => 0, 'collections' => 0.0, 'commission' => 0.0, 'lines' => [],
+                ];
+            }
+            $drivers[$key]['trips']++;
+            $drivers[$key]['collections'] += (float)$t['cash_expected'] + (float)$t['electronic_total'];
+            $drivers[$key]['commission']  += $amount;
+            $drivers[$key]['lines'][] = [
+                'trip_id' => (int)$t['id'], 'route' => $t['route_name'], 'date' => $t['trip_date'],
+                'collections' => round((float)$t['cash_expected'] + (float)$t['electronic_total'], 2),
+                'stops' => (int)$t['stops_done'],
+                'rule' => $rule ? ($rule['basis'] === 'stops_delivered'
+                        ? number_format((float)$rule['rate'], 2) . '/stop'
+                        : rtrim(rtrim((string)$rule['rate'], '0'), '.') . '% ' . str_replace('collections_', '', $rule['basis']))
+                    : 'no rule',
+                'commission' => $amount,
+            ];
+        }
+
+        $list = array_values($drivers);
+        foreach ($list as &$d) {
+            $d['collections'] = round($d['collections'], 2);
+            $d['commission']  = round($d['commission'], 2);
+        }
+        unset($d);
+        usort($list, static fn ($a, $b) => $b['commission'] <=> $a['commission']);
+
+        return ['from' => $from, 'to' => $to, 'drivers' => $list, 'total' => round($grand, 2)];
     }
 
     public static function saveRoute(int $companyId, array $d, ?int $actorId): int
