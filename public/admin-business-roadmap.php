@@ -79,6 +79,7 @@ $board = [
             ['Billing dunning — overdue subscription → past-due (read-only), auto-recovers on payment', 'admin-business-billing.php'],
             ['Credit control — invoice-maker API blocks issuing to a held / over-limit customer (audited override)', 'invoice-maker/api/invoices.php'],
             ['Month-end statement run — email a statement to every account with a balance in one action', 'receivables.php'],
+            ['Reconciliation — export the bank-line list (unmatched / matched / ignored) to CSV', 'reconciliation.php'],
             ['This tracker', 'admin-business-roadmap.php'],
         ],
     ],

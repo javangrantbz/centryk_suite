@@ -99,6 +99,48 @@ class ReconciliationService
     }
 
     /**
+     * Full (unlimited) bank-line list for CSV export, with the matched
+     * invoice/receipt resolved into a human 'matched_to' string.
+     */
+    public static function exportRows(int $companyId, array $filters = []): array
+    {
+        $where = ['bt.company_id = :cid'];
+        $args  = ['cid' => $companyId];
+        $status = $filters['status'] ?? null;
+        if (in_array($status, ['unmatched', 'matched', 'ignored'], true)) {
+            $where[] = 'bt.status = :status';
+            $args['status'] = $status;
+        }
+
+        $stmt = DB::pdo()->prepare("
+            SELECT bt.txn_date, bt.description, bt.reference, bt.amount, bt.direction,
+                   bt.status, bt.note, bt.match_type,
+                   inv.invoice_number, cust.name AS customer_name
+            FROM bank_transactions bt
+            LEFT JOIN invoices inv ON bt.match_type = 'invoice' AND inv.id = bt.match_id
+            LEFT JOIN customers cust ON cust.id = inv.customer_id
+            WHERE " . implode(' AND ', $where) . "
+            ORDER BY bt.txn_date DESC, bt.id DESC
+        ");
+        $stmt->execute($args);
+
+        $rows = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $matchedTo = '';
+            if ($r['match_type'] === 'invoice' && $r['invoice_number']) {
+                $matchedTo = trim($r['invoice_number'] . ($r['customer_name'] ? ' — ' . $r['customer_name'] : ''));
+            } elseif ($r['match_type'] === 'ar_payment') {
+                $matchedTo = 'Receipt';
+            } elseif ($r['match_type'] === 'manual') {
+                $matchedTo = 'Manual';
+            }
+            $r['matched_to'] = $matchedTo;
+            $rows[] = $r;
+        }
+        return $rows;
+    }
+
+    /**
      * Import a bank statement. Auto-detects CSV, OFX/QFX or MT940. For CSV,
      * $mapping may pin columns by header name; anything missing is auto-detected.
      *
