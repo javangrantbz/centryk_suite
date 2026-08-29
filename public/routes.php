@@ -102,6 +102,11 @@ $headerActionsHtml = ob_get_clean();
             <div id="driverRows" class="biz-list" style="max-height:40vh;overflow-y:auto"><div class="biz-panel-empty">Open to load…</div></div>
         </details>
 
+        <details class="biz-panel mt-3" ontoggle="if(this.open) loadCommission()">
+            <summary style="cursor:pointer;padding:6px 10px;font-size:12px;font-weight:600;color:#334155">Commission</summary>
+            <div id="commissionBox" class="biz-panel-body"><div class="biz-panel-empty">Open to load…</div></div>
+        </details>
+
         <div class="mt-3 grid gap-3 lg:grid-cols-[320px_minmax(0,1fr)]">
             <div class="space-y-3">
                 <div class="biz-panel">
@@ -501,11 +506,120 @@ async function loadDrivers(){
                 </div>
                 <div class="biz-muted" style="font-size:11px">
                     ${r.trips} trip${r.trips === 1 ? '' : 's'} · ${r.stops_done} stops · cash ${money(r.cash_collected)} · electronic ${money(r.electronic_collected)}
-                    · <span class="${off ? 'biz-t-red' : ''}">variance ${money(r.net_variance)}</span>${r.flagged ? ` · ${r.flagged} flagged` : ''}
+                    · <span class="${off ? 'biz-t-red' : ''}">variance ${money(r.net_variance)}</span>${r.flagged ? ` · ${r.flagged} flagged` : ''}${Number(r.commission) > 0 ? ` · <span class="biz-t-green">commission ${money(r.commission)}</span>` : ''}
                 </div>
             </div>`;
         }).join('');
     } catch (e){ box.innerHTML = '<div class="biz-panel-empty">' + esc(e.message) + '</div>'; }
+}
+
+const COMM_BASIS = {
+    collections_total: '% of all collections',
+    collections_cash: '% of cash collected',
+    collections_electronic: '% of electronic collected',
+    stops_delivered: 'flat BZD per delivered stop',
+};
+let COMMISSION = null;
+
+async function loadCommission(){
+    const box = document.getElementById('commissionBox');
+    const monthStart = new Date().toISOString().slice(0,8) + '01';
+    try {
+        COMMISSION = await api('commission.php', { from: monthStart });
+        renderCommission();
+    } catch (e){ box.innerHTML = '<div class="biz-panel-empty">' + esc(e.message) + '</div>'; }
+}
+
+function renderCommission(){
+    const box = document.getElementById('commissionBox');
+    const d = COMMISSION;
+    const rules = (d.rules || []).filter(r => Number(r.active) === 1);
+    const st = d.statement || { drivers: [], total: 0, from: '', to: '' };
+
+    const ruleRows = rules.length ? rules.map(r => {
+        const target = r.scope === 'driver' ? esc(r.driver_name || ('user ' + r.driver_user_id))
+            : r.scope === 'route' ? esc(r.route_name || ('route ' + r.route_id)) : 'Company default';
+        const rateTxt = r.basis === 'stops_delivered' ? money(r.rate) + '/stop' : (+r.rate) + '%';
+        return `<div class="biz-row" style="font-size:12px">
+            <span class="min-w-0 flex-1">
+                <span style="font-weight:600">${target}</span>
+                <span class="biz-muted" style="font-size:11px">&nbsp;${rateTxt} — ${COMM_BASIS[r.basis] || r.basis}${r.note ? ' · ' + esc(r.note) : ''}</span>
+            </span>
+            ${IS_ADMIN ? `<span class="shrink-0 flex gap-1">
+                <button onclick='commRuleForm(${JSON.stringify(r)})' class="biz-btn biz-btn-ghost biz-btn-sm">Edit</button>
+                <button onclick="removeCommRule(${r.id})" class="biz-btn biz-btn-ghost biz-btn-sm">Remove</button>
+            </span>` : ''}
+        </div>`;
+    }).join('') : '<div class="biz-panel-empty">No commission rules — drivers earn nothing until you add one.</div>';
+
+    const earn = st.drivers.length ? st.drivers.map(x => `
+        <div class="biz-row" style="font-size:12px">
+            <span class="min-w-0 flex-1">
+                <span style="font-weight:600">${esc(x.driver)}</span>
+                <span class="biz-muted" style="font-size:11px">&nbsp;${x.trips} trip${x.trips === 1 ? '' : 's'} · ${money(x.collections)} collected</span>
+            </span>
+            <span class="shrink-0 biz-num biz-t-green" style="font-weight:700">${money(x.commission)}</span>
+        </div>`).join('') : '<div class="biz-panel-empty">No settled trips this month.</div>';
+
+    box.innerHTML = `
+        <div class="flex items-center justify-between">
+            <p class="biz-kicker">Rules</p>
+            ${IS_ADMIN ? `<button onclick="commRuleForm()" class="biz-btn biz-btn-ghost biz-btn-sm">+ Rule</button>` : ''}
+        </div>
+        <div class="biz-list mt-1">${ruleRows}</div>
+        <div id="commRuleForm" class="mt-2"></div>
+        <div class="mt-3 flex items-center justify-between">
+            <p class="biz-kicker">This month · earned ${money(st.total)}</p>
+            <a href="routes_commission.php?company_id=${CID}&from=${st.from}&to=${st.to}" target="_blank" rel="noopener" class="biz-btn biz-btn-ghost biz-btn-sm">Statement / payroll</a>
+        </div>
+        <div class="biz-list mt-1">${earn}</div>`;
+}
+
+function commRuleForm(rule){
+    const r = rule || { scope: 'company', basis: 'collections_total', rate: '', note: '' };
+    const routeOpts = (DATA.routes || []).map(x => `<option value="${x.id}" ${String(r.route_id) === String(x.id) ? 'selected' : ''}>${esc(x.name)}</option>`).join('');
+    const memberOpts = (DATA.members || []).map(x => `<option value="${x.id}" ${String(r.driver_user_id) === String(x.id) ? 'selected' : ''}>${esc(x.name || ('User ' + x.id))}</option>`).join('');
+    document.getElementById('commRuleForm').innerHTML = `
+        <form onsubmit="submitCommRule(event, ${r.id || 0})" style="border:1px solid var(--bz-line);border-radius:4px;background:var(--bz-head);padding:8px">
+            <div class="grid gap-2 sm:grid-cols-2">
+                ${fld('Applies to', `<select name="scope" onchange="commScope(this)" class="biz-select">
+                    <option value="company" ${r.scope === 'company' ? 'selected' : ''}>Company default</option>
+                    <option value="route" ${r.scope === 'route' ? 'selected' : ''}>A route</option>
+                    <option value="driver" ${r.scope === 'driver' ? 'selected' : ''}>A driver</option></select>`)}
+                <div data-scope="route" style="${r.scope === 'route' ? '' : 'display:none'}">${fld('Route', `<select name="route_id" class="biz-select">${routeOpts}</select>`)}</div>
+                <div data-scope="driver" style="${r.scope === 'driver' ? '' : 'display:none'}">${fld('Driver', `<select name="driver_user_id" class="biz-select">${memberOpts}</select>`)}</div>
+                ${fld('Basis', `<select name="basis" class="biz-select">${Object.entries(COMM_BASIS).map(([k,v])=>`<option value="${k}" ${r.basis === k ? 'selected' : ''}>${v}</option>`).join('')}</select>`)}
+                ${fld('Rate', `<input name="rate" type="number" step="0.01" min="0.01" value="${r.rate || ''}" required class="biz-input" placeholder="e.g. 2.5">`)}
+                ${fld('Note', `<input name="note" value="${esc(r.note || '')}" class="biz-input">`)}
+            </div>
+            <div class="mt-2 flex gap-2">
+                <button class="biz-btn biz-btn-primary biz-btn-sm">Save rule</button>
+                <button type="button" onclick="document.getElementById('commRuleForm').innerHTML=''" class="biz-btn biz-btn-ghost biz-btn-sm">Cancel</button>
+            </div>
+        </form>`;
+}
+function commScope(sel){
+    sel.form.querySelectorAll('[data-scope]').forEach(el => { el.style.display = el.dataset.scope === sel.value ? '' : 'none'; });
+}
+async function submitCommRule(e, id){
+    e.preventDefault();
+    const f = e.target;
+    const body = { id, scope: f.scope.value, basis: f.basis.value, rate: f.rate.value, note: f.note.value };
+    if (f.scope.value === 'route') body.route_id = f.route_id.value;
+    if (f.scope.value === 'driver') body.driver_user_id = f.driver_user_id.value;
+    try {
+        await api('commission_rule_save.php', body);
+        showAlert('Commission rule saved.', 'ok');
+        loadCommission();
+    } catch (err){ showAlert(err.message, 'error'); }
+}
+async function removeCommRule(id){
+    if (!confirm('Remove this commission rule?')) return;
+    try {
+        await api('commission_rule_delete.php', { rule_id: id });
+        showAlert('Rule removed.', 'ok');
+        loadCommission();
+    } catch (err){ showAlert(err.message, 'error'); }
 }
 
 async function assignDriver(tripId, driverUserId){

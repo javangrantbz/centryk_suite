@@ -87,6 +87,7 @@ $board = [
             ['business.php — "Recent activity" feed across a company\'s Business modules', 'app/services/BusinessActivity.php'],
             ['Receivables — write-offs & credit adjustments (maker-checker): propose -> admin approves; full or partial; reversible; bad-debt report', 'database/add_writeoffs.sql'],
             ['Business Insights — one-company KPI snapshot (DSO, collection ratio, write-off rate, cash in transit, match rate)', 'business_insights.php'],
+            ['Routes — per-driver commission: company/route/driver rules, 4 bases (incl. electronic-only), printable payroll statement', 'database/add_route_commission.sql'],
             ['This tracker', 'admin-business-roadmap.php'],
         ],
     ],
@@ -102,7 +103,7 @@ $board = [
     'Planned' => [
         'accent' => 'violet',
         'items'  => [
-            ['Routes — driver field view is shipped; still planned: maps / route optimisation, per-driver commission', null],
+            ['Routes — driver field view + per-driver commission shipped; still planned: maps / route optimisation, freeze commission on payout', null],
             ['Enterprise — maker-checker on package grants / write-offs, inter-company transactions', null],
             ['Standalone public pricing / marketing page (once prices are locked)', null],
         ],
