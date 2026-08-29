@@ -144,7 +144,7 @@ class ReceivablesService
             FROM invoices i
             JOIN customers c ON c.id = i.customer_id
             WHERE i.company_id = :cid AND i.customer_id = :cust
-              AND i.status IN ('draft','sent','overdue','paid')
+              AND i.status IN ('draft','sent','overdue','paid','written_off')
             ORDER BY i.issue_date DESC, i.id DESC
         ");
         $inv->execute(['cid' => $companyId, 'cust' => $customerId]);
@@ -184,6 +184,20 @@ class ReceivablesService
         ");
         $rem->execute(['cid' => $companyId, 'cust' => $customerId]);
 
+        $wo = $pdo->prepare("
+            SELECT w.id, w.invoice_id, i.invoice_number, w.amount, w.kind, w.reason, w.status,
+                   w.proposed_at, w.decided_at, w.decision_note,
+                   TRIM(CONCAT(COALESCE(pu.first_name,''),' ',COALESCE(pu.last_name,''))) AS proposed_by_name,
+                   TRIM(CONCAT(COALESCE(au.first_name,''),' ',COALESCE(au.last_name,''))) AS approved_by_name
+            FROM ar_writeoffs w
+            JOIN invoices i ON i.id = w.invoice_id
+            LEFT JOIN users pu ON pu.id = w.proposed_by
+            LEFT JOIN users au ON au.id = w.approved_by
+            WHERE w.company_id = :cid AND w.customer_id = :cust AND w.status <> 'void'
+            ORDER BY (w.status = 'pending') DESC, w.id DESC
+        ");
+        $wo->execute(['cid' => $companyId, 'cust' => $customerId]);
+
         return [
             'customer'           => [
                 'id'                 => (int)$customer['id'],
@@ -202,6 +216,7 @@ class ReceivablesService
             'invoices'           => $invoices,
             'payments'           => $payments,
             'reminders'          => $rem->fetchAll(PDO::FETCH_ASSOC),
+            'writeoffs'          => $wo->fetchAll(PDO::FETCH_ASSOC),
         ];
     }
 
@@ -245,21 +260,33 @@ class ReceivablesService
         foreach ($alloc->fetchAll(PDO::FETCH_ASSOC) as $r) {
             $allocated[(int)$r['invoice_id']] = (float)$r['allocated'];
         }
+        $writtenOff = self::writeoffsByInvoice($companyId, $customerId);
 
         // Chronological ledger.
         $entries = [];
         foreach ($s['invoices'] as $i) {
-            if (!in_array($i['status'], ['sent', 'overdue', 'paid'], true)) {
+            if (!in_array($i['status'], ['sent', 'overdue', 'paid', 'written_off'], true)) {
                 continue;
             }
+            $isWo = $i['status'] === 'written_off';
             $entries[] = [
                 'date'    => $i['issue_date'],
                 'ref'     => $i['invoice_number'],
-                'detail'  => 'Invoice' . (in_array($i['status'], ['sent', 'overdue'], true) ? ' (due ' . $i['effective_due'] . ')' : ''),
+                'detail'  => 'Invoice' . ($isWo ? ' (written off)' : (in_array($i['status'], ['sent', 'overdue'], true) ? ' (due ' . $i['effective_due'] . ')' : '')),
                 'charge'  => (float)$i['total'],
                 'credit'  => 0.0,
             ];
-            $offBooks = round((float)$i['amount_paid'] - ($allocated[(int)$i['id']] ?? 0), 2);
+            $woAmt = round($writtenOff[(int)$i['id']] ?? 0, 2);
+            if ($woAmt > 0.004) {
+                $entries[] = [
+                    'date'   => $i['issue_date'],
+                    'ref'    => $i['invoice_number'],
+                    'detail' => 'Written off / credit adjustment',
+                    'charge' => 0.0,
+                    'credit' => $woAmt,
+                ];
+            }
+            $offBooks = round((float)$i['amount_paid'] - ($allocated[(int)$i['id']] ?? 0) - $woAmt, 2);
             if ($offBooks > 0.004) {
                 $entries[] = [
                     'date'   => $i['issue_date'],
@@ -1002,5 +1029,313 @@ class ReceivablesService
             }
             throw $e;
         }
+    }
+
+    // ── Write-offs & credit adjustments (maker-checker) ──────────────────────
+
+    private const WRITEOFF_KINDS = ['bad_debt', 'damaged_goods', 'price_adjustment', 'other'];
+
+    private static function isCompanyAdmin(int $companyId, int $userId): bool
+    {
+        $m = DB::pdo()->prepare("
+            SELECT 1 FROM company_members
+            WHERE company_id = :c AND user_id = :u AND status = 'active' AND role = 'admin' LIMIT 1
+        ");
+        $m->execute(['c' => $companyId, 'u' => $userId]);
+        return (bool)$m->fetchColumn();
+    }
+
+    /** Approved write-off total per invoice id, for a customer's statement. */
+    public static function writeoffsByInvoice(int $companyId, int $customerId): array
+    {
+        $stmt = DB::pdo()->prepare("
+            SELECT invoice_id, COALESCE(SUM(amount), 0) AS amt
+            FROM ar_writeoffs
+            WHERE company_id = :c AND customer_id = :cust AND status = 'approved'
+            GROUP BY invoice_id
+        ");
+        $stmt->execute(['c' => $companyId, 'cust' => $customerId]);
+        $out = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $out[(int)$r['invoice_id']] = round((float)$r['amt'], 2);
+        }
+        return $out;
+    }
+
+    /**
+     * Propose a write-off / credit adjustment against one open invoice.
+     * Nothing changes on the ledger until it is approved.
+     *
+     * @param array{invoice_id:int, amount:float|string, kind?:string, reason?:string} $data
+     */
+    public static function proposeWriteoff(int $companyId, array $data, ?int $actorId): int
+    {
+        $pdo = DB::pdo();
+        $invoiceId = (int)($data['invoice_id'] ?? 0);
+        $amount    = round((float)($data['amount'] ?? 0), 2);
+        $kind      = in_array($data['kind'] ?? '', self::WRITEOFF_KINDS, true) ? $data['kind'] : 'bad_debt';
+        $reason    = mb_substr(trim((string)($data['reason'] ?? '')), 0, 255);
+
+        $inv = $pdo->prepare("
+            SELECT i.id, i.customer_id, i.invoice_number, i.total, i.amount_paid, i.status
+            FROM invoices i WHERE i.id = :id AND i.company_id = :cid LIMIT 1
+        ");
+        $inv->execute(['id' => $invoiceId, 'cid' => $companyId]);
+        $invoice = $inv->fetch(PDO::FETCH_ASSOC);
+        if (!$invoice) {
+            throw new RuntimeException('Invoice not found.');
+        }
+        if (!in_array($invoice['status'], ['sent', 'overdue'], true)) {
+            throw new RuntimeException('Only an open (sent or overdue) invoice can be written off.');
+        }
+
+        $outstanding = round((float)$invoice['total'] - (float)$invoice['amount_paid'], 2);
+        if ($amount <= 0) {
+            throw new InvalidArgumentException('Enter an amount greater than zero.');
+        }
+        if ($amount > $outstanding + 0.005) {
+            throw new InvalidArgumentException('That is more than the ' . number_format($outstanding, 2)
+                . ' still outstanding on ' . $invoice['invoice_number'] . '.');
+        }
+
+        $pdo->prepare("
+            INSERT INTO ar_writeoffs (company_id, customer_id, invoice_id, amount, kind, reason, status, proposed_by)
+            VALUES (:c, :cust, :inv, :amt, :kind, :reason, 'pending', :by)
+        ")->execute([
+            'c' => $companyId, 'cust' => (int)$invoice['customer_id'], 'inv' => $invoiceId,
+            'amt' => $amount, 'kind' => $kind, 'reason' => $reason, 'by' => $actorId,
+        ]);
+        $id = (int)$pdo->lastInsertId();
+
+        Audit::log([
+            'actor_user_id' => $actorId, 'company_id' => $companyId,
+            'event_type' => 'receivables.writeoff.proposed',
+            'summary' => 'Proposed ' . str_replace('_', ' ', $kind) . ' write-off of '
+                . number_format($amount, 2) . ' on ' . $invoice['invoice_number']
+                . ($amount + 0.005 >= $outstanding ? ' (full)' : ' (partial)'),
+            'metadata' => ['writeoff_id' => $id, 'invoice_id' => $invoiceId, 'amount' => $amount, 'kind' => $kind],
+        ]);
+        return $id;
+    }
+
+    /**
+     * Approve or reject a pending write-off. Approval is a company-admin action;
+     * self-approval (proposer === approver) is allowed but flagged in the audit.
+     * On approval the invoice's amount_paid rises by the write-off amount and,
+     * if that clears the balance, the invoice moves to 'written_off'.
+     *
+     * @param 'approve'|'reject' $action
+     */
+    public static function decideWriteoff(int $companyId, int $writeoffId, string $action, array $data, int $actorId): void
+    {
+        if (!in_array($action, ['approve', 'reject'], true)) {
+            throw new InvalidArgumentException('Unknown action.');
+        }
+        if (!self::isCompanyAdmin($companyId, $actorId)) {
+            throw new RuntimeException('Only a company admin can approve or reject a write-off.');
+        }
+
+        $pdo = DB::pdo();
+        $w = $pdo->prepare("
+            SELECT w.*, i.invoice_number, i.total, i.amount_paid, i.status AS inv_status
+            FROM ar_writeoffs w JOIN invoices i ON i.id = w.invoice_id
+            WHERE w.id = :id AND w.company_id = :cid LIMIT 1
+        ");
+        $w->execute(['id' => $writeoffId, 'cid' => $companyId]);
+        $wo = $w->fetch(PDO::FETCH_ASSOC);
+        if (!$wo) {
+            throw new RuntimeException('Write-off not found.');
+        }
+        if ($wo['status'] !== 'pending') {
+            throw new RuntimeException('This write-off has already been ' . $wo['status'] . '.');
+        }
+        $note = mb_substr(trim((string)($data['note'] ?? '')), 0, 255);
+
+        if ($action === 'reject') {
+            $pdo->prepare("UPDATE ar_writeoffs SET status = 'rejected', approved_by = :by, decided_at = NOW(), decision_note = :n WHERE id = :id")
+                ->execute(['by' => $actorId, 'n' => $note, 'id' => $writeoffId]);
+            Audit::log([
+                'actor_user_id' => $actorId, 'company_id' => $companyId,
+                'event_type' => 'receivables.writeoff.rejected',
+                'summary' => 'Rejected write-off #' . $writeoffId . ' on ' . $wo['invoice_number']
+                    . ($note !== '' ? ' — ' . $note : ''),
+                'metadata' => ['writeoff_id' => $writeoffId, 'invoice_id' => (int)$wo['invoice_id']],
+            ]);
+            return;
+        }
+
+        // approve
+        $selfApproved = (int)$wo['proposed_by'] === $actorId;
+        $outstanding  = round((float)$wo['total'] - (float)$wo['amount_paid'], 2);
+        if (!in_array($wo['inv_status'], ['sent', 'overdue'], true)) {
+            throw new RuntimeException('The invoice is no longer open — nothing to write off.');
+        }
+        $amount = min(round((float)$wo['amount'], 2), $outstanding);   // cap: a payment may have arrived since
+        if ($amount <= 0) {
+            throw new RuntimeException('The invoice has since been settled — nothing to write off.');
+        }
+
+        $ownTxn = !$pdo->inTransaction();
+        try {
+            if ($ownTxn) { $pdo->beginTransaction(); }
+
+            $newPaid  = round((float)$wo['amount_paid'] + $amount, 2);
+            $full     = $newPaid + 0.005 >= (float)$wo['total'];
+            $newStatus = $full ? 'written_off' : $wo['inv_status'];
+
+            $pdo->prepare("UPDATE invoices SET amount_paid = :p, status = :s WHERE id = :id")
+                ->execute(['p' => $newPaid, 's' => $newStatus, 'id' => (int)$wo['invoice_id']]);
+
+            $pdo->prepare("
+                UPDATE ar_writeoffs SET status = 'approved', amount = :amt, approved_by = :by,
+                       decided_at = NOW(), decision_note = :n WHERE id = :id
+            ")->execute(['amt' => $amount, 'by' => $actorId, 'n' => $note, 'id' => $writeoffId]);
+
+            Audit::log([
+                'actor_user_id' => $actorId, 'company_id' => $companyId,
+                'event_type' => 'receivables.writeoff.approved',
+                'summary' => 'Approved ' . str_replace('_', ' ', (string)$wo['kind']) . ' write-off of '
+                    . number_format($amount, 2) . ' on ' . $wo['invoice_number']
+                    . ($full ? ' — invoice written off' : ' — partial')
+                    . ($selfApproved ? ' (SELF-APPROVED)' : ''),
+                'metadata' => [
+                    'writeoff_id' => $writeoffId, 'invoice_id' => (int)$wo['invoice_id'],
+                    'amount' => $amount, 'kind' => $wo['kind'], 'full' => $full, 'self_approved' => $selfApproved,
+                ],
+            ]);
+
+            if ($ownTxn) { $pdo->commit(); }
+        } catch (Throwable $e) {
+            if ($ownTxn && $pdo->inTransaction()) { $pdo->rollBack(); }
+            throw $e;
+        }
+    }
+
+    /** Reverse an approved write-off (a mistake). Admin only. */
+    public static function reverseWriteoff(int $companyId, int $writeoffId, int $actorId, string $note = ''): void
+    {
+        if (!self::isCompanyAdmin($companyId, $actorId)) {
+            throw new RuntimeException('Only a company admin can reverse a write-off.');
+        }
+        $pdo = DB::pdo();
+        $w = $pdo->prepare("
+            SELECT w.*, i.invoice_number, i.total, i.amount_paid, i.status AS inv_status,
+                   " . self::DUE_EXPR . " AS effective_due
+            FROM ar_writeoffs w
+            JOIN invoices i ON i.id = w.invoice_id
+            JOIN customers c ON c.id = i.customer_id
+            WHERE w.id = :id AND w.company_id = :cid LIMIT 1
+        ");
+        $w->execute(['id' => $writeoffId, 'cid' => $companyId]);
+        $wo = $w->fetch(PDO::FETCH_ASSOC);
+        if (!$wo) {
+            throw new RuntimeException('Write-off not found.');
+        }
+        if ($wo['status'] !== 'approved') {
+            throw new RuntimeException('Only an approved write-off can be reversed.');
+        }
+
+        $ownTxn = !$pdo->inTransaction();
+        try {
+            if ($ownTxn) { $pdo->beginTransaction(); }
+
+            $newPaid = max(0, round((float)$wo['amount_paid'] - (float)$wo['amount'], 2));
+            $newStatus = $wo['inv_status'];
+            if ($newStatus === 'written_off') {
+                $newStatus = strtotime((string)$wo['effective_due']) < strtotime(date('Y-m-d')) ? 'overdue' : 'sent';
+            }
+            $pdo->prepare("UPDATE invoices SET amount_paid = :p, status = :s WHERE id = :id")
+                ->execute(['p' => $newPaid, 's' => $newStatus, 'id' => (int)$wo['invoice_id']]);
+
+            $mark = mb_substr(trim('REVERSED. ' . $note), 0, 255);
+            $pdo->prepare("UPDATE ar_writeoffs SET status = 'void', decided_at = NOW(), decision_note = :n WHERE id = :id")
+                ->execute(['n' => $mark, 'id' => $writeoffId]);
+
+            Audit::log([
+                'actor_user_id' => $actorId, 'company_id' => $companyId,
+                'event_type' => 'receivables.writeoff.reversed',
+                'summary' => 'Reversed write-off #' . $writeoffId . ' of ' . number_format((float)$wo['amount'], 2)
+                    . ' on ' . $wo['invoice_number'] . ($note !== '' ? ' — ' . $note : ''),
+                'metadata' => ['writeoff_id' => $writeoffId, 'invoice_id' => (int)$wo['invoice_id'], 'amount' => (float)$wo['amount']],
+            ]);
+
+            if ($ownTxn) { $pdo->commit(); }
+        } catch (Throwable $e) {
+            if ($ownTxn && $pdo->inTransaction()) { $pdo->rollBack(); }
+            throw $e;
+        }
+    }
+
+    /**
+     * Write-off list for the company. $filters['status'] = pending|approved|rejected|void|all.
+     */
+    public static function writeoffs(int $companyId, array $filters = []): array
+    {
+        $where = ['w.company_id = :cid'];
+        $args  = ['cid' => $companyId];
+        $status = $filters['status'] ?? 'pending';
+        if (in_array($status, ['pending', 'approved', 'rejected', 'void'], true)) {
+            $where[] = 'w.status = :st';
+            $args['st'] = $status;
+        }
+        if (!empty($filters['customer_id'])) {
+            $where[] = 'w.customer_id = :cust';
+            $args['cust'] = (int)$filters['customer_id'];
+        }
+
+        $stmt = DB::pdo()->prepare("
+            SELECT w.id, w.invoice_id, i.invoice_number, w.customer_id, c.name AS customer_name,
+                   w.amount, w.kind, w.reason, w.status, w.proposed_at, w.decided_at, w.decision_note,
+                   TRIM(CONCAT(COALESCE(pu.first_name,''),' ',COALESCE(pu.last_name,''))) AS proposed_by_name,
+                   TRIM(CONCAT(COALESCE(au.first_name,''),' ',COALESCE(au.last_name,''))) AS approved_by_name
+            FROM ar_writeoffs w
+            JOIN invoices i  ON i.id = w.invoice_id
+            JOIN customers c ON c.id = w.customer_id
+            LEFT JOIN users pu ON pu.id = w.proposed_by
+            LEFT JOIN users au ON au.id = w.approved_by
+            WHERE " . implode(' AND ', $where) . "
+            ORDER BY (w.status = 'pending') DESC, w.id DESC
+            LIMIT 200
+        ");
+        $stmt->execute($args);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Bad-debt / adjustment totals over a date range, split by kind. For the
+     * aging report footer and the write-offs panel header.
+     */
+    public static function badDebtReport(int $companyId, ?string $from = null, ?string $to = null): array
+    {
+        $from = $from && preg_match('/^\d{4}-\d{2}-\d{2}$/', $from) ? $from : date('Y-01-01');
+        $to   = $to && preg_match('/^\d{4}-\d{2}-\d{2}$/', $to) ? $to : date('Y-m-d');
+
+        $stmt = DB::pdo()->prepare("
+            SELECT kind, COUNT(*) AS n, COALESCE(SUM(amount), 0) AS total
+            FROM ar_writeoffs
+            WHERE company_id = :cid AND status = 'approved'
+              AND decided_at >= :from AND decided_at < DATE_ADD(:to, INTERVAL 1 DAY)
+            GROUP BY kind
+        ");
+        $stmt->execute(['cid' => $companyId, 'from' => $from, 'to' => $to]);
+
+        $byKind = [];
+        $total = 0.0;
+        $count = 0;
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $byKind[$r['kind']] = ['count' => (int)$r['n'], 'total' => round((float)$r['total'], 2)];
+            $total += (float)$r['total'];
+            $count += (int)$r['n'];
+        }
+        $pStmt = DB::pdo()->prepare("SELECT COUNT(*) n, COALESCE(SUM(amount),0) t FROM ar_writeoffs WHERE company_id = :c AND status = 'pending'");
+        $pStmt->execute(['c' => $companyId]);
+        $p = $pStmt->fetch(PDO::FETCH_ASSOC) ?: ['n' => 0, 't' => 0];
+
+        return [
+            'from' => $from, 'to' => $to,
+            'total' => round($total, 2), 'count' => $count,
+            'by_kind' => $byKind,
+            'pending_count' => (int)$p['n'], 'pending_total' => round((float)$p['t'], 2),
+        ];
     }
 }

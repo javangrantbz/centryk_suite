@@ -45,6 +45,7 @@ $p = ReceivablesService::portfolio($companyId);
 $rows = array_values(array_filter($p['customers'], static fn ($c) => abs($c['balance']) > 0.004));
 usort($rows, static fn ($a, $b) => $b['balance'] <=> $a['balance']);
 $t = $p['totals'];
+$bd = ReceivablesService::badDebtReport($companyId, date('Y-01-01'), date('Y-m-d'));
 
 $n = static fn ($v) => number_format((float)$v, 2);
 ?>
@@ -144,6 +145,8 @@ $n = static fn ($v) => number_format((float)$v, 2);
         <?= $t['overdue'] > 0.004 ? $cur . ' ' . $n($t['overdue']) . ' overdue' : 'Nothing overdue' ?>.
         <?php if ($t['on_hold']): ?> <?= (int)$t['on_hold'] ?> account<?= $t['on_hold'] === 1 ? '' : 's' ?> on credit hold.<?php endif; ?>
         <?php if ($t['over_limit']): ?> <?= (int)$t['over_limit'] ?> over credit limit.<?php endif; ?>
+        <?php if ($bd['total'] > 0.004): ?> <?= $cur . ' ' . $n($bd['total']) ?> written off year-to-date (<?= (int)$bd['count'] ?>).<?php endif; ?>
+        <?php if ($bd['pending_total'] > 0.004): ?> <?= $cur . ' ' . $n($bd['pending_total']) ?> in write-offs awaiting approval.<?php endif; ?>
     </p>
 </div>
 </body>

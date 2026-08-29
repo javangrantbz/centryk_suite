@@ -22,7 +22,7 @@ $user = $me['user'];
 $pdo  = DB::pdo();
 
 $coStmt = $pdo->prepare("
-    SELECT c.id, c.name
+    SELECT c.id, c.name, cm.role
     FROM company_members cm
     JOIN companies c ON c.id = cm.company_id
     WHERE cm.user_id = :uid AND cm.status = 'active' AND cm.role IN ('admin','manager') AND c.status = 'active'
@@ -39,6 +39,7 @@ if ($companies) {
     }
     if (!$activeCompany) { $activeCompany = $companies[0]; }
 }
+$isCompanyAdmin = $activeCompany && ($activeCompany['role'] ?? '') === 'admin';
 
 $level = $activeCompany ? Entitlements::level((int)$activeCompany['id'], 'receivables') : Entitlements::NONE;
 
@@ -139,6 +140,7 @@ $headerActionsHtml = ob_get_clean();
 if (window.lucide) lucide.createIcons();
 const CID = <?= $activeCompany ? (int)$activeCompany['id'] : 'null' ?>;
 const CAN_WRITE = <?= $level === Entitlements::FULL ? 'true' : 'false' ?>;
+const IS_ADMIN = <?= $isCompanyAdmin ? 'true' : 'false' ?>;
 let PORTFOLIO = { customers: [], totals: {} };
 let COLLECTIONS = [];
 let VIEW = 'ledger';
@@ -254,26 +256,36 @@ async function openCustomer(id){
 }
 
 function invChip(st){
-    const map = { paid: 'biz-c-green', overdue: 'biz-c-red', sent: 'biz-c-slate', draft: 'biz-c-slate' };
-    return `<span class="biz-chip ${map[st] || 'biz-c-slate'}">${esc(st)}</span>`;
+    const map = { paid: 'biz-c-green', overdue: 'biz-c-red', sent: 'biz-c-slate', draft: 'biz-c-slate', written_off: 'biz-c-amber' };
+    const label = st === 'written_off' ? 'written off' : st;
+    return `<span class="biz-chip ${map[st] || 'biz-c-slate'}">${esc(label)}</span>`;
 }
+const WO_KIND = { bad_debt: 'Bad debt', damaged_goods: 'Damaged / expired goods', price_adjustment: 'Price adjustment', other: 'Other' };
 
 function renderStatement(s){
     const c = s.customer;
     const panel = document.getElementById('statementPanel');
     panel.className = 'biz-panel self-start';
 
-    const invoices = (s.invoices || []).map(i => `
-        <div class="biz-row" style="font-size:12px">
+    const invoices = (s.invoices || []).map(i => {
+        const open = ['sent', 'overdue'].includes(i.status);
+        return `
+        <div class="biz-row" style="font-size:12px;display:block">
+          <div class="flex items-start justify-between gap-2">
             <span class="min-w-0 flex-1">
-                <span style="font-weight:600">${esc(i.invoice_number)}</span> ${invChip(i.status)}
-                <span class="biz-muted" style="font-size:11px">&nbsp;due ${fmtDate(i.effective_due)}${Number(i.days_overdue) > 0 && i.status !== 'paid' ? ' · ' + i.days_overdue + 'd late' : ''}</span>
+                <span style="font-weight:600${i.status === 'written_off' ? ';text-decoration:line-through;opacity:.7' : ''}">${esc(i.invoice_number)}</span> ${invChip(i.status)}
+                <span class="biz-muted" style="font-size:11px">&nbsp;due ${fmtDate(i.effective_due)}${Number(i.days_overdue) > 0 && open ? ' · ' + i.days_overdue + 'd late' : ''}</span>
             </span>
             <span class="shrink-0 text-right">
                 <span class="block biz-num" style="font-weight:600">${m(i.total)}</span>
-                ${Number(i.outstanding) > 0.004 && i.status !== 'paid' ? `<span class="block biz-num biz-t-red" style="font-size:11px">${m(i.outstanding)} open</span>` : ''}
+                ${Number(i.outstanding) > 0.004 && i.status !== 'paid' && i.status !== 'written_off' ? `<span class="block biz-num biz-t-red" style="font-size:11px">${m(i.outstanding)} open</span>` : ''}
             </span>
-        </div>`).join('') || '<div class="biz-panel-empty">No invoices.</div>';
+          </div>
+          ${CAN_WRITE && open && Number(i.outstanding) > 0.004
+            ? `<button onclick='writeoffForm(${i.id}, ${JSON.stringify(i.invoice_number)}, ${Number(i.outstanding)})' class="biz-btn biz-btn-ghost biz-btn-sm mt-1">Write off</button>
+               <div id="woForm-${i.id}"></div>` : ''}
+        </div>`;
+    }).join('') || '<div class="biz-panel-empty">No invoices.</div>';
 
     const payments = (s.payments || []).map(p => `
         <div class="biz-row" style="font-size:12px">
@@ -327,8 +339,81 @@ function renderStatement(s){
         <div class="biz-list">${invoices}</div>
         <div class="biz-panel-head" style="border-top:1px solid var(--bz-line)">Receipts</div>
         <div class="biz-list">${payments}</div>
+        ${writeoffsSection(s.writeoffs || [])}
         <div class="biz-panel-head" style="border-top:1px solid var(--bz-line)">Reminders</div>
         <div class="biz-list">${reminders}</div>`;
+}
+
+function writeoffsSection(rows){
+    if (!rows.length) return '';
+    const badge = { pending: 'biz-c-amber', approved: 'biz-c-green', rejected: 'biz-c-slate' };
+    const body = rows.map(w => `
+        <div class="biz-row" style="font-size:12px;display:block">
+          <div class="flex items-start justify-between gap-2">
+            <span class="min-w-0 flex-1">
+                <span style="font-weight:600">${esc(w.invoice_number)}</span>
+                <span class="biz-chip ${badge[w.status] || 'biz-c-slate'}">${w.status}</span>
+                <span class="biz-muted" style="font-size:11px">&nbsp;${WO_KIND[w.kind] || w.kind}${w.reason ? ' · ' + esc(w.reason) : ''}</span>
+                <span class="block biz-muted" style="font-size:11px">
+                    proposed ${fmtDate(w.proposed_at)}${w.proposed_by_name ? ' by ' + esc(w.proposed_by_name) : ''}${w.decided_at ? ` · ${w.status} ${fmtDate(w.decided_at)}${w.approved_by_name ? ' by ' + esc(w.approved_by_name) : ''}` : ''}
+                </span>
+            </span>
+            <span class="shrink-0 biz-num biz-t-amber" style="font-weight:700">${m(w.amount)}</span>
+          </div>
+          ${IS_ADMIN && w.status === 'pending'
+            ? `<div class="mt-1 flex gap-2">
+                 <button onclick="decideWriteoff(${w.id}, 'approve')" class="biz-btn biz-btn-primary biz-btn-sm">Approve</button>
+                 <button onclick="decideWriteoff(${w.id}, 'reject')" class="biz-btn biz-btn-ghost biz-btn-sm">Reject</button>
+               </div>` : ''}
+          ${IS_ADMIN && w.status === 'approved'
+            ? `<button onclick="decideWriteoff(${w.id}, 'reverse')" class="biz-btn biz-btn-ghost biz-btn-sm mt-1">Reverse</button>` : ''}
+        </div>`).join('');
+    return `<div class="biz-panel-head" style="border-top:1px solid var(--bz-line)">Write-offs</div><div class="biz-list">${body}</div>`;
+}
+
+function writeoffForm(invoiceId, number, outstanding){
+    const box = document.getElementById('woForm-' + invoiceId);
+    if (box.innerHTML){ box.innerHTML = ''; return; }
+    box.innerHTML = `
+        <form onsubmit="submitWriteoff(event, ${invoiceId})" class="mt-2" style="border:1px solid var(--bz-line);border-radius:4px;background:var(--bz-head);padding:8px">
+            <p class="biz-kicker" style="color:var(--bz-accent-d)">Write off ${esc(number)} — ${m(outstanding)} outstanding</p>
+            <div class="mt-2 grid gap-2 sm:grid-cols-2">
+                ${fld('Amount', `<input name="amount" type="number" step="0.01" min="0.01" max="${outstanding}" value="${Number(outstanding).toFixed(2)}" required class="biz-input">`)}
+                ${fld('Reason', `<select name="kind" class="biz-select">${Object.entries(WO_KIND).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select>`)}
+            </div>
+            ${fld('Note', '<input name="reason" class="biz-input mt-1" placeholder="e.g. crates of milk expired in transit">')}
+            <p class="biz-muted mt-2" style="font-size:11px">Creates a proposal. A company admin approves it before the balance changes.</p>
+            <div class="mt-2 flex gap-2">
+                <button type="submit" class="biz-btn biz-btn-primary biz-btn-sm">Propose write-off</button>
+                <button type="button" onclick="document.getElementById('woForm-${invoiceId}').innerHTML=''" class="biz-btn biz-btn-ghost biz-btn-sm">Cancel</button>
+            </div>
+        </form>`;
+}
+async function submitWriteoff(e, invoiceId){
+    e.preventDefault();
+    const f = e.target;
+    try {
+        await api('writeoff_propose.php', { invoice_id: invoiceId, amount: f.amount.value, kind: f.kind.value, reason: f.reason.value });
+        showAlert('Write-off proposed — waiting for an admin to approve.', 'ok');
+        openCustomer(OPEN_CUSTOMER);
+        load();
+    } catch (err){ showAlert(err.message, 'error'); }
+}
+async function decideWriteoff(id, action){
+    const verb = { approve: 'Approve', reject: 'Reject', reverse: 'Reverse' }[action];
+    let note = '';
+    if (action !== 'approve'){
+        note = prompt(verb + ' — reason (optional):') || '';
+        if (note === null) return;
+    } else if (!confirm('Approve this write-off? The customer balance drops now.')) {
+        return;
+    }
+    try {
+        await api('writeoff_decide.php', { writeoff_id: id, action, note });
+        showAlert('Write-off ' + action + 'd.', 'ok');
+        openCustomer(OPEN_CUSTOMER);
+        load();
+    } catch (err){ showAlert(err.message, 'error'); }
 }
 
 /* ── write actions ─────────────────────────────────────────────────────── */
