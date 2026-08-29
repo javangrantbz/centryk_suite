@@ -185,6 +185,18 @@ $headerActionsHtml = ob_get_clean();
             <?php endforeach; ?>
         </div>
 
+        <?php if (in_array('active', $entStates, true) || in_array('suspended', $entStates, true)): ?>
+        <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
+            <div class="flex items-center justify-between">
+                <p class="text-sm font-black">Recent activity</p>
+                <button id="actRefresh" class="text-xs font-bold text-violet-600 hover:text-violet-800">Refresh</button>
+            </div>
+            <div id="actRows" class="mt-3 divide-y divide-slate-100 text-sm">
+                <p class="py-2 text-xs font-semibold text-slate-400">Loading…</p>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <div class="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-5">
             <div>
                 <p class="text-sm font-black">Not sure what fits?</p>
@@ -214,6 +226,43 @@ function showAlert(msg, type) {
         : 'border-emerald-200 bg-emerald-50 text-emerald-700');
     el.classList.remove('hidden');
 }
+
+// ── Recent activity ──────────────────────────────────────────────────────
+const MODULE_LABEL = { receivables: 'Receivables', reconciliation: 'Reconciliation', routes: 'Routes', billing: 'Billing', entitlement: 'Access' };
+function timeAgo(s){
+    const d = new Date((s || '').replace(' ', 'T'));
+    if (isNaN(d)) return '';
+    const mins = Math.round((Date.now() - d.getTime()) / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return mins + 'm ago';
+    const hrs = Math.round(mins / 60);
+    if (hrs < 24) return hrs + 'h ago';
+    return Math.round(hrs / 24) + 'd ago';
+}
+async function loadActivity(){
+    const box = document.getElementById('actRows');
+    if (!box || COMPANY_ID === null) return;
+    try {
+        const res = await fetch('api/business/activity.php', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ company_id: COMPANY_ID }),
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message || 'Could not load activity.');
+        const rows = data.activity || [];
+        if (!rows.length){ box.innerHTML = '<p class="py-2 text-xs font-semibold text-slate-400">Nothing yet.</p>'; return; }
+        box.innerHTML = rows.map(a => `
+            <div class="flex items-start gap-3 py-2">
+                <span class="mt-0.5 shrink-0 rounded-md bg-violet-50 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wide text-violet-600">${MODULE_LABEL[a.module] || a.module}</span>
+                <span class="min-w-0 flex-1">
+                    <span class="block text-xs font-semibold text-slate-700">${(a.summary || '').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}</span>
+                    <span class="block text-[11px] font-medium text-slate-400">${a.actor} · ${timeAgo(a.at)}</span>
+                </span>
+            </div>`).join('');
+    } catch (e){ box.innerHTML = '<p class="py-2 text-xs font-semibold text-red-500">' + e.message + '</p>'; }
+}
+document.getElementById('actRefresh')?.addEventListener('click', loadActivity);
+loadActivity();
 
 document.querySelectorAll('.reqBtn').forEach(btn => {
     btn.addEventListener('click', async () => {

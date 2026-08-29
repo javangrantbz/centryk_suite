@@ -84,6 +84,7 @@ $board = [
             ['Routes — phone-first driver view: assigned runs, tick off stops, hand in cash (settlement still admin-approved)', 'routes_field.php'],
             ['Receivables — bulk customer import from CSV (name/limit/terms/opening balance), upsert by name', 'receivables.php'],
             ['Routes — driver performance panel: trips, stops, cash vs electronic, net variance, flags (30d)', 'routes.php'],
+            ['business.php — "Recent activity" feed across a company\'s Business modules', 'app/services/BusinessActivity.php'],
             ['This tracker', 'admin-business-roadmap.php'],
         ],
     ],
