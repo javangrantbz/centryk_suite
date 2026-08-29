@@ -96,6 +96,11 @@ $headerActionsHtml = ob_get_clean();
             <div id="companyRollup" class="biz-list"><div class="biz-panel-empty">Loading…</div></div>
         </div>
 
+        <details class="biz-panel mt-3" ontoggle="if(this.open) loadActivity()">
+            <summary style="cursor:pointer;padding:6px 10px;font-size:12px;font-weight:600;color:#334155">Activity across the group</summary>
+            <div id="activityRows" class="biz-list" style="max-height:44vh;overflow-y:auto"><div class="biz-panel-empty">Open to load…</div></div>
+        </details>
+
         <div class="mt-3 grid gap-3 lg:grid-cols-2">
             <div class="biz-panel">
                 <div class="biz-panel-head">
@@ -162,6 +167,23 @@ async function load(){
     if (GID === null) return;
     try { STATE = await api('overview.php'); render(); }
     catch (e){ showAlert(e.message, 'error'); }
+}
+
+let ACTIVITY_LOADED = false;
+async function loadActivity(){
+    if (ACTIVITY_LOADED) return;
+    ACTIVITY_LOADED = true;
+    try {
+        const d = await api('activity.php');
+        const rows = d.activity || [];
+        document.getElementById('activityRows').innerHTML = rows.length ? rows.map(a => `
+            <div class="biz-row" style="cursor:default;font-size:12px">
+                <span class="min-w-0 flex-1">
+                    <span class="block">${esc(a.summary)}</span>
+                    <span class="block biz-muted" style="font-size:11px">${a.company_name ? esc(a.company_name) + ' · ' : ''}${a.actor_name ? esc(a.actor_name) + ' · ' : ''}${new Date(String(a.created_at).replace(' ','T')).toLocaleString('en-BZ',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</span>
+                </span>
+            </div>`).join('') : '<div class="biz-panel-empty">No activity yet.</div>';
+    } catch (e){ ACTIVITY_LOADED = false; showAlert(e.message, 'error'); }
 }
 
 function render(){

@@ -139,6 +139,41 @@ class GroupsService
         return ['companies' => $rows, 'totals' => $tot];
     }
 
+    /**
+     * Recent activity across the group — audit events for any member company,
+     * plus the group's own entitlement / membership changes.
+     */
+    public static function activity(int $groupId, int $limit = 60): array
+    {
+        $pdo = DB::pdo();
+        $ids = $pdo->prepare("SELECT id FROM companies WHERE group_id = :gid");
+        $ids->execute(['gid' => $groupId]);
+        $companyIds = array_map('intval', $ids->fetchAll(PDO::FETCH_COLUMN));
+
+        $limit = max(1, min(200, $limit));
+        $clauses = ["((a.event_type LIKE 'entitlement.group.%' OR a.event_type LIKE 'group.%') AND a.metadata_json REGEXP ?)"];
+        $params  = ['"group_id":' . $groupId . '([,}])'];
+
+        if ($companyIds) {
+            $clauses[] = 'a.company_id IN (' . implode(',', array_fill(0, count($companyIds), '?')) . ')';
+            $params = array_merge($params, $companyIds);
+        }
+
+        $sql = "
+            SELECT a.event_type, a.summary, a.company_id, c.name AS company_name, a.created_at,
+                   TRIM(CONCAT(COALESCE(u.first_name,''),' ',COALESCE(u.last_name,''))) AS actor_name
+            FROM audit_events a
+            LEFT JOIN companies c ON c.id = a.company_id
+            LEFT JOIN users u ON u.id = a.actor_user_id
+            WHERE " . implode(' OR ', $clauses) . "
+            ORDER BY a.created_at DESC
+            LIMIT " . $limit;
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     // ── mutations ──────────────────────────────────────────────────────────
 
     /** Create a group (creator becomes owner + group_admin) or rename one. */
