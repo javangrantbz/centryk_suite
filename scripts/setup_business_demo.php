@@ -81,14 +81,31 @@ if ($u9) {
 }
 
 /* ── sample customers + invoices for each target company ──────────────── */
+// Emails are +aliases on the owner's own inbox so "Email statement / reminder"
+// actually lands somewhere you can read while testing on localhost (and never
+// spams a real third party).
+$OWNER_INBOX = 'javangrantbz@gmail.com';
+$demoEmail = static function (string $slug) use ($OWNER_INBOX): string {
+    [$u, $d] = explode('@', $OWNER_INBOX, 2);
+    return $u . '+' . $slug . '@' . $d;
+};
 $CUSTOMERS = [
-    ['Corozal Cash & Carry',    'accounts@corozalcc.bz',   75000, 30, 0],
-    ['San Pedro Provisions',    'ap@sanpedroprov.bz',      12000,  7, 0],
-    ['Belmopan Wholesale Ltd',  'finance@belmopanws.bz',  120000, 30, 0],
-    ['Orange Walk Distributors', 'owd.accounts@mail.bz',   90000, 30, 0],
-    ['Dangriga Trading Post',   'dtp@mail.bz',             15000, 15, 0],
-    ['Placencia Mini Mart',     'placenciamm@mail.bz',      8000,  7, 1],  // on hold
+    ['Corozal Cash & Carry',     $demoEmail('corozal'),  75000, 30, 0],
+    ['San Pedro Provisions',     $demoEmail('sanpedro'), 12000,  7, 0],
+    ['Belmopan Wholesale Ltd',   $demoEmail('belmopan'), 120000, 30, 0],
+    ['Orange Walk Distributors', $demoEmail('owd'),      90000, 30, 0],
+    ['Dangriga Trading Post',    $demoEmail('dangriga'), 15000, 15, 0],
+    ['Placencia Mini Mart',      $demoEmail('placencia'), 8000,  7, 1],  // on hold
 ];
+
+// Repoint any earlier-seeded demo customers that still have the old fake .bz
+// addresses (the marker guard below skips re-seeding otherwise).
+foreach ($TARGETS as $cid => $t) {
+    foreach ($CUSTOMERS as [$name, $email]) {
+        $pdo->prepare("UPDATE customers SET email = :e WHERE company_id = :c AND name = :n AND email LIKE '%.bz'")
+            ->execute(['e' => $email, 'c' => $cid, 'n' => $name]);
+    }
+}
 
 foreach ($TARGETS as $cid => $t) {
     // marker: skip seeding if this company already has a demo customer
@@ -233,6 +250,31 @@ if (Entitlements::groupLevel($grp, 'enterprise') !== Entitlements::FULL) {
 if ($u9) {
     GroupsService::setMember($grp, (int)$u9, 'group_viewer', 1, true);
     say("user #{$u9} added to BHI Group as viewer");
+}
+
+/* ── subscription billing — a couple of months, mostly paid ───────────── */
+require_once __DIR__ . '/../app/services/BillingService.php';
+$madeCharges = (int)$pdo->query("
+    SELECT COUNT(*) FROM company_subscription_charges WHERE company_id IN (1,3)
+")->fetchColumn();
+if ($madeCharges === 0) {
+    BillingService::runCycle(date('Y-m-01', strtotime('-1 month')), 1);
+    BillingService::runCycle(date('Y-m-01'), 1);
+    // Settle everything except the newest charge for each company, so the
+    // billing console has a small "due" list to work and dunning has a target.
+    $rows = $pdo->query("
+        SELECT id, company_id FROM company_subscription_charges
+        WHERE company_id IN (1,3) ORDER BY company_id, period_start DESC, id DESC
+    ")->fetchAll(PDO::FETCH_ASSOC);
+    $keptOpen = [];
+    foreach ($rows as $r) {
+        $c = (int)$r['company_id'];
+        if (($keptOpen[$c] ?? 0) < 1) { $keptOpen[$c] = 1; continue; }   // leave one open
+        BillingService::updateCharge((int)$r['id'], 'paid', ['method' => 'bank transfer', 'paid_on' => date('Y-m-d', strtotime('-10 days'))], 1);
+    }
+    say("seeded billing — 2 monthly cycles, all but the latest charge per company marked paid");
+} else {
+    say("billing charges already exist — skipping");
 }
 
 say("\nDone. Log in as webdevelopment@bhilimited.com → pick 'J Bells Grocery' → all four modules are live.");

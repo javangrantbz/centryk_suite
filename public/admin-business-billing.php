@@ -41,6 +41,7 @@ $headerActionsHtml = ob_get_clean();
         </div>
         <div class="flex gap-2">
             <a href="admin-business-packages.php" class="biz-btn biz-btn-ghost">Grant console</a>
+            <button onclick="runDunning()" class="biz-btn biz-btn-ghost">Run dunning</button>
             <button onclick="runCycle()" class="biz-btn biz-btn-primary">Run this month</button>
         </div>
     </div>
@@ -139,6 +140,15 @@ async function runCycle(){
     try {
         const r = await api('billing_run.php', {});
         showAlert(`Billing run: ${r.created} charge(s) created for ${fmtMonth(r.month)}.`, 'ok');
+        load();
+    } catch (e){ showAlert(e.message, 'error'); }
+}
+
+async function runDunning(){
+    if (!confirm('Move overdue subscriptions to past-due (read-only access) and recover any that are now settled?')) return;
+    try {
+        const r = await api('billing_dunning.php', {});
+        showAlert(`Dunning: ${r.past_due} to past-due, ${r.recovered} recovered.`, 'ok');
         load();
     } catch (e){ showAlert(e.message, 'error'); }
 }
