@@ -301,6 +301,7 @@ function renderStatement(s){
                 <button onclick="paymentForm(${c.id})" class="biz-btn biz-btn-primary">Record payment</button>
                 <button onclick="editCustomer(${c.id})" class="biz-btn biz-btn-ghost">Edit</button>
                 <button onclick="reminderForm(${c.id})" class="biz-btn biz-btn-ghost">Draft reminder</button>
+                ${c.email ? `<button onclick="emailStatement(${c.id})" class="biz-btn biz-btn-ghost">Email statement</button>` : ''}
                 <button onclick="toggleHold(${c.id}, ${c.on_hold ? 'false' : 'true'})" class="biz-btn ${c.on_hold ? 'biz-btn-ghost' : 'biz-btn-danger'}">
                     ${c.on_hold ? 'Release hold' : 'Place on hold'}
                 </button>` : ''}
@@ -431,6 +432,14 @@ async function reminderForm(customerId){
                 <button type="button" onclick="document.getElementById('inlineForm').innerHTML=''" class="biz-btn biz-btn-ghost">Cancel</button>
             </div>
         </form>`;
+}
+async function emailStatement(customerId){
+    if (!confirm('Email this customer their full statement of account now?')) return;
+    try {
+        const r = await api('statement_send.php', { customer_id: customerId });
+        showAlert(r.delivery === 'sent' ? 'Statement emailed.' : ('Recorded — ' + (r.note || 'email not sent from this environment')), 'ok');
+        openCustomer(customerId);
+    } catch (err){ showAlert(err.message, 'error'); }
 }
 async function sendReminder(customerId, f){
     if (!confirm('Email this reminder to the customer now?')) return;

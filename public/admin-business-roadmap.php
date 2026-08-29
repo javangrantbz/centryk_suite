@@ -75,6 +75,7 @@ $board = [
             ['Proactive alerts — settlement variance + daily sweep for newly-overdue invoices & subscription charges', 'app/services/BusinessNotifier.php'],
             ['Dashboard module cards show a live health number per company (AR overdue, unmatched deposits, cash in transit)', 'partials/dashboard.php'],
             ['Collections reminders — email the reminder to the customer + record it as sent', 'receivables.php'],
+            ['Statement — email the full statement of account to the customer', 'receivables.php'],
             ['This tracker', 'admin-business-roadmap.php'],
         ],
     ],
@@ -83,7 +84,6 @@ $board = [
         'items'  => [
             ['Credit-hold enforcement — wire ReceivablesService::creditStatus into invoice-maker / OnePay checkout', null],
             ['Billing — generate a real invoice through invoice-maker; dunning cron → past_due', null],
-            ['Statement — email it to the customer', null],
             ['Reconciliation — live bank feed adapter (needs Centryk Bank / a bank API)', null],
         ],
     ],

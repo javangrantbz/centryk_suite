@@ -81,14 +81,31 @@ if ($u9) {
 }
 
 /* ── sample customers + invoices for each target company ──────────────── */
+// Emails are +aliases on the owner's own inbox so "Email statement / reminder"
+// actually lands somewhere you can read while testing on localhost (and never
+// spams a real third party).
+$OWNER_INBOX = 'javangrantbz@gmail.com';
+$demoEmail = static function (string $slug) use ($OWNER_INBOX): string {
+    [$u, $d] = explode('@', $OWNER_INBOX, 2);
+    return $u . '+' . $slug . '@' . $d;
+};
 $CUSTOMERS = [
-    ['Corozal Cash & Carry',    'accounts@corozalcc.bz',   75000, 30, 0],
-    ['San Pedro Provisions',    'ap@sanpedroprov.bz',      12000,  7, 0],
-    ['Belmopan Wholesale Ltd',  'finance@belmopanws.bz',  120000, 30, 0],
-    ['Orange Walk Distributors', 'owd.accounts@mail.bz',   90000, 30, 0],
-    ['Dangriga Trading Post',   'dtp@mail.bz',             15000, 15, 0],
-    ['Placencia Mini Mart',     'placenciamm@mail.bz',      8000,  7, 1],  // on hold
+    ['Corozal Cash & Carry',     $demoEmail('corozal'),  75000, 30, 0],
+    ['San Pedro Provisions',     $demoEmail('sanpedro'), 12000,  7, 0],
+    ['Belmopan Wholesale Ltd',   $demoEmail('belmopan'), 120000, 30, 0],
+    ['Orange Walk Distributors', $demoEmail('owd'),      90000, 30, 0],
+    ['Dangriga Trading Post',    $demoEmail('dangriga'), 15000, 15, 0],
+    ['Placencia Mini Mart',      $demoEmail('placencia'), 8000,  7, 1],  // on hold
 ];
+
+// Repoint any earlier-seeded demo customers that still have the old fake .bz
+// addresses (the marker guard below skips re-seeding otherwise).
+foreach ($TARGETS as $cid => $t) {
+    foreach ($CUSTOMERS as [$name, $email]) {
+        $pdo->prepare("UPDATE customers SET email = :e WHERE company_id = :c AND name = :n AND email LIKE '%.bz'")
+            ->execute(['e' => $email, 'c' => $cid, 'n' => $name]);
+    }
+}
 
 foreach ($TARGETS as $cid => $t) {
     // marker: skip seeding if this company already has a demo customer

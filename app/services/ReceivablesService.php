@@ -496,6 +496,96 @@ class ReceivablesService
     }
 
     /**
+     * Email the customer their statement of account (the same ledger as the
+     * printable one) and record it as a sent 'statement' reminder.
+     *
+     * @return array{reminder_id:int, delivery:string, note:?string}
+     */
+    public static function emailStatement(int $companyId, int $customerId, ?int $actorId): array
+    {
+        $doc = self::statementDocument($companyId, $customerId);
+        if ($doc === null) {
+            throw new RuntimeException('Customer not found.');
+        }
+        $to = trim((string)($doc['customer']['email'] ?? ''));
+        if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
+            throw new InvalidArgumentException('This customer has no valid email address on file.');
+        }
+
+        $cur     = trim((string)$doc['letterhead']['currency']) ?: 'BZD';
+        $bizName = (string)$doc['letterhead']['name'];
+        $money   = static fn ($v) => $cur . ' ' . number_format((float)$v, 2);
+        $esc     = static fn ($v) => htmlspecialchars((string)$v, ENT_QUOTES);
+        $subject = 'Statement of account — ' . $bizName;
+
+        $rows = '';
+        foreach ($doc['entries'] as $e) {
+            $rows .= '<tr>'
+                . '<td style="padding:4px 8px;border-bottom:1px solid #eee">' . $esc($e['date'] ? date('j M Y', strtotime($e['date'])) : '') . '</td>'
+                . '<td style="padding:4px 8px;border-bottom:1px solid #eee">' . $esc($e['ref']) . '</td>'
+                . '<td style="padding:4px 8px;border-bottom:1px solid #eee">' . $esc($e['detail']) . '</td>'
+                . '<td style="padding:4px 8px;border-bottom:1px solid #eee;text-align:right">' . ($e['charge'] > 0.004 ? number_format($e['charge'], 2) : '') . '</td>'
+                . '<td style="padding:4px 8px;border-bottom:1px solid #eee;text-align:right">' . ($e['credit'] > 0.004 ? number_format($e['credit'], 2) : '') . '</td>'
+                . '<td style="padding:4px 8px;border-bottom:1px solid #eee;text-align:right">' . number_format($e['balance'], 2) . '</td>'
+                . '</tr>';
+        }
+        $a = $doc['aging'];
+        $html = '<div style="font-family:Segoe UI,Arial,sans-serif;font-size:13px;color:#1a1a1a">'
+            . '<p>Dear ' . $esc($doc['customer']['name']) . ',</p>'
+            . '<p>Please find your statement of account with ' . $esc($bizName) . ' as of '
+            . $esc(date('j M Y', strtotime($doc['as_of']))) . '. The balance due is <strong>' . $money($doc['balance']) . '</strong>.</p>'
+            . '<table style="border-collapse:collapse;width:100%;font-size:12px;margin:12px 0">'
+            . '<thead><tr>'
+            . '<th style="text-align:left;padding:4px 8px;border-bottom:2px solid #333">Date</th>'
+            . '<th style="text-align:left;padding:4px 8px;border-bottom:2px solid #333">Reference</th>'
+            . '<th style="text-align:left;padding:4px 8px;border-bottom:2px solid #333">Detail</th>'
+            . '<th style="text-align:right;padding:4px 8px;border-bottom:2px solid #333">Charges</th>'
+            . '<th style="text-align:right;padding:4px 8px;border-bottom:2px solid #333">Payments</th>'
+            . '<th style="text-align:right;padding:4px 8px;border-bottom:2px solid #333">Balance</th>'
+            . '</tr></thead><tbody>' . $rows . '</tbody></table>'
+            . '<p style="font-size:12px;color:#555">Aged: current ' . $money($a['current']) . ' · 1–30 ' . $money($a['b_1_30'])
+            . ' · 31–60 ' . $money($a['b_31_60']) . ' · 61–90 ' . $money($a['b_61_90']) . ' · 90+ ' . $money($a['b_90p']) . '</p>'
+            . '<p>If you have already settled this balance, thank you — please disregard this notice. '
+            . 'Otherwise please arrange payment or reply to let us know when we can expect it.</p>'
+            . '<p>Regards,<br>' . $esc($bizName) . '</p></div>';
+
+        $text = "Statement of account with {$bizName} as of " . date('j M Y', strtotime($doc['as_of']))
+            . ". Balance due: " . $money($doc['balance']) . ".";
+
+        require_once __DIR__ . '/MailerService.php';
+        try {
+            $res = (new MailerService())->send($to, $subject, $html, $text, 'ar_statement');
+        } catch (Throwable $e) {
+            throw new RuntimeException('Could not send the email: ' . $e->getMessage(), 0, $e);
+        }
+        $delivery = $res['status'] ?? 'unknown';
+
+        $overdue = round(
+            (float)$a['b_1_30'] + (float)$a['b_31_60'] + (float)$a['b_61_90'] + (float)$a['b_90p'],
+            2
+        );
+        DB::pdo()->prepare("
+            INSERT INTO ar_reminders (company_id, customer_id, kind, channel, subject, body, balance_at, overdue_at, sent_at, created_by)
+            VALUES (:cid, :cust, 'statement', 'email', :subj, :body, :bal, :od, NOW(), :by)
+        ")->execute([
+            'cid' => $companyId, 'cust' => $customerId,
+            'subj' => mb_substr($subject, 0, 190), 'body' => $text,
+            'bal' => $doc['balance'], 'od' => $overdue, 'by' => $actorId,
+        ]);
+        $id = (int)DB::pdo()->lastInsertId();
+
+        Audit::log([
+            'actor_user_id' => $actorId,
+            'company_id'    => $companyId,
+            'event_type'    => 'receivables.statement.emailed',
+            'summary'       => "Emailed statement to {$doc['customer']['name']} <{$to}> ({$delivery})",
+            'metadata'      => ['reminder_id' => $id, 'customer_id' => $customerId, 'channel' => 'email', 'delivery' => $delivery],
+        ]);
+
+        return ['reminder_id' => $id, 'delivery' => $delivery, 'note' => $res['note'] ?? null];
+    }
+
+    /**
      * Credit standing for a customer — for other apps to gate new orders/invoices.
      * @return array{status:string, balance:float, credit_limit:?float, available:?float, on_hold:bool}
      */
