@@ -110,14 +110,22 @@ $headerActionsHtml = ob_get_clean();
 
 <div class="mx-auto max-w-5xl px-4 pt-4 pb-12">
 
-    <div class="mb-5">
-        <p class="text-[10px] font-black uppercase tracking-[0.18em] text-violet-600">Centryk Business</p>
-        <h1 class="mt-0.5 text-2xl font-black tracking-tight text-slate-950">More tools for growing operations</h1>
-        <p class="mt-1 max-w-2xl text-sm font-semibold text-slate-500">
-            Your Centryk hub stays free. These are optional add-ons for companies that need
-            receivables, reconciliation, field routes, or multi-entity structure. A Centryk
-            advisor sets them up with you — nothing switches on automatically.
-        </p>
+    <div class="mb-5 flex flex-wrap items-start justify-between gap-3">
+        <div>
+            <p class="text-[10px] font-black uppercase tracking-[0.18em] text-violet-600">Centryk Business</p>
+            <h1 class="mt-0.5 text-2xl font-black tracking-tight text-slate-950">More tools for growing operations</h1>
+            <p class="mt-1 max-w-2xl text-sm font-semibold text-slate-500">
+                Your Centryk hub stays free. These are optional add-ons for companies that need
+                receivables, reconciliation, field routes, or multi-entity structure. A Centryk
+                advisor sets them up with you — nothing switches on automatically.
+            </p>
+        </div>
+        <?php if ($activeCompany && (in_array('active', $entStates, true) || in_array('suspended', $entStates, true))): ?>
+        <a href="business_insights.php?company_id=<?= (int)$activeCompany['id'] ?>"
+           class="shrink-0 rounded-xl border border-violet-200 bg-violet-50 px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-violet-700 hover:bg-violet-100">
+            View insights
+        </a>
+        <?php endif; ?>
     </div>
 
     <?php if (!$companies): ?>

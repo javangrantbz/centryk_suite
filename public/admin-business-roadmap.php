@@ -86,6 +86,7 @@ $board = [
             ['Routes — driver performance panel: trips, stops, cash vs electronic, net variance, flags (30d)', 'routes.php'],
             ['business.php — "Recent activity" feed across a company\'s Business modules', 'app/services/BusinessActivity.php'],
             ['Receivables — write-offs & credit adjustments (maker-checker): propose -> admin approves; full or partial; reversible; bad-debt report', 'database/add_writeoffs.sql'],
+            ['Business Insights — one-company KPI snapshot (DSO, collection ratio, write-off rate, cash in transit, match rate)', 'business_insights.php'],
             ['This tracker', 'admin-business-roadmap.php'],
         ],
     ],
