@@ -292,15 +292,16 @@ function renderStatement(s){
                     ${s.unallocated_credit > 0.004 ? `<div class="biz-num biz-t-blue" style="font-size:11px;font-weight:600">incl. ${m(s.unallocated_credit)} on acct</div>` : ''}
                 </div>
             </div>
-            ${CAN_WRITE ? `
             <div class="mt-2 flex flex-wrap gap-2">
+                <a href="receivables_statement.php?company_id=${CID}&customer_id=${c.id}" target="_blank" rel="noopener" class="biz-btn biz-btn-ghost">Statement</a>
+                ${CAN_WRITE ? `
                 <button onclick="paymentForm(${c.id})" class="biz-btn biz-btn-primary">Record payment</button>
                 <button onclick="editCustomer(${c.id})" class="biz-btn biz-btn-ghost">Edit</button>
                 <button onclick="reminderForm(${c.id})" class="biz-btn biz-btn-ghost">Draft reminder</button>
                 <button onclick="toggleHold(${c.id}, ${c.on_hold ? 'false' : 'true'})" class="biz-btn ${c.on_hold ? 'biz-btn-ghost' : 'biz-btn-danger'}">
                     ${c.on_hold ? 'Release hold' : 'Place on hold'}
-                </button>
-            </div>` : ''}
+                </button>` : ''}
+            </div>
             <div id="inlineForm" class="mt-2"></div>
         </div>
         <div class="biz-panel-head">Invoices</div>
