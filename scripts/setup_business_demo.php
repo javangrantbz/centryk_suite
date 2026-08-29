@@ -157,6 +157,63 @@ foreach ($TARGETS as $cid => $t) {
     say("#{$cid} {$t['label']}: seeded 6 customers, 14 invoices, 2 receipts");
 }
 
+/* ── delivery routes + a settlement awaiting approval ─────────────────── */
+require_once __DIR__ . '/../app/services/RoutesService.php';
+foreach ($TARGETS as $cid => $t) {
+    $mk = $pdo->prepare("SELECT id FROM routes WHERE company_id = :c AND name = 'Northern Distribution' LIMIT 1");
+    $mk->execute(['c' => $cid]);
+    if ($mk->fetch()) { say("#{$cid} already has routes — skipping"); continue; }
+
+    // customer ids by name for this company
+    $cust = [];
+    $cs = $pdo->prepare("SELECT id, name FROM customers WHERE company_id = :c");
+    $cs->execute(['c' => $cid]);
+    foreach ($cs->fetchAll(PDO::FETCH_ASSOC) as $r) { $cust[$r['name']] = (int)$r['id']; }
+
+    $routeId = RoutesService::saveRoute($cid, ['name' => 'Northern Distribution', 'default_driver_name' => 'Marlon Cruz'], $t['actor']);
+
+    // Trip A — ran yesterday, cash declared, now awaiting an admin's approval
+    $tripA = RoutesService::createTrip($cid, $routeId, (new DateTime('-1 day'))->format('Y-m-d'), 'Marlon Cruz', $t['actor']);
+    foreach ([['Corozal Cash & Carry', 1800.00], ['San Pedro Provisions', 950.00], ['Orange Walk Distributors', 1600.00]] as [$name, $amt]) {
+        if (!isset($cust[$name])) { continue; }
+        $sid = RoutesService::addStop($cid, $tripA, $cust[$name], $t['actor']);
+        RoutesService::recordStop($cid, $sid, ['status' => 'paid', 'amount_collected' => $amt, 'method' => 'cash'], $t['actor']);
+    }
+    RoutesService::setTripStatus($cid, $tripA, 'out', $t['actor']);
+    RoutesService::submitSettlement($cid, $tripA, 4300.00, 'Short BZD 50 — customer paid partial', $t['actor']); // expected 4350, variance -50
+
+    // Trip B — out on the road today, cash still in transit
+    $tripB = RoutesService::createTrip($cid, $routeId, date('Y-m-d'), 'Marlon Cruz', $t['actor']);
+    foreach ([['Belmopan Wholesale Ltd', 2200.00], ['Dangriga Trading Post', 780.00]] as [$name, $amt]) {
+        if (!isset($cust[$name])) { continue; }
+        $sid = RoutesService::addStop($cid, $tripB, $cust[$name], $t['actor']);
+        RoutesService::recordStop($cid, $sid, ['status' => 'paid', 'amount_collected' => $amt, 'method' => 'cash'], $t['actor']);
+    }
+    if (isset($cust['Placencia Mini Mart'])) {
+        RoutesService::addStop($cid, $tripB, $cust['Placencia Mini Mart'], $t['actor']); // pending
+    }
+    RoutesService::setTripStatus($cid, $tripB, 'out', $t['actor']);
+
+    say("#{$cid} {$t['label']}: route 'Northern Distribution', 1 trip awaiting approval, 1 out with cash in transit");
+}
+
+/* ── unmatched bank deposits for the reconciliation workbench ─────────── */
+require_once __DIR__ . '/../app/services/ReconciliationService.php';
+foreach ($TARGETS as $cid => $t) {
+    $have = (int)$pdo->query("SELECT COUNT(*) FROM bank_transactions WHERE company_id = " . (int)$cid)->fetchColumn();
+    if ($have > 0) { say("#{$cid} already has bank lines — skipping"); continue; }
+
+    $csv = "date,description,reference,amount\n"
+        . (new DateTime('-6 days'))->format('Y-m-d') . ",TRANSFER FROM BELMOPAN WHOLESALE,FT2261A,7500.00\n"
+        . (new DateTime('-5 days'))->format('Y-m-d') . ",MOBILE DEPOSIT,DEP0092,9800.00\n"
+        . (new DateTime('-4 days'))->format('Y-m-d') . ",ONLINE PMT SAN PEDRO PROV,OLP7741,1180.00\n"
+        . (new DateTime('-3 days'))->format('Y-m-d') . ",CASH DEPOSIT BRANCH 04,CD0041,3250.00\n"
+        . (new DateTime('-2 days'))->format('Y-m-d') . ",TRANSFER ORANGE WALK DIST,FT2288B,5240.00\n"
+        . (new DateTime('-1 day'))->format('Y-m-d')  . ",CHEQUE 004512,CHQ4512,980.00\n";
+    $r = ReconciliationService::import($cid, $csv, [], $t['actor'], 'demo-statement.csv');
+    say("#{$cid} {$t['label']}: imported {$r['imported']} bank line(s) — all unmatched");
+}
+
 /* ── company group for the Enterprise module ──────────────────────────── */
 $grp = $pdo->query("SELECT id FROM company_groups WHERE name = 'BHI Group' LIMIT 1")->fetchColumn();
 if (!$grp) {

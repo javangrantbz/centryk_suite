@@ -102,9 +102,12 @@ $headerActionsHtml = ob_get_clean();
                         <button id="viewLedger" class="is-active" onclick="setView('ledger')">Customers</button>
                         <button id="viewCollections" onclick="setView('collections')">Collections</button>
                     </span>
-                    <?php if ($level === Entitlements::FULL): ?>
+                    <span class="flex gap-1">
+                        <a href="receivables_aging.php?company_id=<?= (int)$activeCompany['id'] ?>" target="_blank" rel="noopener" class="biz-btn biz-btn-ghost biz-btn-sm">Aging report</a>
+                        <?php if ($level === Entitlements::FULL): ?>
                         <button onclick="newCustomer()" class="biz-btn biz-btn-ghost biz-btn-sm">+ New</button>
-                    <?php endif; ?>
+                        <?php endif; ?>
+                    </span>
                 </div>
                 <div id="customerRows" class="biz-list max-h-[62vh] overflow-y-auto">
                     <div class="biz-panel-empty">Loading…</div>
