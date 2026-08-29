@@ -99,31 +99,26 @@ class ReconciliationService
     }
 
     /**
-     * Import CSV text. $mapping may pin columns by header name; anything missing
-     * is auto-detected. Returns counts.
+     * Import a bank statement. Auto-detects CSV, OFX/QFX or MT940. For CSV,
+     * $mapping may pin columns by header name; anything missing is auto-detected.
      *
-     * @return array{import_id:int, imported:int, skipped:int, errors:array<string>}
+     * @return array{import_id:int, imported:int, skipped:int, format:string, errors:array<string>}
      */
-    public static function import(int $companyId, string $csv, array $mapping, ?int $actorId, string $filename = ''): array
+    public static function import(int $companyId, string $content, array $mapping, ?int $actorId, string $filename = ''): array
     {
-        $csv = str_replace(["\r\n", "\r"], "\n", trim($csv));
-        if ($csv === '') {
+        $content = trim(str_replace(["\r\n", "\r"], "\n", $content));
+        if ($content === '') {
             throw new InvalidArgumentException('The file is empty.');
         }
 
-        $lines = array_values(array_filter(explode("\n", $csv), static fn($l) => trim($l) !== ''));
-        if (count($lines) < 2) {
-            throw new InvalidArgumentException('Need a header row and at least one transaction.');
-        }
-
-        $header = array_map(static fn($h) => strtolower(trim($h, " \t\"'")), str_getcsv(array_shift($lines)));
-        $col = self::resolveColumns($header, $mapping);
-        if ($col['date'] === null || $col['description'] === null || ($col['amount'] === null && $col['credit'] === null && $col['debit'] === null)) {
-            throw new InvalidArgumentException('Could not find date, description and amount columns. Check the file or set the mapping.');
-        }
+        $format = self::detectFormat($content);
+        [$rows, $errors] = match ($format) {
+            'ofx'   => self::parseOfxRows($content),
+            'mt940' => self::parseMt940Rows($content),
+            default => self::parseCsvRows($content, $mapping),
+        };
 
         $pdo = DB::pdo();
-        $errors = [];
         $imported = 0;
         $skipped = 0;
 
@@ -131,7 +126,7 @@ class ReconciliationService
             $pdo->beginTransaction();
 
             $pdo->prepare("INSERT INTO bank_statement_imports (company_id, filename, imported_by) VALUES (:cid, :fn, :by)")
-                ->execute(['cid' => $companyId, 'fn' => mb_substr($filename, 0, 190), 'by' => $actorId]);
+                ->execute(['cid' => $companyId, 'fn' => mb_substr($filename ?: strtoupper($format) . ' import', 0, 190), 'by' => $actorId]);
             $importId = (int)$pdo->lastInsertId();
 
             $ins = $pdo->prepare("
@@ -140,43 +135,21 @@ class ReconciliationService
                 VALUES (:cid, :imp, :d, :desc, :ref, :amt, :dir, :hash)
             ");
 
-            foreach ($lines as $n => $line) {
-                $cells = str_getcsv($line);
-                $rawDate = trim((string)($cells[$col['date']] ?? ''));
-                $date = self::parseDate($rawDate);
-                if ($date === null) {
-                    $errors[] = 'Row ' . ($n + 2) . ': unrecognised date "' . $rawDate . '"';
-                    continue;
-                }
-
-                $desc = trim((string)($cells[$col['description']] ?? ''));
-                $ref  = $col['reference'] !== null ? trim((string)($cells[$col['reference']] ?? '')) : '';
-
-                if ($col['amount'] !== null) {
-                    $amount = self::parseAmount((string)($cells[$col['amount']] ?? ''));
-                } else {
-                    $cr = $col['credit'] !== null ? self::parseAmount((string)($cells[$col['credit']] ?? '')) : 0.0;
-                    $dr = $col['debit']  !== null ? self::parseAmount((string)($cells[$col['debit']] ?? '')) : 0.0;
-                    $amount = round(abs($cr) - abs($dr), 2);
-                }
-                if ($amount === 0.0) {
-                    $skipped++;
-                    continue;
-                }
-
+            foreach ($rows as $row) {
+                $amount = round((float)$row['amount'], 2);
+                if ($amount === 0.0) { $skipped++; continue; }
+                $desc = (string)$row['description'];
+                $ref  = (string)($row['reference'] ?? '');
                 $direction = $amount >= 0 ? 'credit' : 'debit';
-                $hash = sha1($companyId . '|' . $date . '|' . number_format($amount, 2, '.', '') . '|' . mb_strtolower($desc) . '|' . mb_strtolower($ref));
+                $hash = sha1($companyId . '|' . $row['date'] . '|' . number_format($amount, 2, '.', '')
+                    . '|' . mb_strtolower($desc) . '|' . mb_strtolower($ref));
 
                 $ins->execute([
-                    'cid' => $companyId, 'imp' => $importId, 'd' => $date,
+                    'cid' => $companyId, 'imp' => $importId, 'd' => $row['date'],
                     'desc' => mb_substr($desc, 0, 255), 'ref' => mb_substr($ref, 0, 190),
                     'amt' => $amount, 'dir' => $direction, 'hash' => $hash,
                 ]);
-                if ($ins->rowCount() > 0) {
-                    $imported++;
-                } else {
-                    $skipped++;
-                }
+                $ins->rowCount() > 0 ? $imported++ : $skipped++;
             }
 
             $pdo->prepare("UPDATE bank_statement_imports SET row_count = :rc, skipped = :sk WHERE id = :id")
@@ -186,8 +159,8 @@ class ReconciliationService
                 'actor_user_id' => $actorId,
                 'company_id'    => $companyId,
                 'event_type'    => 'reconciliation.import',
-                'summary'       => 'Imported ' . $imported . ' bank line(s)' . ($skipped ? ", skipped {$skipped}" : ''),
-                'metadata'      => ['import_id' => $importId, 'imported' => $imported, 'skipped' => $skipped],
+                'summary'       => 'Imported ' . $imported . ' bank line(s) (' . strtoupper($format) . ')' . ($skipped ? ", skipped {$skipped}" : ''),
+                'metadata'      => ['import_id' => $importId, 'format' => $format, 'imported' => $imported, 'skipped' => $skipped],
             ]);
 
             $pdo->commit();
@@ -198,16 +171,161 @@ class ReconciliationService
             throw $e;
         }
 
-        return ['import_id' => $importId, 'imported' => $imported, 'skipped' => $skipped, 'errors' => array_slice($errors, 0, 20)];
+        return [
+            'import_id' => $importId, 'imported' => $imported, 'skipped' => $skipped,
+            'format' => $format, 'errors' => array_slice($errors, 0, 20),
+        ];
+    }
+
+    // ── statement format parsers ───────────────────────────────────────────
+
+    private static function detectFormat(string $content): string
+    {
+        $head = mb_strtoupper(mb_substr(ltrim($content), 0, 400));
+        if (str_contains($head, '<OFX>') || str_contains($head, 'OFXHEADER') || str_contains($head, '<STMTTRN>')) {
+            return 'ofx';
+        }
+        if (preg_match('/^:2[05]:/m', $content) || preg_match('/^:61:/m', $content)) {
+            return 'mt940';
+        }
+        return 'csv';
+    }
+
+    /** @return array{0:array<array>,1:array<string>} */
+    private static function parseCsvRows(string $csv, array $mapping): array
+    {
+        $lines = array_values(array_filter(explode("\n", $csv), static fn($l) => trim($l) !== ''));
+        if (count($lines) < 2) {
+            throw new InvalidArgumentException('Need a header row and at least one transaction.');
+        }
+        $header = array_map(static fn($h) => strtolower(trim($h, " \t\"'")), str_getcsv(array_shift($lines)));
+        $col = self::resolveColumns($header, $mapping);
+        if ($col['date'] === null || $col['description'] === null || ($col['amount'] === null && $col['credit'] === null && $col['debit'] === null)) {
+            throw new InvalidArgumentException('Could not find date, description and amount columns. Check the file or set the mapping.');
+        }
+
+        $rows = [];
+        $errors = [];
+        foreach ($lines as $n => $line) {
+            $cells = str_getcsv($line);
+            $date = self::parseDate(trim((string)($cells[$col['date']] ?? '')));
+            if ($date === null) {
+                $errors[] = 'Row ' . ($n + 2) . ': unrecognised date';
+                continue;
+            }
+            if ($col['amount'] !== null) {
+                $amount = self::parseAmount((string)($cells[$col['amount']] ?? ''));
+            } else {
+                $cr = $col['credit'] !== null ? self::parseAmount((string)($cells[$col['credit']] ?? '')) : 0.0;
+                $dr = $col['debit']  !== null ? self::parseAmount((string)($cells[$col['debit']] ?? '')) : 0.0;
+                $amount = round(abs($cr) - abs($dr), 2);
+            }
+            $rows[] = [
+                'date'        => $date,
+                'description' => trim((string)($cells[$col['description']] ?? '')),
+                'reference'   => $col['reference'] !== null ? trim((string)($cells[$col['reference']] ?? '')) : '',
+                'amount'      => $amount,
+            ];
+        }
+        return [$rows, $errors];
+    }
+
+    /** @return array{0:array<array>,1:array<string>} */
+    private static function parseOfxRows(string $ofx): array
+    {
+        if (!preg_match_all('#<STMTTRN>(.*?)</STMTTRN>#is', $ofx, $blocks)) {
+            throw new InvalidArgumentException('No transactions found in the OFX file.');
+        }
+        $tag = static function (string $block, string $name): string {
+            // OFX 1.x omits closing tags; value runs to the next '<' or newline.
+            if (preg_match('#<' . $name . '>([^<\r\n]*)#i', $block, $m)) {
+                return trim(html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5));
+            }
+            return '';
+        };
+
+        $rows = [];
+        $errors = [];
+        foreach ($blocks[1] as $i => $block) {
+            $raw = $tag($block, 'DTPOSTED') ?: $tag($block, 'DTUSER');
+            if (!preg_match('/^(\d{4})(\d{2})(\d{2})/', $raw, $dm)) {
+                $errors[] = 'Transaction ' . ($i + 1) . ': bad date';
+                continue;
+            }
+            $amt = self::parseAmount($tag($block, 'TRNAMT'));
+            $name = $tag($block, 'NAME');
+            $memo = $tag($block, 'MEMO');
+            $desc = trim($name . ($memo && $memo !== $name ? ' — ' . $memo : ''));
+            $rows[] = [
+                'date'        => "$dm[1]-$dm[2]-$dm[3]",
+                'description' => $desc !== '' ? $desc : ($tag($block, 'TRNTYPE') ?: 'Transaction'),
+                'reference'   => $tag($block, 'CHECKNUM') ?: $tag($block, 'REFNUM') ?: $tag($block, 'FITID'),
+                'amount'      => $amt,
+            ];
+        }
+        return [$rows, $errors];
+    }
+
+    /** @return array{0:array<array>,1:array<string>} */
+    private static function parseMt940Rows(string $mt): array
+    {
+        // Join continuation lines, then split on the :NN: field tags.
+        $lines = explode("\n", $mt);
+        $fields = [];
+        $cur = null;
+        foreach ($lines as $ln) {
+            if (preg_match('/^:(\d{2}[A-Z]?):(.*)$/', $ln, $m)) {
+                if ($cur !== null) { $fields[] = $cur; }
+                $cur = ['tag' => $m[1], 'val' => $m[2]];
+            } elseif ($cur !== null) {
+                $cur['val'] .= "\n" . $ln;
+            }
+        }
+        if ($cur !== null) { $fields[] = $cur; }
+
+        $rows = [];
+        $errors = [];
+        for ($i = 0, $n = count($fields); $i < $n; $i++) {
+            if ($fields[$i]['tag'] !== '61') { continue; }
+            $v = $fields[$i]['val'];
+            // :61: YYMMDD [MMDD] (R?)(C|D) [funds] amount(N|F|S)type ...
+            if (!preg_match('/^(\d{6})(\d{4})?(R?[CD])([A-Za-z])?([0-9,]+)/', $v, $m)) {
+                $errors[] = 'Statement line ' . ($i + 1) . ': unparseable :61:';
+                continue;
+            }
+            $yy = (int)substr($m[1], 0, 2);
+            $date = sprintf('%04d-%s-%s', $yy + ($yy > 70 ? 1900 : 2000), substr($m[1], 2, 2), substr($m[1], 4, 2));
+            $sign = str_contains($m[3], 'D') ? -1 : 1;
+            if (str_starts_with($m[3], 'R')) { $sign *= -1; } // reversal
+            $amount = round($sign * (float)str_replace(',', '.', rtrim($m[5], ',')), 2);
+
+            // The following :86: field carries the description.
+            $desc = '';
+            if (isset($fields[$i + 1]) && $fields[$i + 1]['tag'] === '86') {
+                $desc = trim(preg_replace('/\s*\n\s*/', ' ', $fields[$i + 1]['val']));
+                $desc = preg_replace('/\?\d{2}/', ' ', $desc); // strip ?20 ?21 structured markers
+                $desc = trim(preg_replace('/\s{2,}/', ' ', $desc));
+            }
+            $ref = '';
+            if (preg_match('#//(\S+)#', $v, $rm)) { $ref = $rm[1]; }
+            elseif (preg_match('/N[A-Z]{3}(\S+)/', $v, $rm)) { $ref = $rm[1]; }
+
+            $rows[] = [
+                'date'        => $date,
+                'description' => $desc !== '' ? $desc : 'Bank transaction',
+                'reference'   => $ref,
+                'amount'      => $amount,
+            ];
+        }
+        if (!$rows && !$errors) {
+            throw new InvalidArgumentException('No :61: statement lines found in the MT940 file.');
+        }
+        return [$rows, $errors];
     }
 
     /**
-     * Candidate matches for one (credit) line: open invoices ranked by how well
-     * amount / reference / customer name line up.
-     */
-    /**
      * A short, stable reference a customer can put on a bank transfer so the
-     * deposit self-identifies. Reversible: resolveRef() decodes it back.
+     * deposit self-identifies. Reversible: refsIn() decodes it back.
      * e.g. invoice #742 -> "PAY-KE"
      */
     public static function paymentRef(int $invoiceId): string
@@ -315,6 +433,56 @@ class ReconciliationService
         usort($out, static fn($a, $b) => $b['score'] <=> $a['score']);
 
         return ['transaction' => $txn, 'invoices' => array_slice($out, 0, 8)];
+    }
+
+    /**
+     * Auto-match every unmatched deposit whose best candidate is unambiguous and
+     * high-confidence — an exact-amount or payment-reference hit, well clear of
+     * the runner-up. Everything else is left for a person.
+     *
+     * @return array{matched:int, reviewed:int}
+     */
+    public static function autoMatch(int $companyId, ?int $actorId, int $minScore = 120): array
+    {
+        $ids = DB::pdo()->prepare("
+            SELECT id FROM bank_transactions
+            WHERE company_id = :cid AND status = 'unmatched' AND direction = 'credit'
+            ORDER BY txn_date ASC, id ASC
+        ");
+        $ids->execute(['cid' => $companyId]);
+
+        $matched = 0;
+        $reviewed = 0;
+        foreach ($ids->fetchAll(PDO::FETCH_COLUMN) as $txnId) {
+            $reviewed++;
+            $s = self::suggestions($companyId, (int)$txnId);
+            $cands = $s['invoices'] ?? [];
+            if (!$cands) { continue; }
+
+            $top = $cands[0];
+            $second = $cands[1]['score'] ?? 0;
+            $strong = in_array('exact amount', $top['reasons'], true)
+                   || in_array('payment reference matches', $top['reasons'], true);
+
+            if ($top['score'] >= $minScore && $strong && ($top['score'] - $second) >= 30) {
+                try {
+                    self::match($companyId, (int)$txnId, 'invoice', (int)$top['invoice_id'], $actorId);
+                    $matched++;
+                } catch (Throwable $e) {
+                    // leave it for review
+                }
+            }
+        }
+
+        Audit::log([
+            'actor_user_id' => $actorId,
+            'company_id'    => $companyId,
+            'event_type'    => 'reconciliation.automatch',
+            'summary'       => "Auto-matched {$matched} of {$reviewed} unmatched deposit(s)",
+            'metadata'      => ['matched' => $matched, 'reviewed' => $reviewed],
+        ]);
+
+        return ['matched' => $matched, 'reviewed' => $reviewed];
     }
 
     /**

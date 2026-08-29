@@ -206,6 +206,120 @@ class ReceivablesService
     }
 
     /**
+     * Everything a printable customer statement needs: the company letterhead,
+     * the customer, a chronological ledger (invoice = charge, receipt = credit)
+     * with a running balance, and the aging split.
+     */
+    public static function statementDocument(int $companyId, int $customerId): ?array
+    {
+        $s = self::statement($companyId, $customerId);
+        if ($s === null) {
+            return null;
+        }
+        $pdo = DB::pdo();
+
+        $lh = $pdo->prepare("
+            SELECT COALESCE(NULLIF(TRIM(v.business_name),''), c.name)    AS name,
+                   COALESCE(NULLIF(TRIM(v.business_email),''), c.email)   AS email,
+                   COALESCE(NULLIF(TRIM(v.business_phone),''), c.phone)   AS phone,
+                   COALESCE(NULLIF(TRIM(v.business_address),''), c.address) AS address,
+                   COALESCE(NULLIF(TRIM(v.currency_symbol),''), 'BZD ')   AS currency,
+                   v.business_tax_number AS tax_number, v.invoice_terms AS terms
+            FROM companies c LEFT JOIN invoice_settings v ON v.company_id = c.id
+            WHERE c.id = :cid LIMIT 1
+        ");
+        $lh->execute(['cid' => $companyId]);
+        $letterhead = $lh->fetch(PDO::FETCH_ASSOC) ?: ['name' => 'Company', 'currency' => 'BZD '];
+
+        // Payments already tied to an invoice via allocations — so we don't
+        // double-count when an invoice's amount_paid was set some other way.
+        $alloc = $pdo->prepare("
+            SELECT a.invoice_id, COALESCE(SUM(a.amount), 0) AS allocated
+            FROM ar_payment_allocations a
+            JOIN ar_payments p ON p.id = a.ar_payment_id
+            WHERE p.company_id = :cid AND p.customer_id = :cust
+            GROUP BY a.invoice_id
+        ");
+        $alloc->execute(['cid' => $companyId, 'cust' => $customerId]);
+        $allocated = [];
+        foreach ($alloc->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $allocated[(int)$r['invoice_id']] = (float)$r['allocated'];
+        }
+
+        // Chronological ledger.
+        $entries = [];
+        foreach ($s['invoices'] as $i) {
+            if (!in_array($i['status'], ['sent', 'overdue', 'paid'], true)) {
+                continue;
+            }
+            $entries[] = [
+                'date'    => $i['issue_date'],
+                'ref'     => $i['invoice_number'],
+                'detail'  => 'Invoice' . (in_array($i['status'], ['sent', 'overdue'], true) ? ' (due ' . $i['effective_due'] . ')' : ''),
+                'charge'  => (float)$i['total'],
+                'credit'  => 0.0,
+            ];
+            $offBooks = round((float)$i['amount_paid'] - ($allocated[(int)$i['id']] ?? 0), 2);
+            if ($offBooks > 0.004) {
+                $entries[] = [
+                    'date'   => $i['issue_date'],
+                    'ref'    => $i['invoice_number'],
+                    'detail' => 'Payment applied',
+                    'charge' => 0.0,
+                    'credit' => $offBooks,
+                ];
+            }
+        }
+        foreach ($s['payments'] as $p) {
+            $entries[] = [
+                'date'   => $p['received_on'],
+                'ref'    => $p['reference'] ?: ('Receipt #' . $p['id']),
+                'detail' => 'Payment received (' . $p['method'] . ')',
+                'charge' => 0.0,
+                'credit' => (float)$p['amount'],
+            ];
+        }
+        usort($entries, static fn ($a, $b) => [$a['date'], $a['ref']] <=> [$b['date'], $b['ref']]);
+
+        $running = (float)$s['customer']['opening_balance'];
+        if (abs($running) > 0.004) {
+            array_unshift($entries, ['date' => null, 'ref' => '', 'detail' => 'Opening balance', 'charge' => 0.0, 'credit' => 0.0, 'balance' => $running]);
+        }
+        foreach ($entries as &$e) {
+            if (!isset($e['balance'])) {
+                $running = round($running + $e['charge'] - $e['credit'], 2);
+                $e['balance'] = $running;
+            }
+        }
+        unset($e);
+
+        // Aging from open invoices.
+        $aging = ['current' => 0.0, 'b_1_30' => 0.0, 'b_31_60' => 0.0, 'b_61_90' => 0.0, 'b_90p' => 0.0];
+        foreach ($s['invoices'] as $i) {
+            if (!in_array($i['status'], ['sent', 'overdue'], true) || (float)$i['outstanding'] <= 0) {
+                continue;
+            }
+            $d = (int)$i['days_overdue'];
+            $out = (float)$i['outstanding'];
+            if ($d <= 0)        { $aging['current'] += $out; }
+            elseif ($d <= 30)   { $aging['b_1_30']  += $out; }
+            elseif ($d <= 60)   { $aging['b_31_60'] += $out; }
+            elseif ($d <= 90)   { $aging['b_61_90'] += $out; }
+            else                { $aging['b_90p']   += $out; }
+        }
+        foreach ($aging as $k => $v) { $aging[$k] = round($v, 2); }
+
+        return [
+            'letterhead' => $letterhead,
+            'customer'   => $s['customer'],
+            'as_of'      => date('Y-m-d'),
+            'entries'    => $entries,
+            'balance'    => $s['balance'],
+            'aging'      => $aging,
+        ];
+    }
+
+    /**
      * Overdue accounts, worst first — the collections work list.
      */
     public static function collections(int $companyId): array

@@ -191,6 +191,38 @@ class RoutesService
         return $trip;
     }
 
+    /** Reorder a trip's stops. $orderedStopIds must be every stop on the trip. */
+    public static function reorderStops(int $companyId, int $tripId, array $orderedStopIds, ?int $actorId): void
+    {
+        $pdo = DB::pdo();
+        $trip = self::lockableTrip($pdo, $companyId, $tripId);
+        if ($trip['status'] === 'settled' || !empty($trip['settlement_submitted_at'])) {
+            throw new RuntimeException('Settlement is submitted — stops are locked.');
+        }
+
+        $have = $pdo->prepare("SELECT id FROM route_stops WHERE trip_id = :t AND company_id = :c");
+        $have->execute(['t' => $tripId, 'c' => $companyId]);
+        $have = array_map('intval', $have->fetchAll(PDO::FETCH_COLUMN));
+        $want = array_values(array_unique(array_map('intval', $orderedStopIds)));
+        sort($have);
+        $sortedWant = $want; sort($sortedWant);
+        if ($have !== $sortedWant) {
+            throw new InvalidArgumentException('The stop list must match the trip exactly.');
+        }
+
+        $upd = $pdo->prepare("UPDATE route_stops SET seq = :s WHERE id = :id AND trip_id = :t");
+        foreach ($want as $i => $id) {
+            $upd->execute(['s' => $i + 1, 'id' => $id, 't' => $tripId]);
+        }
+
+        Audit::log([
+            'actor_user_id' => $actorId, 'company_id' => $companyId,
+            'event_type' => 'routes.stops.reordered',
+            'summary' => 'Reordered stops on trip #' . $tripId,
+            'metadata' => ['trip_id' => $tripId, 'order' => $want],
+        ]);
+    }
+
     public static function addStop(int $companyId, int $tripId, int $customerId, ?int $actorId): int
     {
         $pdo = DB::pdo();

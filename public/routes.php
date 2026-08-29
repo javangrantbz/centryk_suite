@@ -302,9 +302,15 @@ function renderTrip(t){
         return '';
     })();
 
-    const stops = (t.stops || []).map(s => `
+    const stopList = t.stops || [];
+    const stops = stopList.map((s, idx) => `
         <div class="biz-row" style="display:block;cursor:default">
             <div class="flex items-center gap-2">
+                ${rw && stopList.length > 1 ? `<span class="shrink-0 flex flex-col" style="line-height:1">
+                    <button onclick="moveStop(${t.id}, ${idx}, -1)" ${idx === 0 ? 'disabled' : ''} class="biz-muted" style="background:none;font-size:9px;opacity:${idx === 0 ? '.3' : '1'}">▲</button>
+                    <button onclick="moveStop(${t.id}, ${idx}, 1)" ${idx === stopList.length - 1 ? 'disabled' : ''} class="biz-muted" style="background:none;font-size:9px;opacity:${idx === stopList.length - 1 ? '.3' : '1'}">▼</button>
+                </span>` : ''}
+                <span class="shrink-0 biz-muted biz-num" style="font-size:11px;width:16px">${idx + 1}</span>
                 <div class="min-w-0 flex-1">
                     <p class="truncate" style="font-size:12px;font-weight:600">${esc(s.customer_name)}</p>
                     <p class="biz-muted" style="font-size:11px">${STOP_STATUS[s.status] || s.status}${Number(s.amount_collected) > 0 ? ' · ' + money(s.amount_collected) + ' ' + (METHODS[s.method] || s.method) : ''}${s.note ? ' · ' + esc(s.note) : ''}</p>
@@ -433,6 +439,17 @@ async function addStop(tripId, customerId){
     try {
         await api('stop_add.php', { trip_id: tripId, customer_id: customerId });
         showAlert('Stop added.', 'ok'); openTrip(tripId); load();
+    } catch (err){ showAlert(err.message, 'error'); }
+}
+async function moveStop(tripId, idx, dir){
+    const { trip } = await api('trip.php', { trip_id: tripId });
+    const ids = (trip.stops || []).map(s => s.id);
+    const j = idx + dir;
+    if (j < 0 || j >= ids.length) return;
+    [ids[idx], ids[j]] = [ids[j], ids[idx]];
+    try {
+        await api('stops_reorder.php', { trip_id: tripId, stop_ids: ids });
+        openTrip(tripId);
     } catch (err){ showAlert(err.message, 'error'); }
 }
 
