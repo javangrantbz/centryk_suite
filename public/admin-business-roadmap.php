@@ -74,6 +74,7 @@ $board = [
             ['Printable whole-company AR aging report — month-end pack', 'receivables_aging.php'],
             ['Proactive alerts — settlement variance + daily sweep for newly-overdue invoices & subscription charges', 'app/services/BusinessNotifier.php'],
             ['Dashboard module cards show a live health number per company (AR overdue, unmatched deposits, cash in transit)', 'partials/dashboard.php'],
+            ['Collections reminders — email the reminder to the customer + record it as sent', 'receivables.php'],
             ['This tracker', 'admin-business-roadmap.php'],
         ],
     ],
@@ -81,7 +82,6 @@ $board = [
         'accent' => 'sky',
         'items'  => [
             ['Credit-hold enforcement — wire ReceivablesService::creditStatus into invoice-maker / OnePay checkout', null],
-            ['Reminders — actually send the email (currently drafted + logged only)', null],
             ['Billing — generate a real invoice through invoice-maker; dunning cron → past_due', null],
             ['Statement — email it to the customer', null],
             ['Reconciliation — live bank feed adapter (needs Centryk Bank / a bank API)', null],

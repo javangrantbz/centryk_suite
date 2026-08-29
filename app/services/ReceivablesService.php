@@ -392,7 +392,13 @@ class ReceivablesService
             . "If you've already paid, thank you — please disregard this notice.\n\n"
             . "Regards,\n{$bizName}";
 
-        return ['subject' => $subject, 'body' => $body, 'balance' => $s['balance'], 'overdue' => round($overdue, 2)];
+        return [
+            'subject'  => $subject,
+            'body'     => $body,
+            'balance'  => $s['balance'],
+            'overdue'  => round($overdue, 2),
+            'to_email' => trim((string)($s['customer']['email'] ?? '')) ?: null,
+        ];
     }
 
     public static function logReminder(int $companyId, int $customerId, array $d, ?int $actorId): int
@@ -430,6 +436,63 @@ class ReceivablesService
             'metadata'      => ['reminder_id' => $id, 'customer_id' => $customerId, 'kind' => $kind, 'channel' => $channel],
         ]);
         return $id;
+    }
+
+    /**
+     * Email a reminder to the customer and record it as sent. On a dev box where
+     * MAIL_DRIVER isn't smtp the mailer just logs — the reminder is still saved
+     * with a 'logged' delivery note so the workflow is testable.
+     *
+     * @return array{reminder_id:int, delivery:string, note:?string}
+     */
+    public static function emailReminder(int $companyId, int $customerId, array $d, ?int $actorId): array
+    {
+        $pdo = DB::pdo();
+        $cust = $pdo->prepare("SELECT id, name, email FROM customers WHERE id = :id AND company_id = :cid LIMIT 1");
+        $cust->execute(['id' => $customerId, 'cid' => $companyId]);
+        $cust = $cust->fetch(PDO::FETCH_ASSOC);
+        if (!$cust) {
+            throw new RuntimeException('Customer not found.');
+        }
+        $to = trim((string)$cust['email']);
+        if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
+            throw new InvalidArgumentException('This customer has no valid email address on file.');
+        }
+
+        $draft   = self::reminderDraft($companyId, $customerId);
+        $kind    = in_array($d['kind'] ?? '', ['statement', 'due_soon', 'overdue', 'final_notice'], true) ? $d['kind'] : 'overdue';
+        $subject = mb_substr(trim((string)($d['subject'] ?? $draft['subject'])), 0, 190) ?: $draft['subject'];
+        $body    = trim((string)($d['body'] ?? $draft['body'])) ?: $draft['body'];
+
+        require_once __DIR__ . '/MailerService.php';
+        $html = '<div style="font-family:Segoe UI,Arial,sans-serif;font-size:14px;line-height:1.5;color:#1a1a1a">'
+            . nl2br(htmlspecialchars($body, ENT_QUOTES)) . '</div>';
+        try {
+            $res = (new MailerService())->send($to, $subject, $html, $body, 'ar_reminder');
+        } catch (Throwable $e) {
+            throw new RuntimeException('Could not send the email: ' . $e->getMessage(), 0, $e);
+        }
+        $delivery = $res['status'] ?? 'unknown';
+
+        $pdo->prepare("
+            INSERT INTO ar_reminders (company_id, customer_id, kind, channel, subject, body, balance_at, overdue_at, sent_at, created_by)
+            VALUES (:cid, :cust, :kind, 'email', :subj, :body, :bal, :od, NOW(), :by)
+        ")->execute([
+            'cid' => $companyId, 'cust' => $customerId, 'kind' => $kind,
+            'subj' => $subject, 'body' => $body,
+            'bal' => $draft['balance'], 'od' => $draft['overdue'], 'by' => $actorId,
+        ]);
+        $id = (int)$pdo->lastInsertId();
+
+        Audit::log([
+            'actor_user_id' => $actorId,
+            'company_id'    => $companyId,
+            'event_type'    => 'receivables.reminder.sent',
+            'summary'       => "Emailed {$kind} reminder to {$cust['name']} <{$to}> ({$delivery})",
+            'metadata'      => ['reminder_id' => $id, 'customer_id' => $customerId, 'kind' => $kind, 'channel' => 'email', 'delivery' => $delivery],
+        ]);
+
+        return ['reminder_id' => $id, 'delivery' => $delivery, 'note' => $res['note'] ?? null];
     }
 
     /**

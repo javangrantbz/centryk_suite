@@ -420,14 +420,30 @@ async function reminderForm(customerId){
             </div>
             ${fld('Subject', `<input name="subject" class="biz-input mt-1" value="${esc(d.subject)}">`)}
             ${fld('Message', `<textarea name="body" class="biz-input mt-1" rows="7">${esc(d.body)}</textarea>`)}
-            <p class="biz-muted mt-2" style="font-size:11px">Centryk doesn't send this for you yet — copy it into your email, then log it here.</p>
-            <div class="mt-2 flex gap-2">
-                <button type="submit" name="act" value="sent" class="biz-btn biz-btn-primary">Log as sent</button>
+            <p class="biz-muted mt-2" style="font-size:11px">${d.to_email
+                ? `Emails this customer at <strong>${esc(d.to_email)}</strong>. Or copy the text and log it yourself.`
+                : `No email on file for this customer — copy the text into your own email, then log it here.`}</p>
+            <div class="mt-2 flex flex-wrap gap-2">
+                ${d.to_email ? `<button type="button" onclick="sendReminder(${customerId}, this.form)" class="biz-btn biz-btn-primary">Send by email</button>` : ''}
+                <button type="submit" name="act" value="sent" class="biz-btn ${d.to_email ? 'biz-btn-ghost' : 'biz-btn-primary'}">Log as sent</button>
                 <button type="submit" name="act" value="draft" class="biz-btn biz-btn-ghost">Save draft</button>
                 <button type="button" onclick="navigator.clipboard && navigator.clipboard.writeText(this.form.body.value); showAlert('Message copied.', 'ok');" class="biz-btn biz-btn-ghost">Copy</button>
                 <button type="button" onclick="document.getElementById('inlineForm').innerHTML=''" class="biz-btn biz-btn-ghost">Cancel</button>
             </div>
         </form>`;
+}
+async function sendReminder(customerId, f){
+    if (!confirm('Email this reminder to the customer now?')) return;
+    try {
+        const r = await api('reminder_send.php', {
+            customer_id: customerId, kind: f.kind.value,
+            subject: f.subject.value, body: f.body.value,
+        });
+        showAlert(r.delivery === 'sent' ? 'Reminder emailed.' : ('Recorded — ' + (r.note || 'email not sent from this environment')), 'ok');
+        document.getElementById('inlineForm').innerHTML = '';
+        openCustomer(customerId);
+        load();
+    } catch (err){ showAlert(err.message, 'error'); }
 }
 async function submitReminder(e, customerId){
     e.preventDefault();
