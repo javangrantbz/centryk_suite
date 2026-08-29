@@ -106,9 +106,23 @@ $headerActionsHtml = ob_get_clean();
                         <a href="receivables_aging.php?company_id=<?= (int)$activeCompany['id'] ?>" target="_blank" rel="noopener" class="biz-btn biz-btn-ghost biz-btn-sm">Aging report</a>
                         <?php if ($level === Entitlements::FULL): ?>
                         <button onclick="statementRun()" class="biz-btn biz-btn-ghost biz-btn-sm">Send statements</button>
+                        <button onclick="toggleImport()" class="biz-btn biz-btn-ghost biz-btn-sm">Import</button>
                         <button onclick="newCustomer()" class="biz-btn biz-btn-ghost biz-btn-sm">+ New</button>
                         <?php endif; ?>
                     </span>
+                </div>
+                <div id="importBox" class="biz-panel-body hidden" style="border-bottom:1px solid var(--bz-line);background:var(--bz-head)">
+                    <p class="biz-kicker">Import customers</p>
+                    <p class="biz-muted" style="font-size:11px;margin-top:2px">
+                        CSV with a header row. Columns: <strong>name</strong> (required), company, email, phone,
+                        credit_limit, payment_terms_days, opening_balance. Existing accounts (matched by name) are updated.
+                    </p>
+                    <input type="file" id="importFile" accept=".csv,text/csv" class="biz-input mt-2" style="padding:3px">
+                    <textarea id="importText" rows="4" placeholder="…or paste CSV here" class="biz-input mt-2"></textarea>
+                    <div class="mt-2 flex gap-2">
+                        <button onclick="doImportCustomers()" class="biz-btn biz-btn-primary biz-btn-sm">Import</button>
+                        <button onclick="toggleImport()" class="biz-btn biz-btn-ghost biz-btn-sm">Cancel</button>
+                    </div>
                 </div>
                 <div id="customerRows" class="biz-list max-h-[62vh] overflow-y-auto">
                     <div class="biz-panel-empty">Loading…</div>
@@ -433,6 +447,26 @@ async function reminderForm(customerId){
                 <button type="button" onclick="document.getElementById('inlineForm').innerHTML=''" class="biz-btn biz-btn-ghost">Cancel</button>
             </div>
         </form>`;
+}
+function toggleImport(){
+    document.getElementById('importBox').classList.toggle('hidden');
+}
+async function doImportCustomers(){
+    const file = document.getElementById('importFile').files[0];
+    let csv = document.getElementById('importText').value.trim();
+    if (file) { csv = await file.text(); }
+    if (!csv){ showAlert('Choose a file or paste CSV first.', 'error'); return; }
+    try {
+        const r = await api('import_customers.php', { csv });
+        let msg = `${r.created} added, ${r.updated} updated`;
+        if (r.skipped) msg += `, ${r.skipped} skipped`;
+        showAlert(msg, r.skipped ? 'error' : 'ok');
+        if (r.errors && r.errors.length) console.warn('Customer import issues:', r.errors);
+        document.getElementById('importText').value = '';
+        document.getElementById('importFile').value = '';
+        toggleImport();
+        load();
+    } catch (e){ showAlert(e.message, 'error'); }
 }
 async function statementRun(){
     const n = (PORTFOLIO.customers || []).filter(c => Math.abs(c.balance) > 0.004 && c.email).length;

@@ -58,6 +58,52 @@ class RoutesService
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    /**
+     * Per-driver performance over the last $days days, from settled trips.
+     * Grouped by the assigned user where there is one, otherwise the free-text
+     * driver name. For the routes.php "Drivers" panel and future commission.
+     */
+    public static function driverPerformance(int $companyId, int $days = 30): array
+    {
+        $days = max(1, min(365, $days));
+        $stmt = DB::pdo()->prepare("
+            SELECT
+                COALESCE(NULLIF(TRIM(CONCAT(COALESCE(u.first_name,''),' ',COALESCE(u.last_name,''))),''), t.driver_name, 'Unassigned') AS driver,
+                t.driver_user_id,
+                COUNT(*)                                              AS trips,
+                COALESCE(SUM(t.cash_expected),0)                      AS cash_collected,
+                COALESCE(SUM(t.electronic_total),0)                   AS electronic_collected,
+                COALESCE(SUM(t.cash_expected + t.electronic_total),0) AS total_collected,
+                COALESCE(SUM(t.cash_variance),0)                      AS net_variance,
+                SUM(ABS(COALESCE(t.cash_variance,0)) > 0.01)          AS flagged,
+                COALESCE(SUM((SELECT COUNT(*) FROM route_stops s
+                              WHERE s.trip_id = t.id AND s.status IN ('paid','delivered'))), 0) AS stops_done
+            FROM route_trips t
+            LEFT JOIN users u ON u.id = t.driver_user_id
+            WHERE t.company_id = :cid AND t.status = 'settled'
+              AND t.settled_at >= DATE_SUB(NOW(), INTERVAL {$days} DAY)
+            GROUP BY driver, t.driver_user_id
+            ORDER BY total_collected DESC
+        ");
+        $stmt->execute(['cid' => $companyId]);
+
+        $rows = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $rows[] = [
+                'driver'               => $r['driver'],
+                'driver_user_id'       => $r['driver_user_id'] !== null ? (int)$r['driver_user_id'] : null,
+                'trips'                => (int)$r['trips'],
+                'stops_done'           => (int)$r['stops_done'],
+                'cash_collected'       => round((float)$r['cash_collected'], 2),
+                'electronic_collected' => round((float)$r['electronic_collected'], 2),
+                'total_collected'      => round((float)$r['total_collected'], 2),
+                'net_variance'         => round((float)$r['net_variance'], 2),
+                'flagged'              => (int)$r['flagged'],
+            ];
+        }
+        return ['days' => $days, 'drivers' => $rows];
+    }
+
     public static function saveRoute(int $companyId, array $d, ?int $actorId): int
     {
         $pdo = DB::pdo();
