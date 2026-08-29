@@ -7,6 +7,56 @@ require_auth();
 $companyId = current_company_id();
 $method = $_SERVER['REQUEST_METHOD'];
 
+/**
+ * Credit control (Centryk Business — Receivables). When the company holds the
+ * 'receivables' package, a customer who is on credit hold or over their limit
+ * can't be issued a new invoice unless the request explicitly overrides it
+ * (which is audited). Draft invoices are always allowed. No-op for companies
+ * without the package, so plain invoice-maker is unchanged.
+ */
+function inv_assert_credit_ok(PDO $pdo, int $companyId, int $customerId, array $data): void
+{
+    $cw = dirname(__DIR__, 3);
+    require_once $cw . '/app/core/Entitlements.php';
+    if (Entitlements::level($companyId, 'receivables') === Entitlements::NONE) {
+        return;
+    }
+    require_once $cw . '/app/services/ReceivablesService.php';
+    try {
+        $c = ReceivablesService::creditStatus($companyId, $customerId);
+    } catch (Throwable $e) {
+        return; // unknown customer etc. — let the normal insert path handle it
+    }
+    if ($c['status'] === 'ok') {
+        return;
+    }
+
+    $reason = [
+        'hold'       => 'This customer is on credit hold.',
+        'over_limit' => 'This customer is over their credit limit'
+            . ($c['credit_limit'] !== null ? ' (BZD ' . number_format((float)$c['balance'], 2)
+                . ' of BZD ' . number_format((float)$c['credit_limit'], 2) . ').' : '.'),
+        'blocked'    => 'This customer is on credit hold and over their limit.',
+    ][$c['status']] ?? 'This customer has a credit block.';
+
+    if (empty($data['override_credit_hold'])) {
+        json_response([
+            'error'         => $reason . ' Clear the hold in Receivables, or resubmit with override.',
+            'credit_status' => $c,
+            'needs_override' => true,
+        ], 409);
+    }
+
+    require_once $cw . '/app/core/Audit.php';
+    Audit::log([
+        'actor_user_id' => (int)($_SESSION['user']['id'] ?? 0) ?: null,
+        'company_id'    => $companyId,
+        'event_type'    => 'receivables.credit_hold.overridden',
+        'summary'       => 'Invoice issued despite ' . $c['status'] . ' credit status (customer #' . $customerId . ')',
+        'metadata'      => ['customer_id' => $customerId, 'credit_status' => $c],
+    ]);
+}
+
 if ($method === 'GET') {
     $id = $_GET['id'] ?? null;
 
@@ -58,6 +108,11 @@ if ($method === 'POST') {
     $tax = (float)($data['tax'] ?? 0);
     $discount = (float)($data['discount'] ?? 0);
     $total = $subtotal + $tax - $discount;
+
+    $newStatus = $data['status'] ?? 'draft';
+    if ($newStatus !== 'draft' && !empty($data['customer_id'])) {
+        inv_assert_credit_ok($pdo, (int)$companyId, (int)$data['customer_id'], $data);
+    }
 
     $stmt = $pdo->prepare("
         INSERT INTO invoices
@@ -115,6 +170,14 @@ if ($method === 'PATCH') {
     }
 
     if (isset($data['status'])) {
+        if (in_array($data['status'], ['sent', 'overdue'], true)) {
+            $own = $pdo->prepare("SELECT customer_id, status FROM invoices WHERE id = ? AND company_id = ?");
+            $own->execute([$id, $companyId]);
+            $row = $own->fetch();
+            if ($row && !in_array($row['status'], ['sent', 'overdue'], true) && $row['customer_id']) {
+                inv_assert_credit_ok($pdo, (int)$companyId, (int)$row['customer_id'], $data);
+            }
+        }
         $stmt = $pdo->prepare("UPDATE invoices SET status = ? WHERE id = ? AND company_id = ?");
         $stmt->execute([$data['status'], $id, $companyId]);
 

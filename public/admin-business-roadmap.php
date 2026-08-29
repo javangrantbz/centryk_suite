@@ -83,7 +83,7 @@ $board = [
     'In progress' => [
         'accent' => 'sky',
         'items'  => [
-            ['Credit-hold enforcement — wire ReceivablesService::creditStatus into invoice-maker / OnePay checkout', null],
+            ['Credit-hold enforcement — hub api/invoice-maker/api/invoices.php blocks issuing to a held / over-limit customer (override is audited); still to wire: the invoice-maker UI form in the sibling repo + OnePay checkout', null],
             ['Billing — generate a real invoice through invoice-maker (dunning → past_due is done)', null],
             ['Reconciliation — live bank feed adapter (needs Centryk Bank / a bank API)', null],
         ],
