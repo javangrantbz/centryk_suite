@@ -440,6 +440,16 @@ class RoutesService
                 . ', variance ' . number_format((float)$trip['cash_variance'], 2),
             'metadata' => ['trip_id' => $tripId, 'self_approved' => $selfApproved],
         ]);
+
+        $variance = (float)$trip['cash_variance'];
+        if (abs($variance) > 0.01) {
+            $rn = $pdo->prepare("SELECT r.name FROM route_trips t JOIN routes r ON r.id = t.route_id WHERE t.id = :id");
+            $rn->execute(['id' => $tripId]);
+            try {
+                require_once __DIR__ . '/BusinessNotifier.php';
+                BusinessNotifier::settlementVariance($companyId, $tripId, $variance, (string)$rn->fetchColumn());
+            } catch (Throwable $e) { /* notifications are best-effort */ }
+        }
     }
 
     /** An admin reopens a submitted or settled trip back to editable 'settling'. */
