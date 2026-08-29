@@ -99,15 +99,12 @@ $risks = [
     'Any role/entitlement write is high-risk (see the 2026-06-03 provision role-downgrade incident) — every grant/revoke is already audited; keep it that way.',
 ];
 
-$accentClass = static function (string $a, string $part): string {
-    $map = [
-        'emerald' => ['bar' => 'bg-emerald-400', 'text' => 'text-emerald-700', 'chip' => 'bg-emerald-50 text-emerald-700 border-emerald-200'],
-        'sky'     => ['bar' => 'bg-sky-400',     'text' => 'text-sky-700',     'chip' => 'bg-sky-50 text-sky-700 border-sky-200'],
-        'violet'  => ['bar' => 'bg-violet-400',  'text' => 'text-violet-700',  'chip' => 'bg-violet-50 text-violet-700 border-violet-200'],
-        'amber'   => ['bar' => 'bg-amber-400',   'text' => 'text-amber-700',   'chip' => 'bg-amber-50 text-amber-700 border-amber-200'],
-    ];
-    return $map[$a][$part] ?? '';
-};
+$accentDot = [
+    'emerald' => '#10b981', 'sky' => '#38bdf8', 'violet' => '#818cf8', 'amber' => '#fbbf24',
+];
+$accentText = [
+    'emerald' => '#047857', 'sky' => '#0369a1', 'violet' => '#4338ca', 'amber' => '#b45309',
+];
 
 ob_start();
 include __DIR__ . '/partials/admin_tools_dropdown.php';
@@ -115,88 +112,63 @@ $headerActionsHtml = ob_get_clean();
 ?>
 <!doctype html>
 <html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="icon" type="image/svg+xml" href="favicon.svg">
-    <title>Centryk Business - Centryk</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] } } } }</script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-</head>
-<body class="min-h-screen bg-slate-100 text-slate-900 font-sans antialiased">
+<head><?php $bizTitle = 'Centryk Business'; include __DIR__ . '/partials/business_head.php'; ?></head>
+<body class="min-h-screen bg-slate-50 antialiased">
 <?php $pageTitle = 'Centryk Business'; $headerMaxW = 'max-w-5xl'; $awCurrent = 'centryk'; include __DIR__ . '/partials/account_header.php'; ?>
 
-<div class="mx-auto max-w-5xl px-4 pt-4 pb-14">
+<div class="biz mx-auto max-w-5xl px-4 py-4">
 
-    <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <div class="mb-3 flex flex-wrap items-start justify-between gap-3">
         <div>
-            <p class="text-[10px] font-black uppercase tracking-[0.18em] text-violet-600">Internal tracker</p>
-            <h1 class="mt-0.5 text-2xl font-black tracking-tight text-slate-950">Centryk Business</h1>
-            <p class="mt-1 max-w-2xl text-sm font-semibold text-slate-500">
+            <p class="biz-kicker">Internal tracker</p>
+            <h1 class="mt-0.5">Centryk Business</h1>
+            <p class="biz-muted mt-1 max-w-2xl" style="font-size:12px">
                 Paid capability tier layered on the free hub. Prompted by Bowen &amp; Bowen's
                 Aug 2026 call to modernise Belize's payment system — less cash on delivery
                 routes, payments that auto-post to a customer account, less manual reconciliation.
             </p>
         </div>
-        <a href="admin-business-packages.php" class="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-white hover:bg-slate-800">
-            Grant console <i data-lucide="arrow-right" class="h-3.5 w-3.5"></i>
+        <a href="admin-business-packages.php" class="biz-btn biz-btn-primary">
+            Grant console <i data-lucide="arrow-right" style="height:13px;width:13px"></i>
         </a>
     </div>
 
-    <!-- Live adoption -->
-    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div class="rounded-2xl border border-slate-200 bg-white p-4">
-            <p class="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">Companies on a plan</p>
-            <p class="mt-1 text-2xl font-black"><?= $payingCompanies ?></p>
-        </div>
-        <div class="rounded-2xl border border-slate-200 bg-white p-4">
-            <p class="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">Est. MRR</p>
-            <p class="mt-1 text-2xl font-black">BZD <?= number_format($mrr, 2) ?></p>
-        </div>
-        <div class="rounded-2xl border border-slate-200 bg-white p-4">
-            <p class="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">Pending requests</p>
-            <p class="mt-1 text-2xl font-black <?= $pendingRequests ? 'text-amber-600' : '' ?>"><?= $pendingRequests ?></p>
-        </div>
-        <div class="rounded-2xl border border-slate-200 bg-white p-4">
-            <p class="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">Packages in catalog</p>
-            <p class="mt-1 text-2xl font-black"><?= count($byPackage) ?></p>
-        </div>
+    <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="biz-tile"><div class="biz-tile-l">Companies on a plan</div><div class="biz-tile-v"><?= $payingCompanies ?></div></div>
+        <div class="biz-tile"><div class="biz-tile-l">Est. MRR</div><div class="biz-tile-v">BZD <?= number_format($mrr, 2) ?></div></div>
+        <div class="biz-tile"><div class="biz-tile-l">Pending requests</div><div class="biz-tile-v <?= $pendingRequests ? 'biz-t-amber' : '' ?>"><?= $pendingRequests ?></div></div>
+        <div class="biz-tile"><div class="biz-tile-l">Packages in catalog</div><div class="biz-tile-v"><?= count($byPackage) ?></div></div>
     </div>
 
-    <div class="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-        <div class="bg-slate-50 px-4 py-2 text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">Adoption by package</div>
-        <?php foreach ($byPackage as $p): ?>
-            <div class="flex items-center justify-between border-t border-slate-100 px-4 py-2.5 first:border-t-0">
-                <span class="text-sm font-bold"><?= htmlspecialchars($p['label']) ?></span>
-                <span class="text-xs font-semibold text-slate-500">
-                    <?= (int)$p['active'] ?> active<?php if ((int)$p['suspended']): ?> · <span class="text-amber-600"><?= (int)$p['suspended'] ?> paused</span><?php endif; ?>
-                </span>
-            </div>
-        <?php endforeach; ?>
-    </div>
-
-    <!-- Roadmap board -->
-    <div class="mt-8 grid gap-4 lg:grid-cols-2">
-        <?php foreach ($board as $col => $meta): ?>
-            <div class="rounded-2xl border border-slate-200 bg-white p-5">
-                <div class="flex items-center gap-2">
-                    <span class="h-2.5 w-2.5 rounded-full <?= $accentClass($meta['accent'], 'bar') ?>"></span>
-                    <h2 class="text-sm font-black uppercase tracking-[0.1em] <?= $accentClass($meta['accent'], 'text') ?>"><?= htmlspecialchars($col) ?></h2>
-                    <span class="ml-auto text-xs font-black text-slate-300"><?= count($meta['items']) ?></span>
+    <div class="biz-panel mt-3">
+        <div class="biz-panel-head">Adoption by package</div>
+        <div class="biz-list">
+            <?php foreach ($byPackage as $p): ?>
+                <div class="biz-row" style="cursor:default">
+                    <span class="flex-1" style="font-weight:600"><?= htmlspecialchars($p['label']) ?></span>
+                    <span class="biz-muted" style="font-size:12px">
+                        <?= (int)$p['active'] ?> active<?php if ((int)$p['suspended']): ?> · <span class="biz-t-amber"><?= (int)$p['suspended'] ?> paused</span><?php endif; ?>
+                    </span>
                 </div>
-                <ul class="mt-3 space-y-2.5">
+            <?php endforeach; ?>
+        </div>
+    </div>
+
+    <div class="mt-4 grid gap-3 lg:grid-cols-2">
+        <?php foreach ($board as $col => $meta): $dot = $accentDot[$meta['accent']] ?? '#94a3b8'; $tx = $accentText[$meta['accent']] ?? '#64748b'; ?>
+            <div class="biz-panel">
+                <div class="biz-panel-head" style="color:<?= $tx ?>">
+                    <span><span style="display:inline-block;width:7px;height:7px;border-radius:999px;background:<?= $dot ?>;margin-right:6px;vertical-align:1px"></span><?= htmlspecialchars($col) ?></span>
+                    <span class="biz-muted"><?= count($meta['items']) ?></span>
+                </div>
+                <ul class="biz-panel-body" style="display:flex;flex-direction:column;gap:6px;margin:0;padding-left:10px;padding-right:10px;list-style:none">
                     <?php foreach ($meta['items'] as $item): ?>
-                        <li class="flex gap-2 text-sm font-semibold text-slate-600">
-                            <i data-lucide="dot" class="mt-0.5 h-4 w-4 shrink-0 text-slate-300"></i>
-                            <span>
-                                <?= htmlspecialchars($item[0]) ?>
-                                <?php if (!empty($item[1])): ?>
-                                    <code class="ml-1 rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-bold text-slate-500"><?= htmlspecialchars($item[1]) ?></code>
-                                <?php endif; ?>
-                            </span>
+                        <li style="font-size:12px;font-weight:500;color:var(--bz-fg);position:relative;padding-left:12px">
+                            <span style="position:absolute;left:0;top:6px;width:4px;height:4px;border-radius:999px;background:#cbd5e1"></span>
+                            <?= htmlspecialchars($item[0]) ?>
+                            <?php if (!empty($item[1])): ?>
+                                <code style="background:#f1f5f9;border-radius:2px;padding:0 4px;font-size:11px;color:var(--bz-muted)"><?= htmlspecialchars($item[1]) ?></code>
+                            <?php endif; ?>
                         </li>
                     <?php endforeach; ?>
                 </ul>
@@ -204,20 +176,19 @@ $headerActionsHtml = ob_get_clean();
         <?php endforeach; ?>
     </div>
 
-    <!-- Model -->
-    <div class="mt-8 grid gap-4 sm:grid-cols-2">
-        <div class="rounded-2xl border border-slate-200 bg-white p-5">
-            <h2 class="text-sm font-black uppercase tracking-[0.1em] text-slate-500">How it's gated</h2>
-            <ul class="mt-3 space-y-2 text-sm font-semibold text-slate-600">
+    <div class="mt-4 grid gap-3 sm:grid-cols-2">
+        <div class="biz-panel">
+            <div class="biz-panel-head">How it's gated</div>
+            <ul class="biz-panel-body" style="display:flex;flex-direction:column;gap:6px;margin:0;font-size:12px;font-weight:500">
                 <li>Capabilities, not new apps — they light up inside invoice-maker / banking. Routes is the exception (its own spoke app).</li>
-                <li><code class="rounded bg-slate-100 px-1 text-[12px]">company_entitlements</code> is the runtime gate; <code class="rounded bg-slate-100 px-1 text-[12px]">company_subscriptions</code> is the commercial record.</li>
+                <li><code style="background:#f1f5f9;border-radius:2px;padding:0 3px">company_entitlements</code> is the runtime gate; <code style="background:#f1f5f9;border-radius:2px;padding:0 3px">company_subscriptions</code> is the commercial record.</li>
                 <li>Human-in-the-loop: an admin grants, or a company requests. No self-serve activation.</li>
                 <li>OneLink is transactional; Centryk Business is subscription. Free core stays free.</li>
             </ul>
         </div>
-        <div class="rounded-2xl border border-amber-200 bg-amber-50/50 p-5">
-            <h2 class="text-sm font-black uppercase tracking-[0.1em] text-amber-700">Risks &amp; guardrails</h2>
-            <ul class="mt-3 space-y-2 text-sm font-semibold text-amber-900/80">
+        <div class="biz-panel" style="border-color:#fcd9a5;background:#fffbeb">
+            <div class="biz-panel-head" style="background:#fef3c7;border-color:#fcd9a5;color:#b45309">Risks &amp; guardrails</div>
+            <ul class="biz-panel-body" style="display:flex;flex-direction:column;gap:6px;margin:0;font-size:12px;font-weight:500;color:#92400e">
                 <?php foreach ($risks as $r): ?>
                     <li><?= htmlspecialchars($r) ?></li>
                 <?php endforeach; ?>

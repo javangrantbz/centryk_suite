@@ -40,32 +40,22 @@ $headerActionsHtml = ob_get_clean();
 ?>
 <!doctype html>
 <html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="icon" type="image/svg+xml" href="favicon.svg">
-    <title>Company Groups</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] } } } }</script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-</head>
-<body class="min-h-screen bg-slate-100 text-slate-900 font-sans antialiased">
+<head><?php $bizTitle = 'Company Groups'; include __DIR__ . '/partials/business_head.php'; ?></head>
+<body class="min-h-screen bg-slate-50 antialiased">
 <?php $pageTitle = 'Company Groups'; $headerMaxW = 'max-w-6xl'; $awCurrent = 'centryk'; include __DIR__ . '/partials/account_header.php'; ?>
 
-<div class="mx-auto max-w-6xl px-4 pt-4 pb-14">
+<div class="biz mx-auto max-w-6xl px-4 py-4">
 
-    <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div>
-            <p class="text-[10px] font-black uppercase tracking-[0.18em] text-violet-600">Centryk Business · Enterprise</p>
-            <h1 class="mt-0.5 text-2xl font-black tracking-tight text-slate-950">Company groups</h1>
+            <p class="biz-kicker">Centryk Business · Enterprise</p>
+            <h1 class="mt-0.5">Company groups</h1>
         </div>
         <?php if (count($groups) > 1): ?>
-            <div class="flex flex-wrap items-center gap-2">
+            <div class="biz-seg">
                 <?php foreach ($groups as $g): ?>
                     <a href="groups.php?group_id=<?= (int)$g['id'] ?>"
-                       class="rounded-lg border px-3 py-1.5 text-xs font-bold <?= $activeGroup && (int)$g['id'] === (int)$activeGroup['id'] ? 'border-violet-300 bg-violet-50 text-violet-700' : 'border-slate-200 bg-white text-slate-500 hover:border-violet-200' ?>">
+                       class="<?= $activeGroup && (int)$g['id'] === (int)$activeGroup['id'] ? 'is-active' : '' ?>">
                         <?= htmlspecialchars($g['name']) ?>
                     </a>
                 <?php endforeach; ?>
@@ -74,65 +64,61 @@ $headerActionsHtml = ob_get_clean();
     </div>
 
     <?php if (!$groups): ?>
-        <div class="rounded-2xl border border-violet-200 bg-white px-6 py-12 text-center">
-            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
-                <i data-lucide="building-2" class="h-6 w-6"></i>
+        <div class="biz-panel" style="padding:28px 16px;text-align:center">
+            <div style="margin:0 auto;display:flex;height:36px;width:36px;align-items:center;justify-content:center;border-radius:4px;background:#eef2ff;color:#4f46e5">
+                <i data-lucide="building-2" style="height:18px;width:18px"></i>
             </div>
-            <h2 class="mt-4 text-lg font-black">Company groups are part of Centryk Business</h2>
-            <p class="mx-auto mt-1 max-w-md text-sm font-semibold text-slate-500">
+            <h2 style="margin-top:10px;font-size:15px">Company groups are part of Centryk Business</h2>
+            <p class="biz-muted" style="margin:4px auto 0;max-width:30rem;font-size:12px">
                 Run several companies as one organisation — a consolidated view of receivables,
                 cash on the road and bank reconciliation, and one subscription for all of them.
                 Ask a Centryk advisor to set up a group.
             </p>
-            <a href="business.php" class="mt-5 inline-flex items-center gap-2 rounded-xl bg-violet-600 px-5 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-white hover:bg-violet-700">
-                Explore Centryk Business
-            </a>
+            <a href="business.php" class="biz-btn biz-btn-primary" style="margin-top:12px">Explore Centryk Business</a>
         </div>
     <?php elseif ($level === Entitlements::NONE): ?>
-        <div class="rounded-2xl border border-amber-200 bg-white px-6 py-10 text-center">
-            <p class="text-sm font-bold text-slate-600"><?= htmlspecialchars($activeGroup['name']) ?> doesn't have an active Enterprise subscription.</p>
-            <p class="mt-1 text-xs font-semibold text-slate-400">A Centryk advisor needs to activate it before the group view is available.</p>
+        <div class="biz-panel biz-panel-empty">
+            <?= htmlspecialchars($activeGroup['name']) ?> doesn't have an active Enterprise subscription.
+            <span class="block" style="margin-top:3px">A Centryk advisor needs to activate it before the group view is available.</span>
         </div>
     <?php else: ?>
 
         <?php if ($level === Entitlements::READ): ?>
-            <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-800">
-                This group's Enterprise subscription is paused — the view is read-only until billing is resolved.
-            </div>
+            <div class="biz-notice biz-notice-amber mb-3">This group's Enterprise subscription is paused — the view is read-only until billing is resolved.</div>
         <?php endif; ?>
 
-        <div id="alert" class="mb-4 hidden rounded-xl border p-3 text-sm font-semibold"></div>
+        <div id="alert" class="biz-notice mb-3 hidden"></div>
 
-        <div id="rollupStrip" class="grid grid-cols-2 gap-3 sm:grid-cols-4"></div>
+        <div id="rollupStrip" class="grid grid-cols-2 gap-2 sm:grid-cols-4"></div>
 
-        <div class="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-            <div class="bg-slate-50 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">By company</div>
-            <div id="companyRollup" class="divide-y divide-slate-100"><div class="px-4 py-6 text-center text-xs text-slate-400">Loading…</div></div>
+        <div class="biz-panel mt-3">
+            <div class="biz-panel-head">By company</div>
+            <div id="companyRollup" class="biz-list"><div class="biz-panel-empty">Loading…</div></div>
         </div>
 
-        <div class="mt-4 grid gap-5 lg:grid-cols-2">
-            <div class="rounded-2xl border border-slate-200 bg-white p-5">
-                <div class="flex items-center justify-between">
-                    <p class="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">Companies</p>
-                    <span id="pkgLine" class="text-[11px] font-semibold text-slate-400"></span>
+        <div class="mt-3 grid gap-3 lg:grid-cols-2">
+            <div class="biz-panel">
+                <div class="biz-panel-head">
+                    <span>Companies</span>
+                    <span id="pkgLine" style="font-weight:600;text-transform:none;letter-spacing:0"></span>
                 </div>
-                <div id="companyList" class="mt-2 space-y-1"></div>
+                <div id="companyList" class="biz-list"></div>
                 <?php if ($myRole === 'group_admin' && $level === Entitlements::FULL): ?>
-                <div id="attachBox" class="mt-3"></div>
+                <div id="attachBox" class="biz-panel-body" style="border-top:1px solid var(--bz-line)"></div>
                 <?php endif; ?>
             </div>
 
-            <div class="rounded-2xl border border-slate-200 bg-white p-5">
-                <p class="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">People</p>
-                <div id="memberList" class="mt-2 space-y-1"></div>
+            <div class="biz-panel">
+                <div class="biz-panel-head">People</div>
+                <div id="memberList" class="biz-list"></div>
                 <?php if ($myRole === 'group_admin' && $level === Entitlements::FULL): ?>
-                <form id="addMemberForm" class="mt-3 flex gap-2">
-                    <input name="email" type="email" placeholder="teammate@email.com" class="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-semibold">
-                    <select name="role" class="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-bold">
+                <form id="addMemberForm" class="biz-panel-body flex gap-2" style="border-top:1px solid var(--bz-line)">
+                    <input name="email" type="email" placeholder="teammate@email.com" class="biz-input min-w-0 flex-1">
+                    <select name="role" class="biz-select" style="width:auto">
                         <option value="group_viewer">Viewer</option>
                         <option value="group_admin">Admin</option>
                     </select>
-                    <button class="rounded-lg bg-slate-950 px-3 py-1.5 text-xs font-black text-white">Add</button>
+                    <button class="biz-btn biz-btn-primary">Add</button>
                 </form>
                 <?php endif; ?>
             </div>
@@ -154,8 +140,7 @@ function money(v){ return v === null || v === undefined ? '—' : Number(v).toLo
 function showAlert(msg, type){
     const el = document.getElementById('alert'); if(!el) return;
     el.textContent = msg;
-    el.className = 'mb-4 rounded-xl border p-3 text-sm font-semibold ' + (type==='error'
-        ? 'border-red-200 bg-red-50 text-red-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700');
+    el.className = 'biz-notice mb-3 ' + (type === 'error' ? 'biz-notice-red' : 'biz-notice-green');
     el.classList.remove('hidden');
     clearTimeout(showAlert._t); showAlert._t = setTimeout(()=>el.classList.add('hidden'), 5000);
 }
@@ -170,70 +155,65 @@ async function api(path, body){
 }
 
 function tile(label, value, tone){
-    return `<div class="rounded-2xl border border-slate-200 bg-white p-3">
-        <p class="text-[10px] font-black uppercase tracking-[0.1em] text-slate-400">${esc(label)}</p>
-        <p class="mt-1 text-lg font-black ${tone||''}">${value}</p></div>`;
+    return `<div class="biz-tile"><div class="biz-tile-l">${esc(label)}</div><div class="biz-tile-v ${tone || ''}">${value}</div></div>`;
 }
 
 async function load(){
     if (GID === null) return;
-    try {
-        STATE = await api('overview.php');
-        render();
-    } catch (e){ showAlert(e.message, 'error'); }
+    try { STATE = await api('overview.php'); render(); }
+    catch (e){ showAlert(e.message, 'error'); }
 }
 
 function render(){
-    const c = STATE.consolidated;
-    const t = c.totals;
+    const c = STATE.consolidated, t = c.totals;
     document.getElementById('rollupStrip').innerHTML =
         tile('AR outstanding', money(t.ar_outstanding)) +
-        tile('AR overdue', money(t.ar_overdue), t.ar_overdue > 0 ? 'text-red-600' : '') +
-        tile('Cash in transit', money(t.cash_in_transit), t.cash_in_transit > 0 ? 'text-amber-600' : '') +
+        tile('AR overdue', money(t.ar_overdue), t.ar_overdue > 0 ? 'biz-t-red' : '') +
+        tile('Cash in transit', money(t.cash_in_transit), t.cash_in_transit > 0 ? 'biz-t-amber' : '') +
         tile('Unmatched deposits', (t.unmatched_deposits || 0) + ' · ' + money(t.unmatched_value));
 
     document.getElementById('companyRollup').innerHTML = c.companies.length ? c.companies.map(co => `
-        <div class="grid grid-cols-2 gap-2 px-4 py-2.5 text-sm sm:grid-cols-5">
-            <span class="font-bold sm:col-span-2">${esc(co.name)}</span>
-            <span class="text-right text-slate-500">AR ${money(co.ar_outstanding)}</span>
-            <span class="text-right text-slate-500">${co.cash_in_transit === null ? '' : 'transit ' + money(co.cash_in_transit)}</span>
-            <span class="text-right text-slate-500">${co.unmatched_value === null ? '' : 'unmatched ' + money(co.unmatched_value)}</span>
-        </div>`).join('') : '<div class="px-4 py-6 text-center text-xs text-slate-400">No companies in this group yet.</div>';
+        <div class="biz-row" style="cursor:default;font-size:12px">
+            <span class="min-w-0 flex-1 truncate" style="font-weight:600">${esc(co.name)}</span>
+            <span class="biz-muted biz-num">AR ${money(co.ar_outstanding)}</span>
+            <span class="biz-muted biz-num">${co.cash_in_transit === null ? '' : 'transit ' + money(co.cash_in_transit)}</span>
+            <span class="biz-muted biz-num">${co.unmatched_value === null ? '' : 'unmatched ' + money(co.unmatched_value)}</span>
+        </div>`).join('') : '<div class="biz-panel-empty">No companies in this group yet.</div>';
 
     const g = STATE.group;
     const pkgs = Object.keys(g.entitlements || {});
-    document.getElementById('pkgLine').textContent = pkgs.length ? 'group packages: ' + pkgs.join(', ') : 'no group packages';
+    document.getElementById('pkgLine').textContent = pkgs.length ? pkgs.join(', ') : 'no group packages';
 
     document.getElementById('companyList').innerHTML = (g.companies || []).map(co => `
-        <div class="flex items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2">
-            <div class="min-w-0">
-                <p class="truncate text-sm font-bold">${esc(co.name)}</p>
-                <p class="text-[11px] font-semibold text-slate-400">${Object.keys(co.entitlements || {}).join(', ') || 'no packages'}</p>
-            </div>
-            ${CAN_WRITE ? `<button onclick="detachCompany(${co.id})" class="shrink-0 text-[11px] font-black uppercase text-slate-400 hover:text-red-600">Remove</button>` : ''}
-        </div>`).join('') || '<p class="text-xs text-slate-400">No companies yet.</p>';
+        <div class="biz-row" style="cursor:default">
+            <span class="min-w-0 flex-1">
+                <span class="block truncate" style="font-weight:600">${esc(co.name)}</span>
+                <span class="block biz-muted" style="font-size:11px">${Object.keys(co.entitlements || {}).join(', ') || 'no packages'}</span>
+            </span>
+            ${CAN_WRITE ? `<button onclick="detachCompany(${co.id})" class="biz-btn biz-btn-ghost biz-btn-sm shrink-0">Remove</button>` : ''}
+        </div>`).join('') || '<div class="biz-panel-empty">No companies yet.</div>';
 
     if (CAN_WRITE) {
         const box = document.getElementById('attachBox');
         if (box) {
             box.innerHTML = (STATE.attachable || []).length
-                ? `<div class="flex gap-2"><select id="attachSel" class="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm font-semibold">
+                ? `<div class="flex gap-2"><select id="attachSel" class="biz-select min-w-0 flex-1">
                       ${STATE.attachable.map(a => `<option value="${a.id}">${esc(a.name)}</option>`).join('')}
-                   </select><button onclick="attachCompany()" class="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-black text-white">Add</button></div>`
-                : '<p class="text-[11px] text-slate-400">No unassigned companies you admin.</p>';
+                   </select><button onclick="attachCompany()" class="biz-btn biz-btn-primary">Add</button></div>`
+                : '<p class="biz-muted" style="font-size:11px">No unassigned companies you admin.</p>';
         }
     }
 
     document.getElementById('memberList').innerHTML = (g.members || []).map(mem => `
-        <div class="flex items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2">
-            <div class="min-w-0">
-                <p class="truncate text-sm font-bold">${esc(mem.name || mem.email)}</p>
-                <p class="text-[11px] font-semibold text-slate-400">${esc(mem.email)} · ${mem.role === 'group_admin' ? 'Admin' : 'Viewer'}</p>
-            </div>
-            ${CAN_WRITE ? `<div class="flex shrink-0 gap-1">
-                <button onclick="setMember(${mem.user_id}, '${mem.role === 'group_admin' ? 'group_viewer' : 'group_admin'}')" class="text-[11px] font-black uppercase text-slate-400 hover:text-violet-700">${mem.role === 'group_admin' ? 'Make viewer' : 'Make admin'}</button>
-                <button onclick="setMember(${mem.user_id}, 'remove')" class="text-[11px] font-black uppercase text-slate-400 hover:text-red-600">Remove</button>
-            </div>` : ''}
+        <div class="biz-row" style="cursor:default">
+            <span class="min-w-0 flex-1">
+                <span class="block truncate" style="font-weight:600">${esc(mem.name || mem.email)}</span>
+                <span class="block biz-muted" style="font-size:11px">${esc(mem.email)} · ${mem.role === 'group_admin' ? 'Admin' : 'Viewer'}</span>
+            </span>
+            ${CAN_WRITE ? `<span class="flex shrink-0 gap-1">
+                <button onclick="setMember(${mem.user_id}, '${mem.role === 'group_admin' ? 'group_viewer' : 'group_admin'}')" class="biz-btn biz-btn-ghost biz-btn-sm">${mem.role === 'group_admin' ? 'Viewer' : 'Admin'}</button>
+                <button onclick="setMember(${mem.user_id}, 'remove')" class="biz-btn biz-btn-danger biz-btn-sm">Remove</button>
+            </span>` : ''}
         </div>`).join('');
 }
 
