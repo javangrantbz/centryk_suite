@@ -174,6 +174,16 @@ class ReceivablesService
         }
         $balance = (float)$customer['opening_balance'] + $openOutstanding - $credit;
 
+        $rem = $pdo->prepare("
+            SELECT r.id, r.kind, r.channel, r.subject, r.balance_at, r.overdue_at, r.sent_at, r.created_at,
+                   TRIM(CONCAT(COALESCE(u.first_name,''),' ',COALESCE(u.last_name,''))) AS by_name
+            FROM ar_reminders r
+            LEFT JOIN users u ON u.id = r.created_by
+            WHERE r.company_id = :cid AND r.customer_id = :cust
+            ORDER BY r.created_at DESC LIMIT 20
+        ");
+        $rem->execute(['cid' => $companyId, 'cust' => $customerId]);
+
         return [
             'customer'           => [
                 'id'                 => (int)$customer['id'],
@@ -191,6 +201,149 @@ class ReceivablesService
             'unallocated_credit' => round($credit, 2),
             'invoices'           => $invoices,
             'payments'           => $payments,
+            'reminders'          => $rem->fetchAll(PDO::FETCH_ASSOC),
+        ];
+    }
+
+    /**
+     * Overdue accounts, worst first — the collections work list.
+     */
+    public static function collections(int $companyId): array
+    {
+        $due = self::DUE_EXPR;
+        $stmt = DB::pdo()->prepare("
+            SELECT c.id, c.name, c.email, c.phone, c.on_hold, c.credit_limit,
+                   SUM(i.total - i.amount_paid) AS overdue_total,
+                   MAX(DATEDIFF(CURDATE(), {$due})) AS oldest_days,
+                   COUNT(*) AS overdue_invoices,
+                   (SELECT MAX(r.created_at) FROM ar_reminders r WHERE r.customer_id = c.id) AS last_reminder_at,
+                   (SELECT COUNT(*) FROM ar_reminders r WHERE r.customer_id = c.id) AS reminder_count
+            FROM invoices i
+            JOIN customers c ON c.id = i.customer_id
+            WHERE i.company_id = :cid AND i.status IN ('sent','overdue')
+              AND (i.total - i.amount_paid) > 0 AND {$due} < CURDATE()
+            GROUP BY c.id, c.name, c.email, c.phone, c.on_hold, c.credit_limit
+            ORDER BY overdue_total DESC, oldest_days DESC
+        ");
+        $stmt->execute(['cid' => $companyId]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($rows as &$r) {
+            $r['id'] = (int)$r['id'];
+            $r['overdue_total'] = round((float)$r['overdue_total'], 2);
+            $r['oldest_days'] = (int)$r['oldest_days'];
+            $r['overdue_invoices'] = (int)$r['overdue_invoices'];
+            $r['reminder_count'] = (int)$r['reminder_count'];
+            $r['on_hold'] = (bool)$r['on_hold'];
+        }
+        return $rows;
+    }
+
+    /** Suggested subject + body for chasing a customer's overdue balance. */
+    public static function reminderDraft(int $companyId, int $customerId): array
+    {
+        $s = self::statement($companyId, $customerId);
+        if ($s === null) {
+            throw new RuntimeException('Customer not found.');
+        }
+        $pdo = DB::pdo();
+        $biz = $pdo->prepare("
+            SELECT COALESCE(NULLIF(TRIM(s.business_name), ''), c.name) AS name
+            FROM companies c LEFT JOIN invoice_settings s ON s.company_id = c.id
+            WHERE c.id = :cid LIMIT 1
+        ");
+        $biz->execute(['cid' => $companyId]);
+        $bizName = (string)($biz->fetchColumn() ?: 'our company');
+
+        $overdue = 0.0;
+        $oldest = null;
+        foreach ($s['invoices'] as $i) {
+            if (in_array($i['status'], ['sent', 'overdue'], true) && (int)$i['days_overdue'] > 0) {
+                $overdue += (float)$i['outstanding'];
+                if ($oldest === null || (int)$i['days_overdue'] > $oldest['days']) {
+                    $oldest = ['num' => $i['invoice_number'], 'days' => (int)$i['days_overdue']];
+                }
+            }
+        }
+        $cust = $s['customer']['name'];
+        $money = static fn ($v) => number_format($v, 2);
+
+        $subject = "Overdue account — {$bizName}";
+        $body = "Hello {$cust},\n\n"
+            . "Your account with {$bizName} shows a balance of BZD {$money($s['balance'])}, "
+            . "of which BZD {$money($overdue)} is past due.\n";
+        if ($oldest) {
+            $body .= "The oldest outstanding invoice is {$oldest['num']}, {$oldest['days']} days past due.\n";
+        }
+        $body .= "\nPlease arrange payment, or reply to let us know when we can expect it. "
+            . "If you've already paid, thank you — please disregard this notice.\n\n"
+            . "Regards,\n{$bizName}";
+
+        return ['subject' => $subject, 'body' => $body, 'balance' => $s['balance'], 'overdue' => round($overdue, 2)];
+    }
+
+    public static function logReminder(int $companyId, int $customerId, array $d, ?int $actorId): int
+    {
+        $pdo = DB::pdo();
+        $cust = $pdo->prepare("SELECT id, name FROM customers WHERE id = :id AND company_id = :cid LIMIT 1");
+        $cust->execute(['id' => $customerId, 'cid' => $companyId]);
+        $cust = $cust->fetch(PDO::FETCH_ASSOC);
+        if (!$cust) {
+            throw new RuntimeException('Customer not found.');
+        }
+
+        $draft = self::reminderDraft($companyId, $customerId);
+        $kind    = in_array($d['kind'] ?? '', ['statement', 'due_soon', 'overdue', 'final_notice'], true) ? $d['kind'] : 'overdue';
+        $channel = in_array($d['channel'] ?? '', ['email', 'phone', 'in_person', 'other'], true) ? $d['channel'] : 'email';
+        $markSent = !empty($d['mark_sent']);
+
+        $pdo->prepare("
+            INSERT INTO ar_reminders (company_id, customer_id, kind, channel, subject, body, balance_at, overdue_at, sent_at, created_by)
+            VALUES (:cid, :cust, :kind, :ch, :subj, :body, :bal, :od, :sent, :by)
+        ")->execute([
+            'cid' => $companyId, 'cust' => $customerId, 'kind' => $kind, 'ch' => $channel,
+            'subj' => mb_substr(trim((string)($d['subject'] ?? $draft['subject'])), 0, 190),
+            'body' => (string)($d['body'] ?? $draft['body']),
+            'bal' => $draft['balance'], 'od' => $draft['overdue'],
+            'sent' => $markSent ? date('Y-m-d H:i:s') : null, 'by' => $actorId,
+        ]);
+        $id = (int)$pdo->lastInsertId();
+
+        Audit::log([
+            'actor_user_id' => $actorId,
+            'company_id'    => $companyId,
+            'event_type'    => $markSent ? 'receivables.reminder.sent' : 'receivables.reminder.logged',
+            'summary'       => ($markSent ? 'Sent' : 'Logged') . " {$kind} reminder to {$cust['name']} ({$channel})",
+            'metadata'      => ['reminder_id' => $id, 'customer_id' => $customerId, 'kind' => $kind, 'channel' => $channel],
+        ]);
+        return $id;
+    }
+
+    /**
+     * Credit standing for a customer — for other apps to gate new orders/invoices.
+     * @return array{status:string, balance:float, credit_limit:?float, available:?float, on_hold:bool}
+     */
+    public static function creditStatus(int $companyId, int $customerId): array
+    {
+        $s = self::statement($companyId, $customerId);
+        if ($s === null) {
+            throw new RuntimeException('Customer not found.');
+        }
+        $bal   = $s['balance'];
+        $limit = $s['customer']['credit_limit'];
+        $hold  = $s['customer']['on_hold'];
+        $over  = $limit !== null && $bal > $limit;
+
+        $status = 'ok';
+        if ($hold && $over) { $status = 'blocked'; }
+        elseif ($hold)      { $status = 'hold'; }
+        elseif ($over)      { $status = 'over_limit'; }
+
+        return [
+            'status'       => $status,
+            'balance'      => $bal,
+            'credit_limit' => $limit,
+            'available'    => $limit !== null ? round($limit - $bal, 2) : null,
+            'on_hold'      => $hold,
         ];
     }
 

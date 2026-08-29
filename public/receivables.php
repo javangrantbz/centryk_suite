@@ -98,7 +98,10 @@ $headerActionsHtml = ob_get_clean();
         <div class="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
             <div class="biz-panel self-start">
                 <div class="biz-panel-head">
-                    <span>Customers</span>
+                    <span class="biz-seg" style="text-transform:none;letter-spacing:0">
+                        <button id="viewLedger" class="is-active" onclick="setView('ledger')">Customers</button>
+                        <button id="viewCollections" onclick="setView('collections')">Collections</button>
+                    </span>
                     <?php if ($level === Entitlements::FULL): ?>
                         <button onclick="newCustomer()" class="biz-btn biz-btn-ghost biz-btn-sm">+ New</button>
                     <?php endif; ?>
@@ -119,6 +122,8 @@ if (window.lucide) lucide.createIcons();
 const CID = <?= $activeCompany ? (int)$activeCompany['id'] : 'null' ?>;
 const CAN_WRITE = <?= $level === Entitlements::FULL ? 'true' : 'false' ?>;
 let PORTFOLIO = { customers: [], totals: {} };
+let COLLECTIONS = [];
+let VIEW = 'ledger';
 let OPEN_CUSTOMER = null;
 
 const METHODS = { cash: 'Cash', card: 'Card', bank_transfer: 'Bank transfer', xfer: 'XFER', cheque: 'Cheque', other: 'Other' };
@@ -150,9 +155,41 @@ async function load(){
     try {
         PORTFOLIO = await api('summary.php');
         renderAging();
-        renderCustomers();
+        if (VIEW === 'collections') {
+            COLLECTIONS = (await api('collections.php')).accounts || [];
+            renderCollections();
+        } else {
+            renderCustomers();
+        }
         if (OPEN_CUSTOMER) openCustomer(OPEN_CUSTOMER);
     } catch (e){ showAlert(e.message, 'error'); }
+}
+
+function setView(v){
+    VIEW = v;
+    document.getElementById('viewLedger').classList.toggle('is-active', v === 'ledger');
+    document.getElementById('viewCollections').classList.toggle('is-active', v === 'collections');
+    load();
+}
+
+function renderCollections(){
+    const el = document.getElementById('customerRows');
+    if (!COLLECTIONS.length){ el.innerHTML = '<div class="biz-panel-empty">Nothing overdue. 🎉</div>'; return; }
+    el.innerHTML = COLLECTIONS.map(c => `
+        <button onclick="openCustomer(${c.id})" class="biz-row ${OPEN_CUSTOMER === c.id ? 'is-active' : ''}">
+            <span class="min-w-0 flex-1">
+                <span class="block truncate" style="font-weight:600">${esc(c.name)}
+                    ${c.on_hold ? '<span class="biz-chip biz-c-red">Hold</span>' : ''}
+                </span>
+                <span class="block biz-muted" style="font-size:11px">
+                    ${c.oldest_days}d overdue · ${c.overdue_invoices} inv${c.reminder_count ? ` · chased ${fmtDate(c.last_reminder_at)}` : ' · not chased'}
+                </span>
+            </span>
+            <span class="shrink-0 text-right">
+                <span class="block biz-num biz-t-red" style="font-weight:700">${m(c.overdue_total)}</span>
+                ${c.reminder_count ? `<span class="block biz-muted" style="font-size:11px">${c.reminder_count} reminder${c.reminder_count > 1 ? 's' : ''}</span>` : ''}
+            </span>
+        </button>`).join('');
 }
 
 function tile(label, value, tone){
@@ -229,6 +266,17 @@ function renderStatement(s){
             ${Number(p.amount) - Number(p.allocated) > 0.004 ? `<span class="shrink-0 biz-num biz-t-blue" style="font-size:11px;font-weight:600">${m(Number(p.amount) - Number(p.allocated))} on acct</span>` : ''}
         </div>`).join('') || '<div class="biz-panel-empty">No receipts.</div>';
 
+    const KIND = { statement: 'Statement', due_soon: 'Due soon', overdue: 'Overdue', final_notice: 'Final notice' };
+    const CHAN = { email: 'Email', phone: 'Phone', in_person: 'In person', other: 'Other' };
+    const reminders = (s.reminders || []).map(r => `
+        <div class="biz-row" style="font-size:12px">
+            <span class="min-w-0 flex-1">
+                <span style="font-weight:600">${KIND[r.kind] || r.kind}</span>
+                <span class="biz-chip ${r.sent_at ? 'biz-c-green' : 'biz-c-slate'}">${r.sent_at ? 'sent' : 'drafted'}</span>
+                <span class="biz-muted" style="font-size:11px">&nbsp;${CHAN[r.channel] || r.channel} · ${fmtDate(r.created_at)}${r.by_name ? ' · ' + esc(r.by_name) : ''}</span>
+            </span>
+        </div>`).join('') || '<div class="biz-panel-empty">Not chased yet.</div>';
+
     panel.innerHTML = `
         <div class="biz-panel-body" style="border-bottom:1px solid var(--bz-line)">
             <div class="flex items-start justify-between gap-3">
@@ -248,6 +296,7 @@ function renderStatement(s){
             <div class="mt-2 flex flex-wrap gap-2">
                 <button onclick="paymentForm(${c.id})" class="biz-btn biz-btn-primary">Record payment</button>
                 <button onclick="editCustomer(${c.id})" class="biz-btn biz-btn-ghost">Edit</button>
+                <button onclick="reminderForm(${c.id})" class="biz-btn biz-btn-ghost">Draft reminder</button>
                 <button onclick="toggleHold(${c.id}, ${c.on_hold ? 'false' : 'true'})" class="biz-btn ${c.on_hold ? 'biz-btn-ghost' : 'biz-btn-danger'}">
                     ${c.on_hold ? 'Release hold' : 'Place on hold'}
                 </button>
@@ -257,7 +306,9 @@ function renderStatement(s){
         <div class="biz-panel-head">Invoices</div>
         <div class="biz-list">${invoices}</div>
         <div class="biz-panel-head" style="border-top:1px solid var(--bz-line)">Receipts</div>
-        <div class="biz-list">${payments}</div>`;
+        <div class="biz-list">${payments}</div>
+        <div class="biz-panel-head" style="border-top:1px solid var(--bz-line)">Reminders</div>
+        <div class="biz-list">${reminders}</div>`;
 }
 
 /* ── write actions ─────────────────────────────────────────────────────── */
@@ -338,6 +389,54 @@ async function toggleHold(id, on){
     try {
         await api('set_hold.php', { customer_id: id, on_hold: on });
         showAlert(on ? 'Placed on credit hold.' : 'Hold released.', 'ok');
+        load();
+    } catch (err){ showAlert(err.message, 'error'); }
+}
+
+async function reminderForm(customerId){
+    const box = document.getElementById('inlineForm');
+    box.innerHTML = '<p class="biz-muted" style="font-size:11px">Preparing draft…</p>';
+    let d;
+    try { d = await api('reminder_draft.php', { customer_id: customerId }); }
+    catch (e){ showAlert(e.message, 'error'); box.innerHTML = ''; return; }
+    box.innerHTML = `
+        <form onsubmit="submitReminder(event, ${customerId})" class="biz-panel" style="background:var(--bz-head);padding:10px">
+            <p class="biz-kicker" style="color:var(--bz-accent-d)">Draft reminder · BZD ${m(d.overdue)} overdue</p>
+            <div class="mt-2 grid gap-2 sm:grid-cols-2">
+                ${fld('Kind', `<select name="kind" class="biz-select">
+                    <option value="overdue" selected>Overdue</option>
+                    <option value="due_soon">Due soon</option>
+                    <option value="statement">Statement</option>
+                    <option value="final_notice">Final notice</option></select>`)}
+                ${fld('Channel', `<select name="channel" class="biz-select">
+                    <option value="email" selected>Email</option>
+                    <option value="phone">Phone</option>
+                    <option value="in_person">In person</option>
+                    <option value="other">Other</option></select>`)}
+            </div>
+            ${fld('Subject', `<input name="subject" class="biz-input mt-1" value="${esc(d.subject)}">`)}
+            ${fld('Message', `<textarea name="body" class="biz-input mt-1" rows="7">${esc(d.body)}</textarea>`)}
+            <p class="biz-muted mt-2" style="font-size:11px">Centryk doesn't send this for you yet — copy it into your email, then log it here.</p>
+            <div class="mt-2 flex gap-2">
+                <button type="submit" name="act" value="sent" class="biz-btn biz-btn-primary">Log as sent</button>
+                <button type="submit" name="act" value="draft" class="biz-btn biz-btn-ghost">Save draft</button>
+                <button type="button" onclick="navigator.clipboard && navigator.clipboard.writeText(this.form.body.value); showAlert('Message copied.', 'ok');" class="biz-btn biz-btn-ghost">Copy</button>
+                <button type="button" onclick="document.getElementById('inlineForm').innerHTML=''" class="biz-btn biz-btn-ghost">Cancel</button>
+            </div>
+        </form>`;
+}
+async function submitReminder(e, customerId){
+    e.preventDefault();
+    const f = e.target;
+    const markSent = (e.submitter && e.submitter.value === 'sent');
+    try {
+        await api('reminder_log.php', {
+            customer_id: customerId, kind: f.kind.value, channel: f.channel.value,
+            subject: f.subject.value, body: f.body.value, mark_sent: markSent,
+        });
+        showAlert(markSent ? 'Reminder logged as sent.' : 'Draft saved.', 'ok');
+        document.getElementById('inlineForm').innerHTML = '';
+        openCustomer(customerId);
         load();
     } catch (err){ showAlert(err.message, 'error'); }
 }
