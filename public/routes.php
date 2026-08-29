@@ -22,7 +22,7 @@ $user = $me['user'];
 $pdo  = DB::pdo();
 
 $coStmt = $pdo->prepare("
-    SELECT c.id, c.name
+    SELECT c.id, c.name, cm.role
     FROM company_members cm
     JOIN companies c ON c.id = cm.company_id
     WHERE cm.user_id = :uid AND cm.status = 'active' AND cm.role IN ('admin','manager') AND c.status = 'active'
@@ -39,6 +39,7 @@ if ($companies) {
     }
     if (!$activeCompany) { $activeCompany = $companies[0]; }
 }
+$isCompanyAdmin = $activeCompany && ($activeCompany['role'] ?? '') === 'admin';
 
 $level = $activeCompany ? Entitlements::level((int)$activeCompany['id'], 'routes') : Entitlements::NONE;
 
@@ -130,6 +131,7 @@ $headerActionsHtml = ob_get_clean();
 if (window.lucide) lucide.createIcons();
 const CID = <?= $activeCompany ? (int)$activeCompany['id'] : 'null' ?>;
 const CAN_WRITE = <?= $level === Entitlements::FULL ? 'true' : 'false' ?>;
+const IS_ADMIN = <?= $isCompanyAdmin ? 'true' : 'false' ?>;
 let DATA = { summary: {}, routes: [], trips: [] };
 let ROUTE_FILTER = 0;
 let OPEN_TRIP = null;
@@ -170,7 +172,7 @@ async function load(){
         const s = DATA.summary;
         document.getElementById('summaryStrip').innerHTML =
             tile('On the road', s.out) +
-            tile('Settling', s.settling, s.settling ? 'biz-t-amber' : '') +
+            tile('Awaiting approval', s.awaiting_approval, s.awaiting_approval ? 'biz-t-amber' : '') +
             tile('Cash in transit', money(s.cash_in_transit), s.cash_in_transit > 0 ? 'biz-t-amber' : '') +
             tile('Variance flags (30d)', s.variance_flags, s.variance_flags ? 'biz-t-red' : '');
         renderRoutes();
@@ -288,7 +290,9 @@ function renderTrip(t){
     const p = document.getElementById('tripPanel');
     p.className = 'biz-panel self-start';
     const locked = t.status === 'settled';
-    const rw = CAN_WRITE && !locked;
+    const submitted = !!t.settlement_submitted_at;
+    const pendingApproval = t.status === 'settling' && submitted && !locked;
+    const rw = CAN_WRITE && !locked && !submitted;
 
     const nextBtn = (() => {
         if (!rw) return '';
@@ -310,33 +314,49 @@ function renderTrip(t){
             <div id="stopForm-${s.id}"></div>
         </div>`).join('') || '<div class="biz-panel-empty">No stops yet.</div>';
 
+    const v = Number(t.cash_variance || 0);
+    const off = Math.abs(v) > 0.01;
+    const cashRows = `
+        <div class="mt-1 grid grid-cols-2 gap-1" style="font-size:12px">
+            <span class="biz-muted">Cash expected</span><span class="text-right biz-num" style="font-weight:700">${money(t.cash_expected)}</span>
+            <span class="biz-muted">Electronic</span><span class="text-right biz-num biz-muted" style="font-weight:600">${money(t.electronic_total)}</span>
+            ${submitted ? `<span class="biz-muted">Cash declared</span><span class="text-right biz-num" style="font-weight:600">${money(t.cash_declared)}</span>
+            <span class="biz-muted">Variance</span><span class="text-right biz-num ${off ? 'biz-t-red' : ''}" style="font-weight:700">${money(v)}</span>` : ''}
+        </div>`;
+
     let settle = '';
-    if (t.status === 'out' || t.status === 'settling') {
+    if (!submitted && (t.status === 'out' || t.status === 'settling')) {
         settle = `
         <div class="biz-panel-body" style="border-bottom:1px solid var(--bz-line);background:var(--bz-head)">
             <p class="biz-kicker">Settlement</p>
-            <div class="mt-1 grid grid-cols-2 gap-1" style="font-size:12px">
-                <span class="biz-muted">Cash expected</span><span class="text-right biz-num" style="font-weight:700">${money(t.cash_expected)}</span>
-                <span class="biz-muted">Electronic</span><span class="text-right biz-num biz-muted" style="font-weight:600">${money(t.electronic_total)}</span>
-            </div>
+            ${cashRows}
             ${rw ? `<form onsubmit="settleTrip(event, ${t.id})" class="mt-2 space-y-2">
                 ${fld('Cash declared by driver', `<input name="cash_declared" type="number" step="0.01" required value="${Number(t.cash_expected).toFixed(2)}" class="biz-input">`)}
                 <input name="notes" placeholder="note (optional)" class="biz-input">
-                <button class="biz-btn" style="background:#059669;color:#fff">Settle &amp; lock</button>
-            </form>` : ''}
+                <button class="biz-btn biz-btn-primary">Submit settlement</button>
+            </form>
+            <p class="biz-muted mt-1" style="font-size:11px">A company admin approves before it locks.</p>` : ''}
+        </div>`;
+    } else if (pendingApproval) {
+        settle = `
+        <div class="biz-panel-body" style="border-bottom:1px solid var(--bz-line);background:#fffbeb">
+            <p class="biz-kicker" style="color:#b45309">Awaiting approval</p>
+            ${cashRows}
+            <p class="biz-muted" style="font-size:11px;margin-top:6px">Submitted ${fmtDate(t.settlement_submitted_at)}${t.submitted_by_name ? ' by ' + esc(t.submitted_by_name) : ''}.${t.notes ? ' ' + esc(t.notes) : ''}</p>
+            ${IS_ADMIN ? `<div class="mt-2 flex gap-2">
+                <button onclick="approveSettle(${t.id})" class="biz-btn" style="background:#059669;color:#fff">Approve &amp; lock</button>
+                <button onclick="reopenSettle(${t.id})" class="biz-btn biz-btn-ghost">Reopen</button>
+            </div>` : '<p class="biz-muted" style="font-size:11px">Only a company admin can approve.</p>'}
         </div>`;
     } else if (locked) {
-        const v = Number(t.cash_variance || 0);
-        const off = Math.abs(v) > 0.01;
         settle = `
         <div class="biz-panel-body" style="border-bottom:1px solid var(--bz-line);background:${off ? '#fef2f2' : '#f0fdf4'}">
             <p class="biz-kicker" style="color:${off ? '#b91c1c' : '#15803d'}">Settled ${fmtDate(t.settled_at)}</p>
-            <div class="mt-1 grid grid-cols-2 gap-1" style="font-size:12px">
-                <span class="biz-muted">Expected</span><span class="text-right biz-num" style="font-weight:600">${money(t.cash_expected)}</span>
-                <span class="biz-muted">Declared</span><span class="text-right biz-num" style="font-weight:600">${money(t.cash_declared)}</span>
-                <span class="biz-muted">Variance</span><span class="text-right biz-num ${off ? 'biz-t-red' : ''}" style="font-weight:700">${money(v)}</span>
-            </div>
-            ${t.notes ? `<p class="biz-muted" style="font-size:11px;margin-top:6px">${esc(t.notes)}</p>` : ''}
+            ${cashRows}
+            <p class="biz-muted" style="font-size:11px;margin-top:6px">
+                ${t.submitted_by_name ? 'Submitted by ' + esc(t.submitted_by_name) + '. ' : ''}${t.approved_by_name ? 'Approved by ' + esc(t.approved_by_name) + '.' : ''}
+            </p>
+            ${IS_ADMIN ? `<button onclick="reopenSettle(${t.id})" class="biz-btn biz-btn-ghost mt-1">Reopen</button>` : ''}
         </div>`;
     }
 
@@ -427,9 +447,17 @@ async function settleTrip(e, tripId){
     const f = e.target;
     try {
         const r = await api('settle.php', { trip_id: tripId, cash_declared: f.cash_declared.value, notes: f.notes.value });
-        showAlert(`Settled. Variance ${money(r.variance)}${Math.abs(r.variance) > 0.01 ? ' — flagged' : ''}.`, Math.abs(r.variance) > 0.01 ? 'error' : 'ok');
+        showAlert(`Settlement submitted. Variance ${money(r.variance)}${Math.abs(r.variance) > 0.01 ? ' — flagged' : ''}. Awaiting approval.`, Math.abs(r.variance) > 0.01 ? 'error' : 'ok');
         openTrip(tripId); load();
     } catch (err){ showAlert(err.message, 'error'); }
+}
+async function approveSettle(tripId){
+    try { await api('settle_approve.php', { trip_id: tripId }); showAlert('Settlement approved — trip locked.', 'ok'); openTrip(tripId); load(); }
+    catch (err){ showAlert(err.message, 'error'); }
+}
+async function reopenSettle(tripId){
+    try { await api('settle_reopen.php', { trip_id: tripId }); showAlert('Settlement reopened.', 'ok'); openTrip(tripId); load(); }
+    catch (err){ showAlert(err.message, 'error'); }
 }
 
 load();

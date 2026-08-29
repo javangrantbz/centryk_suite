@@ -25,6 +25,7 @@ class RoutesService
                 SUM(status = 'out')      AS out_now,
                 SUM(status = 'settling') AS settling,
                 SUM(CASE WHEN status IN ('out','settling') THEN cash_expected ELSE 0 END) AS cash_in_transit,
+                SUM(status = 'settling' AND settlement_submitted_at IS NOT NULL)          AS awaiting_approval,
                 SUM(status = 'settled' AND ABS(COALESCE(cash_variance,0)) > 0.01
                     AND settled_at >= DATE_SUB(NOW(), INTERVAL 30 DAY))                    AS variance_flags
             FROM route_trips WHERE company_id = :cid
@@ -32,11 +33,12 @@ class RoutesService
         $r->execute(['cid' => $companyId]);
         $row = $r->fetch(PDO::FETCH_ASSOC) ?: [];
         return [
-            'planned'         => (int)($row['planned'] ?? 0),
-            'out'             => (int)($row['out_now'] ?? 0),
-            'settling'        => (int)($row['settling'] ?? 0),
-            'cash_in_transit' => round((float)($row['cash_in_transit'] ?? 0), 2),
-            'variance_flags'  => (int)($row['variance_flags'] ?? 0),
+            'planned'           => (int)($row['planned'] ?? 0),
+            'out'               => (int)($row['out_now'] ?? 0),
+            'settling'          => (int)($row['settling'] ?? 0),
+            'awaiting_approval' => (int)($row['awaiting_approval'] ?? 0),
+            'cash_in_transit'   => round((float)($row['cash_in_transit'] ?? 0), 2),
+            'variance_flags'    => (int)($row['variance_flags'] ?? 0),
         ];
     }
 
@@ -162,8 +164,13 @@ class RoutesService
     {
         $pdo = DB::pdo();
         $t = $pdo->prepare("
-            SELECT t.*, r.name AS route_name
-            FROM route_trips t JOIN routes r ON r.id = t.route_id
+            SELECT t.*, r.name AS route_name,
+                   TRIM(CONCAT(COALESCE(su.first_name,''),' ',COALESCE(su.last_name,''))) AS submitted_by_name,
+                   TRIM(CONCAT(COALESCE(ap.first_name,''),' ',COALESCE(ap.last_name,''))) AS approved_by_name
+            FROM route_trips t
+            JOIN routes r ON r.id = t.route_id
+            LEFT JOIN users su ON su.id = t.settlement_submitted_by
+            LEFT JOIN users ap ON ap.id = t.settlement_approved_by
             WHERE t.id = :id AND t.company_id = :cid LIMIT 1
         ");
         $t->execute(['id' => $tripId, 'cid' => $companyId]);
@@ -310,6 +317,9 @@ class RoutesService
         if ($trip['status'] === 'settled') {
             throw new RuntimeException('This trip is settled and locked.');
         }
+        if (!empty($trip['settlement_submitted_at'])) {
+            throw new RuntimeException('Settlement is submitted — an admin must approve or reopen it.');
+        }
         if (!in_array($status, $flow[$trip['status']] ?? [], true)) {
             throw new InvalidArgumentException('Cannot move a ' . $trip['status'] . ' trip to ' . $status . '.');
         }
@@ -326,15 +336,19 @@ class RoutesService
     }
 
     /**
-     * Close a trip: driver declares the cash handed in, variance is recorded,
-     * the trip locks. Requires the trip to be out or settling.
+     * Step 1 of settlement: whoever ran the route declares the cash handed in.
+     * Variance is recorded and the stops lock, but the trip stays 'settling'
+     * until an admin approves it. Re-submitting overwrites the declared figure.
      */
-    public static function settleTrip(int $companyId, int $tripId, float $cashDeclared, string $notes, ?int $actorId): array
+    public static function submitSettlement(int $companyId, int $tripId, float $cashDeclared, string $notes, ?int $actorId): array
     {
         $pdo = DB::pdo();
         $trip = self::lockableTrip($pdo, $companyId, $tripId);
         if (!in_array($trip['status'], ['out', 'settling'], true)) {
             throw new RuntimeException('Only a trip that is out or settling can be settled.');
+        }
+        if ($trip['status'] === 'settling' && !empty($trip['settlement_approved_at'])) {
+            throw new RuntimeException('This trip is already settled.');
         }
 
         self::recomputeTrip($pdo, $tripId);
@@ -344,8 +358,9 @@ class RoutesService
 
         $pdo->prepare("
             UPDATE route_trips
-            SET status = 'settled', cash_declared = :cd, cash_variance = :cv,
-                notes = :notes, settled_by = :by, settled_at = NOW()
+            SET status = 'settling', cash_declared = :cd, cash_variance = :cv, notes = :notes,
+                settlement_submitted_at = NOW(), settlement_submitted_by = :by,
+                settlement_approved_at = NULL, settlement_approved_by = NULL
             WHERE id = :id
         ")->execute([
             'cd' => $cashDeclared, 'cv' => $variance, 'notes' => mb_substr(trim($notes), 0, 255),
@@ -354,10 +369,9 @@ class RoutesService
 
         Audit::log([
             'actor_user_id' => $actorId, 'company_id' => $companyId,
-            'event_type' => 'routes.trip.settled',
-            'summary' => 'Settled trip #' . $tripId . ': expected ' . number_format($expected, 2)
-                . ', declared ' . number_format($cashDeclared, 2)
-                . ', variance ' . number_format($variance, 2)
+            'event_type' => 'routes.trip.settlement_submitted',
+            'summary' => 'Submitted settlement for trip #' . $tripId . ': expected ' . number_format($expected, 2)
+                . ', declared ' . number_format($cashDeclared, 2) . ', variance ' . number_format($variance, 2)
                 . (abs($variance) > 0.01 ? ' (FLAGGED)' : ''),
             'metadata' => ['trip_id' => $tripId, 'expected' => $expected, 'declared' => $cashDeclared, 'variance' => $variance],
         ]);
@@ -365,11 +379,80 @@ class RoutesService
         return ['expected' => round($expected, 2), 'declared' => $cashDeclared, 'variance' => $variance];
     }
 
+    /**
+     * Step 2: a company admin signs off. The trip moves to 'settled' and locks.
+     */
+    public static function approveSettlement(int $companyId, int $tripId, int $actorId): void
+    {
+        $pdo = DB::pdo();
+        self::assertCompanyAdmin($pdo, $companyId, $actorId);
+        $trip = self::lockableTrip($pdo, $companyId, $tripId);
+        if ($trip['status'] !== 'settling' || empty($trip['settlement_submitted_at'])) {
+            throw new RuntimeException('This trip has no submitted settlement to approve.');
+        }
+
+        $pdo->prepare("
+            UPDATE route_trips
+            SET status = 'settled', settlement_approved_at = NOW(), settlement_approved_by = :by,
+                settled_by = :by2, settled_at = NOW()
+            WHERE id = :id
+        ")->execute(['by' => $actorId, 'by2' => $actorId, 'id' => $tripId]);
+
+        $selfApproved = (int)$trip['settlement_submitted_by'] === $actorId;
+        Audit::log([
+            'actor_user_id' => $actorId, 'company_id' => $companyId,
+            'event_type' => 'routes.trip.settlement_approved',
+            'summary' => 'Approved settlement for trip #' . $tripId
+                . ($selfApproved ? ' (self-approved)' : '')
+                . ' — declared ' . number_format((float)$trip['cash_declared'], 2)
+                . ', variance ' . number_format((float)$trip['cash_variance'], 2),
+            'metadata' => ['trip_id' => $tripId, 'self_approved' => $selfApproved],
+        ]);
+    }
+
+    /** An admin reopens a submitted or settled trip back to editable 'settling'. */
+    public static function reopenSettlement(int $companyId, int $tripId, int $actorId): void
+    {
+        $pdo = DB::pdo();
+        self::assertCompanyAdmin($pdo, $companyId, $actorId);
+        $trip = self::lockableTrip($pdo, $companyId, $tripId);
+        if (!in_array($trip['status'], ['settling', 'settled'], true)) {
+            throw new RuntimeException('Nothing to reopen on this trip.');
+        }
+
+        $pdo->prepare("
+            UPDATE route_trips
+            SET status = 'settling', settlement_submitted_at = NULL, settlement_submitted_by = NULL,
+                settlement_approved_at = NULL, settlement_approved_by = NULL, settled_at = NULL
+            WHERE id = :id
+        ")->execute(['id' => $tripId]);
+
+        Audit::log([
+            'actor_user_id' => $actorId, 'company_id' => $companyId,
+            'event_type' => 'routes.trip.settlement_reopened',
+            'summary' => 'Reopened settlement for trip #' . $tripId,
+            'metadata' => ['trip_id' => $tripId, 'from' => $trip['status']],
+        ]);
+    }
+
     // ── internals ──────────────────────────────────────────────────────────
+
+    private static function assertCompanyAdmin(PDO $pdo, int $companyId, int $userId): void
+    {
+        $m = $pdo->prepare("SELECT 1 FROM company_members WHERE company_id = :c AND user_id = :u AND role = 'admin' AND status = 'active' LIMIT 1");
+        $m->execute(['c' => $companyId, 'u' => $userId]);
+        if (!$m->fetch()) {
+            throw new RuntimeException('Only a company admin can approve or reopen a settlement.');
+        }
+    }
 
     private static function lockableTrip(PDO $pdo, int $companyId, int $tripId): array
     {
-        $t = $pdo->prepare("SELECT id, status FROM route_trips WHERE id = :id AND company_id = :cid LIMIT 1");
+        $t = $pdo->prepare("
+            SELECT id, status, cash_declared, cash_variance,
+                   settlement_submitted_at, settlement_submitted_by, settlement_approved_at
+            FROM route_trips WHERE id = :id AND company_id = :cid LIMIT 1
+        ");
         $t->execute(['id' => $tripId, 'cid' => $companyId]);
         $trip = $t->fetch(PDO::FETCH_ASSOC);
         if (!$trip) {

@@ -42,7 +42,10 @@ $headerActionsHtml = ob_get_clean();
             <p class="biz-kicker"><a href="admin-business-roadmap.php" class="underline">Centryk Business</a> · internal</p>
             <h1 class="mt-0.5">Business packages</h1>
         </div>
-        <button onclick="loadOverview()" class="biz-btn biz-btn-ghost">Refresh</button>
+        <span class="flex gap-2">
+            <a href="admin-business-billing.php" class="biz-btn biz-btn-ghost">Billing</a>
+            <button onclick="loadOverview()" class="biz-btn biz-btn-ghost">Refresh</button>
+        </span>
     </div>
 
     <div class="biz-tabs mb-3">

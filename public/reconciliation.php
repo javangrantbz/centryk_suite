@@ -115,6 +115,11 @@ $headerActionsHtml = ob_get_clean();
         </details>
         <?php endif; ?>
 
+        <details class="biz-panel mt-3" ontoggle="if(this.open) loadRefs()">
+            <summary style="cursor:pointer;padding:6px 10px;font-size:12px;font-weight:600;color:#334155">Payment references — what to tell customers to put on a transfer</summary>
+            <div id="refRows" class="biz-list" style="max-height:40vh;overflow-y:auto"><div class="biz-panel-empty">Open to load…</div></div>
+        </details>
+
         <div class="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
             <div class="biz-panel self-start">
                 <div class="biz-panel-head">
@@ -210,6 +215,23 @@ async function doImport(){
     } catch (e){ showAlert(e.message, 'error'); }
 }
 
+let REFS_LOADED = false;
+async function loadRefs(){
+    if (REFS_LOADED) return;
+    REFS_LOADED = true;
+    try {
+        const d = await api('refs.php');
+        const rows = d.invoices || [];
+        document.getElementById('refRows').innerHTML = rows.length ? rows.map(r => `
+            <div class="biz-row" style="cursor:default;font-size:12px">
+                <span class="min-w-0 flex-1 truncate">${esc(r.customer_name)} · ${esc(r.invoice_number)}</span>
+                <button onclick="navigator.clipboard && navigator.clipboard.writeText('${r.payment_ref}'); showAlert('${r.payment_ref} copied.', 'ok');"
+                        class="biz-btn biz-btn-ghost biz-btn-sm biz-num">${r.payment_ref}</button>
+                <span class="shrink-0 biz-num biz-muted" style="width:88px;text-align:right">${m(r.outstanding)}</span>
+            </div>`).join('') : '<div class="biz-panel-empty">No open invoices.</div>';
+    } catch (e){ REFS_LOADED = false; showAlert(e.message, 'error'); }
+}
+
 async function loadTxns(){
     if (CID === null) return;
     try {
@@ -262,7 +284,7 @@ function renderMatch(txn, invoices){
     const list = invoices.length ? invoices.map(iv => `
         <div class="flex items-center gap-3 border-t border-[color:var(--bz-line-soft)] px-2.5 py-2 first:border-t-0">
             <div class="min-w-0 flex-1">
-                <p style="font-size:12px;font-weight:600">${esc(iv.invoice_number)} · ${esc(iv.customer_name)}</p>
+                <p style="font-size:12px;font-weight:600">${esc(iv.invoice_number)} · ${esc(iv.customer_name)} <span class="biz-chip biz-c-slate biz-num">${esc(iv.payment_ref || '')}</span></p>
                 <p class="biz-muted" style="font-size:11px">${m(iv.outstanding)} outstanding · ${esc(iv.reasons.join(', '))}</p>
             </div>
             ${CAN_WRITE && !matched ? `<button onclick="doMatch(${txn.id}, ${iv.invoice_id})" class="biz-btn biz-btn-primary biz-btn-sm shrink-0">Match</button>` : ''}

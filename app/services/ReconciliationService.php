@@ -14,6 +14,10 @@ require_once __DIR__ . '/ReceivablesService.php';
  */
 class ReconciliationService
 {
+    /** SQL expression for an invoice's effective due date (mirrors ReceivablesService). */
+    private const DUE_EXPR =
+        "COALESCE(i.due_date, DATE_ADD(i.issue_date, INTERVAL COALESCE(c.payment_terms_days, 0) DAY))";
+
     /** Header aliases for CSV auto-mapping (lower-cased, trimmed). */
     private const ALIASES = [
         'date'        => ['date', 'transaction date', 'txn date', 'value date', 'posting date', 'posted', 'date posted'],
@@ -201,6 +205,52 @@ class ReconciliationService
      * Candidate matches for one (credit) line: open invoices ranked by how well
      * amount / reference / customer name line up.
      */
+    /**
+     * A short, stable reference a customer can put on a bank transfer so the
+     * deposit self-identifies. Reversible: resolveRef() decodes it back.
+     * e.g. invoice #742 -> "PAY-KE"
+     */
+    public static function paymentRef(int $invoiceId): string
+    {
+        return 'PAY-' . strtoupper(base_convert((string)$invoiceId, 10, 36));
+    }
+
+    /** Invoice ids referenced anywhere in a free-text string (0..n). */
+    private static function refsIn(string $text): array
+    {
+        if (!preg_match_all('/PAY-([0-9A-Z]{1,8})/i', $text, $mm)) {
+            return [];
+        }
+        $ids = [];
+        foreach ($mm[1] as $code) {
+            $id = (int)base_convert(strtoupper($code), 36, 10);
+            if ($id > 0) { $ids[$id] = true; }
+        }
+        return array_keys($ids);
+    }
+
+    /** Open invoices with their payment reference, for finance to share with customers. */
+    public static function paymentRefs(int $companyId): array
+    {
+        $stmt = DB::pdo()->prepare("
+            SELECT i.id, i.invoice_number, (i.total - i.amount_paid) AS outstanding,
+                   " . self::DUE_EXPR . " AS effective_due, c.name AS customer_name
+            FROM invoices i
+            JOIN customers c ON c.id = i.customer_id
+            WHERE i.company_id = :cid AND i.status IN ('sent','overdue') AND (i.total - i.amount_paid) > 0
+            ORDER BY effective_due ASC, i.id ASC
+            LIMIT 200
+        ");
+        $stmt->execute(['cid' => $companyId]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($rows as &$r) {
+            $r['id'] = (int)$r['id'];
+            $r['outstanding'] = round((float)$r['outstanding'], 2);
+            $r['payment_ref'] = self::paymentRef($r['id']);
+        }
+        return $rows;
+    }
+
     public static function suggestions(int $companyId, int $txnId): array
     {
         $pdo = DB::pdo();
@@ -213,6 +263,7 @@ class ReconciliationService
 
         $amount = round((float)$txn['amount'], 2);
         $haystack = mb_strtolower($txn['description'] . ' ' . $txn['reference']);
+        $refIds = array_flip(self::refsIn($txn['description'] . ' ' . $txn['reference']));
 
         $inv = $pdo->prepare("
             SELECT i.id, i.invoice_number, i.total, i.amount_paid, (i.total - i.amount_paid) AS outstanding,
@@ -228,6 +279,8 @@ class ReconciliationService
             $outstanding = round((float)$row['outstanding'], 2);
             $reasons = [];
             $score = 0;
+
+            if (isset($refIds[(int)$row['id']])) { $score += 80; $reasons[] = 'payment reference matches'; }
 
             if (abs($outstanding - $amount) < 0.01) { $score += 60; $reasons[] = 'exact amount'; }
             elseif ($amount > 0 && abs($outstanding - $amount) / max($outstanding, $amount) <= 0.02) { $score += 30; $reasons[] = 'amount within 2%'; }
@@ -249,6 +302,7 @@ class ReconciliationService
             $out[] = [
                 'invoice_id'     => (int)$row['id'],
                 'invoice_number' => $row['invoice_number'],
+                'payment_ref'    => self::paymentRef((int)$row['id']),
                 'customer_id'    => (int)$row['customer_id'],
                 'customer_name'  => $row['customer_name'],
                 'outstanding'    => $outstanding,

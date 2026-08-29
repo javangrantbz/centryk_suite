@@ -128,9 +128,12 @@ $headerActionsHtml = ob_get_clean();
                 routes, payments that auto-post to a customer account, less manual reconciliation.
             </p>
         </div>
-        <a href="admin-business-packages.php" class="biz-btn biz-btn-primary">
-            Grant console <i data-lucide="arrow-right" style="height:13px;width:13px"></i>
-        </a>
+        <span class="flex gap-2">
+            <a href="admin-business-billing.php" class="biz-btn biz-btn-ghost">Billing</a>
+            <a href="admin-business-packages.php" class="biz-btn biz-btn-primary">
+                Grant console <i data-lucide="arrow-right" style="height:13px;width:13px"></i>
+            </a>
+        </span>
     </div>
 
     <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
