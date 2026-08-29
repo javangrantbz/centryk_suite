@@ -60,6 +60,7 @@ $headerActionsHtml = ob_get_clean();
             <p class="biz-kicker">Centryk Business · Field Sales &amp; Routes</p>
             <h1 class="mt-0.5">Routes &amp; settlement</h1>
         </div>
+        <a href="routes_field.php" class="biz-btn biz-btn-ghost biz-btn-sm">Driver view ›</a>
         <?php if (count($companies) > 1): ?>
             <div class="biz-seg">
                 <?php foreach ($companies as $c): ?>
@@ -366,6 +367,17 @@ function renderTrip(t){
         </div>`;
     }
 
+    const members = DATA.members || [];
+    const driverPicker = (rw && members.length) ? `
+        <div class="mt-2 flex items-center gap-2">
+            <span class="biz-muted" style="font-size:11px">Driver</span>
+            <select onchange="assignDriver(${t.id}, this.value)" class="biz-select" style="height:24px;width:auto;font-size:11px">
+                <option value="">— unassigned —</option>
+                ${members.map(mem => `<option value="${mem.id}" ${String(t.driver_user_id) === String(mem.id) ? 'selected' : ''}>${esc(mem.name || ('User ' + mem.id))}${mem.role === 'employee' ? '' : ' (' + esc(mem.role) + ')'}</option>`).join('')}
+            </select>
+            ${t.driver_user_id ? '<span class="biz-muted" style="font-size:11px">has the field link</span>' : ''}
+        </div>` : '';
+
     p.innerHTML = `
         <div class="biz-panel-body" style="border-bottom:1px solid var(--bz-line)">
             <div class="flex items-start justify-between gap-3">
@@ -375,6 +387,7 @@ function renderTrip(t){
                 </div>
                 ${nextBtn}
             </div>
+            ${driverPicker}
         </div>
         ${settle}
         <div class="biz-panel-head">
@@ -465,6 +478,13 @@ async function settleTrip(e, tripId){
     try {
         const r = await api('settle.php', { trip_id: tripId, cash_declared: f.cash_declared.value, notes: f.notes.value });
         showAlert(`Settlement submitted. Variance ${money(r.variance)}${Math.abs(r.variance) > 0.01 ? ' — flagged' : ''}. Awaiting approval.`, Math.abs(r.variance) > 0.01 ? 'error' : 'ok');
+        openTrip(tripId); load();
+    } catch (err){ showAlert(err.message, 'error'); }
+}
+async function assignDriver(tripId, driverUserId){
+    try {
+        await api('assign_driver.php', { trip_id: tripId, driver_user_id: driverUserId || null });
+        showAlert(driverUserId ? 'Driver assigned — they can open it from routes_field.php.' : 'Driver cleared.', 'ok');
         openTrip(tripId); load();
     } catch (err){ showAlert(err.message, 'error'); }
 }
