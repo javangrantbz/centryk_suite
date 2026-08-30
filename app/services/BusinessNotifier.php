@@ -63,7 +63,7 @@ class BusinessNotifier
     public static function runDaily(): array
     {
         $pdo = DB::pdo();
-        $out = ['invoice_alerts' => 0, 'billing_alerts' => 0];
+        $out = ['invoice_alerts' => 0, 'billing_alerts' => 0, 'cheque_alerts' => 0];
 
         // ── Customer invoices that hit an overdue milestone today ──────────
         $due = "COALESCE(i.due_date, DATE_ADD(i.issue_date, INTERVAL COALESCE(c.payment_terms_days,0) DAY))";
@@ -96,6 +96,35 @@ class BusinessNotifier
                 'color'      => $d >= 30 ? '#dc2626' : '#b45309',
             ]);
             $out['invoice_alerts']++;
+        }
+
+        // ── Post-dated cheques that come due to deposit today ────────────
+        if ($pdo->query("SHOW COLUMNS FROM ar_payments LIKE 'clearance_status'")->fetch()) {
+            $cheques = $pdo->query("
+                SELECT p.id, p.company_id, p.amount, p.cheque_number, c.name AS customer_name
+                FROM ar_payments p
+                JOIN customers c ON c.id = p.customer_id
+                WHERE p.method = 'cheque' AND p.clearance_status = 'pending'
+                  AND p.cheque_date = CURDATE()
+            ")->fetchAll(PDO::FETCH_ASSOC);
+            require_once __DIR__ . '/../core/Entitlements.php';
+            foreach ($cheques as $ch) {
+                $cid = (int) $ch['company_id'];
+                if (Entitlements::level($cid, 'receivables') === Entitlements::NONE) {
+                    continue;
+                }
+                self::push(self::companyAdmins($cid), [
+                    'company_id' => $cid,
+                    'type'       => 'cheque_due',
+                    'title'      => 'Cheque due to deposit — ' . $ch['customer_name'],
+                    'body'       => 'Cheque ' . ($ch['cheque_number'] ?: '') . ' for BZD '
+                        . number_format((float) $ch['amount'], 2) . ' is dated today.',
+                    'url'        => 'receivables.php?company_id=' . $cid,
+                    'icon'       => 'calendar-check',
+                    'color'      => '#b45309',
+                ]);
+                $out['cheque_alerts'] = ($out['cheque_alerts'] ?? 0) + 1;
+            }
         }
 
         // ── Subscription charges that fell overdue yesterday ──────────────

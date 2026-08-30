@@ -66,7 +66,7 @@ class ReceivablesService
                     SELECT ar_payment_id, SUM(amount) AS allocated
                     FROM ar_payment_allocations GROUP BY ar_payment_id
                 ) a ON a.ar_payment_id = p.id
-                WHERE p.company_id = :cid2
+                WHERE p.company_id = :cid2 AND p.clearance_status <> 'bounced'
                 GROUP BY p.customer_id
             ) cr ON cr.customer_id = c.id
             WHERE c.company_id = :cid3 AND c.ar_status = 'active'
@@ -152,11 +152,12 @@ class ReceivablesService
 
         $pay = $pdo->prepare("
             SELECT p.id, p.received_on, p.amount, p.method, p.reference, p.notes, p.created_at,
+                   p.cheque_number, p.cheque_date, p.clearance_status, p.bounce_reason,
                    COALESCE(SUM(a.amount), 0) AS allocated
             FROM ar_payments p
             LEFT JOIN ar_payment_allocations a ON a.ar_payment_id = p.id
             WHERE p.company_id = :cid AND p.customer_id = :cust
-            GROUP BY p.id, p.received_on, p.amount, p.method, p.reference, p.notes, p.created_at
+            GROUP BY p.id
             ORDER BY p.received_on DESC, p.id DESC
         ");
         $pay->execute(['cid' => $companyId, 'cust' => $customerId]);
@@ -170,6 +171,9 @@ class ReceivablesService
         }
         $credit = 0.0;
         foreach ($payments as $p) {
+            if ($p['clearance_status'] === 'bounced') {
+                continue; // a bounced cheque is not money
+            }
             $credit += (float)$p['amount'] - (float)$p['allocated'];
         }
         $balance = (float)$customer['opening_balance'] + $openOutstanding - $credit;
@@ -298,13 +302,30 @@ class ReceivablesService
             }
         }
         foreach ($s['payments'] as $p) {
+            $isCheque = $p['method'] === 'cheque';
+            $status   = $p['clearance_status'] ?? 'n/a';
+            $label = 'Payment received (' . $p['method'] . ')';
+            if ($isCheque && $p['cheque_number']) {
+                $label = 'Cheque ' . $p['cheque_number']
+                    . ($status === 'pending' ? ' (uncleared)' : ($status === 'cleared' ? '' : ' — BOUNCED'));
+            }
             $entries[] = [
                 'date'   => $p['received_on'],
                 'ref'    => $p['reference'] ?: ('Receipt #' . $p['id']),
-                'detail' => 'Payment received (' . $p['method'] . ')',
+                'detail' => $label,
                 'charge' => 0.0,
                 'credit' => (float)$p['amount'],
             ];
+            // A bounced cheque: the credit above is undone by an equal charge back.
+            if ($status === 'bounced') {
+                $entries[] = [
+                    'date'   => $p['received_on'],
+                    'ref'    => $p['reference'] ?: ('Receipt #' . $p['id']),
+                    'detail' => 'Cheque returned — amount charged back',
+                    'charge' => (float)$p['amount'],
+                    'credit' => 0.0,
+                ];
+            }
         }
         usort($entries, static fn ($a, $b) => [$a['date'], $a['ref']] <=> [$b['date'], $b['ref']]);
 
@@ -875,6 +896,19 @@ class ReceivablesService
         if (!in_array($method, ['cash', 'card', 'bank_transfer', 'xfer', 'cheque', 'other'], true)) {
             $method = 'other';
         }
+
+        // Cheque details — a cheque receipt starts life 'pending' until it clears.
+        $chequeNumber = '';
+        $chequeBank   = '';
+        $chequeDate   = null;
+        $clearance    = 'n/a';
+        if ($method === 'cheque') {
+            $chequeNumber = mb_substr(trim((string)($data['cheque_number'] ?? '')), 0, 50);
+            $chequeBank   = mb_substr(trim((string)($data['cheque_bank'] ?? '')), 0, 120);
+            $cd = trim((string)($data['cheque_date'] ?? ''));
+            $chequeDate = preg_match('/^\d{4}-\d{2}-\d{2}$/', $cd) ? $cd : $receivedOn;
+            $clearance = 'pending';
+        }
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $receivedOn) || strtotime($receivedOn) === false) {
             $receivedOn = date('Y-m-d');
         }
@@ -904,11 +938,14 @@ class ReceivablesService
             }
 
             $pdo->prepare("
-                INSERT INTO ar_payments (company_id, customer_id, received_on, amount, method, source, source_ref, settlement_ref, reference, notes, created_by)
-                VALUES (:cid, :cust, :on, :amt, :method, :src, :sref, :setref, :ref, :notes, :by)
+                INSERT INTO ar_payments (company_id, customer_id, received_on, amount, method, source, source_ref, settlement_ref,
+                                         cheque_number, cheque_bank, cheque_date, clearance_status, reference, notes, created_by)
+                VALUES (:cid, :cust, :on, :amt, :method, :src, :sref, :setref,
+                        :cno, :cbank, :cdate, :clr, :ref, :notes, :by)
             ")->execute([
                 'cid' => $companyId, 'cust' => $customerId, 'on' => $receivedOn, 'amt' => $amount,
                 'method' => $method, 'src' => $source, 'sref' => $sourceRef, 'setref' => $settleRef,
+                'cno' => $chequeNumber, 'cbank' => $chequeBank, 'cdate' => $chequeDate, 'clr' => $clearance,
                 'ref' => $reference, 'notes' => $notes, 'by' => $actorId,
             ]);
             $paymentId = (int)$pdo->lastInsertId();
@@ -1151,6 +1188,164 @@ class ReceivablesService
             if ($ownTxn && $pdo->inTransaction()) {
                 $pdo->rollBack();
             }
+            throw $e;
+        }
+    }
+
+    // ── Cheque tracking ─────────────────────────────────────────────────────
+
+    /**
+     * Cheques the company has taken, newest first. $filter['status'] =
+     * pending | cleared | bounced | all. Each row carries a post-dated flag
+     * and how many days it has been held.
+     */
+    public static function chequeRegister(int $companyId, array $filter = []): array
+    {
+        $where = ["p.company_id = :cid", "p.method = 'cheque'"];
+        $args  = ['cid' => $companyId];
+        $status = $filter['status'] ?? 'pending';
+        if (in_array($status, ['pending', 'cleared', 'bounced'], true)) {
+            $where[] = "p.clearance_status = :st";
+            $args['st'] = $status;
+        }
+
+        $stmt = DB::pdo()->prepare("
+            SELECT p.id, p.customer_id, c.name AS customer_name, p.amount, p.received_on,
+                   p.cheque_number, p.cheque_bank, p.cheque_date, p.clearance_status,
+                   p.cleared_on, p.bounce_reason, p.reference, p.bank_txn_id,
+                   DATEDIFF(CURDATE(), p.received_on) AS days_held,
+                   (p.cheque_date > CURDATE()) AS post_dated,
+                   COALESCE(SUM(a.amount), 0) AS allocated
+            FROM ar_payments p
+            JOIN customers c ON c.id = p.customer_id
+            LEFT JOIN ar_payment_allocations a ON a.ar_payment_id = p.id
+            WHERE " . implode(' AND ', $where) . "
+            GROUP BY p.id
+            ORDER BY (p.clearance_status = 'pending') DESC, p.received_on DESC, p.id DESC
+            LIMIT 300
+        ");
+        $stmt->execute($args);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($rows as &$r) {
+            $r['id']         = (int)$r['id'];
+            $r['customer_id'] = (int)$r['customer_id'];
+            $r['amount']     = round((float)$r['amount'], 2);
+            $r['days_held']  = (int)$r['days_held'];
+            $r['post_dated'] = (bool)$r['post_dated'];
+        }
+        return $rows;
+    }
+
+    /** Count + value of cheques by state — for the register header and Insights. */
+    public static function chequesSummary(int $companyId): array
+    {
+        $r = DB::pdo()->prepare("
+            SELECT
+                SUM(clearance_status = 'pending')                                         AS pending_n,
+                COALESCE(SUM(CASE WHEN clearance_status = 'pending' THEN amount END), 0)   AS pending_value,
+                SUM(clearance_status = 'pending' AND cheque_date > CURDATE())              AS postdated_n,
+                COALESCE(SUM(CASE WHEN clearance_status = 'pending' AND cheque_date > CURDATE() THEN amount END), 0) AS postdated_value,
+                SUM(clearance_status = 'bounced' AND received_on >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)) AS bounced_12m_n,
+                COALESCE(SUM(CASE WHEN clearance_status = 'bounced' AND received_on >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR) THEN amount END), 0) AS bounced_12m_value
+            FROM ar_payments WHERE company_id = :cid AND method = 'cheque'
+        ");
+        $r->execute(['cid' => $companyId]);
+        $row = $r->fetch(PDO::FETCH_ASSOC) ?: [];
+        return [
+            'pending_count'    => (int)($row['pending_n'] ?? 0),
+            'pending_value'    => round((float)($row['pending_value'] ?? 0), 2),
+            'postdated_count'  => (int)($row['postdated_n'] ?? 0),
+            'postdated_value'  => round((float)($row['postdated_value'] ?? 0), 2),
+            'bounced_12m_count' => (int)($row['bounced_12m_n'] ?? 0),
+            'bounced_12m_value' => round((float)($row['bounced_12m_value'] ?? 0), 2),
+        ];
+    }
+
+    /** Mark a pending cheque cleared. */
+    public static function clearCheque(int $companyId, int $paymentId, ?string $clearedOn, ?int $actorId): void
+    {
+        $pdo = DB::pdo();
+        $p = $pdo->prepare("SELECT id, amount, customer_id, clearance_status FROM ar_payments WHERE id = :id AND company_id = :cid AND method = 'cheque' LIMIT 1");
+        $p->execute(['id' => $paymentId, 'cid' => $companyId]);
+        $pay = $p->fetch(PDO::FETCH_ASSOC);
+        if (!$pay) {
+            throw new RuntimeException('Cheque not found.');
+        }
+        if ($pay['clearance_status'] !== 'pending') {
+            throw new RuntimeException('This cheque is already ' . $pay['clearance_status'] . '.');
+        }
+        $clearedOn = $clearedOn && preg_match('/^\d{4}-\d{2}-\d{2}$/', $clearedOn) ? $clearedOn : date('Y-m-d');
+
+        $pdo->prepare("UPDATE ar_payments SET clearance_status = 'cleared', cleared_on = :on WHERE id = :id")
+            ->execute(['on' => $clearedOn, 'id' => $paymentId]);
+
+        Audit::log([
+            'actor_user_id' => $actorId, 'company_id' => $companyId,
+            'event_type' => 'receivables.cheque.cleared',
+            'summary' => 'Cheque #' . $paymentId . ' cleared (' . number_format((float)$pay['amount'], 2) . ')',
+            'metadata' => ['payment_id' => $paymentId, 'cleared_on' => $clearedOn],
+        ]);
+    }
+
+    /**
+     * A cheque bounced. Reverse its allocations (the customer owes again), keep
+     * the receipt row marked 'bounced' for the record, and note it on the
+     * customer. Any bounce fee is invoiced separately.
+     */
+    public static function bounceCheque(int $companyId, int $paymentId, string $reason, ?int $actorId): void
+    {
+        $pdo = DB::pdo();
+        $p = $pdo->prepare("SELECT id, amount, customer_id, clearance_status, bank_txn_id FROM ar_payments WHERE id = :id AND company_id = :cid AND method = 'cheque' LIMIT 1");
+        $p->execute(['id' => $paymentId, 'cid' => $companyId]);
+        $pay = $p->fetch(PDO::FETCH_ASSOC);
+        if (!$pay) {
+            throw new RuntimeException('Cheque not found.');
+        }
+        if ($pay['clearance_status'] === 'bounced') {
+            throw new RuntimeException('This cheque is already recorded as bounced.');
+        }
+        if ($pay['bank_txn_id'] !== null) {
+            throw new RuntimeException('This cheque is reconciled to a bank deposit — unmatch that first.');
+        }
+        $reason = mb_substr(trim($reason), 0, 190);
+
+        $ownTxn = !$pdo->inTransaction();
+        try {
+            if ($ownTxn) { $pdo->beginTransaction(); }
+
+            $allocs = $pdo->prepare("SELECT invoice_id, amount FROM ar_payment_allocations WHERE ar_payment_id = :pid");
+            $allocs->execute(['pid' => $paymentId]);
+            foreach ($allocs->fetchAll(PDO::FETCH_ASSOC) as $a) {
+                $inv = $pdo->prepare("
+                    SELECT i.total, i.amount_paid, " . self::DUE_EXPR . " AS effective_due
+                    FROM invoices i JOIN customers c ON c.id = i.customer_id
+                    WHERE i.id = :id AND i.company_id = :cid LIMIT 1
+                ");
+                $inv->execute(['id' => (int)$a['invoice_id'], 'cid' => $companyId]);
+                $row = $inv->fetch(PDO::FETCH_ASSOC);
+                if (!$row) { continue; }
+                $newPaid = max(0, round((float)$row['amount_paid'] - (float)$a['amount'], 2));
+                $newStatus = $newPaid + 0.004 >= (float)$row['total'] ? 'paid'
+                    : (strtotime((string)$row['effective_due']) < strtotime(date('Y-m-d')) ? 'overdue' : 'sent');
+                $pdo->prepare("UPDATE invoices SET amount_paid = :p, status = :s WHERE id = :id")
+                    ->execute(['p' => $newPaid, 's' => $newStatus, 'id' => (int)$a['invoice_id']]);
+            }
+            $pdo->prepare("DELETE FROM ar_payment_allocations WHERE ar_payment_id = :pid")->execute(['pid' => $paymentId]);
+
+            $pdo->prepare("UPDATE ar_payments SET clearance_status = 'bounced', bounce_reason = :r WHERE id = :id")
+                ->execute(['r' => $reason, 'id' => $paymentId]);
+
+            Audit::log([
+                'actor_user_id' => $actorId, 'company_id' => $companyId,
+                'event_type' => 'receivables.cheque.bounced',
+                'summary' => 'Cheque #' . $paymentId . ' BOUNCED (' . number_format((float)$pay['amount'], 2) . ')'
+                    . ($reason !== '' ? ' — ' . $reason : '') . ' — customer balance restored',
+                'metadata' => ['payment_id' => $paymentId, 'customer_id' => (int)$pay['customer_id'], 'amount' => (float)$pay['amount'], 'reason' => $reason],
+            ]);
+
+            if ($ownTxn) { $pdo->commit(); }
+        } catch (Throwable $e) {
+            if ($ownTxn && $pdo->inTransaction()) { $pdo->rollBack(); }
             throw $e;
         }
     }

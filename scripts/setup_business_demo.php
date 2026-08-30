@@ -180,6 +180,21 @@ foreach ($TARGETS as $cid => $t) {
         'amount' => 1000, 'method' => 'cash', 'received_on' => (new DateTime('-1 day'))->format('Y-m-d'),
     ], $t['actor']);
 
+    // Cheques: one held uncleared, one post-dated, one that bounced.
+    ReceivablesService::recordPayment($cid, $custIds['Belmopan Wholesale Ltd'], [
+        'amount' => 3000, 'method' => 'cheque', 'cheque_number' => '004512', 'cheque_bank' => 'Atlantic Bank',
+        'cheque_date' => (new DateTime('-2 days'))->format('Y-m-d'), 'received_on' => (new DateTime('-2 days'))->format('Y-m-d'),
+    ], $t['actor']);
+    ReceivablesService::recordPayment($cid, $custIds['San Pedro Provisions'], [
+        'amount' => 1500, 'method' => 'cheque', 'cheque_number' => '221190', 'cheque_bank' => 'Heritage Bank',
+        'cheque_date' => (new DateTime('+12 days'))->format('Y-m-d'), 'received_on' => (new DateTime('-1 day'))->format('Y-m-d'),
+    ], $t['actor']);
+    $bad = ReceivablesService::recordPayment($cid, $custIds['Orange Walk Distributors'], [
+        'amount' => 2400, 'method' => 'cheque', 'cheque_number' => '888014', 'cheque_bank' => 'Belize Bank',
+        'cheque_date' => (new DateTime('-9 days'))->format('Y-m-d'), 'received_on' => (new DateTime('-9 days'))->format('Y-m-d'),
+    ], $t['actor']);
+    ReceivablesService::bounceCheque($cid, (int) $bad['payment_id'], 'insufficient funds', $t['actor']);
+
     // Write-offs: one approved (a small overdue invoice gone bad) + one pending
     // (damaged goods on a Dangriga invoice, waiting for an admin).
     $openInv = $pdo->prepare("

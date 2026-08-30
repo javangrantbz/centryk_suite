@@ -138,6 +138,7 @@ async function load(){
                 tile('Collected this month', bzd(r.collected_this_month), '', r.collection_ratio != null ? pct(r.collection_ratio) + ' of billed' : ''),
                 tile('Over 90 days', bzd(r.over_90), r.over_90 > 0 ? 'biz-t-red' : ''),
                 tile('Credit flags', (r.on_hold + r.over_limit) || '0', (r.on_hold + r.over_limit) ? 'biz-t-amber' : '', `${r.on_hold} on hold · ${r.over_limit} over limit`),
+                tile('Uncleared cheques', bzd(r.uncleared_cheques), r.uncleared_cheques > 0 ? 'biz-t-amber' : '', `${r.uncleared_cheque_count} held${r.bounced_cheques_12m > 0 ? ' · ' + bzd(r.bounced_cheques_12m) + ' bounced (12m)' : ''}`),
             ]));
         }
         if (d.bad_debt){
