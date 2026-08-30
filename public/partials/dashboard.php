@@ -391,6 +391,21 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
         </div>
     </div>
 
+    <section id="campaignLibraryLane" class="mt-4 hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div class="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+            <div>
+                <p class="text-[10px] font-black uppercase tracking-[0.16em] text-pink-500">Partner Campaigns</p>
+                <h2 class="mt-0.5 text-lg font-black tracking-tight text-slate-900">Accepted campaign library</h2>
+                <p class="mt-1 text-sm font-semibold text-slate-500">Campaigns your connected partners already approved for this company.</p>
+            </div>
+            <a id="campaignLibraryManageLink" href="connections.php" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-black text-slate-700 transition hover:bg-slate-100">
+                <i data-lucide="network" class="h-3.5 w-3.5"></i>
+                Open Connect
+            </a>
+        </div>
+        <div id="campaignLibraryList" class="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-3"></div>
+    </section>
+
     <?php
     $_comingSoonAppKeys = Env::isProduction() ? ['tv' => true] : [];
 
@@ -1030,6 +1045,86 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
         }, 4000);
     }
 
+    function campaignWindowLabel(item) {
+        if (!item) { return ''; }
+        if (item.starts_on && item.ends_on) { return item.starts_on + ' to ' + item.ends_on; }
+        if (item.starts_on) { return 'Starts ' + item.starts_on; }
+        if (item.ends_on) { return 'Ends ' + item.ends_on; }
+        return '';
+    }
+
+    function campaignLifecycle(item) {
+        var today = new Date().toISOString().slice(0, 10);
+        if (item.ends_on && item.ends_on < today) {
+            return { label: 'Ended', classes: 'bg-slate-100 text-slate-500' };
+        }
+        if (item.starts_on && item.starts_on > today) {
+            return { label: 'Upcoming', classes: 'bg-amber-100 text-amber-800' };
+        }
+        return { label: 'Active', classes: 'bg-emerald-100 text-emerald-800' };
+    }
+
+    function clearCampaignLibrary() {
+        var lane = document.getElementById('campaignLibraryLane');
+        var list = document.getElementById('campaignLibraryList');
+        if (lane) { lane.classList.add('hidden'); }
+        if (list) { list.innerHTML = ''; }
+    }
+
+    function renderCampaignLibrary(items) {
+        var lane = document.getElementById('campaignLibraryLane');
+        var list = document.getElementById('campaignLibraryList');
+        if (!lane || !list) { return; }
+        if (!items.length) {
+            lane.classList.add('hidden');
+            list.innerHTML = '';
+            return;
+        }
+        list.innerHTML = items.map(function (item) {
+            var lifecycle = campaignLifecycle(item);
+            var windowLabel = campaignWindowLabel(item);
+            return '<article class="flex h-full flex-col rounded-2xl border border-slate-200 bg-gradient-to-br from-white via-white to-pink-50 p-4">'
+                + '<div class="flex items-start justify-between gap-3">'
+                + '<div class="min-w-0">'
+                + '<p class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">' + esc(item.owner_company_name || 'Connected company') + '</p>'
+                + '<h3 class="mt-1 text-base font-black tracking-tight text-slate-900">' + esc(item.title || 'Campaign') + '</h3>'
+                + '</div>'
+                + '<span class="inline-flex rounded-full px-2 py-1 text-[10px] font-black uppercase ' + lifecycle.classes + '">' + lifecycle.label + '</span>'
+                + '</div>'
+                + (item.offer_text ? '<p class="mt-2 text-sm font-bold text-pink-700">' + esc(item.offer_text) + '</p>' : '')
+                + (item.summary ? '<p class="mt-2 text-sm font-semibold leading-relaxed text-slate-600">' + esc(item.summary) + '</p>' : '')
+                + (windowLabel ? '<p class="mt-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">' + esc(windowLabel) + '</p>' : '')
+                + (item.audience_notes ? '<p class="mt-2 text-xs font-semibold text-slate-500">Audience: ' + esc(item.audience_notes) + '</p>' : '')
+                + (item.recipient_notes ? '<p class="mt-1 text-xs font-semibold text-slate-500">Notes: ' + esc(item.recipient_notes) + '</p>' : '')
+                + '<div class="mt-4 flex items-center justify-between gap-2">'
+                + '<p class="text-[11px] font-semibold text-slate-400">Accepted ' + esc(String(item.responded_at || item.created_at || '').slice(0, 10)) + '</p>'
+                + (item.cta_url ? '<a href="' + esc(item.cta_url) + '" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-3 py-2 text-xs font-black text-white transition hover:bg-slate-800">' + esc(item.cta_label || 'Open link') + '</a>' : '')
+                + '</div>'
+                + '</article>';
+        }).join('');
+        lane.classList.remove('hidden');
+        if (window.lucide) { lucide.createIcons(); }
+    }
+
+    function loadCampaignLibrary(companyId) {
+        if (!companyId) {
+            clearCampaignLibrary();
+            return;
+        }
+        fetch('api/connections/campaign_share_list.php?company_id=' + encodeURIComponent(companyId))
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                var incoming = (data && data.success && Array.isArray(data.incoming)) ? data.incoming : [];
+                var accepted = incoming.filter(function (item) {
+                    return String(item.status || '') === 'accepted';
+                }).slice(0, 6);
+                renderCampaignLibrary(accepted);
+            })
+            .catch(function () {
+                clearCampaignLibrary();
+            });
+    }
+
     function orderedActiveAppCards() {
         if (!appsGrid) { return []; }
         return Array.prototype.slice.call(appsGrid.querySelectorAll('.app-card[data-enrolled="1"]'));
@@ -1244,10 +1339,15 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
             var companiesUrl = 'profile.php' + (selectedUuid ? ('?company_uuid=' + encodeURIComponent(selectedUuid)) : '') + '#companies';
             var coMemberLink = document.getElementById('coMemberLink');
             if (coMemberLink) { coMemberLink.href = companiesUrl; }
+            var campaignLibraryManageLink = document.getElementById('campaignLibraryManageLink');
+            if (campaignLibraryManageLink) {
+                campaignLibraryManageLink.href = 'connections.php?company_id=' + encodeURIComponent(selectedId);
+            }
 
             var onelinkUrl = 'onelink-payments.php' + (selectedUuid ? ('?company_uuid=' + encodeURIComponent(selectedUuid)) : '');
             var coOnelinkBtn = document.getElementById('coOnelinkPaymentsBtn');
             if (coOnelinkBtn) { coOnelinkBtn.href = onelinkUrl; }
+            loadCampaignLibrary(selectedId);
 
             // ── Centryk Business module cards ─────────────────────────────
             var bizRole = ['owner', 'admin', 'manager'].indexOf(String(c.role || '').toLowerCase()) !== -1;
@@ -1382,6 +1482,8 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
                     }
                 }
             });
+        } else {
+            clearCampaignLibrary();
         }
         dropdown.classList.add('hidden');
         // Re-enable enrolled app cards only

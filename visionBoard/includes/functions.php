@@ -4,6 +4,7 @@
  *  vb_*-prefixed tables in centryk_core. */
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/auth.php';
+require_once dirname(__DIR__, 2) . '/app/core/Connections.php';
 
 /** HTML-escape. */
 function e($v): string
@@ -120,13 +121,7 @@ function vb_screen_by_slug(?string $slug): ?array
  */
 function vb_can_share_with(int $fromCompanyId, int $toCompanyId): bool
 {
-    $connected = db()->prepare(
-        "SELECT COUNT(*) FROM company_connections
-         WHERE ((requester_company_id=? AND recipient_company_id=?) OR (requester_company_id=? AND recipient_company_id=?))
-           AND status = 'accepted'"
-    );
-    $connected->execute([$fromCompanyId, $toCompanyId, $toCompanyId, $fromCompanyId]);
-    if (!$connected->fetchColumn()) {
+    if (!Connections::permits($fromCompanyId, $toCompanyId, 'share_signage')) {
         return false;
     }
     return get_setting('accept_shares', '0', $toCompanyId) === '1';
