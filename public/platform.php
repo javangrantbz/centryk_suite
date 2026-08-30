@@ -8,7 +8,7 @@
  *
  * No auth — this is a pitch / reference page (like about.php).
  */
-$updated = '30 August 2026';
+$updated = '31 August 2026';
 
 /* Table of contents — [id, label]. Order = page order. */
 $toc = [
@@ -152,8 +152,8 @@ $toc = [
                 ['MyPay', 'HR &amp; payroll', 'Staff records, attendance, pay runs, and job-vacancy forms for recruitment. Belize statutory filings (TD4, SSB) are in progress.'],
                 ['Invoices', 'Quotes, invoices &amp; receipts', 'The shared invoice engine — hosted in the hub, used by OnePay and by Centryk Business Receivables. Send by email, share a link, or export a PDF.'],
                 ['Calendar', 'Shared scheduling', 'A company calendar surfaced across the suite, with a drawer preview on every page.'],
-                ['Vision Board', 'Marketing planning', 'Plan campaigns and visual assets; shareable with connected partners.'],
-                ['Centryk TV', 'Digital signage', 'Screens in-store driven from the same product and price data (rolling out).'],
+                ['Vision Board', 'Digital signage', 'Run the screens in your store or lobby — playlists, promotions, marquee messages, QR codes — driven from your Centryk data: inventory turns into low-stock and promo slides, the calendar into today\'s events.'],
+                ['Centryk TV', 'Live broadcasting &amp; ticketing', 'Browser-based live streaming of an event with pay-per-view tickets sold through OneLink (coming soon).'],
                 ['Storefront', 'Public menu / catalog', 'Every company gets a public page at a short link — menu, catalog, contact, and a link to pay.'],
                 ['OneLink', 'Payment links &amp; collections', 'Company-scoped view of what has been collected across POS, invoices and payment forms.'],
             ];
@@ -340,6 +340,12 @@ $toc = [
         <ul>
             <li>Each company keeps its own books.</li>
             <li>The <strong>group</strong> view fans out over the member companies for whichever metrics each one is entitled to, and rolls them up.</li>
+        </ul>
+
+        <h3>Your data on the wall</h3>
+        <ul>
+            <li>A screen paired to <strong>Vision Board</strong> pulls its playlist by device token — never a public URL, so in-store content can safely include information a passer-by should not see.</li>
+            <li>The direction is data-driven slides rather than static posters: <strong>OnePay</strong> stock into low-stock and promotion slides, the <strong>calendar</strong> into today's events, <strong>MyPay</strong> into birthdays and new-hire welcomes.</li>
         </ul>
     </section>
 
