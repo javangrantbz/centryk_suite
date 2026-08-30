@@ -89,6 +89,24 @@ $headerActionsHtml = ob_get_clean();
 
     <div class="grid md:grid-cols-3 gap-4">
         <div class="md:col-span-2 space-y-5">
+            <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                <div class="border-b border-slate-100 px-4 py-4">
+                    <p class="text-[10px] font-black uppercase tracking-[0.16em] text-violet-500">Partner Inbox</p>
+                    <h2 class="mt-0.5 text-lg font-black tracking-tight text-slate-900">Action queue</h2>
+                    <p class="mt-1 text-sm font-semibold text-slate-500">What this company needs to respond to right now, plus recent Connect updates.</p>
+                </div>
+                <div id="inboxCounts" class="grid gap-px bg-slate-200 sm:grid-cols-5"></div>
+                <div class="grid gap-5 px-4 py-4">
+                    <div>
+                        <h3 class="mb-2 text-sm font-black uppercase tracking-wide text-slate-500">Needs action</h3>
+                        <div id="inboxNeedsActionList" class="space-y-2"></div>
+                    </div>
+                    <div>
+                        <h3 class="mb-2 text-sm font-black uppercase tracking-wide text-slate-500">Recent updates</h3>
+                        <div id="inboxRecentList" class="space-y-2"></div>
+                    </div>
+                </div>
+            </div>
             <div>
                 <h2 class="text-sm font-black uppercase tracking-wide text-slate-500 mb-2">Requests to you</h2>
                 <div id="incomingList" class="space-y-2"></div>
@@ -159,6 +177,7 @@ let eventShareState = { incoming: [], outgoing: [] };
 let campaignShareState = { incoming: [], outgoing: [] };
 let messageState = { messages: [] };
 let activityState = { items: [] };
+let inboxState = { needs_action: [], recent: [], counts: {} };
 
 const requestTypeLabels = {
     asset: 'Asset request',
@@ -212,13 +231,14 @@ function showAlert(msg, type) {
 async function loadAll() {
     if (!activeCompanyId) return;
     try {
-        const [connRes, reqRes, evtRes, campRes, msgRes, actRes] = await Promise.all([
+        const [connRes, reqRes, evtRes, campRes, msgRes, actRes, inboxRes] = await Promise.all([
             fetch(`api/connections/list.php?company_id=${activeCompanyId}`),
             fetch(`api/connections/request_list.php?company_id=${activeCompanyId}`),
             fetch(`api/connections/event_share_list.php?company_id=${activeCompanyId}`),
             fetch(`api/connections/campaign_share_list.php?company_id=${activeCompanyId}`),
             fetch(`api/connections/message_list.php?company_id=${activeCompanyId}`),
-            fetch(`api/connections/activity.php?company_id=${activeCompanyId}`)
+            fetch(`api/connections/activity.php?company_id=${activeCompanyId}`),
+            fetch(`api/connections/inbox.php?company_id=${activeCompanyId}`)
         ]);
         const connData = await connRes.json();
         const reqData = await reqRes.json();
@@ -226,18 +246,22 @@ async function loadAll() {
         const campData = await campRes.json();
         const msgData = await msgRes.json();
         const actData = await actRes.json();
+        const inboxData = await inboxRes.json();
         if (!connData.success) throw new Error(connData.message || 'Failed to load.');
         if (!reqData.success) throw new Error(reqData.message || 'Failed to load requests.');
         if (!evtData.success) throw new Error(evtData.message || 'Failed to load shared events.');
         if (!campData.success) throw new Error(campData.message || 'Failed to load shared campaigns.');
         if (!msgData.success) throw new Error(msgData.message || 'Failed to load partner messages.');
         if (!actData.success) throw new Error(actData.message || 'Failed to load activity.');
+        if (!inboxData.success) throw new Error(inboxData.message || 'Failed to load inbox.');
         state = connData;
         requestState = reqData;
         eventShareState = evtData;
         campaignShareState = campData;
         messageState = msgData;
         activityState = actData;
+        inboxState = inboxData;
+        renderInbox();
         renderLists();
         renderRequests();
         renderEventShares();
@@ -283,6 +307,89 @@ function requestStatusBadge(status) {
     return 'bg-amber-100 text-amber-800';
 }
 
+function inboxKindLabel(kind) {
+    if (kind === 'connection') return 'Connection';
+    if (kind === 'campaign_share') return 'Campaign';
+    if (kind === 'event_share') return 'Event';
+    if (kind === 'request') return 'Request';
+    if (kind === 'message') return 'Message';
+    return 'Update';
+}
+
+function inboxActionLabel(kind, action) {
+    if (action === 'accept' && kind === 'event_share') return 'Add to calendar';
+    if (action === 'accept') return 'Accept';
+    if (action === 'decline') return 'Decline';
+    if (action === 'fulfilled') return 'Mark fulfilled';
+    if (action === 'reply') return 'Reply';
+    return action;
+}
+
+function inboxActionClasses(primary) {
+    return primary
+        ? 'rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-violet-700'
+        : 'text-xs font-bold text-slate-500 hover:underline';
+}
+
+function renderInbox() {
+    const countsEl = document.getElementById('inboxCounts');
+    const needsEl = document.getElementById('inboxNeedsActionList');
+    const recentEl = document.getElementById('inboxRecentList');
+    if (!countsEl || !needsEl || !recentEl) {
+        return;
+    }
+
+    const counts = inboxState.counts || {};
+    const statCards = [
+        ['Needs action', counts.needs_action || 0, 'text-violet-700'],
+        ['Messages unread', counts.messages_unread || 0, 'text-amber-600'],
+        ['Campaigns pending', counts.campaigns_pending || 0, 'text-pink-700'],
+        ['Events pending', counts.events_pending || 0, 'text-emerald-700'],
+        ['Requests open', counts.requests_open || 0, 'text-slate-900'],
+    ];
+    countsEl.innerHTML = statCards.map(([label, value, cls]) => `
+        <div class="bg-white px-4 py-3">
+            <p class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">${esc(label)}</p>
+            <p class="mt-1 text-lg font-black ${cls}">${esc(value)}</p>
+        </div>`).join('');
+
+    needsEl.innerHTML = (inboxState.needs_action || []).length ? (inboxState.needs_action || []).map(item => {
+        const actions = Array.isArray(item.actions) ? item.actions : [];
+        return `
+        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em]" style="background:${esc(item.color || '#7c3aed')}15;color:${esc(item.color || '#7c3aed')}">${esc(inboxKindLabel(item.kind))}</span>
+                        <p class="text-xs font-bold uppercase tracking-wide text-slate-400">${esc(item.company_name || '')}</p>
+                    </div>
+                    <p class="mt-1 text-sm font-black text-slate-900">${esc(item.title || 'Action needed')}</p>
+                    <p class="mt-1 text-sm text-slate-600">${esc(item.body || '')}</p>
+                    ${item.meta && item.meta.details ? `<p class="mt-1 text-xs text-slate-500 whitespace-pre-wrap">${esc(item.meta.details)}</p>` : ''}
+                    ${item.meta && item.meta.message ? `<p class="mt-1 text-xs text-slate-500 whitespace-pre-wrap">${esc(item.meta.message)}</p>` : ''}
+                </div>
+                <p class="shrink-0 text-[11px] font-semibold text-slate-400">${esc(String(item.created_at || '').slice(0, 16).replace('T', ' '))}</p>
+            </div>
+            <div class="mt-3 flex flex-wrap items-center gap-3">
+                ${actions.map((action, index) => `<button onclick="handleInboxAction(${esc(JSON.stringify(item.id))}, ${esc(JSON.stringify(action))})" class="${inboxActionClasses(index === 0)}">${esc(inboxActionLabel(item.kind, action))}</button>`).join('')}
+                ${item.target_anchor ? `<button onclick="jumpToInboxTarget(${esc(JSON.stringify(item.target_anchor))}, ${Number(item.connection_id || 0)})" class="text-xs font-bold text-slate-500 hover:underline">Open detail</button>` : ''}
+            </div>
+        </div>`;
+    }).join('') : '<p class="text-sm font-semibold text-slate-400">Nothing needs action right now.</p>';
+
+    recentEl.innerHTML = (inboxState.recent || []).length ? (inboxState.recent || []).map(item => `
+        <div class="rounded-2xl border border-slate-200 bg-white p-4">
+            <div class="flex items-start gap-3">
+                <span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full" style="background:${esc(item.color || '#7c3aed')}"></span>
+                <div class="min-w-0">
+                    <p class="font-semibold text-slate-800">${esc(item.title || 'Update')}</p>
+                    <p class="mt-0.5 text-sm text-slate-500">${esc(item.body || '')}</p>
+                    <p class="mt-2 text-xs text-slate-400">${esc(String(item.created_at || '').slice(0, 16).replace('T', ' '))}</p>
+                </div>
+            </div>
+        </div>`).join('') : '<p class="text-sm font-semibold text-slate-400">No recent updates yet.</p>';
+}
+
 function renderLists() {
     const inc = document.getElementById('incomingList');
     inc.innerHTML = state.incoming.length ? state.incoming.map(r => `
@@ -303,7 +410,7 @@ function renderLists() {
 
     const conn = document.getElementById('connectedList');
     conn.innerHTML = state.connected.length ? state.connected.map(c => `
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+        <div id="connection-card-${c.connection_id}" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
             <div class="flex items-center justify-between gap-3">
                 <div class="min-w-0">
                     <p class="font-semibold text-slate-800">${esc(c.name)}</p>
@@ -631,6 +738,64 @@ async function post(url, body) {
     });
     return res.json();
 }
+
+window.jumpToInboxTarget = function (targetAnchor, connectionId) {
+    const anchor = document.getElementById(String(targetAnchor || ''));
+    if (anchor) {
+        anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    if (connectionId) {
+        const messageBox = document.getElementById(`messageBody-${connectionId}`);
+        if (messageBox) {
+            setTimeout(() => {
+                messageBox.focus();
+                messageBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 250);
+        }
+    }
+};
+
+window.handleInboxAction = async function (itemId, action) {
+    const [kind, rawId] = String(itemId || '').split(':');
+    const numericId = parseInt(rawId || '0', 10);
+    if (!kind || !numericId || !action) {
+        showAlert('Inbox action could not be resolved.', 'error');
+        return;
+    }
+
+    if (kind === 'connection') {
+        return window.respond(numericId, action === 'accept');
+    }
+    if (kind === 'request') {
+        return window.updatePartnerRequest(numericId, action === 'fulfilled' ? 'fulfilled' : 'declined');
+    }
+    if (kind === 'event_share') {
+        return window.updateEventShare(numericId, action === 'accept' ? 'accept' : 'decline');
+    }
+    if (kind === 'campaign_share') {
+        return window.updateCampaignShare(numericId, action === 'accept' ? 'accept' : 'decline');
+    }
+    if (kind === 'message') {
+        const item = (inboxState.needs_action || []).find(entry => String(entry.id) === String(itemId));
+        if (!item) {
+            showAlert('That inbox message is no longer available.', 'error');
+            return;
+        }
+        const read = await post('api/connections/message_mark_read.php', {
+            company_id: activeCompanyId,
+            connection_id: item.connection_id,
+        });
+        if (!read.success) {
+            showAlert(read.message || 'Could not mark message as read.', 'error');
+            return;
+        }
+        jumpToInboxTarget(item.target_anchor || '', Number(item.connection_id || 0));
+        loadAll();
+        return;
+    }
+
+    showAlert('That inbox action is not supported yet.', 'error');
+};
 
 document.getElementById('sendBtn')?.addEventListener('click', async () => {
     const targetId = parseInt(document.getElementById('targetCompany').value, 10);
