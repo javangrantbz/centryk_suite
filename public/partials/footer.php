@@ -92,6 +92,7 @@
                             OneLink Payments
                         </a>
                     </li>
+                    <li><a href="platform.php"       class="text-sm font-semibold text-white/55 transition hover:text-white">Platform reference</a></li>
                     <li><a href="about.php#security" class="text-sm font-semibold text-white/55 transition hover:text-white">Security &amp; Trust</a></li>
                     <li><a href="about.php#faq"      class="text-sm font-semibold text-white/55 transition hover:text-white">FAQ</a></li>
                 </ul>
