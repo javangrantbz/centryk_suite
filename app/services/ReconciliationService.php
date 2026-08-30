@@ -213,8 +213,17 @@ class ReconciliationService
             throw $e;
         }
 
+        // Auto-ignore rules run on the fresh lines (outside the import txn).
+        $autoIgnored = 0;
+        try {
+            $autoIgnored = self::applyRules($companyId, $actorId, $importId);
+        } catch (Throwable $e) {
+            // rules are best-effort — never fail an import over them
+        }
+
         return [
             'import_id' => $importId, 'imported' => $imported, 'skipped' => $skipped,
+            'auto_ignored' => $autoIgnored,
             'format' => $format, 'errors' => array_slice($errors, 0, 20),
         ];
     }
@@ -636,6 +645,172 @@ class ReconciliationService
             'summary'       => 'Unmatched bank line ' . $txn['txn_date'] . ' ' . number_format((float)$txn['amount'], 2),
             'metadata'      => ['txn_id' => $txnId],
         ]);
+    }
+
+    // ── Auto-ignore rules ──────────────────────────────────────────────────
+
+    public static function rules(int $companyId): array
+    {
+        $stmt = DB::pdo()->prepare("
+            SELECT r.id, r.description_like, r.reference_like, r.amount_exact, r.direction,
+                   r.note, r.active, r.hits, r.last_hit_at
+            FROM reconciliation_rules r
+            WHERE r.company_id = :c
+            ORDER BY r.active DESC, r.hits DESC, r.id DESC
+        ");
+        $stmt->execute(['c' => $companyId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /** WHERE fragment + args matching a rule against unmatched lines. */
+    private static function ruleWhere(array $rule): array
+    {
+        $where = ["bt.company_id = :cid", "bt.status = 'unmatched'"];
+        $args  = [];
+        if (trim((string)($rule['description_like'] ?? '')) !== '') {
+            $where[] = "bt.description LIKE :desc";
+            $args['desc'] = '%' . trim($rule['description_like']) . '%';
+        }
+        if (trim((string)($rule['reference_like'] ?? '')) !== '') {
+            $where[] = "bt.reference LIKE :ref";
+            $args['ref'] = '%' . trim($rule['reference_like']) . '%';
+        }
+        if (($rule['amount_exact'] ?? null) !== null && ($rule['amount_exact'] ?? '') !== '') {
+            $where[] = "ABS(bt.amount) = :amt";
+            $args['amt'] = round(abs((float)$rule['amount_exact']), 2);
+        }
+        if (in_array($rule['direction'] ?? 'any', ['credit', 'debit'], true)) {
+            $where[] = "bt.direction = :dir";
+            $args['dir'] = $rule['direction'];
+        }
+        return [$where, $args];
+    }
+
+    public static function saveRule(int $companyId, array $d, ?int $actorId): int
+    {
+        $pdo = DB::pdo();
+        $id      = (int)($d['id'] ?? 0);
+        $desc    = mb_substr(trim((string)($d['description_like'] ?? '')), 0, 190);
+        $ref     = mb_substr(trim((string)($d['reference_like'] ?? '')), 0, 190);
+        $amtRaw  = $d['amount_exact'] ?? '';
+        $amount  = ($amtRaw === '' || $amtRaw === null) ? null : round((float)$amtRaw, 2);
+        $dir     = in_array($d['direction'] ?? '', ['any', 'credit', 'debit'], true) ? $d['direction'] : 'any';
+        $note    = mb_substr(trim((string)($d['note'] ?? '')), 0, 255);
+
+        if ($desc === '' && $ref === '' && $amount === null) {
+            throw new InvalidArgumentException('Give the rule at least one condition — text in the description, the reference, or an exact amount.');
+        }
+
+        if ($id > 0) {
+            $upd = $pdo->prepare("
+                UPDATE reconciliation_rules
+                SET description_like = :desc, reference_like = :ref, amount_exact = :amt,
+                    direction = :dir, note = :note, active = 1
+                WHERE id = :id AND company_id = :c
+            ");
+            $upd->execute(['desc' => $desc, 'ref' => $ref, 'amt' => $amount, 'dir' => $dir, 'note' => $note, 'id' => $id, 'c' => $companyId]);
+            if ($upd->rowCount() === 0 && !$pdo->query("SELECT 1 FROM reconciliation_rules WHERE id = " . (int)$id . " AND company_id = " . (int)$companyId)->fetchColumn()) {
+                throw new RuntimeException('Rule not found.');
+            }
+        } else {
+            $pdo->prepare("
+                INSERT INTO reconciliation_rules (company_id, description_like, reference_like, amount_exact, direction, note, created_by)
+                VALUES (:c, :desc, :ref, :amt, :dir, :note, :by)
+            ")->execute(['c' => $companyId, 'desc' => $desc, 'ref' => $ref, 'amt' => $amount, 'dir' => $dir, 'note' => $note, 'by' => $actorId]);
+            $id = (int)$pdo->lastInsertId();
+        }
+
+        Audit::log([
+            'actor_user_id' => $actorId, 'company_id' => $companyId,
+            'event_type' => 'reconciliation.rule_saved',
+            'summary' => 'Auto-ignore rule: ' . trim(implode(' ', array_filter([
+                $desc !== '' ? "desc~\"{$desc}\"" : '',
+                $ref !== '' ? "ref~\"{$ref}\"" : '',
+                $amount !== null ? 'amount ' . number_format($amount, 2) : '',
+                $dir !== 'any' ? $dir : '',
+            ]))),
+            'metadata' => ['rule_id' => $id],
+        ]);
+        return $id;
+    }
+
+    public static function deleteRule(int $companyId, int $ruleId, ?int $actorId): void
+    {
+        $upd = DB::pdo()->prepare("UPDATE reconciliation_rules SET active = 0 WHERE id = :id AND company_id = :c");
+        $upd->execute(['id' => $ruleId, 'c' => $companyId]);
+        if ($upd->rowCount() === 0) {
+            throw new RuntimeException('Rule not found.');
+        }
+        Audit::log([
+            'actor_user_id' => $actorId, 'company_id' => $companyId,
+            'event_type' => 'reconciliation.rule_removed',
+            'summary' => 'Removed auto-ignore rule #' . $ruleId,
+            'metadata' => ['rule_id' => $ruleId],
+        ]);
+    }
+
+    /** How many current unmatched lines a would-be rule matches. */
+    public static function previewRule(int $companyId, array $rule): int
+    {
+        $rule += ['description_like' => '', 'reference_like' => '', 'amount_exact' => null, 'direction' => 'any'];
+        if ($rule['description_like'] === '' && $rule['reference_like'] === '' && ($rule['amount_exact'] === null || $rule['amount_exact'] === '')) {
+            return 0;
+        }
+        [$where, $args] = self::ruleWhere($rule);
+        $args['cid'] = $companyId;
+        $stmt = DB::pdo()->prepare("SELECT COUNT(*) FROM bank_transactions bt WHERE " . implode(' AND ', $where));
+        $stmt->execute($args);
+        return (int)$stmt->fetchColumn();
+    }
+
+    /**
+     * Apply every active rule to the company's unmatched lines (optionally
+     * scoped to one import). Matching lines become 'ignored' with a note.
+     *
+     * @return int lines newly ignored
+     */
+    public static function applyRules(int $companyId, ?int $actorId, ?int $importId = null): int
+    {
+        $pdo = DB::pdo();
+        $rules = $pdo->prepare("SELECT * FROM reconciliation_rules WHERE company_id = :c AND active = 1");
+        $rules->execute(['c' => $companyId]);
+        $rules = $rules->fetchAll(PDO::FETCH_ASSOC);
+        if (!$rules) {
+            return 0;
+        }
+
+        $total = 0;
+        foreach ($rules as $rule) {
+            [$where, $args] = self::ruleWhere($rule);
+            $args['cid'] = $companyId;
+            if ($importId !== null) {
+                $where[] = "bt.import_id = :imp";
+                $args['imp'] = $importId;
+            }
+            $noteText = 'Auto-ignored' . ($rule['note'] !== '' ? ' — ' . $rule['note'] : ' by rule #' . $rule['id']);
+            $upd = $pdo->prepare("
+                UPDATE bank_transactions bt SET bt.status = 'ignored', bt.note = :note
+                WHERE " . implode(' AND ', $where)
+            );
+            $upd->execute(['note' => mb_substr($noteText, 0, 255)] + $args);
+            $n = $upd->rowCount();
+            if ($n > 0) {
+                $pdo->prepare("UPDATE reconciliation_rules SET hits = hits + :n, last_hit_at = NOW() WHERE id = :id")
+                    ->execute(['n' => $n, 'id' => (int)$rule['id']]);
+                $total += $n;
+            }
+        }
+
+        if ($total > 0) {
+            Audit::log([
+                'actor_user_id' => $actorId, 'company_id' => $companyId,
+                'event_type' => 'reconciliation.rules.applied',
+                'summary' => 'Auto-ignore rules matched ' . $total . ' bank line(s)'
+                    . ($importId !== null ? ' on import #' . $importId : ''),
+                'metadata' => ['ignored' => $total, 'import_id' => $importId],
+            ]);
+        }
+        return $total;
     }
 
     public static function setIgnored(int $companyId, int $txnId, bool $ignored, ?int $actorId): void

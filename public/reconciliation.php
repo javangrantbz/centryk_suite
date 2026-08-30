@@ -121,6 +121,11 @@ $headerActionsHtml = ob_get_clean();
             <div id="refRows" class="biz-list" style="max-height:40vh;overflow-y:auto"><div class="biz-panel-empty">Open to load…</div></div>
         </details>
 
+        <details class="biz-panel mt-3" ontoggle="if(this.open) loadRules()">
+            <summary style="cursor:pointer;padding:6px 10px;font-size:12px;font-weight:600;color:#334155">Auto-ignore rules — keep recurring noise out of the queue</summary>
+            <div id="rulesBox" class="biz-panel-body"><div class="biz-panel-empty">Open to load…</div></div>
+        </details>
+
         <div class="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
             <div class="biz-panel self-start">
                 <div class="biz-panel-head">
@@ -160,6 +165,7 @@ let OPEN_TXN = null;
 function esc(s){ return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function m(v){ return Number(v || 0).toLocaleString('en-BZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function fmtDate(s){ if(!s) return '—'; return new Date(String(s).replace(' ','T')).toLocaleDateString('en-BZ',{year:'2-digit',month:'short',day:'numeric'}); }
+function fld(label, inner){ return `<label class="block"><span class="biz-label">${label}</span>${inner}</label>`; }
 
 function showAlert(msg, type){
     const el = document.getElementById('alert'); if(!el) return;
@@ -210,7 +216,7 @@ async function doImport(){
     if (document.getElementById('mapAmount').value.trim()) mapping.amount = document.getElementById('mapAmount').value.trim();
     try {
         const r = await api('import.php', { csv, filename: (csvFile && csvFile.files[0]) ? csvFile.files[0].name : '', mapping });
-        let msg = `${(r.format || 'file').toUpperCase()}: imported ${r.imported} line(s)` + (r.skipped ? `, skipped ${r.skipped} (duplicate or zero)` : '') + '.';
+        let msg = `${(r.format || 'file').toUpperCase()}: imported ${r.imported} line(s)` + (r.skipped ? `, skipped ${r.skipped} (duplicate or zero)` : '') + (r.auto_ignored ? `, ${r.auto_ignored} auto-ignored` : '') + '.';
         showAlert(msg + (r.errors.length ? ' Some rows had issues.' : ''), r.errors.length ? 'error' : 'ok');
         if (r.errors.length) console.warn('Import issues:', r.errors);
         document.getElementById('csvText').value = '';
@@ -239,6 +245,92 @@ function exportLines(){
     if (CID === null) return;
     const status = document.getElementById('fStatus').value || 'unmatched';
     window.location = 'api/reconciliation/export.php?company_id=' + CID + '&status=' + encodeURIComponent(status);
+}
+
+const DIR_LABEL = { any: 'any direction', credit: 'money in', debit: 'money out' };
+async function loadRules(){
+    const box = document.getElementById('rulesBox');
+    try {
+        const d = await api('rules.php');
+        renderRules(d.rules || []);
+    } catch (e){ box.innerHTML = '<div class="biz-panel-empty">' + esc(e.message) + '</div>'; }
+}
+function renderRules(rules){
+    const active = rules.filter(r => Number(r.active) === 1);
+    const rows = active.length ? active.map(r => {
+        const conds = [
+            r.description_like ? `description ~ "${esc(r.description_like)}"` : '',
+            r.reference_like ? `reference ~ "${esc(r.reference_like)}"` : '',
+            (r.amount_exact != null && r.amount_exact !== '') ? `amount ${m(r.amount_exact)}` : '',
+            r.direction !== 'any' ? DIR_LABEL[r.direction] : '',
+        ].filter(Boolean).join(' · ');
+        return `<div class="biz-row" style="font-size:12px">
+            <span class="min-w-0 flex-1">
+                <span style="font-weight:600">${conds || 'match all'}</span>
+                <span class="block biz-muted" style="font-size:11px">${r.note ? esc(r.note) + ' · ' : ''}ignored ${r.hits} line${Number(r.hits) === 1 ? '' : 's'}${r.last_hit_at ? ' · last ' + fmtDate(r.last_hit_at) : ''}</span>
+            </span>
+            ${CAN_WRITE ? `<span class="shrink-0 flex gap-1">
+                <button onclick='ruleForm(${JSON.stringify(r)})' class="biz-btn biz-btn-ghost biz-btn-sm">Edit</button>
+                <button onclick="removeRule(${r.id})" class="biz-btn biz-btn-ghost biz-btn-sm">Remove</button>
+            </span>` : ''}
+        </div>`;
+    }).join('') : '<div class="biz-panel-empty">No rules yet. Add one to auto-ignore bank charges, interest, transfers…</div>';
+
+    document.getElementById('rulesBox').innerHTML = `
+        <div class="flex items-center justify-between">
+            <p class="biz-kicker">Active rules</p>
+            ${CAN_WRITE ? `<span class="flex gap-1">
+                <button onclick="applyRules()" class="biz-btn biz-btn-ghost biz-btn-sm">Apply to backlog</button>
+                <button onclick="ruleForm()" class="biz-btn biz-btn-ghost biz-btn-sm">+ Rule</button>
+            </span>` : ''}
+        </div>
+        <div class="biz-list mt-1">${rows}</div>
+        <div id="ruleForm" class="mt-2"></div>`;
+}
+function ruleForm(rule){
+    const r = rule || { description_like: '', reference_like: '', amount_exact: '', direction: 'any', note: '' };
+    document.getElementById('ruleForm').innerHTML = `
+        <form onsubmit="submitRule(event, ${r.id || 0})" style="border:1px solid var(--bz-line);border-radius:4px;background:var(--bz-head);padding:8px">
+            <p class="biz-muted" style="font-size:11px">A line is ignored when every condition you set is true. Leave a field blank to skip it.</p>
+            <div class="mt-2 grid gap-2 sm:grid-cols-2">
+                ${fld('Description contains', `<input name="description_like" value="${esc(r.description_like)}" class="biz-input" placeholder="e.g. BANK CHARGE">`)}
+                ${fld('Reference contains', `<input name="reference_like" value="${esc(r.reference_like)}" class="biz-input">`)}
+                ${fld('Exact amount', `<input name="amount_exact" type="number" step="0.01" min="0" value="${r.amount_exact ?? ''}" class="biz-input" placeholder="any">`)}
+                ${fld('Direction', `<select name="direction" class="biz-select">
+                    <option value="any" ${r.direction === 'any' ? 'selected' : ''}>Any</option>
+                    <option value="credit" ${r.direction === 'credit' ? 'selected' : ''}>Money in</option>
+                    <option value="debit" ${r.direction === 'debit' ? 'selected' : ''}>Money out</option></select>`)}
+                ${fld('Note', `<input name="note" value="${esc(r.note)}" class="biz-input" placeholder="why this is ignored">`)}
+            </div>
+            <div class="mt-2 flex gap-2">
+                <button class="biz-btn biz-btn-primary biz-btn-sm">Save &amp; apply</button>
+                <button type="button" onclick="document.getElementById('ruleForm').innerHTML=''" class="biz-btn biz-btn-ghost biz-btn-sm">Cancel</button>
+            </div>
+        </form>`;
+}
+async function submitRule(e, id){
+    e.preventDefault();
+    const f = e.target;
+    try {
+        const res = await api('rule_save.php', {
+            id, description_like: f.description_like.value, reference_like: f.reference_like.value,
+            amount_exact: f.amount_exact.value, direction: f.direction.value, note: f.note.value,
+        });
+        showAlert(`Rule saved${res.applied ? ` — ${res.applied} line(s) ignored` : ''}.`, 'ok');
+        loadRules(); loadSummary(); loadTxns();
+    } catch (err){ showAlert(err.message, 'error'); }
+}
+async function removeRule(id){
+    if (!confirm('Remove this rule? Lines it already ignored stay ignored.')) return;
+    try { await api('rule_delete.php', { rule_id: id }); showAlert('Rule removed.', 'ok'); loadRules(); }
+    catch (err){ showAlert(err.message, 'error'); }
+}
+async function applyRules(){
+    try {
+        const r = await api('rules_apply.php');
+        showAlert(r.applied ? `${r.applied} line(s) ignored.` : 'Nothing new matched.', 'ok');
+        loadRules(); loadSummary(); loadTxns();
+    } catch (err){ showAlert(err.message, 'error'); }
 }
 
 async function autoMatch(){
