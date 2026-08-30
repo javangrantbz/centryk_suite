@@ -698,6 +698,7 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
         // company holds (its own grant or one inherited from its group) when
         // the viewer is an admin/manager of it.
         $_bizCards = [
+            ['key' => 'accounting',     'href' => 'accounting.php',     'param' => 'company_id', 'label' => 'Accounting',          'icon' => 'book-open',  'blurb' => 'General ledger, chart of accounts, journals, P&L and balance sheet.'],
             ['key' => 'receivables',    'href' => 'receivables.php',    'param' => 'company_id', 'label' => 'Receivables',         'icon' => 'wallet',     'blurb' => 'Customer ledger, balances and aging for this company.'],
             ['key' => 'reconciliation', 'href' => 'reconciliation.php', 'param' => 'company_id', 'label' => 'Reconciliation',      'icon' => 'scale',      'blurb' => 'Match bank deposits to open customer invoices.'],
             ['key' => 'routes',         'href' => 'routes.php',         'param' => 'company_id', 'label' => 'Field Sales & Routes', 'icon' => 'truck',      'blurb' => 'Delivery runs and end-of-day driver cash settlement.'],
