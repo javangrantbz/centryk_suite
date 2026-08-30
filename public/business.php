@@ -121,10 +121,18 @@ $headerActionsHtml = ob_get_clean();
             </p>
         </div>
         <?php if ($activeCompany && (in_array('active', $entStates, true) || in_array('suspended', $entStates, true))): ?>
-        <a href="business_insights.php?company_id=<?= (int)$activeCompany['id'] ?>"
-           class="shrink-0 rounded-xl border border-violet-200 bg-violet-50 px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-violet-700 hover:bg-violet-100">
-            View insights
-        </a>
+        <div class="flex shrink-0 flex-wrap gap-2">
+            <a href="business_insights.php?company_id=<?= (int)$activeCompany['id'] ?>"
+               class="rounded-xl border border-violet-200 bg-violet-50 px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-violet-700 hover:bg-violet-100">
+                View insights
+            </a>
+            <?php if (isset($entStates['receivables'])): ?>
+            <a href="business_tax.php?company_id=<?= (int)$activeCompany['id'] ?>"
+               class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-slate-600 hover:border-violet-200">
+                GST summary
+            </a>
+            <?php endif; ?>
+        </div>
         <?php endif; ?>
     </div>
 
