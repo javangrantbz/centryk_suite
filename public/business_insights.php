@@ -54,16 +54,21 @@ $headerActionsHtml = ob_get_clean();
             <p class="biz-kicker">Centryk Business</p>
             <h1 class="mt-0.5">Insights</h1>
         </div>
-        <?php if (count($companies) > 1): ?>
-        <div class="biz-seg">
-            <?php foreach ($companies as $c): ?>
-                <a href="business_insights.php?company_id=<?= (int)$c['id'] ?>"
-                   class="<?= $activeCompany && (int)$c['id'] === (int)$activeCompany['id'] ? 'is-active' : '' ?>">
-                    <?= htmlspecialchars($c['name']) ?>
-                </a>
-            <?php endforeach; ?>
-        </div>
-        <?php endif; ?>
+        <span class="flex flex-wrap items-center gap-2">
+            <?php if ($activeCompany): ?>
+            <a href="business_tax.php?company_id=<?= (int)$activeCompany['id'] ?>" class="biz-btn biz-btn-ghost biz-btn-sm">GST summary</a>
+            <?php endif; ?>
+            <?php if (count($companies) > 1): ?>
+            <span class="biz-seg">
+                <?php foreach ($companies as $c): ?>
+                    <a href="business_insights.php?company_id=<?= (int)$c['id'] ?>"
+                       class="<?= $activeCompany && (int)$c['id'] === (int)$activeCompany['id'] ? 'is-active' : '' ?>">
+                        <?= htmlspecialchars($c['name']) ?>
+                    </a>
+                <?php endforeach; ?>
+            </span>
+            <?php endif; ?>
+        </span>
     </div>
 
     <?php if (!$companies): ?>

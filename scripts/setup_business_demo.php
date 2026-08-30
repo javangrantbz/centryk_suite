@@ -80,6 +80,15 @@ if ($u9) {
     say("user #{$u9} (javangrantbz@gmail.com) is now a manager of Miss Bella Shop");
 }
 
+/* ── letterhead + a Belize GST TIN so the GST summary has one ─────────── */
+foreach ([1 => '024531-GST', 3 => '031887-GST'] as $cid => $tin) {
+    $pdo->prepare("
+        INSERT INTO invoice_settings (company_id, business_tax_number, currency_symbol)
+        VALUES (:c, :tin, 'BZD ')
+        ON DUPLICATE KEY UPDATE business_tax_number = VALUES(business_tax_number)
+    ")->execute(['c' => $cid, 'tin' => $tin]);
+}
+
 /* ── sample customers + invoices for each target company ──────────────── */
 // Emails are +aliases on the owner's own inbox so "Email statement / reminder"
 // actually lands somewhere you can read while testing on localhost (and never
