@@ -149,7 +149,7 @@ $toc = [
             <?php
             $apps = [
                 ['OnePay', 'Inventory &amp; point of sale', 'Ring up sales, track stock, price breaks for bulk, and (optionally) mirror each checkout into an invoice on the customer\'s account.'],
-                ['MyPay', 'HR &amp; payroll', 'Staff records, attendance, pay runs, and job-vacancy forms for recruitment. Belize statutory filings (TD4, SSB) are in progress.'],
+                ['MyPay', 'HR &amp; payroll', 'Staff records, attendance, pay runs with Belize PAYE and Social Security, payslips, TD4 employee slips, the monthly SSB and PAYE returns, and job-vacancy forms for recruitment.'],
                 ['Invoices', 'Quotes, invoices &amp; receipts', 'The shared invoice engine — hosted in the hub, used by OnePay and by Centryk Business Receivables. Send by email, share a link, or export a PDF.'],
                 ['Calendar', 'Shared scheduling', 'A company calendar surfaced across the suite, with a drawer preview on every page.'],
                 ['Vision Board', 'Digital signage', 'Run the screens in your store or lobby — playlists, promotions, marquee messages, QR codes — driven from your Centryk data: inventory turns into low-stock and promo slides, the calendar into today\'s events.'],
@@ -363,7 +363,7 @@ $toc = [
             <li><strong>Attendance</strong> — clock in and out; the data feeds the pay run.</li>
             <li><strong>Pay runs</strong> — calculate wages, income tax and Social Security, and produce pay slips.</li>
             <li><strong>Recruitment</strong> — publish a job vacancy with a public application form; applications come back into MyPay and are visible on the Centryk job board.</li>
-            <li><strong>Belize statutory filings</strong> — TD4 statements of emoluments and tax deducted, and the SSB / PAYE monthly returns, are in progress.</li>
+            <li><strong>Belize statutory</strong> — PAYE and Social Security are calculated on the real contribution tables and stored per pay run. The monthly SSB and PAYE returns and the annual TD4 are prepared for you; <strong>TD4 slips</strong> are issued to each employee (bulk or one at a time, printable and emailable) and appear in the employee's own portal.</li>
         </ul>
         <p>
             An employee opening Centryk sees a focused view — the apps they are enrolled in, their
@@ -524,7 +524,7 @@ $toc = [
             <li><strong>Districts</strong> on customers and routes for territory reporting.</li>
             <li><strong>GST return v2</strong> — input tax from purchases, a payment (cash) basis option, and a GST-102/103 export.</li>
             <li><strong>Business Tax estimate</strong> — Belize's turnover-based tax alongside the GST summary.</li>
-            <li><strong>MyPay statutory filings</strong> — TD4 statements and the SSB / PAYE monthly returns.</li>
+            <li><strong>MyPay</strong> — match the official Income Tax Department TD4 form exactly; capture the TD1 employee declaration.</li>
             <li><strong>Credit-hold at the till</strong> — the same check OnePay checkout and the invoice screen.</li>
             <li><strong>Route optimisation</strong> — maps and stop ordering for delivery runs.</li>
             <li><strong>Live bank feeds</strong> — when the banking infrastructure allows it.</li>
