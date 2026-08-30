@@ -313,6 +313,34 @@ foreach ($TARGETS as $cid => $t) {
 
     $r = ReconciliationService::import($cid, $csv, [], $t['actor'], 'demo-statement.csv');
     say("#{$cid} {$t['label']}: imported {$r['imported']} bank line(s), {$r['auto_ignored']} auto-ignored");
+
+    // A OnePay card batch: 4 small paid sales on -4d + the settlement deposit
+    // on -2d, so the "match as settlement" flow has something to work.
+    $onepayCust = $custIds['San Pedro Provisions'] ?? array_values($custIds)[0];
+    $sales = [42.50, 118.00, 9.99, 76.25];
+    foreach ($sales as $i => $amt) {
+        $ref = 'S' . date('Ymd', strtotime('-4 days')) . sprintf('%03d', 700 + $i);
+        $pdo->prepare("
+            INSERT INTO invoices (company_id, customer_id, invoice_number, status, issue_date,
+                                  subtotal, total, amount_paid, source_app, source_ref)
+            VALUES (:c, :cust, :num, 'paid', :d, :sub, :tot, :paid, 'onepay', :ref)
+        ")->execute([
+            'c' => $cid, 'cust' => $onepayCust, 'num' => 'OP-' . $ref,
+            'd' => (new DateTime('-4 days'))->format('Y-m-d'),
+            'sub' => $amt, 'tot' => $amt, 'paid' => $amt, 'ref' => $ref,
+        ]);
+    }
+    ReceivablesService::syncOnepayReceipts($cid, $t['actor']);
+    $batch = array_sum($sales);
+    $depDate = (new DateTime('-2 days'))->format('Y-m-d');
+    $pdo->prepare("
+        INSERT INTO bank_transactions (company_id, txn_date, description, reference, amount, direction, dedupe_hash, status)
+        VALUES (:c, :d, 'CARD MERCHANT SETTLEMENT', 'STLB0824', :a, 'credit', :h, 'unmatched')
+    ")->execute([
+        'c' => $cid, 'd' => $depDate, 'a' => $batch,
+        'h' => sha1($cid . '|' . $depDate . '|onepay-settlement|' . $batch),
+    ]);
+    say("#{$cid} {$t['label']}: 4 OnePay sales + a {$batch} settlement deposit to reconcile");
 }
 
 /* ── company group for the Enterprise module ──────────────────────────── */
