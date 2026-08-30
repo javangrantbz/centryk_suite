@@ -289,9 +289,21 @@ foreach ($TARGETS as $cid => $t) {
         . (new DateTime('-4 days'))->format('Y-m-d') . ",ONLINE PMT SAN PEDRO PROV,OLP7741,1180.00\n"
         . (new DateTime('-3 days'))->format('Y-m-d') . ",CASH DEPOSIT BRANCH 04,CD0041,3250.00\n"
         . (new DateTime('-2 days'))->format('Y-m-d') . ",TRANSFER ORANGE WALK DIST,FT2288B,5240.00\n"
-        . (new DateTime('-1 day'))->format('Y-m-d')  . ",CHEQUE 004512,CHQ4512,980.00\n";
+        . (new DateTime('-1 day'))->format('Y-m-d')  . ",CHEQUE 004512,CHQ4512,980.00\n"
+        . (new DateTime('-3 days'))->format('Y-m-d') . ",MONTHLY SERVICE FEE,SVC-0825,-45.00\n"
+        . (new DateTime('-7 days'))->format('Y-m-d') . ",BANK CHARGE - STATEMENT,SVC-0725,-12.50\n";
+
+    // An auto-ignore rule for recurring bank fees — it runs on import, so the
+    // two fee lines above never reach the matching queue.
+    ReconciliationService::saveRule($cid, [
+        'description_like' => 'FEE', 'direction' => 'debit', 'note' => 'bank fees — not customer payments',
+    ], $t['actor']);
+    ReconciliationService::saveRule($cid, [
+        'description_like' => 'BANK CHARGE', 'direction' => 'debit', 'note' => 'bank charges',
+    ], $t['actor']);
+
     $r = ReconciliationService::import($cid, $csv, [], $t['actor'], 'demo-statement.csv');
-    say("#{$cid} {$t['label']}: imported {$r['imported']} bank line(s) — all unmatched");
+    say("#{$cid} {$t['label']}: imported {$r['imported']} bank line(s), {$r['auto_ignored']} auto-ignored");
 }
 
 /* ── company group for the Enterprise module ──────────────────────────── */

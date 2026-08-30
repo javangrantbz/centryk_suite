@@ -88,6 +88,7 @@ $board = [
             ['Receivables — write-offs & credit adjustments (maker-checker): propose -> admin approves; full or partial; reversible; bad-debt report', 'database/add_writeoffs.sql'],
             ['Business Insights — one-company KPI snapshot (DSO, collection ratio, write-off rate, cash in transit, match rate)', 'business_insights.php'],
             ['Routes — per-driver commission: company/route/driver rules, 4 bases (incl. electronic-only), printable payroll statement', 'database/add_route_commission.sql'],
+            ['Reconciliation — auto-ignore rules: keep bank charges / interest / transfers out of the queue; run on import + on demand', 'database/add_reconciliation_rules.sql'],
             ['This tracker', 'admin-business-roadmap.php'],
         ],
     ],
