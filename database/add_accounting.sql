@@ -23,6 +23,8 @@ CREATE TABLE IF NOT EXISTS company_accounting (
     activated_at            DATETIME         NULL,                   -- NULL = books not set up yet
     activated_by            INT UNSIGNED     NULL,
     lock_before             DATE             NULL,                   -- hard lock: nothing posts on/before this date
+    ar_started_on           DATE             NULL,                   -- AR auto-posting go-live; NULL = off. Everything
+                                                                    -- dated before this is in the opening-balance journal.
     created_at              DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at              DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_coacct_company FOREIGN KEY (company_id)  REFERENCES companies(id) ON DELETE CASCADE,

@@ -210,6 +210,11 @@ function renderDesk(s){
             </div>
         </div>
 
+        <div class="biz-panel mb-3">
+            <div class="biz-panel-head"><span>Receivables → ledger</span></div>
+            <div class="biz-panel-body" id="arBox">${renderArBox(s)}</div>
+        </div>
+
         <div class="biz-panel">
             <div class="biz-panel-head"><span>Books</span></div>
             <div class="biz-panel-body" style="font-size:12px">
@@ -219,6 +224,55 @@ function renderDesk(s){
                 <div class="biz-row" style="padding-left:0;padding-right:0"><span class="flex-1">Last entry posted</span><span>${s.last_journal ? esc(s.last_journal.entry_date) + ' · J' + s.last_journal.journal_no : '—'}</span></div>
             </div>
         </div>`;
+}
+
+function renderArBox(s){
+    const ar = s.ar || {};
+    if (!ar.started_on){
+        return `
+            <p class="biz-muted mb-2" style="font-size:12px">
+                Not on yet. Turn it on to auto-post every invoice, receipt and write-off to the ledger.
+                Everything dated before the start date is taken as one opening balance.
+            </p>
+            <div class="flex flex-wrap items-end gap-2">
+                <label class="block"><span class="biz-label">Start date</span>
+                    <input type="date" id="arStart" class="biz-input" style="width:auto" value="${new Date().toISOString().slice(0,10)}"></label>
+                <button class="biz-btn biz-btn-primary" id="arEnableBtn" onclick="enableAr()">Turn on AR posting</button>
+            </div>`;
+    }
+    return `
+        <div class="flex flex-wrap items-center gap-3">
+            <span class="biz-chip biz-c-green">on since ${esc(ar.started_on)}</span>
+            ${ar.pending ? `<span class="biz-chip biz-c-amber">${ar.pending} not yet posted</span>` : '<span class="biz-muted" style="font-size:12px">ledger is up to date</span>'}
+            <span class="flex-1"></span>
+            <button class="biz-btn biz-btn-ghost biz-btn-sm" onclick="syncAr()">Sync now</button>
+        </div>`;
+}
+
+async function enableAr(){
+    clearAlert();
+    const btn = document.getElementById('arEnableBtn');
+    btn.disabled = true;
+    try {
+        const { result } = await api('ar_enable.php', { opening_date: document.getElementById('arStart').value });
+        showAlert(`AR posting is on. Opening balance ${money(result.opening_total)} across ${result.customers} customer(s).`, 'ok');
+        load();
+    } catch (e){ showAlert(e.message); btn.disabled = false; }
+}
+
+async function syncAr(){
+    clearAlert();
+    try {
+        const { result } = await api('ar_sync.php');
+        const parts = [];
+        if (result.invoices) parts.push(`${result.invoices} invoice(s)`);
+        if (result.receipts) parts.push(`${result.receipts} receipt(s)`);
+        if (result.writeoffs) parts.push(`${result.writeoffs} write-off(s)`);
+        if (result.bounced) parts.push(`${result.bounced} bounced cheque(s)`);
+        showAlert(parts.length ? 'Posted ' + parts.join(', ') + '.' : 'Ledger was already up to date.', 'ok');
+        if ((result.errors || []).length) showAlert(result.errors.join(' · '));
+        load();
+    } catch (e){ showAlert(e.message); }
 }
 
 load();
