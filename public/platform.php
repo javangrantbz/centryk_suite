@@ -8,7 +8,7 @@
  *
  * No auth — this is a pitch / reference page (like about.php).
  */
-$updated = '31 August 2026';
+$updated = '1 September 2026';
 
 /* Table of contents — [id, label]. Order = page order. */
 $toc = [
@@ -263,9 +263,11 @@ $toc = [
                     A proper customer ledger over the invoicing you already do. Credit limits and
                     payment terms, a running balance and aging, printable and emailable statements,
                     a collections work-list with drafted and sent reminders, month-end statement
-                    runs, bulk customer import, and <strong>write-offs and credit adjustments</strong>
-                    (full or partial, approved by a second person, fully reversible) with a bad-debt
-                    report. Credit hold is enforced at the point an invoice is issued.
+                    runs, bulk customer import, <strong>cheque tracking</strong> (uncleared,
+                    post-dated, cleared, bounced — a bounce reverses the receipt), and
+                    <strong>write-offs and credit adjustments</strong> (full or partial, approved
+                    by a second person, fully reversible) with a bad-debt report. Credit hold is
+                    enforced at the point an invoice is issued.
                 </p>
             </div>
             <div class="rounded-xl border border-slate-200 p-5">
@@ -415,6 +417,7 @@ $toc = [
                     <tr><td class="py-2 pr-4 font-bold">Customer statement</td><td class="py-2 pr-4">Chronological ledger with running balance, reconciles exactly however a payment was recorded</td><td class="py-2">Screen · print · email</td></tr>
                     <tr><td class="py-2 pr-4 font-bold">Collections list</td><td class="py-2 pr-4">Overdue accounts worst-first, when each was last chased</td><td class="py-2">Screen</td></tr>
                     <tr><td class="py-2 pr-4 font-bold">Bad-debt report</td><td class="py-2 pr-4">Write-offs by reason, write-off rate against sales, amounts awaiting approval</td><td class="py-2">Screen</td></tr>
+                    <tr><td class="py-2 pr-4 font-bold">Cheque register</td><td class="py-2 pr-4">Cheques uncleared / post-dated / cleared / bounced, days held, drawee bank</td><td class="py-2">Screen</td></tr>
                     <tr><td class="py-2 pr-4 font-bold">GST summary</td><td class="py-2 pr-4">Monthly output tax from sales, bad-debt relief, net for the return</td><td class="py-2">Screen · print</td></tr>
                     <tr><td class="py-2 pr-4 font-bold">Driver performance</td><td class="py-2 pr-4">Per driver: trips, stops, cash vs electronic, variance, flags (30 days)</td><td class="py-2">Screen</td></tr>
                     <tr><td class="py-2 pr-4 font-bold">Commission statement</td><td class="py-2 pr-4">Per driver, per trip, for a pay period</td><td class="py-2">Screen · print / PDF</td></tr>
@@ -476,7 +479,7 @@ $toc = [
         <ul>
             <li><strong>Belize dollars</strong> throughout.</li>
             <li><strong>GST at 12.5%</strong> — the monthly output-tax summary, and GST-inclusive pricing handled correctly.</li>
-            <li><strong>A cash-and-cheque economy</strong> — route settlement and cash-in-transit tracking exist because a lot of money still moves by hand on delivery runs; cheque tracking (received, post-dated, clearing, bounced) is planned.</li>
+            <li><strong>A cash-and-cheque economy</strong> — route settlement and cash-in-transit tracking exist because a lot of money still moves by hand on delivery runs. <strong>Cheque tracking</strong> gives every cheque a lifecycle — uncleared, post-dated, cleared, or bounced — and a bounced cheque automatically reverses the receipt so the customer owes again.</li>
             <li><strong>Districts</strong> — territory reporting by Corozal, Orange Walk, Belize, Cayo, Stann Creek and Toledo is planned for customers and routes.</li>
             <li><strong>The modernisation push</strong> — the impetus for Centryk Business was the call from major Belizean companies to move off cash on delivery routes, have electronic payments post straight to a customer account, and cut manual reconciliation. Those three are exactly what Receivables, Routes and Reconciliation do.</li>
         </ul>
@@ -517,7 +520,7 @@ $toc = [
     <section id="roadmap">
         <h2 class="text-2xl font-black tracking-tight text-slate-900">What we are building next</h2>
         <ul>
-            <li><strong>Cheque tracking</strong> — received, post-dated, clearing and bounced, with automatic reversal when a cheque bounces.</li>
+            <li><strong>Cheque handling extras</strong> — auto-invoice a bounce fee, alert when a post-dated cheque comes due, printable deposit slips.</li>
             <li><strong>Districts</strong> on customers and routes for territory reporting.</li>
             <li><strong>GST return v2</strong> — input tax from purchases, a payment (cash) basis option, and a GST-102/103 export.</li>
             <li><strong>Business Tax estimate</strong> — Belize's turnover-based tax alongside the GST summary.</li>
