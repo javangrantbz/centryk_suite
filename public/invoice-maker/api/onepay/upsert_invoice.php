@@ -134,6 +134,29 @@ foreach ($clean as $c) {
     $itemStmt->execute(['i' => $invoiceId, 'd' => $c['d'], 'q' => $c['q'], 'p' => $c['p'], 't' => $c['t']]);
 }
 
+// ── Auto-post the electronic payment to the AR ledger ──────────────────────
+// When the company runs Centryk Business — Receivables and the sale was paid,
+// record it as a first-class receipt on the customer account (idempotent), so
+// it reconciles against the card settlement deposit later.
+$receiptPosted = false;
+if ($amountPaid > 0.004 && $customerId > 0) {
+    try {
+        require_once __DIR__ . '/../../../../app/core/Entitlements.php';
+        if (Entitlements::level($companyId, 'receivables') !== Entitlements::NONE) {
+            require_once __DIR__ . '/../../../../app/services/ReceivablesService.php';
+            $pm = ReceivablesService::postOnepayReceipt(
+                $companyId, $invoiceId, $customerId, (float) $amountPaid,
+                $sourceRef, trim((string) ($body['settlement_ref'] ?? '')),
+                $issueDate, null
+            );
+            $receiptPosted = !empty($pm['created']);
+        }
+    } catch (Throwable $e) {
+        // never fail a POS sync over the ledger side
+        error_log('[onepay] receipt post failed for sale ' . $sourceRef . ': ' . $e->getMessage());
+    }
+}
+
 Response::ok([
     'invoice_id'     => $invoiceId,
     'invoice_number' => $invoiceNumber,
@@ -141,4 +164,5 @@ Response::ok([
     'customer_id'    => $customerId,
     'status'         => $status,
     'created'        => !$existing,
+    'receipt_posted' => $receiptPosted,
 ]);

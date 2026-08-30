@@ -533,7 +533,190 @@ class ReconciliationService
             'metadata'      => ['matched' => $matched, 'reviewed' => $reviewed],
         ]);
 
-        return ['matched' => $matched, 'reviewed' => $reviewed];
+        // Second pass: card / OnePay settlement deposits — a bank credit that
+        // equals a same-day batch of un-reconciled electronic receipts.
+        $sIds = DB::pdo()->prepare("
+            SELECT id FROM bank_transactions
+            WHERE company_id = :cid AND status = 'unmatched' AND direction = 'credit'
+            ORDER BY txn_date ASC, id ASC
+        ");
+        $sIds->execute(['cid' => $companyId]);
+        $settled = 0;
+        foreach ($sIds->fetchAll(PDO::FETCH_COLUMN) as $txnId) {
+            $c = self::settlementCandidates($companyId, (int)$txnId);
+            if (!empty($c['exact']) && count($c['exact']) >= 1) {
+                try {
+                    self::matchSettlement($companyId, (int)$txnId, $c['exact'], $actorId);
+                    $settled++;
+                    $matched++;
+                } catch (Throwable $e) { /* leave for review */ }
+            }
+        }
+
+        Audit::log([
+            'actor_user_id' => $actorId, 'company_id' => $companyId,
+            'event_type' => 'reconciliation.automatch',
+            'summary' => "Auto-matched {$matched} deposit(s)" . ($settled ? " (incl. {$settled} settlement batch)" : ''),
+            'metadata' => ['matched' => $matched, 'settlements' => $settled],
+        ]);
+
+        return ['matched' => $matched, 'reviewed' => $reviewed, 'settlements' => $settled];
+    }
+
+    // ── Settlement (batch) matching ────────────────────────────────────────
+
+    private const SETTLE_METHODS = "'card','bank_transfer','xfer'";
+    private const SETTLE_TOLERANCE = 1.00;   // BZD; card fees are handled as a follow-up
+
+    /**
+     * For an unmatched bank credit, the pool of un-reconciled electronic
+     * receipts that could make it up, plus an exact same-day batch if one is
+     * found. Settlement deposits usually land 1-3 business days after the sale.
+     *
+     * @return array{txn:array, pool:array<array>, pool_total:float, exact:array<int>}
+     */
+    public static function settlementCandidates(int $companyId, int $txnId): array
+    {
+        $pdo = DB::pdo();
+        $t = $pdo->prepare("SELECT id, txn_date, amount, direction, status FROM bank_transactions WHERE id = :id AND company_id = :cid LIMIT 1");
+        $t->execute(['id' => $txnId, 'cid' => $companyId]);
+        $txn = $t->fetch(PDO::FETCH_ASSOC);
+        if (!$txn || $txn['direction'] !== 'credit' || $txn['status'] !== 'unmatched') {
+            return ['txn' => $txn ?: [], 'pool' => [], 'pool_total' => 0.0, 'exact' => []];
+        }
+        $target = round((float)$txn['amount'], 2);
+
+        // The pool is the electronic receipts that land in a settlement batch:
+        // OnePay / card-processor collections, or anything tagged with a
+        // settlement reference. A one-off customer transfer is not in here.
+        $p = $pdo->prepare("
+            SELECT p.id, p.received_on, p.amount, p.method, p.source, p.settlement_ref, p.reference,
+                   c.name AS customer_name
+            FROM ar_payments p
+            JOIN customers c ON c.id = p.customer_id
+            WHERE p.company_id = :cid AND p.bank_txn_id IS NULL
+              AND (p.source = 'onepay' OR p.settlement_ref <> '')
+              AND p.received_on BETWEEN DATE_SUB(:d, INTERVAL 10 DAY) AND :d2
+            ORDER BY p.received_on ASC, p.id ASC
+        ");
+        $p->execute(['cid' => $companyId, 'd' => $txn['txn_date'], 'd2' => $txn['txn_date']]);
+        $pool = $p->fetchAll(PDO::FETCH_ASSOC);
+
+        // exact match: a batch (same settlement_ref, else same day) that sums to the deposit
+        $groups = [];
+        foreach ($pool as $row) {
+            $key = $row['settlement_ref'] !== '' ? 'ref:' . $row['settlement_ref'] : 'day:' . $row['received_on'];
+            $groups[$key][] = $row;
+        }
+        $exact = [];
+        foreach ($groups as $rows) {
+            $sum = 0.0;
+            foreach ($rows as $r) { $sum += (float)$r['amount']; }
+            if (abs(round($sum, 2) - $target) <= self::SETTLE_TOLERANCE) {
+                $exact = array_map(static fn ($r) => (int)$r['id'], $rows);
+                break;
+            }
+        }
+        // or the whole window sums exactly
+        if (!$exact) {
+            $sum = 0.0;
+            foreach ($pool as $r) { $sum += (float)$r['amount']; }
+            if ($pool && abs(round($sum, 2) - $target) <= self::SETTLE_TOLERANCE) {
+                $exact = array_map(static fn ($r) => (int)$r['id'], $pool);
+            }
+        }
+
+        $poolTotal = 0.0;
+        foreach ($pool as &$row) {
+            $row['id']     = (int)$row['id'];
+            $row['amount'] = round((float)$row['amount'], 2);
+            $poolTotal += $row['amount'];
+        }
+        unset($row);
+
+        return [
+            'txn' => ['id' => (int)$txn['id'], 'txn_date' => $txn['txn_date'], 'amount' => $target],
+            'pool' => $pool,
+            'pool_total' => round($poolTotal, 2),
+            'exact' => $exact,
+        ];
+    }
+
+    /**
+     * Reconcile one bank credit against a set of electronic receipts (a card /
+     * OnePay settlement). The receipts already sit on the customer accounts —
+     * this only links them to the bank line; it posts nothing new.
+     */
+    public static function matchSettlement(int $companyId, int $txnId, array $paymentIds, ?int $actorId): array
+    {
+        $pdo = DB::pdo();
+        $paymentIds = array_values(array_unique(array_filter(array_map('intval', $paymentIds))));
+        if (!$paymentIds) {
+            throw new InvalidArgumentException('Choose at least one receipt.');
+        }
+
+        $t = $pdo->prepare("SELECT id, txn_date, amount, direction, status FROM bank_transactions WHERE id = :id AND company_id = :cid LIMIT 1");
+        $t->execute(['id' => $txnId, 'cid' => $companyId]);
+        $txn = $t->fetch(PDO::FETCH_ASSOC);
+        if (!$txn) {
+            throw new RuntimeException('Bank line not found.');
+        }
+        if ($txn['direction'] !== 'credit' || $txn['status'] !== 'unmatched') {
+            throw new RuntimeException('Only an unmatched deposit can be settled.');
+        }
+
+        $place = implode(',', array_fill(0, count($paymentIds), '?'));
+        $ps = $pdo->prepare("SELECT id, amount, bank_txn_id FROM ar_payments WHERE company_id = ? AND id IN ($place)");
+        $ps->execute(array_merge([$companyId], $paymentIds));
+        $rows = $ps->fetchAll(PDO::FETCH_ASSOC);
+        if (count($rows) !== count($paymentIds)) {
+            throw new RuntimeException('One or more receipts were not found.');
+        }
+        $sum = 0.0;
+        foreach ($rows as $r) {
+            if ($r['bank_txn_id'] !== null) {
+                throw new RuntimeException('A receipt in the batch is already reconciled to another deposit.');
+            }
+            $sum += (float)$r['amount'];
+        }
+        if (abs(round($sum, 2) - round((float)$txn['amount'], 2)) > self::SETTLE_TOLERANCE) {
+            throw new RuntimeException('The receipts total ' . number_format($sum, 2)
+                . ' but the deposit is ' . number_format((float)$txn['amount'], 2) . '.');
+        }
+
+        $ownTxn = !$pdo->inTransaction();
+        try {
+            if ($ownTxn) { $pdo->beginTransaction(); }
+
+            $pdo->prepare("UPDATE ar_payments SET bank_txn_id = ? WHERE company_id = ? AND id IN ($place)")
+                ->execute(array_merge([$txnId, $companyId], $paymentIds));
+
+            $pdo->prepare("
+                UPDATE bank_transactions
+                SET status = 'matched', match_type = 'settlement', match_id = NULL, ar_payment_id = NULL,
+                    matched_by = :by, matched_at = NOW(),
+                    note = :note
+                WHERE id = :id
+            ")->execute([
+                'by' => $actorId, 'id' => $txnId,
+                'note' => 'Settlement of ' . count($paymentIds) . ' receipt(s)',
+            ]);
+
+            Audit::log([
+                'actor_user_id' => $actorId, 'company_id' => $companyId,
+                'event_type' => 'reconciliation.settlement_matched',
+                'summary' => 'Settled bank deposit ' . $txn['txn_date'] . ' ' . number_format((float)$txn['amount'], 2)
+                    . ' against ' . count($paymentIds) . ' receipt(s)',
+                'metadata' => ['txn_id' => $txnId, 'payment_ids' => $paymentIds, 'total' => round($sum, 2)],
+            ]);
+
+            if ($ownTxn) { $pdo->commit(); }
+        } catch (Throwable $e) {
+            if ($ownTxn && $pdo->inTransaction()) { $pdo->rollBack(); }
+            throw $e;
+        }
+
+        return ['status' => 'matched', 'receipts' => count($paymentIds), 'total' => round($sum, 2)];
     }
 
     /**
@@ -630,11 +813,16 @@ class ReconciliationService
         if ($txn['match_type'] === 'invoice' && $txn['ar_payment_id']) {
             ReceivablesService::voidPayment($companyId, (int)$txn['ar_payment_id'], $actorId);
         }
+        // A settlement match only linked existing receipts — unlink, don't void.
+        if ($txn['match_type'] === 'settlement') {
+            $pdo->prepare("UPDATE ar_payments SET bank_txn_id = NULL WHERE company_id = :c AND bank_txn_id = :b")
+                ->execute(['c' => $companyId, 'b' => $txnId]);
+        }
 
         $pdo->prepare("
             UPDATE bank_transactions
             SET status = 'unmatched', match_type = NULL, match_id = NULL, ar_payment_id = NULL,
-                matched_by = NULL, matched_at = NULL
+                matched_by = NULL, matched_at = NULL, note = ''
             WHERE id = :id
         ")->execute(['id' => $txnId]);
 

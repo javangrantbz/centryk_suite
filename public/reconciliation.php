@@ -131,7 +131,10 @@ $headerActionsHtml = ob_get_clean();
                 <div class="biz-panel-head">
                     <span>Lines</span>
                     <span class="flex gap-2 items-center">
-                        <?php if ($level === Entitlements::FULL): ?><button onclick="autoMatch()" class="biz-btn biz-btn-ghost biz-btn-sm">Auto-match</button><?php endif; ?>
+                        <?php if ($level === Entitlements::FULL): ?>
+                        <button onclick="syncOnepay()" class="biz-btn biz-btn-ghost biz-btn-sm">Sync OnePay</button>
+                        <button onclick="autoMatch()" class="biz-btn biz-btn-ghost biz-btn-sm">Auto-match</button>
+                        <?php endif; ?>
                         <button onclick="exportLines()" class="biz-btn biz-btn-ghost biz-btn-sm">Export CSV</button>
                         <select id="fStatus" onchange="loadTxns()" class="biz-select" style="height:22px;width:auto;font-size:11px">
                             <option value="unmatched">Unmatched</option>
@@ -381,15 +384,21 @@ async function openTxn(id, credit){
     }
     try {
         const d = await api('suggestions.php', { txn_id: id });
-        renderMatch(d.transaction, d.invoices || []);
+        let settle = null;
+        if (d.transaction.status !== 'matched') {
+            try { settle = await api('settlement_suggest.php', { txn_id: id }); } catch (e) {}
+        }
+        renderMatch(d.transaction, d.invoices || [], settle);
         loadTxns();
     } catch (e){ showAlert(e.message, 'error'); }
 }
 
-function renderMatch(txn, invoices){
+let SETTLE_SELECT = [];
+function renderMatch(txn, invoices, settle){
     const panel = document.getElementById('matchPanel');
     panel.className = 'biz-panel self-start';
     const matched = txn.status === 'matched';
+    SETTLE_SELECT = (settle && settle.exact && settle.exact.length) ? settle.exact.slice() : [];
 
     const list = invoices.length ? invoices.map(iv => `
         <div class="flex items-center gap-3 border-t border-[color:var(--bz-line-soft)] px-2.5 py-2 first:border-t-0">
@@ -407,12 +416,53 @@ function renderMatch(txn, invoices){
             <p class="biz-muted" style="font-size:11px">${fmtDate(txn.txn_date)} · <span class="biz-num biz-t-green" style="font-weight:700">+${m(txn.amount)}</span>${txn.reference ? ' · ' + esc(txn.reference) : ''}</p>
         </div>
         ${matched ? `<div class="biz-notice biz-notice-green" style="margin:0 10px 10px">
-            Matched. ${CAN_WRITE ? `<button onclick="unmatchTxn(${txn.id})" class="ml-1 underline">Undo</button>` : ''}
+            ${txn.match_type === 'settlement' ? 'Settled against a batch of receipts.' : 'Matched.'} ${CAN_WRITE ? `<button onclick="unmatchTxn(${txn.id})" class="ml-1 underline">Undo</button>` : ''}
         </div>` : `
+        ${settleBlock(txn, settle)}
         <div class="biz-panel-head" style="border-top:1px solid var(--bz-line)">Suggested invoices</div>
         <div>${list}</div>
         ${CAN_WRITE ? `<div class="biz-panel-body" style="border-top:1px solid var(--bz-line)"><button onclick="ignoreTxn(${txn.id}, true)" class="biz-btn biz-btn-ghost biz-btn-sm">Ignore this line</button></div>` : ''}`}
     `;
+}
+
+function settleBlock(txn, settle){
+    if (!settle || !settle.pool || !settle.pool.length) return '';
+    const exact = settle.exact || [];
+    const rows = settle.pool.map(p => `
+        <label class="flex items-center gap-2 px-2.5 py-1.5" style="font-size:11px;border-top:1px solid var(--bz-line-soft)">
+            <input type="checkbox" ${exact.includes(p.id) ? 'checked' : ''} onchange="toggleSettle(${p.id}, this.checked)">
+            <span class="min-w-0 flex-1 truncate">${esc(p.customer_name)} · ${fmtDate(p.received_on)}${p.source === 'onepay' ? ' · OnePay' : ''}</span>
+            <span class="biz-num">${m(p.amount)}</span>
+        </label>`).join('');
+    return `
+        <div class="biz-panel-body" style="border-top:1px solid var(--bz-line);background:var(--bz-head)">
+            <p class="biz-tile-l">Card / OnePay settlement</p>
+            <p class="biz-muted" style="font-size:11px">
+                ${exact.length ? `This deposit matches a batch of <strong>${exact.length}</strong> receipt(s).` :
+                  `${settle.pool.length} un-reconciled electronic receipt(s) in the window (${m(settle.pool_total)}).`}
+            </p>
+            <div class="mt-1" style="max-height:22vh;overflow-y:auto;border:1px solid var(--bz-line);border-radius:4px">${rows}</div>
+            ${CAN_WRITE ? `<button onclick="matchSettle(${txn.id})" class="biz-btn biz-btn-primary biz-btn-sm mt-2">Match selected as settlement</button>` : ''}
+        </div>`;
+}
+function toggleSettle(id, on){
+    SETTLE_SELECT = SETTLE_SELECT.filter(x => x !== id);
+    if (on) SETTLE_SELECT.push(id);
+}
+async function matchSettle(txnId){
+    if (!SETTLE_SELECT.length){ showAlert('Tick the receipts in this settlement.', 'error'); return; }
+    try {
+        const r = await api('settlement_match.php', { txn_id: txnId, payment_ids: SETTLE_SELECT });
+        showAlert(`Settled — ${r.receipts} receipt(s), ${m(r.total)}.`, 'ok');
+        openTxn(txnId, true); loadSummary();
+    } catch (e){ showAlert(e.message, 'error'); }
+}
+async function syncOnepay(){
+    try {
+        const r = await api('sync_onepay.php');
+        showAlert(r.created ? `${r.created} OnePay payment(s) posted to the ledger (${m(r.amount)}).` : 'OnePay payments already up to date.', 'ok');
+        loadSummary(); loadTxns();
+    } catch (e){ showAlert(e.message, 'error'); }
 }
 
 async function doMatch(txnId, invoiceId){

@@ -865,6 +865,9 @@ class ReceivablesService
         $receivedOn = (string)($data['received_on'] ?? date('Y-m-d'));
         $reference  = trim((string)($data['reference'] ?? ''));
         $notes      = trim((string)($data['notes'] ?? ''));
+        $source     = mb_substr(trim((string)($data['source'] ?? 'manual')), 0, 20) ?: 'manual';
+        $sourceRef  = mb_substr(trim((string)($data['source_ref'] ?? '')), 0, 120);
+        $settleRef  = mb_substr(trim((string)($data['settlement_ref'] ?? '')), 0, 120);
 
         if ($amount <= 0) {
             throw new InvalidArgumentException('Amount must be greater than zero.');
@@ -883,6 +886,17 @@ class ReceivablesService
             throw new RuntimeException('Customer not found.');
         }
 
+        // Idempotency for machine-fed receipts (OnePay re-sync): a receipt with
+        // this source + source_ref already exists — return it, don't duplicate.
+        if ($source !== 'manual' && $sourceRef !== '') {
+            $dup = $pdo->prepare("SELECT id FROM ar_payments WHERE company_id = :c AND source = :s AND source_ref = :r LIMIT 1");
+            $dup->execute(['c' => $companyId, 's' => $source, 'r' => $sourceRef]);
+            $dupId = (int)($dup->fetchColumn() ?: 0);
+            if ($dupId) {
+                return ['payment_id' => $dupId, 'allocated' => 0.0, 'credit' => 0.0, 'invoices' => 0, 'duplicate' => true];
+            }
+        }
+
         $ownTxn = !$pdo->inTransaction();
         try {
             if ($ownTxn) {
@@ -890,11 +904,12 @@ class ReceivablesService
             }
 
             $pdo->prepare("
-                INSERT INTO ar_payments (company_id, customer_id, received_on, amount, method, reference, notes, created_by)
-                VALUES (:cid, :cust, :on, :amt, :method, :ref, :notes, :by)
+                INSERT INTO ar_payments (company_id, customer_id, received_on, amount, method, source, source_ref, settlement_ref, reference, notes, created_by)
+                VALUES (:cid, :cust, :on, :amt, :method, :src, :sref, :setref, :ref, :notes, :by)
             ")->execute([
                 'cid' => $companyId, 'cust' => $customerId, 'on' => $receivedOn, 'amt' => $amount,
-                'method' => $method, 'ref' => $reference, 'notes' => $notes, 'by' => $actorId,
+                'method' => $method, 'src' => $source, 'sref' => $sourceRef, 'setref' => $settleRef,
+                'ref' => $reference, 'notes' => $notes, 'by' => $actorId,
             ]);
             $paymentId = (int)$pdo->lastInsertId();
 
@@ -974,6 +989,112 @@ class ReceivablesService
     }
 
     /**
+     * Turn OnePay electronic collections into first-class ledger receipts.
+     *
+     * OnePay posts a sale as an invoice with amount_paid already set. Where that
+     * paid amount is not yet backed by an ar_payments receipt, create one
+     * (method 'card', source 'onepay') allocated straight to the invoice — the
+     * invoice's amount_paid / status are already correct, so we only fill the
+     * ledger gap. Idempotent by (source, source_ref); safe to run daily.
+     *
+     * @return array{created:int, amount:float}
+     */
+    public static function syncOnepayReceipts(int $companyId, ?int $actorId): array
+    {
+        $pdo = DB::pdo();
+        $rows = $pdo->prepare("
+            SELECT i.id, i.source_ref, i.issue_date, i.customer_id, i.amount_paid, i.batch_id,
+                   COALESCE(a.allocated, 0) AS allocated
+            FROM invoices i
+            LEFT JOIN (
+                SELECT al.invoice_id, SUM(al.amount) AS allocated
+                FROM ar_payment_allocations al
+                JOIN ar_payments p ON p.id = al.ar_payment_id
+                WHERE p.company_id = :cid1
+                GROUP BY al.invoice_id
+            ) a ON a.invoice_id = i.id
+            WHERE i.company_id = :cid2 AND i.source_app = 'onepay'
+              AND i.amount_paid > 0
+              AND i.amount_paid - COALESCE(a.allocated, 0) > 0.004
+        ");
+        $rows->execute(['cid1' => $companyId, 'cid2' => $companyId]);
+
+        $created = 0;
+        $sum = 0.0;
+        $ownTxn = !$pdo->inTransaction();
+        try {
+            if ($ownTxn) { $pdo->beginTransaction(); }
+            foreach ($rows->fetchAll(PDO::FETCH_ASSOC) as $r) {
+                $gap = round((float)$r['amount_paid'] - (float)$r['allocated'], 2);
+                $res = self::postOnepayReceipt(
+                    $companyId, (int)$r['id'], (int)$r['customer_id'], $gap,
+                    (string)$r['source_ref'], (string)($r['batch_id'] ?? ''),
+                    $r['issue_date'] ?: date('Y-m-d'), $actorId
+                );
+                if (!empty($res['created'])) { $created++; $sum += $gap; }
+            }
+            if ($created > 0) {
+                Audit::log([
+                    'actor_user_id' => $actorId, 'company_id' => $companyId,
+                    'event_type' => 'receivables.onepay.synced',
+                    'summary' => 'Auto-posted ' . $created . ' OnePay payment(s) to the ledger ('
+                        . number_format($sum, 2) . ')',
+                    'metadata' => ['created' => $created, 'amount' => round($sum, 2)],
+                ]);
+            }
+            if ($ownTxn) { $pdo->commit(); }
+        } catch (Throwable $e) {
+            if ($ownTxn && $pdo->inTransaction()) { $pdo->rollBack(); }
+            throw $e;
+        }
+
+        return ['created' => $created, 'amount' => round($sum, 2)];
+    }
+
+    /**
+     * Post one OnePay electronic payment as a receipt allocated straight to its
+     * invoice. Idempotent by (source='onepay', source_ref). The invoice's
+     * amount_paid / status are already set by OnePay, so this only fills the
+     * ledger gap — it does not touch the invoice.
+     *
+     * @return array{created:bool, payment_id:int}
+     */
+    public static function postOnepayReceipt(
+        int $companyId, int $invoiceId, int $customerId, float $amount,
+        string $saleRef, string $settlementRef, string $receivedOn, ?int $actorId
+    ): array {
+        $amount = round($amount, 2);
+        if ($amount <= 0.004 || $customerId <= 0) {
+            return ['created' => false, 'payment_id' => 0];
+        }
+        $pdo = DB::pdo();
+        $ref = 'sale:' . $saleRef;
+
+        $dup = $pdo->prepare("SELECT id FROM ar_payments WHERE company_id = :c AND source = 'onepay' AND source_ref = :r LIMIT 1");
+        $dup->execute(['c' => $companyId, 'r' => $ref]);
+        if ($dupId = (int)($dup->fetchColumn() ?: 0)) {
+            return ['created' => false, 'payment_id' => $dupId];
+        }
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $receivedOn)) {
+            $receivedOn = date('Y-m-d');
+        }
+
+        $pdo->prepare("
+            INSERT INTO ar_payments (company_id, customer_id, received_on, amount, method, source, source_ref, settlement_ref, reference, notes, created_by)
+            VALUES (:c, :cust, :on, :amt, 'card', 'onepay', :sref, :setref, :ref, 'Auto-posted from OnePay', :by)
+        ")->execute([
+            'c' => $companyId, 'cust' => $customerId, 'on' => $receivedOn, 'amt' => $amount,
+            'sref' => mb_substr($ref, 0, 120), 'setref' => mb_substr($settlementRef, 0, 120),
+            'ref' => 'OnePay ' . $saleRef, 'by' => $actorId,
+        ]);
+        $pid = (int)$pdo->lastInsertId();
+        $pdo->prepare("INSERT INTO ar_payment_allocations (ar_payment_id, invoice_id, amount) VALUES (:p, :i, :amt)")
+            ->execute(['p' => $pid, 'i' => $invoiceId, 'amt' => $amount]);
+
+        return ['created' => true, 'payment_id' => $pid];
+    }
+
+    /**
      * Reverse a receipt: undo each allocation (drop invoice.amount_paid, reopen
      * status) and delete the ar_payments row (allocations cascade).
      * Used when a bank-reconciliation match is undone.
@@ -982,11 +1103,14 @@ class ReceivablesService
     {
         $pdo = DB::pdo();
 
-        $pay = $pdo->prepare("SELECT id, amount FROM ar_payments WHERE id = :id AND company_id = :cid LIMIT 1");
+        $pay = $pdo->prepare("SELECT id, amount, bank_txn_id FROM ar_payments WHERE id = :id AND company_id = :cid LIMIT 1");
         $pay->execute(['id' => $paymentId, 'cid' => $companyId]);
         $pay = $pay->fetch(PDO::FETCH_ASSOC);
         if (!$pay) {
             throw new RuntimeException('Receipt not found.');
+        }
+        if ($pay['bank_txn_id'] !== null) {
+            throw new RuntimeException('This receipt is reconciled to a bank deposit — unmatch that deposit first.');
         }
 
         $ownTxn = !$pdo->inTransaction();
