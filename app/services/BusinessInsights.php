@@ -86,8 +86,12 @@ class BusinessInsights
         $avgDaysToPay = $adp->fetchColumn();
 
         $aged = $t['b_1_30'] + $t['b_31_60'] + $t['b_61_90'] + $t['b_90p'];
+        $cheques = ReceivablesService::chequesSummary($companyId);
 
         return [
+            'uncleared_cheques'  => $cheques['pending_value'],
+            'uncleared_cheque_count' => $cheques['pending_count'],
+            'bounced_cheques_12m' => $cheques['bounced_12m_value'],
             'outstanding'        => $t['balance'],
             'overdue'            => $t['overdue'],
             'overdue_pct'        => $t['balance'] > 0 ? round($t['overdue'] / $t['balance'] * 100, 1) : 0.0,

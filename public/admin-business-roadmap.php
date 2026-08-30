@@ -91,6 +91,7 @@ $board = [
             ['Reconciliation — auto-ignore rules: keep bank charges / interest / transfers out of the queue; run on import + on demand', 'database/add_reconciliation_rules.sql'],
             ['Belize GST summary — monthly output tax from sales + bad-debt relief, GST-inclusive back-out for untaxed invoices, printable', 'business_tax.php'],
             ['OnePay reconciliation — electronic sales auto-post to the customer ledger; card settlement deposits match against the whole batch (auto or one click)', 'database/add_settlement_reconciliation.sql'],
+            ['Cheque tracking (Belize) — received / post-dated / uncleared / bounced; a bounce reverses the receipt and restores the balance; register + Insights tile', 'database/add_cheque_tracking.sql'],
             ['This tracker', 'admin-business-roadmap.php'],
         ],
     ],
@@ -109,7 +110,7 @@ $board = [
         'items'  => [
             ['Routes — driver field view + per-driver commission shipped; still planned: maps / route optimisation, freeze commission on payout', null],
             ['Enterprise — maker-checker on package grants / write-offs, inter-company transactions', null],
-            ['Belize — cheque tracking (received / post-dated / clearing / bounced), a big part of the cash-and-cheque economy', null],
+            ['Belize — cheque tracking follow-ups: auto-invoice a bounce fee, alert when a post-dated cheque comes due, cheque deposit slips', null],
             ['Belize — district field on customers & routes (Corozal…Toledo) for territory reporting', null],
             ['Belize — GST return: input tax (needs AP / purchases), payment-basis option, GST-102/103 export', null],
             ['Belize — Business Tax estimate (turnover-based, rate by activity) alongside the GST summary', null],

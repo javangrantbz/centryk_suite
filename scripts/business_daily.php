@@ -32,4 +32,5 @@ foreach ($cos as $cid) {
 $r = BusinessNotifier::runDaily();
 echo 'Business daily sweep: ' . $posted . ' OnePay receipt(s) posted, '
     . $r['invoice_alerts'] . ' invoice alert(s), '
+    . ($r['cheque_alerts'] ?? 0) . ' cheque-due alert(s), '
     . $r['billing_alerts'] . " billing alert(s).\n";

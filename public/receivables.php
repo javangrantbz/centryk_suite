@@ -102,6 +102,7 @@ $headerActionsHtml = ob_get_clean();
                     <span class="biz-seg" style="text-transform:none;letter-spacing:0">
                         <button id="viewLedger" class="is-active" onclick="setView('ledger')">Customers</button>
                         <button id="viewCollections" onclick="setView('collections')">Collections</button>
+                        <button id="viewCheques" onclick="setView('cheques')">Cheques</button>
                     </span>
                     <span class="flex gap-1">
                         <a href="receivables_aging.php?company_id=<?= (int)$activeCompany['id'] ?>" target="_blank" rel="noopener" class="biz-btn biz-btn-ghost biz-btn-sm">Aging report</a>
@@ -178,10 +179,12 @@ async function load(){
         if (VIEW === 'collections') {
             COLLECTIONS = (await api('collections.php')).accounts || [];
             renderCollections();
+        } else if (VIEW === 'cheques') {
+            await loadCheques();
         } else {
             renderCustomers();
         }
-        if (OPEN_CUSTOMER) openCustomer(OPEN_CUSTOMER);
+        if (OPEN_CUSTOMER && VIEW !== 'cheques') openCustomer(OPEN_CUSTOMER);
     } catch (e){ showAlert(e.message, 'error'); }
 }
 
@@ -189,7 +192,61 @@ function setView(v){
     VIEW = v;
     document.getElementById('viewLedger').classList.toggle('is-active', v === 'ledger');
     document.getElementById('viewCollections').classList.toggle('is-active', v === 'collections');
+    document.getElementById('viewCheques').classList.toggle('is-active', v === 'cheques');
     load();
+}
+
+let CHEQUE_STATUS = 'pending';
+async function loadCheques(){
+    const el = document.getElementById('customerRows');
+    const d = await api('cheques.php', { status: CHEQUE_STATUS });
+    const s = d.summary || {};
+    const seg = ['pending', 'cleared', 'bounced'].map(k =>
+        `<button onclick="CHEQUE_STATUS='${k}';load()" class="${CHEQUE_STATUS === k ? 'is-active' : ''}">${k[0].toUpperCase() + k.slice(1)}</button>`).join('');
+    const head = `
+        <div class="biz-panel-body" style="border-bottom:1px solid var(--bz-line)">
+            <div class="grid grid-cols-3 gap-2">
+                ${tile('Uncleared', s.pending_value, s.pending_count ? 'biz-t-amber' : '')}
+                ${tile('Post-dated', s.postdated_value)}
+                ${tile('Bounced (12m)', s.bounced_12m_value, s.bounced_12m_count ? 'biz-t-red' : '')}
+            </div>
+            <span class="biz-seg mt-2" style="text-transform:none;letter-spacing:0">${seg}</span>
+        </div>`;
+    const rows = (d.cheques || []).map(c => `
+        <div class="biz-row" style="display:block;font-size:12px">
+            <div class="flex items-start justify-between gap-2">
+                <span class="min-w-0 flex-1">
+                    <span style="font-weight:600">${esc(c.customer_name)}</span>
+                    ${c.post_dated ? '<span class="biz-chip biz-c-blue">post-dated</span>' : ''}
+                    <span class="block biz-muted" style="font-size:11px">
+                        cheque ${esc(c.cheque_number || '—')}${c.cheque_bank ? ' · ' + esc(c.cheque_bank) : ''}
+                        · received ${fmtDate(c.received_on)}${c.cheque_date ? ' · dated ' + fmtDate(c.cheque_date) : ''}
+                        ${c.clearance_status === 'pending' ? ' · held ' + c.days_held + 'd' : ''}
+                        ${c.clearance_status === 'cleared' ? ' · cleared ' + fmtDate(c.cleared_on) : ''}
+                        ${c.clearance_status === 'bounced' && c.bounce_reason ? ' · ' + esc(c.bounce_reason) : ''}
+                    </span>
+                </span>
+                <span class="shrink-0 biz-num ${c.clearance_status === 'bounced' ? 'biz-t-red' : ''}" style="font-weight:700">${m(c.amount)}</span>
+            </div>
+            ${CAN_WRITE && c.clearance_status === 'pending' ? `
+            <div class="mt-1 flex gap-2">
+                <button onclick="clearCheque(${c.id})" class="biz-btn biz-btn-primary biz-btn-sm">Mark cleared</button>
+                <button onclick="bounceCheque(${c.id})" class="biz-btn biz-btn-danger biz-btn-sm">Bounced</button>
+            </div>` : ''}
+        </div>`).join('') || `<div class="biz-panel-empty">No ${CHEQUE_STATUS} cheques.</div>`;
+    el.innerHTML = head + rows;
+}
+async function clearCheque(id){
+    const on = prompt('Date the cheque cleared:', new Date().toISOString().slice(0,10));
+    if (on === null) return;
+    try { await api('cheque_clear.php', { payment_id: id, cleared_on: on }); showAlert('Cheque cleared.', 'ok'); load(); }
+    catch (e){ showAlert(e.message, 'error'); }
+}
+async function bounceCheque(id){
+    const reason = prompt('This reverses the receipt and the customer owes again.\nReason the cheque bounced:');
+    if (reason === null) return;
+    try { await api('cheque_bounce.php', { payment_id: id, reason }); showAlert('Cheque recorded as bounced — customer balance restored.', 'ok'); load(); }
+    catch (e){ showAlert(e.message, 'error'); }
 }
 
 function renderCollections(){
@@ -287,14 +344,18 @@ function renderStatement(s){
         </div>`;
     }).join('') || '<div class="biz-panel-empty">No invoices.</div>';
 
-    const payments = (s.payments || []).map(p => `
+    const payments = (s.payments || []).map(p => {
+        const chip = p.clearance_status === 'pending' ? '<span class="biz-chip biz-c-amber">uncleared</span>'
+            : p.clearance_status === 'bounced' ? '<span class="biz-chip biz-c-red">bounced</span>' : '';
+        return `
         <div class="biz-row" style="font-size:12px">
             <span class="min-w-0 flex-1">
-                <span class="biz-num" style="font-weight:600">${m(p.amount)}</span>
-                <span class="biz-muted" style="font-size:11px">&nbsp;${esc(METHODS[p.method] || p.method)} · ${fmtDate(p.received_on)}${p.reference ? ' · ' + esc(p.reference) : ''}</span>
+                <span class="biz-num" style="font-weight:600;${p.clearance_status === 'bounced' ? 'text-decoration:line-through;opacity:.6' : ''}">${m(p.amount)}</span> ${chip}
+                <span class="biz-muted" style="font-size:11px">&nbsp;${esc(METHODS[p.method] || p.method)}${p.cheque_number ? ' ' + esc(p.cheque_number) : ''} · ${fmtDate(p.received_on)}${p.reference ? ' · ' + esc(p.reference) : ''}</span>
             </span>
-            ${Number(p.amount) - Number(p.allocated) > 0.004 ? `<span class="shrink-0 biz-num biz-t-blue" style="font-size:11px;font-weight:600">${m(Number(p.amount) - Number(p.allocated))} on acct</span>` : ''}
-        </div>`).join('') || '<div class="biz-panel-empty">No receipts.</div>';
+            ${p.clearance_status !== 'bounced' && Number(p.amount) - Number(p.allocated) > 0.004 ? `<span class="shrink-0 biz-num biz-t-blue" style="font-size:11px;font-weight:600">${m(Number(p.amount) - Number(p.allocated))} on acct</span>` : ''}
+        </div>`;
+    }).join('') || '<div class="biz-panel-empty">No receipts.</div>';
 
     const KIND = { statement: 'Statement', due_soon: 'Due soon', overdue: 'Overdue', final_notice: 'Final notice' };
     const CHAN = { email: 'Email', phone: 'Phone', in_person: 'In person', other: 'Other' };
@@ -426,11 +487,16 @@ function paymentForm(customerId){
             <p class="biz-kicker" style="color:var(--bz-accent-d)">Record payment</p>
             <div class="mt-2 grid gap-2 sm:grid-cols-2">
                 ${fld('Amount', '<input name="amount" type="number" step="0.01" min="0.01" required class="biz-input">')}
-                ${fld('Method', `<select name="method" class="biz-select">${Object.entries(METHODS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select>`)}
+                ${fld('Method', `<select name="method" class="biz-select" onchange="document.getElementById('chequeFields').style.display = this.value === 'cheque' ? '' : 'none'">${Object.entries(METHODS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select>`)}
                 ${fld('Received on', `<input name="received_on" type="date" value="${today}" class="biz-input">`)}
                 ${fld('Reference', '<input name="reference" type="text" placeholder="optional" class="biz-input">')}
             </div>
-            <p class="biz-muted mt-2" style="font-size:11px">Applied to open invoices, oldest due first. Any surplus sits on account.</p>
+            <div id="chequeFields" class="mt-2 grid gap-2 sm:grid-cols-3" style="display:none">
+                ${fld('Cheque no.', '<input name="cheque_number" class="biz-input">')}
+                ${fld('Drawee bank', '<input name="cheque_bank" class="biz-input" placeholder="e.g. Atlantic Bank">')}
+                ${fld('Cheque date', `<input name="cheque_date" type="date" value="${today}" class="biz-input">`)}
+            </div>
+            <p class="biz-muted mt-2" style="font-size:11px">Applied to open invoices, oldest due first. Any surplus sits on account. A cheque is held as <strong>uncleared</strong> until you confirm it in the Cheques tab.</p>
             <div class="mt-2 flex gap-2">
                 <button type="submit" class="biz-btn biz-btn-primary">Save receipt</button>
                 <button type="button" onclick="document.getElementById('inlineForm').innerHTML=''" class="biz-btn biz-btn-ghost">Cancel</button>
@@ -441,10 +507,16 @@ async function submitPayment(e, customerId){
     e.preventDefault();
     const f = e.target;
     try {
-        const r = await api('record_payment.php', {
+        const body = {
             customer_id: customerId, amount: f.amount.value, method: f.method.value,
             received_on: f.received_on.value, reference: f.reference.value,
-        });
+        };
+        if (f.method.value === 'cheque') {
+            body.cheque_number = f.cheque_number.value;
+            body.cheque_bank = f.cheque_bank.value;
+            body.cheque_date = f.cheque_date.value;
+        }
+        const r = await api('record_payment.php', body);
         showAlert(`Receipt saved — applied ${m(r.allocated)} to ${r.invoices} invoice(s)` + (r.credit > 0.004 ? `, ${m(r.credit)} on account` : '') + '.', 'ok');
         document.getElementById('inlineForm').innerHTML = '';
         load();
