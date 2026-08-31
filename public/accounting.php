@@ -203,10 +203,12 @@ function renderDesk(s){
             <div class="biz-panel-head"><span>Do</span></div>
             <div class="biz-panel-body flex flex-wrap gap-2">
                 <a class="biz-btn biz-btn-primary" href="gl_journal.php?company_id=${CID}">New journal entry</a>
+                <a class="biz-btn biz-btn-ghost" href="expenses.php?company_id=${CID}">Record an expense</a>
                 <a class="biz-btn biz-btn-ghost" href="gl_reports.php?company_id=${CID}">Financial statements</a>
                 <a class="biz-btn biz-btn-ghost" href="gl_accounts.php?company_id=${CID}">Chart of accounts</a>
                 <a class="biz-btn biz-btn-ghost" href="business_tax.php?company_id=${CID}">GST summary</a>
                 ${s.draft_journals ? `<a class="biz-btn biz-btn-ghost" href="gl_journal.php?company_id=${CID}#drafts">${s.draft_journals} draft${s.draft_journals === 1 ? '' : 's'}</a>` : ''}
+                ${s.expenses && s.expenses.unpaid_count ? `<a class="biz-btn biz-btn-ghost" href="expenses.php?company_id=${CID}">${s.expenses.unpaid_count} unpaid bill${s.expenses.unpaid_count === 1 ? '' : 's'}</a>` : ''}
             </div>
         </div>
 

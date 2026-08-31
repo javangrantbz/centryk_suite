@@ -3,6 +3,7 @@ require_once __DIR__ . '/../core/DB.php';
 require_once __DIR__ . '/../core/Audit.php';
 require_once __DIR__ . '/../core/Ledger.php';
 require_once __DIR__ . '/GlSync.php';
+require_once __DIR__ . '/ExpensesService.php';
 
 /**
  * Centryk Business — Accounting: chart of accounts, setup, periods and the
@@ -1100,6 +1101,7 @@ class AccountingService
                 'started_on' => GlSync::arStartedOn($companyId),
                 'pending'    => GlSync::arEnabled($companyId) ? GlSync::pendingCount($companyId) : 0,
             ],
+            'expenses' => ExpensesService::summary($companyId),
         ];
     }
 

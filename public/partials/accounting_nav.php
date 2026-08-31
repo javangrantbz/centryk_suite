@@ -8,6 +8,7 @@ $_items = [
     'home'     => ['Home',              'accounting.php'],
     'accounts' => ['Chart of accounts', 'gl_accounts.php'],
     'journal'  => ['Journal',           'gl_journal.php'],
+    'expenses' => ['Expenses',          'expenses.php'],
     'reports'  => ['Financial statements', 'gl_reports.php'],
 ];
 ?>

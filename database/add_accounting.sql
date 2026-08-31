@@ -174,7 +174,7 @@ CREATE TABLE IF NOT EXISTS expenses (
     net_amount           DECIMAL(14,2) NOT NULL DEFAULT 0,
     tax_amount           DECIMAL(14,2) NOT NULL DEFAULT 0,     -- recoverable GST input
     total_amount         DECIMAL(14,2) NOT NULL DEFAULT 0,
-    status               ENUM('unpaid','paid') NOT NULL DEFAULT 'paid',
+    status               ENUM('unpaid','paid','void') NOT NULL DEFAULT 'paid',
     paid_from_account_id INT UNSIGNED  NULL,                   -- bank / cash when paid
     reference            VARCHAR(120)  NOT NULL DEFAULT '',
     journal_id           INT UNSIGNED  NULL,                   -- the bill JE
