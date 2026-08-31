@@ -143,7 +143,7 @@ $toc = [
     <!-- ═══ APPS ═══ -->
     <section id="apps">
         <h2 class="text-2xl font-black tracking-tight text-slate-900">The apps at a glance</h2>
-        <p>Every app shares the login, the company directory and the notification centre. They are grouped in the dashboard as Business, Finance &amp; Insights, and Marketing.</p>
+        <p>Every app shares the login, the company directory and the notification centre. They are grouped in the dashboard as Business, Centryk Business, Finance, Insights, Operations and Marketing.</p>
 
         <div class="mt-5 grid gap-4 sm:grid-cols-2">
             <?php
@@ -152,6 +152,7 @@ $toc = [
                 ['MyPay', 'HR &amp; payroll', 'Staff records, attendance, pay runs with Belize PAYE and Social Security, payslips, TD4 employee slips, the monthly SSB and PAYE returns, and job-vacancy forms for recruitment.'],
                 ['Invoices', 'Quotes, invoices &amp; receipts', 'The shared invoice engine — hosted in the hub, used by OnePay and by Centryk Business Receivables. Send by email, share a link, or export a PDF.'],
                 ['Calendar', 'Shared scheduling', 'A company calendar surfaced across the suite, with a drawer preview on every page.'],
+                ['Centryk Forms', 'Surveys, polls &amp; feedback', 'Build a form — short text, choices, ratings, yes/no — open it, and share a public link. Responses collect in the hub with a per-question summary and CSV export.'],
                 ['Vision Board', 'Digital signage', 'Run the screens in your store or lobby — playlists, promotions, marquee messages, QR codes — driven from your Centryk data: inventory turns into low-stock and promo slides, the calendar into today\'s events.'],
                 ['Centryk TV', 'Live broadcasting &amp; ticketing', 'Browser-based live streaming of an event with pay-per-view tickets sold through OneLink (coming soon).'],
                 ['Storefront', 'Public menu / catalog', 'Every company gets a public page at a short link — menu, catalog, contact, and a link to pay.'],

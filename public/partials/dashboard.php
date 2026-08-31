@@ -540,6 +540,12 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
                             <rect x="2" y="5" width="20" height="14" rx="2"/><path d="m10 9 5 3-5 3V9Z"/><path d="M8 21h8"/>
                         </svg>
                     </span>
+                    <?php elseif ($app['key'] === 'forms'): ?>
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                            <rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>
+                        </svg>
+                    </span>
                     <?php else: ?>
                     <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xl"
                           style="background:<?= htmlspecialchars($app['color']) ?>18">
@@ -554,6 +560,7 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
                             elseif ($app['key'] === 'invoice')      echo 'Quotes &amp; Invoicing';
                             elseif ($app['key'] === 'visionboard')  echo 'Digital Signage';
                             elseif ($app['key'] === 'tv')           echo 'Live Streaming';
+                            elseif ($app['key'] === 'forms')        echo 'Surveys &amp; Polls';
                             else                                    echo htmlspecialchars($app['label']);
                             ?>
                         </div>
