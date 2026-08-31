@@ -240,7 +240,7 @@ $headerMaxW = 'max-w-7xl';
                         <?php if ($isEnabled): ?>
                         <button type="button"
                             class="cred-toggle inline-flex items-center gap-1 font-mono text-xs font-semibold text-cyan-700 underline decoration-dotted underline-offset-2 transition hover:text-cyan-900"
-                            data-cid="<?= (int)$p['id'] ?>" aria-expanded="false" title="Show OneLink API credentials">
+                            data-cid="<?= (int)$p['id'] ?>" data-company="<?= htmlspecialchars((string)$p['name']) ?>" aria-expanded="false" title="Show OneLink API credentials">
                             <?= htmlspecialchars((string)$p['terminal_id']) ?>
                             <i data-lucide="chevron-down" class="cred-caret h-3 w-3 transition-transform"></i>
                         </button>
@@ -551,13 +551,35 @@ $headerMaxW = 'max-w-7xl';
             (v ? '<button type="button" class="cred-copy shrink-0 rounded-md border border-slate-200 px-2 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-slate-500 transition hover:bg-slate-100" data-copy="' + escapeHtml(v) + '">Copy</button>' : '') +
             '</div>';
     }
-    function renderCreds(g) {
+    function credBlockText(g, company) {
+        const base = g.base_url || 'https://op.onelink.bz';
+        const lines = [
+            'OneLink API credentials' + (company ? ' — ' + company : ''),
+            '',
+            'Endpoint:     ' + base + '/processPayment',
+            'Base URL:     ' + base,
+            'Terminal ID:  ' + (g.terminal_id || ''),
+            'Salt:         ' + (g.salt || ''),
+            'Token:        ' + (g.token || ''),
+        ];
+        if (g.access_code) lines.push('Access Code:  ' + g.access_code);
+        return lines.join('\n');
+    }
+    function renderCreds(g, company) {
+        const blockText = credBlockText(g, company);
         return '<div class="grid gap-2 sm:grid-cols-2">' +
             credLine('Base URL', g.base_url) +
             credLine('Terminal ID', g.terminal_id) +
             credLine('Salt', g.salt) +
             credLine('Token (bp_token)', g.token) +
             (g.access_code ? credLine('Access Code', g.access_code) : '') +
+            '</div>' +
+            '<div class="mt-3 rounded-lg border border-slate-200 bg-white p-3">' +
+            '<div class="mb-2 flex items-center justify-between gap-3">' +
+            '<p class="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">All credentials &middot; copy &amp; paste</p>' +
+            '<button type="button" class="cred-copy shrink-0 rounded-md border border-cyan-300 bg-cyan-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-cyan-700 transition hover:bg-cyan-100" data-copy="' + escapeHtml(blockText) + '">Copy all</button>' +
+            '</div>' +
+            '<textarea readonly rows="' + (g.access_code ? 8 : 7) + '" class="w-full resize-none rounded-md border border-slate-200 bg-slate-50 p-2 font-mono text-[11px] leading-relaxed text-slate-800 outline-none focus:border-cyan-500" onclick="this.select()">' + escapeHtml(blockText) + '</textarea>' +
             '</div>' +
             '<p class="mt-3 text-[11px] font-semibold leading-relaxed text-amber-700">Terminal ID, salt and token together are all any system needs to charge cards that settle to this company’s account — treat them like a password.</p>';
     }
@@ -586,7 +608,7 @@ $headerMaxW = 'max-w-7xl';
                     panel.innerHTML = '<p class="text-xs font-bold text-rose-600">Could not load credentials for this company.</p>';
                     return;
                 }
-                panel.innerHTML = renderCreds(data.gateway);
+                panel.innerHTML = renderCreds(data.gateway, btn.dataset.company || '');
                 panel.dataset.loaded = '1';
                 if (window.lucide) lucide.createIcons();
             } catch (_) {
