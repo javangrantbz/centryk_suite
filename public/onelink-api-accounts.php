@@ -236,10 +236,26 @@ $headerMaxW = 'max-w-7xl';
                         <?php endif; ?>
                     </div>
                     <div><?= $badge ?></div>
-                    <div class="font-mono text-xs text-slate-600"><?= $isEnabled ? htmlspecialchars((string)$p['terminal_id']) : '—' ?></div>
+                    <div>
+                        <?php if ($isEnabled): ?>
+                        <button type="button"
+                            class="cred-toggle inline-flex items-center gap-1 font-mono text-xs font-semibold text-cyan-700 underline decoration-dotted underline-offset-2 transition hover:text-cyan-900"
+                            data-cid="<?= (int)$p['id'] ?>" aria-expanded="false" title="Show OneLink API credentials">
+                            <?= htmlspecialchars((string)$p['terminal_id']) ?>
+                            <i data-lucide="chevron-down" class="cred-caret h-3 w-3 transition-transform"></i>
+                        </button>
+                        <?php else: ?>
+                        <span class="font-mono text-xs text-slate-600">—</span>
+                        <?php endif; ?>
+                    </div>
                     <div class="text-xs font-semibold text-slate-500"><?= $p['provisioned_at'] ? htmlspecialchars(date('M j, Y g:ia', strtotime((string)$p['provisioned_at']))) : '—' ?></div>
                     <div class="text-xs font-semibold <?= $hasError ? 'text-rose-600' : 'text-slate-400' ?>"><?= $hasError ? htmlspecialchars((string)$p['provision_error']) : ($isEnabled ? 'Access code on file' : 'Not attempted yet') ?></div>
                 </div>
+                <?php if ($isEnabled): ?>
+                <div class="cred-reveal hidden bg-slate-50 px-5 py-4" data-cid="<?= (int)$p['id'] ?>" data-loaded="0">
+                    <p class="text-xs font-semibold text-slate-400">Loading credentials…</p>
+                </div>
+                <?php endif; ?>
                 <?php endforeach; ?>
                 <?php if (empty($provisioning)): ?>
                 <div class="px-5 py-8 text-center text-sm font-semibold text-slate-400">No companies found.</div>
@@ -523,6 +539,70 @@ $headerMaxW = 'max-w-7xl';
         applyLedgerFilters();
     });
     applyLedgerFilters();
+
+    // Click-to-reveal OneLink API credentials from the Provisioning Status table.
+    // Fetched on demand (admin-only api/banking/get.php) rather than baked into
+    // the page source, and only one row's panel is open at a time.
+    function credLine(label, value) {
+        const v = value || '';
+        return '<div class="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2">' +
+            '<div class="min-w-0"><p class="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">' + escapeHtml(label) + '</p>' +
+            '<p class="truncate font-mono text-xs font-semibold text-slate-800">' + (v ? escapeHtml(v) : '<span class="text-slate-400">—</span>') + '</p></div>' +
+            (v ? '<button type="button" class="cred-copy shrink-0 rounded-md border border-slate-200 px-2 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-slate-500 transition hover:bg-slate-100" data-copy="' + escapeHtml(v) + '">Copy</button>' : '') +
+            '</div>';
+    }
+    function renderCreds(g) {
+        return '<div class="grid gap-2 sm:grid-cols-2">' +
+            credLine('Base URL', g.base_url) +
+            credLine('Terminal ID', g.terminal_id) +
+            credLine('Salt', g.salt) +
+            credLine('Token (bp_token)', g.token) +
+            (g.access_code ? credLine('Access Code', g.access_code) : '') +
+            '</div>' +
+            '<p class="mt-3 text-[11px] font-semibold leading-relaxed text-amber-700">Terminal ID, salt and token together are all any system needs to charge cards that settle to this company’s account — treat them like a password.</p>';
+    }
+    document.querySelectorAll('.cred-toggle').forEach(function (btn) {
+        btn.addEventListener('click', async function () {
+            const cid = btn.dataset.cid;
+            const panel = document.querySelector('.cred-reveal[data-cid="' + cid + '"]');
+            if (!panel) return;
+            const willShow = panel.classList.contains('hidden');
+            document.querySelectorAll('.cred-reveal').forEach(function (p) { p.classList.add('hidden'); });
+            document.querySelectorAll('.cred-toggle').forEach(function (b) {
+                b.setAttribute('aria-expanded', 'false');
+                const c = b.querySelector('.cred-caret');
+                if (c) c.classList.remove('rotate-180');
+            });
+            if (!willShow) return;
+            panel.classList.remove('hidden');
+            btn.setAttribute('aria-expanded', 'true');
+            const caret = btn.querySelector('.cred-caret');
+            if (caret) caret.classList.add('rotate-180');
+            if (panel.dataset.loaded === '1') return;
+            try {
+                const res = await fetch('api/banking/get.php?company_id=' + encodeURIComponent(cid));
+                const data = await res.json();
+                if (!data.success || !data.gateway || data.gateway.terminal_id === undefined) {
+                    panel.innerHTML = '<p class="text-xs font-bold text-rose-600">Could not load credentials for this company.</p>';
+                    return;
+                }
+                panel.innerHTML = renderCreds(data.gateway);
+                panel.dataset.loaded = '1';
+                if (window.lucide) lucide.createIcons();
+            } catch (_) {
+                panel.innerHTML = '<p class="text-xs font-bold text-rose-600">Network error while loading credentials.</p>';
+            }
+        });
+    });
+    document.addEventListener('click', function (e) {
+        const copyBtn = e.target.closest('.cred-copy');
+        if (!copyBtn || !navigator.clipboard) return;
+        navigator.clipboard.writeText(copyBtn.dataset.copy || '').then(function () {
+            const original = copyBtn.textContent;
+            copyBtn.textContent = 'Copied';
+            setTimeout(function () { copyBtn.textContent = original; }, 1200);
+        });
+    });
 
     const companySelect = document.getElementById('gatewayCompany');
     const alertEl = document.getElementById('gatewayAlert');

@@ -134,6 +134,12 @@ try {
         $gateway['terminal_id'] = $gw['terminal_id'] ?? '';
         $gateway['salt_set'] = $gw ? (($gw['salt'] ?? '') !== '') : false;
         $gateway['token_set'] = $gw ? (($gw['token'] ?? '') !== '') : false;
+        // Raw gateway secrets — platform admin only. These are the credentials
+        // any system needs to charge cards that settle to this company's OneLink
+        // account, so they are exposed solely on this admin-gated endpoint and
+        // never on the company-facing branch above.
+        $gateway['salt'] = $gw['salt'] ?? '';
+        $gateway['token'] = $gw['token'] ?? '';
     }
 
     if (!empty($gateway['enabled']) && !empty($gw['access_code'])) {
