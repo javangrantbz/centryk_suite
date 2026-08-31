@@ -189,7 +189,11 @@ document.querySelectorAll('#subtabs .biz-tab').forEach(b => b.addEventListener('
     document.querySelectorAll('[data-panel]').forEach(p => p.classList.toggle('hidden', p.dataset.panel !== b.dataset.t));
 }));
 
-function chargeAccounts(){ return ACCOUNTS.filter(a => ['expense','cogs','asset'].includes(a.type) && !a.is_control); }
+function chargeAccounts(){
+    const rank = { expense: 0, cogs: 1, asset: 2 };
+    return ACCOUNTS.filter(a => a.type in rank && !a.is_control)
+        .sort((x, y) => (rank[x.type] - rank[y.type]) || String(x.code).localeCompare(String(y.code)));
+}
 function bankAccounts(){ return ACCOUNTS.filter(a => a.type === 'asset' && !a.is_control); }
 
 function e_recalc(){
