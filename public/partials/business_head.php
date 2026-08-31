@@ -135,4 +135,48 @@
   .biz-notice-amber { border-color: #fcd9a5; background: #fffbeb; color: #92400e; }
   .biz-notice-red   { border-color: #fecaca; background: #fef2f2; color: #b91c1c; }
   .biz-notice-green { border-color: #bbf7d0; background: #f0fdf4; color: #15803d; }
+
+  /* ── Left rail shared by every Centryk Business tool ──────────────── */
+  .biz-layout { display: flex; align-items: flex-start; }
+  .biz-layout-main { flex: 1 1 auto; min-width: 0; }
+  .biz-side {
+    flex: 0 0 210px; width: 210px; align-self: stretch;
+    position: sticky; top: 72px;
+    max-height: calc(100vh - 72px); overflow-y: auto;
+    border-right: 1px solid var(--bz-line); background: #fff;
+    padding: 10px 8px;
+  }
+  .biz-side-co { margin: 2px 4px 6px; }
+  .biz-side-co select {
+    width: 100%; height: 30px; border: 1px solid #cbd5e1; border-radius: 4px;
+    padding: 0 6px; font: inherit; font-size: 12px; background: #fff; color: var(--bz-fg);
+  }
+  .biz-nav-label {
+    font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--bz-faint); padding: 9px 8px 3px;
+  }
+  .biz-nav-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 8px; border-radius: 5px;
+    font-size: 12.5px; font-weight: 600; color: var(--bz-muted); text-decoration: none;
+  }
+  .biz-nav-item:hover { background: var(--bz-head); color: var(--bz-fg); }
+  .biz-nav-item.is-active { background: #eef2ff; color: var(--bz-accent-d); }
+  .biz-nav-item svg { width: 15px; height: 15px; flex-shrink: 0; }
+  .biz-nav-sep { height: 1px; background: var(--bz-line-soft); margin: 7px 6px; }
+
+  @media print { .biz-side { display: none !important; } .biz-layout-main { display: block; } }
+
+  @media (max-width: 860px) {
+    .biz-layout { display: block; }
+    .biz-side {
+      position: sticky; top: 72px; width: auto; max-height: none; flex-basis: auto;
+      display: flex; align-items: center; gap: 4px; overflow-x: auto;
+      border-right: 0; border-bottom: 1px solid var(--bz-line); padding: 6px 8px;
+    }
+    .biz-nav-label, .biz-nav-sep { display: none; }
+    .biz-side-co { margin: 0 6px 0 0; flex-shrink: 0; }
+    .biz-side-co select { width: 150px; }
+    .biz-nav-item { white-space: nowrap; padding: 5px 9px; }
+  }
 </style>
