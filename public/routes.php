@@ -61,16 +61,6 @@ $headerActionsHtml = ob_get_clean();
             <h1 class="mt-0.5">Routes &amp; settlement</h1>
         </div>
         <a href="routes_field.php" class="biz-btn biz-btn-ghost biz-btn-sm">Driver view ›</a>
-        <?php if (count($companies) > 1): ?>
-            <div class="biz-seg">
-                <?php foreach ($companies as $c): ?>
-                    <a href="routes.php?company_id=<?= (int)$c['id'] ?>"
-                       class="<?= $activeCompany && (int)$c['id'] === (int)$activeCompany['id'] ? 'is-active' : '' ?>">
-                        <?= htmlspecialchars($c['name']) ?>
-                    </a>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
     </div>
 
     <?php if (!$companies): ?>

@@ -58,16 +58,6 @@ $headerActionsHtml = ob_get_clean();
             <?php if ($activeCompany): ?>
             <a href="business_tax.php?company_id=<?= (int)$activeCompany['id'] ?>" class="biz-btn biz-btn-ghost biz-btn-sm">GST summary</a>
             <?php endif; ?>
-            <?php if (count($companies) > 1): ?>
-            <span class="biz-seg">
-                <?php foreach ($companies as $c): ?>
-                    <a href="business_insights.php?company_id=<?= (int)$c['id'] ?>"
-                       class="<?= $activeCompany && (int)$c['id'] === (int)$activeCompany['id'] ? 'is-active' : '' ?>">
-                        <?= htmlspecialchars($c['name']) ?>
-                    </a>
-                <?php endforeach; ?>
-            </span>
-            <?php endif; ?>
         </span>
     </div>
 
