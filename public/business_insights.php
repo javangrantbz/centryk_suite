@@ -46,7 +46,7 @@ $headerActionsHtml = ob_get_clean();
 <html lang="en">
 <head><?php $bizTitle = 'Business Insights'; include __DIR__ . '/partials/business_head.php'; ?></head>
 <body class="min-h-screen bg-slate-50 antialiased">
-<?php $pageTitle = 'Business Insights'; $headerMaxW = 'max-w-5xl'; $awCurrent = 'centryk'; include __DIR__ . '/partials/account_header.php'; ?>
+<?php $pageTitle = 'Business Insights'; $headerMaxW = 'max-w-5xl'; $awCurrent = 'centryk'; include __DIR__ . '/partials/account_header.php'; $bizNav = 'insights'; include __DIR__ . '/partials/business_sidebar.php'; ?>
 
 <div class="biz mx-auto max-w-5xl px-4 py-4">
     <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -174,5 +174,6 @@ async function load(){
 }
 load();
 </script>
+<?php include __DIR__ . '/partials/business_sidebar_end.php'; ?>
 </body>
 </html>

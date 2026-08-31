@@ -52,6 +52,8 @@ include __DIR__ . '/partials/admin_tools_dropdown.php';
 $headerActionsHtml = ob_get_clean();
 $pageTitle = 'Expenses'; $headerMaxW = 'max-w-5xl'; $awCurrent = 'centryk';
 include __DIR__ . '/partials/account_header.php';
+$bizNav = 'accounting';
+include __DIR__ . '/partials/business_sidebar.php';
 ?>
 
 <div class="biz mx-auto max-w-5xl px-4 py-4">
@@ -369,5 +371,6 @@ async function init(){
 }
 init();
 </script>
+<?php include __DIR__ . '/partials/business_sidebar_end.php'; ?>
 </body>
 </html>

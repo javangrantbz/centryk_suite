@@ -42,7 +42,7 @@ $headerActionsHtml = ob_get_clean();
 <html lang="en">
 <head><?php $bizTitle = 'Company Groups'; include __DIR__ . '/partials/business_head.php'; ?></head>
 <body class="min-h-screen bg-slate-50 antialiased">
-<?php $pageTitle = 'Company Groups'; $headerMaxW = 'max-w-6xl'; $awCurrent = 'centryk'; include __DIR__ . '/partials/account_header.php'; ?>
+<?php $pageTitle = 'Company Groups'; $headerMaxW = 'max-w-6xl'; $awCurrent = 'centryk'; include __DIR__ . '/partials/account_header.php'; $bizNav = 'groups'; include __DIR__ . '/partials/business_sidebar.php'; ?>
 
 <div class="biz mx-auto max-w-6xl px-4 py-4">
 
@@ -268,5 +268,6 @@ if (amf) amf.addEventListener('submit', async (e) => {
 
 load();
 </script>
+<?php include __DIR__ . '/partials/business_sidebar_end.php'; ?>
 </body>
 </html>

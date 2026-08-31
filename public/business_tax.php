@@ -47,7 +47,7 @@ $headerActionsHtml = ob_get_clean();
 <html lang="en">
 <head><?php $bizTitle = 'GST Summary'; include __DIR__ . '/partials/business_head.php'; ?></head>
 <body class="min-h-screen bg-slate-50 antialiased">
-<?php $pageTitle = 'GST Summary'; $headerMaxW = 'max-w-3xl'; $awCurrent = 'centryk'; include __DIR__ . '/partials/account_header.php'; ?>
+<?php $pageTitle = 'GST Summary'; $headerMaxW = 'max-w-3xl'; $awCurrent = 'centryk'; include __DIR__ . '/partials/account_header.php'; $bizNav = 'tax'; include __DIR__ . '/partials/business_sidebar.php'; ?>
 
 <div class="biz mx-auto max-w-3xl px-4 py-4">
     <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -147,5 +147,6 @@ async function run(){
 }
 run();
 </script>
+<?php include __DIR__ . '/partials/business_sidebar_end.php'; ?>
 </body>
 </html>
