@@ -21,6 +21,9 @@ RewriteRule ^vb/([a-zA-Z0-9-]+)/?$ visionBoard/short.php?slug=$1 [L,QSA]
 # Short links for public store pages (centryk.bz/s/<company-slug> → 301 to store.php)
 RewriteRule ^s/([a-zA-Z0-9-]+)/?$ public/store-link.php?slug=$1 [L,QSA]
 
+# Short links for public forms (centryk.bz/f/<share-token> → the fill page)
+RewriteRule ^f/([a-zA-Z0-9]+)/?$ public/f.php?t=$1 [L,QSA]
+
 # Memorable public entry points
 RewriteRule ^store/?$     public/store.php     [L,QSA]
 RewriteRule ^jobs/?$      public/jobs.php      [L,QSA]
