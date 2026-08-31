@@ -19,6 +19,23 @@ class ReceivablesService
 {
     private const OPEN = "'sent','overdue'";
 
+    /**
+     * Best-effort push of an AR change into the general ledger — only does
+     * anything when the company runs Centryk Accounting with AR posting on.
+     * Never throws: a ledger problem must not fail an AR action, and GlSync's
+     * sweep is the backstop.
+     */
+    private static function pushToLedger(int $companyId, string $what, int $id): void
+    {
+        $f = __DIR__ . '/GlSync.php';
+        if (is_file($f)) {
+            require_once $f;
+            if (class_exists('GlSync')) {
+                GlSync::tryPost($companyId, $what, $id);
+            }
+        }
+    }
+
     /** SQL expression for an invoice's effective due date. */
     private const DUE_EXPR =
         "COALESCE(i.due_date, DATE_ADD(i.issue_date, INTERVAL COALESCE(c.payment_terms_days, 0) DAY))";
@@ -1017,6 +1034,8 @@ class ReceivablesService
             throw $e;
         }
 
+        self::pushToLedger($companyId, 'receipt', $paymentId);
+
         return [
             'payment_id' => $paymentId,
             'allocated'  => round($amount - $remaining, 2),
@@ -1348,6 +1367,8 @@ class ReceivablesService
             if ($ownTxn && $pdo->inTransaction()) { $pdo->rollBack(); }
             throw $e;
         }
+
+        self::pushToLedger($companyId, 'cheque_bounce', $paymentId);
     }
 
     // ── Write-offs & credit adjustments (maker-checker) ──────────────────────
@@ -1528,6 +1549,8 @@ class ReceivablesService
             if ($ownTxn && $pdo->inTransaction()) { $pdo->rollBack(); }
             throw $e;
         }
+
+        self::pushToLedger($companyId, 'writeoff', $writeoffId);
     }
 
     /** Reverse an approved write-off (a mistake). Admin only. */
