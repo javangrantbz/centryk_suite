@@ -26,6 +26,17 @@ class Entitlements
     public const READ = 'read';
     public const NONE = 'none';
 
+    // ── Free preview promo ─────────────────────────────────────────────────
+    // A company can opt into a limited-time free run of every Business package
+    // from business.php. Each grant is an ordinary active entitlement with
+    // source='promo' and this expiry — so every level() check keeps working
+    // and the packages simply switch off after the date. Only the on-page
+    // notice (promoInfo) treats it specially.
+    public const PROMO_PACKAGES   = ['accounting', 'receivables', 'reconciliation', 'routes', 'enterprise'];
+    public const PROMO_ENDS_ON    = '2027-12-31';
+    public const PROMO_EXPIRES_AT = '2027-12-31 23:59:59';
+    public const PROMO_PAID_FROM  = '2028-01-01';
+
     /** @var array<string,string> per-request memo, "companyId:packageKey" => level */
     private static array $memo = [];
 
@@ -256,6 +267,86 @@ class Entitlements
     public static function revoke(int $companyId, string $packageKey, ?int $actorUserId = null): void
     {
         self::transition($companyId, $packageKey, 'revoked', 'entitlement.revoked', $actorUserId, 'Revoked');
+    }
+
+    // ── Free preview promo ─────────────────────────────────────────────────
+
+    /** True while the free-preview offer is still open. */
+    public static function promoActive(): bool
+    {
+        return date('Y-m-d') <= self::PROMO_ENDS_ON;
+    }
+
+    /**
+     * Turn on the free preview for a company: grant every promo package with
+     * the promo expiry. Never touches a package the company already holds
+     * through a real grant (admin_grant / trial) — only fills the gaps.
+     *
+     * @return array{granted: array<string>, ends_on: string}
+     * @throws RuntimeException if the offer has closed
+     */
+    public static function startPreview(int $companyId, ?int $actorUserId): array
+    {
+        if (!self::promoActive()) {
+            throw new RuntimeException('The Centryk Business free preview has ended.');
+        }
+
+        $existing = DB::pdo()->prepare(
+            "SELECT package_key, source FROM company_entitlements
+              WHERE company_id = :c AND state <> 'revoked'"
+        );
+        $existing->execute(['c' => $companyId]);
+        $have = [];
+        foreach ($existing->fetchAll() as $row) {
+            $have[$row['package_key']] = $row['source'];
+        }
+
+        $granted = [];
+        foreach (self::PROMO_PACKAGES as $pkg) {
+            if (isset($have[$pkg]) && $have[$pkg] !== 'promo') {
+                continue; // a real grant is already in place — leave it alone
+            }
+            self::grant($companyId, $pkg, null, $actorUserId, 'promo', self::PROMO_EXPIRES_AT, 'Free preview');
+            $granted[] = $pkg;
+        }
+
+        self::$memo = [];
+        Audit::log([
+            'actor_user_id' => $actorUserId,
+            'company_id'    => $companyId,
+            'event_type'    => 'entitlement.preview.started',
+            'summary'       => 'Started the Centryk Business free preview (' . count($granted) . ' package(s), through ' . self::PROMO_ENDS_ON . ')',
+            'metadata'      => ['granted' => $granted, 'ends_on' => self::PROMO_ENDS_ON],
+        ]);
+
+        return ['granted' => $granted, 'ends_on' => self::PROMO_ENDS_ON];
+    }
+
+    /**
+     * Preview status for the on-page notice. Null when the company holds no
+     * active promo entitlement.
+     *
+     * @return array{ends_on:string, paid_from:string, days_left:int, packages:int}|null
+     */
+    public static function promoInfo(int $companyId): ?array
+    {
+        $stmt = DB::pdo()->prepare(
+            "SELECT COUNT(*) FROM company_entitlements
+              WHERE company_id = :c AND source = 'promo' AND state = 'active'
+                AND (expires_at IS NULL OR expires_at > NOW())"
+        );
+        $stmt->execute(['c' => $companyId]);
+        $n = (int)$stmt->fetchColumn();
+        if ($n === 0) {
+            return null;
+        }
+        $daysLeft = (int)ceil((strtotime(self::PROMO_EXPIRES_AT) - time()) / 86400);
+        return [
+            'ends_on'   => self::PROMO_ENDS_ON,
+            'paid_from' => self::PROMO_PAID_FROM,
+            'days_left' => max(0, $daysLeft),
+            'packages'  => $n,
+        ];
     }
 
     // ── Group-level entitlements (Enterprise) ───────────────────────────────
