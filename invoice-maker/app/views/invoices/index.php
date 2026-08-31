@@ -57,81 +57,65 @@ $invoiceStats = [
 ];
 ?>
 
-<div class="h-full flex flex-col">
-    <div class="mb-4 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-sm flex-shrink-0">
-        <div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-            <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
-                <?php foreach ($invoiceStats as $i => $stat): ?>
-                <?php if ($i > 0): ?><span class="hidden h-4 w-px bg-slate-200 sm:block"></span><?php endif; ?>
-                <div class="flex items-center gap-1.5">
-                    <i data-lucide="<?= $stat['icon'] ?>" class="w-4 h-4 text-<?= $stat['tint'] ?>-500"></i>
-                    <span class="text-sm font-black text-slate-900"><?= $stat['value'] ?></span>
-                    <span class="text-[11px] font-bold uppercase tracking-wide text-slate-400"><?= $stat['label'] ?></span>
-                </div>
-                <?php endforeach; ?>
-            </div>
+<div class="biz h-full flex flex-col">
 
-            <div class="flex shrink-0 items-center gap-2">
-                <a href="<?= BASE_URL ?>/?page=quotes-create" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 transition">
-                    <i data-lucide="plus" class="w-4 h-4"></i> New Quote
-                </a>
-                <a href="<?= BASE_URL ?>/?page=invoices-create" class="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-emerald-700 transition shadow-sm shadow-emerald-200">
-                    <i data-lucide="plus" class="w-4 h-4"></i> New Invoice
-                </a>
-            </div>
+    <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <div>
+            <p class="biz-kicker">Invoice engine</p>
+            <h1 class="mt-0.5">Invoices &amp; quotes</h1>
+        </div>
+        <div class="flex shrink-0 items-center gap-2">
+            <a href="<?= BASE_URL ?>/?page=quotes-create" class="biz-btn biz-btn-ghost"><i data-lucide="plus" class="w-3.5 h-3.5"></i> New quote</a>
+            <a href="<?= BASE_URL ?>/?page=invoices-create" class="biz-btn biz-btn-primary"><i data-lucide="plus" class="w-3.5 h-3.5"></i> New invoice</a>
         </div>
     </div>
 
-    <div class="flex-1 min-h-0 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
-        <!-- Toolbar: filters + search -->
-        <div class="flex flex-col gap-3 border-b border-gray-100 px-4 py-3 flex-shrink-0 sm:flex-row sm:items-center sm:justify-between">
-            <div class="inline-flex rounded-xl border border-slate-200 bg-white p-1">
+    <div class="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4 flex-shrink-0">
+        <?php foreach ($invoiceStats as $stat): ?>
+        <div class="biz-tile">
+            <div class="biz-tile-l"><?= e($stat['label']) ?></div>
+            <div class="biz-tile-v"><?= $stat['value'] ?></div>
+        </div>
+        <?php endforeach; ?>
+    </div>
+
+    <div class="biz-panel flex-1 min-h-0 flex flex-col overflow-hidden">
+        <div class="biz-panel-head" style="text-transform:none;letter-spacing:0">
+            <span class="biz-seg">
                 <?php foreach ($tabs as $key => $label): ?>
-                <a href="<?= BASE_URL ?>/?page=invoices&type=<?= $key ?>"
-                   class="px-4 py-1.5 rounded-lg text-xs font-bold transition <?= $type === $key ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-800' ?>">
-                    <?= $label ?>
-                </a>
+                <a href="<?= BASE_URL ?>/?page=invoices&type=<?= $key ?>" class="<?= $type === $key ? 'is-active' : '' ?>"><?= $label ?></a>
                 <?php endforeach; ?>
-            </div>
-            <div class="relative">
-                <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-gray-400"></i>
-                <input type="text" id="doc-search" placeholder="Search documents" class="w-full sm:w-56 pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-emerald-500 focus:border-emerald-500 transition">
-            </div>
+            </span>
+            <input type="text" id="doc-search" class="biz-input" style="width:190px" placeholder="Search…">
         </div>
         <div class="flex-1 overflow-y-auto custom-scrollbar">
             <?php if (empty($rows)): ?>
-            <div class="py-20 text-center text-gray-400">
-                <i data-lucide="file-text" class="w-8 h-8 mx-auto mb-2 opacity-20"></i>
-                <p class="text-sm font-medium">Nothing here yet.</p>
-            </div>
+            <div class="biz-panel-empty">Nothing here yet.</div>
             <?php else: ?>
-            <table class="w-full text-sm">
-                <thead class="sticky top-0 bg-gray-50/90 backdrop-blur border-b border-gray-100 text-[10px] uppercase tracking-widest text-slate-400">
-                    <tr>
-                        <th class="text-left font-black px-5 py-3">Type</th>
-                        <th class="text-left font-black px-3 py-3">Number</th>
-                        <th class="text-left font-black px-3 py-3">Customer</th>
-                        <th class="text-left font-black px-3 py-3 hidden sm:table-cell">Date</th>
-                        <th class="text-left font-black px-3 py-3">Status</th>
-                        <th class="text-right font-black px-5 py-3">Total</th>
+            <table class="w-full biz-num" style="font-size:12px">
+                <thead>
+                    <tr class="biz-muted" style="text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.06em">
+                        <th class="px-3 py-2 font-bold">Type</th>
+                        <th class="px-3 py-2 font-bold">Number</th>
+                        <th class="px-3 py-2 font-bold">Customer</th>
+                        <th class="px-3 py-2 font-bold hidden sm:table-cell">Date</th>
+                        <th class="px-3 py-2 font-bold">Status</th>
+                        <th class="px-3 py-2 font-bold" style="text-align:right">Total</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-50">
+                <tbody>
                     <?php foreach ($rows as $r):
                         $isInv = $r['doc_type'] === 'invoice';
                         $href  = BASE_URL . ($isInv ? '/?page=invoices-view&id=' : '/?page=quotes-view&id=') . (int)$r['id'];
                     ?>
-                    <tr class="doc-row hover:bg-gray-50 cursor-pointer transition" onclick="window.location='<?= $href ?>'">
-                        <td class="px-5 py-3">
-                            <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wider <?= $isInv ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600' ?>">
-                                <i data-lucide="<?= $isInv ? 'file-text' : 'clipboard-list' ?>" class="w-3 h-3"></i><?= $isInv ? 'Invoice' : 'Quote' ?>
-                            </span>
-                        </td>
-                        <td class="px-3 py-3 font-mono font-bold text-slate-900"><?= e($r['number']) ?></td>
-                        <td class="px-3 py-3 font-semibold text-slate-600 truncate max-w-[180px]"><?= e($r['customer_name'] ?: '-') ?></td>
-                        <td class="px-3 py-3 text-slate-400 hidden sm:table-cell"><?= $r['issue_date'] ? date('M j, Y', strtotime($r['issue_date'])) : '' ?></td>
-                        <td class="px-3 py-3"><span class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider <?= inv_status_badge($r['status']) ?>"><?= e($r['status']) ?></span></td>
-                        <td class="px-5 py-3 text-right font-black text-slate-900"><?= money($r['total']) ?></td>
+                    <tr class="doc-row" style="border-top:1px solid var(--bz-line-soft);cursor:pointer" onclick="window.location='<?= $href ?>'"
+                        onmouseover="this.style.background='var(--bz-head)'" onmouseout="this.style.background=''">
+                        <td class="px-3 py-1.5"><span class="biz-chip <?= $isInv ? 'biz-c-blue' : 'biz-c-amber' ?>"><?= $isInv ? 'Invoice' : 'Quote' ?></span></td>
+                        <td class="px-3 py-1.5 font-bold" style="font-family:ui-monospace,monospace"><?= e($r['number']) ?></td>
+                        <td class="px-3 py-1.5 biz-muted truncate" style="max-width:200px"><?= e($r['customer_name'] ?: '—') ?></td>
+                        <td class="px-3 py-1.5 biz-faint hidden sm:table-cell" style="color:var(--bz-faint)"><?= $r['issue_date'] ? date('j M Y', strtotime($r['issue_date'])) : '' ?></td>
+                        <td class="px-3 py-1.5"><span class="biz-chip <?= inv_status_chip($r['status']) ?>"><?= e($r['status']) ?></span></td>
+                        <td class="px-3 py-1.5 font-bold" style="text-align:right"><?= money($r['total']) ?></td>
                     </tr>
                     <?php endforeach; ?>
                 </tbody>

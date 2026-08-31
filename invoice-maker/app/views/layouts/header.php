@@ -65,6 +65,14 @@ $invOnelinkUrl      = rtrim(CENTRYK_BASE, '/') . '/onelink-payments.php' . ($inv
             content: "";
         }
     </style>
+    <?php include __DIR__ . '/../../../../public/partials/biz-system.php'; ?>
+    <style>
+        /* Invoice engine adopts the Centryk dense-tool system, with its own accent. */
+        .biz { --bz-accent: #059669; --bz-accent-d: #047857; }
+        .biz .biz-tab.is-active,
+        .biz .biz-seg > .is-active,
+        .biz .biz-row.is-active { background: #ecfdf5; }
+    </style>
 </head>
 <body class="bg-[#f8fafc] text-slate-900 overflow-hidden font-sans">
 
@@ -332,6 +340,7 @@ $invOnelinkUrl      = rtrim(CENTRYK_BASE, '/') . '/onelink-payments.php' . ($inv
         <script>window.CENTRYK_BASE_URL = <?= json_encode(rtrim(CENTRYK_BASE, '/') . '/') ?>;</script>
         <?php include __DIR__ . '/../../../../public/partials/calendar_drawer.php'; ?>
 
-        <!-- Main Content Area -->
-        <main class="flex-1 overflow-y-auto custom-scrollbar px-4 pb-4 pt-1 lg:px-5 lg:pb-5 lg:pt-1">
+        <!-- Main Content Area. Converted views wrap their content in .biz to opt
+             into the Centryk dense-tool system; the rest are untouched. -->
+        <main class="flex-1 overflow-y-auto custom-scrollbar px-4 pb-4 pt-2 lg:px-5 lg:pb-5 lg:pt-2">
             <div class="max-w-7xl mx-auto h-full">

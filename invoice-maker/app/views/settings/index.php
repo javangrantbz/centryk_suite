@@ -53,127 +53,92 @@ $previewLogoWrapperClass = match ($logoPosition) {
 $roField = function (string $label, $value) {
     $val = trim((string)$value);
     echo '<div>';
-    echo '<div class="mb-1 text-[10px] font-bold uppercase tracking-widest text-gray-400">' . e($label) . '</div>';
+    echo '<div class="biz-label">' . e($label) . '</div>';
     echo $val !== ''
-        ? '<div class="text-sm font-semibold text-slate-800 whitespace-pre-line">' . nl2br(e($val)) . '</div>'
-        : '<div class="text-sm font-medium italic text-slate-300">Not set</div>';
+        ? '<div class="whitespace-pre-line" style="font-size:12px;font-weight:600">' . nl2br(e($val)) . '</div>'
+        : '<div style="font-size:12px;color:var(--bz-faint)">Not set</div>';
     echo '</div>';
 };
 ?>
 
+<div class="biz">
+<p class="biz-kicker">Invoice engine</p>
+<h1 class="mt-0.5 mb-3">Header &amp; terms</h1>
+
 <?php if ($success): ?>
-    <div class="bg-emerald-50 text-emerald-700 p-4 rounded-2xl mb-5 flex items-center border border-emerald-100">
-        <i data-lucide="check-circle" class="w-5 h-5 mr-3"></i>
-        <?= e($success) ?>
-    </div>
+    <div class="biz-notice biz-notice-green mb-3"><?= e($success) ?></div>
 <?php endif; ?>
 
-<form method="POST" class="max-w-none space-y-5">
-    <div class="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
-        <div class="space-y-5 xl:col-span-5">
+<form method="POST" class="max-w-none">
+    <div class="grid grid-cols-1 xl:grid-cols-12 gap-3 items-start">
+        <div class="space-y-3 xl:col-span-5">
 
             <!-- Business profile — managed in Centryk, read-only here -->
-            <div class="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 space-y-5">
-                <div class="flex items-start justify-between gap-3">
-                    <div>
-                        <h3 class="text-lg font-bold text-slate-900">Business Profile</h3>
-                        <p class="mt-0.5 text-xs font-semibold text-slate-400">
-                            Managed in your Centryk company profile. Shown on every invoice &amp; quote.
-                        </p>
-                    </div>
-                    <a href="<?= e($editUrl) ?>" target="_blank" rel="noopener"
-                       class="inline-flex shrink-0 items-center gap-1.5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-black text-slate-700 transition hover:bg-slate-100">
-                        <i data-lucide="pencil" class="w-3.5 h-3.5"></i> Edit
-                    </a>
+            <div class="biz-panel">
+                <div class="biz-panel-head"><span>Business profile</span>
+                    <a href="<?= e($editUrl) ?>" target="_blank" rel="noopener" class="biz-t-green" style="font-size:11px;font-weight:700">Edit in Centryk →</a>
                 </div>
-
-                <div class="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <?php if ($logoUrl): ?>
-                    <img src="<?= e($logoUrl) ?>" alt="Logo" class="h-16 w-16 shrink-0 rounded-2xl border border-slate-200 bg-white object-contain p-1.5 shadow-sm">
-                    <?php else: ?>
-                    <div class="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-white text-slate-300">
-                        <i data-lucide="image" class="w-6 h-6"></i>
+                <div class="biz-panel-body space-y-3">
+                    <div class="flex items-center gap-3">
+                        <?php if ($logoUrl): ?>
+                        <img src="<?= e($logoUrl) ?>" alt="Logo" class="h-12 w-12 shrink-0 rounded border object-contain p-1" style="border-color:var(--bz-line);background:#fff">
+                        <?php else: ?>
+                        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded border" style="border-style:dashed;border-color:var(--bz-line);color:var(--bz-faint)"><i data-lucide="image" class="w-5 h-5"></i></div>
+                        <?php endif; ?>
+                        <div class="min-w-0">
+                            <div class="font-bold truncate"><?= e($business['business_name'] ?: 'Company name not set') ?></div>
+                            <div class="biz-muted truncate" style="font-size:11px"><?= e($business['business_email'] ?: 'No email on file') ?></div>
+                        </div>
                     </div>
-                    <?php endif; ?>
-                    <div class="min-w-0">
-                        <div class="text-base font-black text-slate-900 truncate"><?= e($business['business_name'] ?: 'Company name not set') ?></div>
-                        <div class="text-xs font-semibold text-slate-400 truncate"><?= e($business['business_email'] ?: 'No email on file') ?></div>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-2">
-                    <?php
-                    $roField('Business Email', $business['business_email']);
-                    $roField('TIN Number', $business['business_tax_number']);
-                    $roField('Phone Numbers', $phones ? implode("\n", $phones) : '');
-                    $roField('Opening Hours', $business['opening_hours']);
-                    ?>
-                    <div class="md:col-span-2">
-                        <?php $roField('Business Address', $business['business_address']); ?>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <?php
+                        $roField('Business email', $business['business_email']);
+                        $roField('TIN number', $business['business_tax_number']);
+                        $roField('Phone numbers', $phones ? implode("\n", $phones) : '');
+                        $roField('Opening hours', $business['opening_hours']);
+                        ?>
+                        <div class="md:col-span-2"><?php $roField('Business address', $business['business_address']); ?></div>
                     </div>
                 </div>
             </div>
 
             <!-- Default terms — editable, app-side -->
-            <div class="bg-white p-5 rounded-3xl shadow-sm border border-gray-100">
-                <div class="flex items-center justify-between gap-3 mb-4">
-                    <h3 class="text-lg font-bold text-slate-900 flex items-center">
-                        <i data-lucide="file-check" class="w-5 h-5 mr-3 text-emerald-600"></i>
-                        Default Terms
-                    </h3>
-                    <button class="bg-[#1a1a1a] hover:bg-emerald-600 text-white px-6 py-2.5 rounded-2xl font-black shadow-lg shadow-gray-200 transition-all hover:scale-105 active:scale-95 text-sm">
-                        Save Changes
-                    </button>
+            <div class="biz-panel">
+                <div class="biz-panel-head"><span>Default terms</span>
+                    <button class="biz-btn biz-btn-primary biz-btn-sm">Save changes</button>
                 </div>
-
-                <div class="grid grid-cols-1 gap-4">
-                    <div>
-                        <label class="block mb-2 text-xs font-bold text-gray-400 uppercase tracking-widest">Invoice Terms</label>
-                        <textarea name="invoice_terms" rows="4" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" placeholder="e.g. Net 30 days"><?= e($business['invoice_terms']) ?></textarea>
-                    </div>
-
-                    <div>
-                        <label class="block mb-2 text-xs font-bold text-gray-400 uppercase tracking-widest">Quote Terms</label>
-                        <textarea name="quote_terms" rows="4" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" placeholder="e.g. Valid for 14 days"><?= e($business['quote_terms']) ?></textarea>
-                    </div>
+                <div class="biz-panel-body space-y-2">
+                    <label class="block"><span class="biz-label">Invoice terms</span>
+                        <textarea name="invoice_terms" rows="4" class="biz-input" placeholder="e.g. Net 30 days"><?= e($business['invoice_terms']) ?></textarea></label>
+                    <label class="block"><span class="biz-label">Quote terms</span>
+                        <textarea name="quote_terms" rows="4" class="biz-input" placeholder="e.g. Valid for 14 days"><?= e($business['quote_terms']) ?></textarea></label>
                 </div>
             </div>
         </div>
 
-        <aside class="space-y-5 xl:sticky xl:top-4 xl:col-span-3">
-            <div class="bg-white p-5 rounded-3xl shadow-sm border border-gray-100">
-                <h3 class="text-lg font-bold text-slate-900 mb-4 flex items-center">
-                    <i data-lucide="palette" class="w-5 h-5 mr-3 text-emerald-600"></i>
-                    Branding
-                </h3>
-
-                <div class="space-y-5">
+        <aside class="space-y-3 xl:sticky xl:top-2 xl:col-span-3">
+            <div class="biz-panel">
+                <div class="biz-panel-head"><span>Branding</span></div>
+                <div class="biz-panel-body space-y-3">
                     <div>
-                        <label class="block mb-3 text-xs font-bold text-gray-400 uppercase tracking-widest">Business Logo</label>
-                        <div class="flex items-center gap-4">
+                        <span class="biz-label">Business logo</span>
+                        <div class="flex items-center gap-3 mt-1">
                             <?php if ($logoUrl): ?>
-                            <img src="<?= e($logoUrl) ?>" class="h-20 w-20 object-contain bg-slate-50 border border-slate-200 rounded-2xl p-2">
+                            <img src="<?= e($logoUrl) ?>" class="h-14 w-14 object-contain border rounded p-1" style="border-color:var(--bz-line);background:var(--bz-head)">
                             <?php else: ?>
-                            <div class="h-20 w-20 border-2 border-dashed border-slate-200 rounded-2xl flex items-center justify-center text-gray-300 bg-slate-50">
-                                <i data-lucide="image" class="w-7 h-7"></i>
-                            </div>
+                            <div class="h-14 w-14 border rounded flex items-center justify-center" style="border-style:dashed;border-color:var(--bz-line);color:var(--bz-faint)"><i data-lucide="image" class="w-6 h-6"></i></div>
                             <?php endif; ?>
-                            <p class="flex-1 text-[11px] font-semibold text-slate-400">
-                                Your logo comes from your Centryk company profile.
-                                <a href="<?= e($editUrl) ?>" target="_blank" rel="noopener" class="font-bold text-emerald-600 hover:text-emerald-700">Change it there →</a>
-                            </p>
+                            <p class="flex-1 biz-muted" style="font-size:11px">Comes from your Centryk company profile.
+                                <a href="<?= e($editUrl) ?>" target="_blank" rel="noopener" class="biz-t-green font-bold">Change it there →</a></p>
                         </div>
                     </div>
-
                     <div>
-                        <label class="block mb-3 text-xs font-bold text-gray-400 uppercase tracking-widest">Logo Position</label>
-                        <div class="grid grid-cols-3 gap-2">
+                        <span class="biz-label">Logo position</span>
+                        <div class="grid grid-cols-3 gap-2 mt-1">
                             <?php foreach (['left', 'center', 'right'] as $pos): ?>
                                 <label class="cursor-pointer">
                                     <input type="radio" name="logo_position" value="<?= $pos ?>" class="hidden peer" <?= $logoPosition === $pos ? 'checked' : '' ?>>
-                                    <div class="text-center px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-500 shadow-sm peer-checked:bg-emerald-600 peer-checked:text-white peer-checked:border-emerald-600 transition-all text-xs font-bold capitalize">
-                                        <?= $pos ?>
-                                    </div>
+                                    <div class="biz-btn biz-btn-ghost peer-checked:!bg-[var(--bz-accent)] peer-checked:!text-white peer-checked:!border-transparent" style="width:100%;text-transform:capitalize"><?= $pos ?></div>
                                 </label>
                             <?php endforeach; ?>
                         </div>
@@ -181,31 +146,20 @@ $roField = function (string $label, $value) {
                 </div>
             </div>
 
-            <div class="bg-white p-5 rounded-3xl shadow-sm border border-gray-100">
-                <h3 class="text-base font-bold text-slate-900 mb-4">Summary</h3>
-                <div class="space-y-3 text-sm">
-                    <div class="flex justify-between gap-3">
-                        <span class="text-slate-400">Company</span>
-                        <span class="text-right font-semibold text-slate-800"><?= e($business['business_name'] ?: 'Not set') ?></span>
-                    </div>
-                    <div class="flex justify-between gap-3">
-                        <span class="text-slate-400">TIN</span>
-                        <span class="text-right font-semibold text-slate-800"><?= e($business['business_tax_number'] ?: 'Not set') ?></span>
-                    </div>
-                    <div class="flex justify-between gap-3">
-                        <span class="text-slate-400">Currency</span>
-                        <span class="text-right font-semibold text-slate-800">$</span>
-                    </div>
+            <div class="biz-panel">
+                <div class="biz-panel-head"><span>Summary</span></div>
+                <div class="biz-panel-body" style="font-size:12px">
+                    <div class="flex justify-between gap-3 py-0.5"><span class="biz-muted">Company</span><span class="font-semibold" style="text-align:right"><?= e($business['business_name'] ?: 'Not set') ?></span></div>
+                    <div class="flex justify-between gap-3 py-0.5"><span class="biz-muted">TIN</span><span class="font-semibold" style="text-align:right"><?= e($business['business_tax_number'] ?: 'Not set') ?></span></div>
+                    <div class="flex justify-between gap-3 py-0.5"><span class="biz-muted">Currency</span><span class="font-semibold" style="text-align:right">$</span></div>
                 </div>
             </div>
         </aside>
 
-        <aside class="space-y-5 xl:sticky xl:top-4 xl:col-span-4">
-            <div class="bg-white p-5 rounded-3xl shadow-sm border border-gray-100">
-                <div class="flex items-center justify-between gap-3 mb-4">
-                    <h3 class="text-lg font-bold text-slate-900">Preview</h3>
-                    <span class="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">Live Style</span>
-                </div>
+        <aside class="space-y-3 xl:sticky xl:top-2 xl:col-span-4">
+            <div class="biz-panel">
+                <div class="biz-panel-head"><span>Preview</span><span class="biz-chip biz-c-slate">live style</span></div>
+                <div class="biz-panel-body">
 
                 <div class="space-y-4">
                     <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4">
@@ -271,11 +225,13 @@ $roField = function (string $label, $value) {
                         <div id="previewQuoteTerms" class="mt-2 text-sm font-semibold"><?= e($business['quote_terms'] ?: 'Your default quote terms will appear here.') ?></div>
                         <div class="mt-3 text-xs text-slate-400">Invoice terms preview follows the same style using your selected currency and business details.</div>
                     </div>
-                </div>
-            </div>
+                </div><!-- /.space-y-4 -->
+            </div><!-- /.biz-panel-body -->
+            </div><!-- /.biz-panel -->
         </aside>
     </div>
 </form>
+</div><!-- /.biz -->
 
 <script>
 (function () {

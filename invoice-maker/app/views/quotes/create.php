@@ -71,190 +71,123 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $quoteNumber = 'QUO-' . date('Ymd') . '-' . rand(100, 999);
 ?>
 
-<div class="mb-4">
-    <div class="flex items-center space-x-2 text-xs text-gray-400 mb-3">
-        <a href="<?= BASE_URL ?>/?page=quotes" class="hover:text-emerald-600 transition-colors">Quotes</a>
-        <i data-lucide="chevron-right" class="w-4 h-4"></i>
-        <span class="text-slate-900 font-medium">New Quote</span>
-    </div>
-    <div class="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-        <div>
-            <h2 class="text-2xl font-extrabold text-slate-900 tracking-tight">Create Quote</h2>
-            <p class="text-xs text-slate-500">Compact workspace for selecting a client, adding items, and saving fast.</p>
-        </div>
-        <div class="hidden lg:flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-            <span class="rounded-full bg-white px-3 py-1.5 ring-1 ring-slate-200"><?= count($customers) ?> clients</span>
-            <span class="rounded-full bg-white px-3 py-1.5 ring-1 ring-slate-200">Draft builder</span>
-        </div>
-    </div>
+<div class="biz">
+<div class="mb-3">
+    <p class="biz-kicker"><a href="<?= BASE_URL ?>/?page=quotes" class="biz-t-green">Quotes</a> · new</p>
+    <h1 class="mt-0.5">Create quote</h1>
 </div>
 
-<form method="POST" class="space-y-4">
-    <div class="grid grid-cols-1 xl:grid-cols-[250px_minmax(0,1fr)_290px] gap-4 items-start">
-        <aside class="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden xl:sticky xl:top-4">
-            <div class="border-b border-gray-100 px-4 py-3">
-                <div class="flex items-center justify-between gap-3">
-                    <div>
-                        <h3 class="text-sm font-black text-slate-900">Clients</h3>
-                        <p class="text-[11px] text-slate-400">Pick one to prefill the quote.</p>
-                    </div>
-                    <a href="<?= BASE_URL ?>/?page=customers&action=create" class="rounded-xl bg-emerald-50 px-2.5 py-1.5 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100 transition">New</a>
-                </div>
-                <div class="relative mt-3">
-                    <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-slate-300"></i>
-                    <input type="text" id="quote-customer-search" placeholder="Search clients" class="w-full rounded-2xl border border-slate-300 bg-slate-50 pl-9 pr-3 py-2.5 text-sm focus:ring-emerald-500 focus:border-emerald-500">
-                </div>
+<form method="POST">
+    <div class="grid grid-cols-1 xl:grid-cols-[220px_minmax(0,1fr)_270px] gap-3 items-start">
+        <aside class="biz-panel overflow-hidden xl:sticky xl:top-2">
+            <div class="biz-panel-head"><span>Clients</span>
+                <a href="<?= BASE_URL ?>/?page=customers&action=create" class="biz-t-green" style="font-size:11px;font-weight:700">New</a>
             </div>
-            <div id="quote-customer-list" class="max-h-[420px] overflow-y-auto custom-scrollbar p-2 space-y-1">
+            <div class="biz-panel-body" style="border-bottom:1px solid var(--bz-line)">
+                <input type="text" id="quote-customer-search" placeholder="Search clients…" class="biz-input">
+            </div>
+            <div id="quote-customer-list" class="max-h-[380px] overflow-y-auto custom-scrollbar biz-list">
                 <?php foreach ($customers as $customer): ?>
-                    <button
-                        type="button"
-                        data-customer-option
+                    <button type="button" data-customer-option
                         data-customer-id="<?= (int)$customer['id'] ?>"
                         data-customer-name="<?= e(strtolower($customer['name'])) ?>"
-                        class="flex w-full items-center gap-3 rounded-2xl border border-transparent px-3 py-2.5 text-left transition hover:bg-slate-50 hover:border-slate-200"
-                    >
-                        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-sm font-black text-emerald-700">
-                            <?= strtoupper(substr($customer['name'], 0, 1)) ?>
-                        </span>
+                        class="biz-row" style="align-items:flex-start">
+                        <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded font-bold" style="font-size:11px;background:var(--bz-line-soft);color:var(--bz-muted)"><?= strtoupper(substr($customer['name'], 0, 1)) ?></span>
                         <span class="min-w-0 flex-1">
-                            <span class="block truncate text-sm font-bold text-slate-800"><?= e($customer['name']) ?></span>
-                            <span class="block truncate text-[11px] text-slate-400"><?= e($customer['company'] ?: 'No company') ?></span>
+                            <span class="block truncate font-bold"><?= e($customer['name']) ?></span>
+                            <span class="block truncate biz-muted" style="font-size:11px"><?= e($customer['company'] ?: 'No company') ?></span>
                         </span>
                     </button>
                 <?php endforeach; ?>
             </div>
         </aside>
 
-        <section class="space-y-4 min-w-0">
-            <div class="bg-white p-4 rounded-3xl shadow-sm border border-gray-100">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="md:col-span-2">
-                        <label class="block mb-2 text-[11px] font-bold text-gray-400 uppercase tracking-widest">Customer</label>
-                        <div class="relative">
-                            <i data-lucide="user" class="absolute left-3 top-3 w-4 h-4 text-gray-300"></i>
-                            <select id="customer-select" name="customer_id" required class="w-full pl-9 border border-slate-300 bg-gray-50/50 rounded-2xl px-3 py-2.5 focus:ring-emerald-500 transition-all text-sm appearance-none">
-                                <option value="">Select customer</option>
-                                <?php foreach ($customers as $customer): ?>
-                                    <option value="<?= $customer['id'] ?>"><?= e($customer['name']) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block mb-2 text-[11px] font-bold text-gray-400 uppercase tracking-widest">Quote Number</label>
-                        <input name="quote_number" value="<?= $quoteNumber ?>" required class="w-full border border-slate-300 bg-gray-50/50 rounded-2xl px-3 py-2.5 focus:ring-emerald-500 transition-all text-sm font-mono">
-                    </div>
-                    <div>
-                        <label class="block mb-2 text-[11px] font-bold text-gray-400 uppercase tracking-widest">Status</label>
-                        <select name="status" class="w-full border border-slate-300 bg-gray-50/50 rounded-2xl px-3 py-2.5 focus:ring-emerald-500 transition-all text-sm appearance-none">
-                            <option value="draft">Draft</option>
-                            <option value="sent">Sent</option>
-                            <option value="accepted">Accepted</option>
-                        </select>
-                    </div>
+        <section class="space-y-3 min-w-0">
+            <div class="biz-panel biz-panel-body">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <label class="block md:col-span-2"><span class="biz-label">Client</span>
+                        <select id="customer-select" name="customer_id" required class="biz-select">
+                            <option value="">Select client</option>
+                            <?php foreach ($customers as $customer): ?>
+                                <option value="<?= $customer['id'] ?>"><?= e($customer['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select></label>
+                    <label class="block"><span class="biz-label">Quote number</span>
+                        <input name="quote_number" value="<?= $quoteNumber ?>" required class="biz-input" style="font-family:ui-monospace,monospace"></label>
+                    <label class="block"><span class="biz-label">Status</span>
+                        <select name="status" class="biz-select">
+                            <option value="draft">Draft</option><option value="sent">Sent</option><option value="accepted">Accepted</option>
+                        </select></label>
                 </div>
             </div>
 
-            <div class="bg-white p-4 rounded-3xl shadow-sm border border-gray-100">
-                <div class="flex items-center justify-between gap-3 mb-4">
-                    <h3 class="text-base font-bold text-slate-900 flex items-center">
-                        <i data-lucide="file-spreadsheet" class="w-4 h-4 mr-2 text-emerald-600"></i>
-                        Quote Items
-                    </h3>
-                    <button type="button" onclick="addItem()" class="flex items-center text-emerald-600 font-bold hover:text-emerald-700 transition-colors text-sm px-3 py-1.5 bg-emerald-50 rounded-xl">
-                        <i data-lucide="plus-circle" class="w-4 h-4 mr-2"></i>
-                        Add Line
-                    </button>
+            <div class="biz-panel">
+                <div class="biz-panel-head"><span>Quote items</span>
+                    <button type="button" onclick="addItem()" class="biz-btn biz-btn-ghost biz-btn-sm"><i data-lucide="plus" class="w-3 h-3"></i> Add line</button>
                 </div>
-
-                <div class="hidden md:grid grid-cols-12 gap-3 px-1 pb-2 text-[11px] font-bold uppercase tracking-widest text-slate-400">
-                    <div class="col-span-6">Description</div>
-                    <div class="col-span-2 text-center">Qty</div>
-                    <div class="col-span-2 text-right">Price</div>
-                    <div class="col-span-2 text-right">Total</div>
-                </div>
-
-                <div id="items-container" class="space-y-3">
-                    <div class="grid grid-cols-12 gap-3 item-row group">
-                        <div class="col-span-12 md:col-span-6">
-                            <input name="description[]" required placeholder="Service or product description" class="w-full border border-slate-300 bg-gray-50/50 rounded-xl px-3 py-2.5 focus:ring-emerald-500 transition-all text-sm">
-                        </div>
-                        <div class="col-span-4 md:col-span-2">
-                            <input name="quantity[]" type="number" step="0.01" value="1" class="w-full border border-slate-300 bg-gray-50/50 rounded-xl px-3 py-2.5 focus:ring-emerald-500 transition-all text-sm quantity text-center" placeholder="Qty">
-                        </div>
-                        <div class="col-span-4 md:col-span-2">
-                            <input name="unit_price[]" type="number" step="0.01" value="0.00" class="w-full border border-slate-300 bg-gray-50/50 rounded-xl px-3 py-2.5 focus:ring-emerald-500 transition-all text-sm price text-right" placeholder="Price">
-                        </div>
-                        <div class="col-span-4 md:col-span-2">
-                            <div class="relative">
-                                <input readonly value="0.00" class="w-full border-transparent bg-emerald-50/30 text-emerald-700 font-bold rounded-xl px-3 py-2.5 text-sm line-total text-right outline-none">
-                                <button type="button" onclick="this.closest('.item-row').remove(); calculateGrandTotal();" class="absolute -right-2 -top-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <i data-lucide="x" class="w-3 h-3"></i>
-                                </button>
+                <div class="biz-panel-body">
+                    <div class="hidden md:grid grid-cols-12 gap-2 px-1 pb-1 biz-label" style="margin-bottom:0">
+                        <div class="col-span-6">Description</div>
+                        <div class="col-span-2 text-center">Qty</div>
+                        <div class="col-span-2 text-right">Price</div>
+                        <div class="col-span-2 text-right">Total</div>
+                    </div>
+                    <div id="items-container" class="space-y-2">
+                        <div class="grid grid-cols-12 gap-2 item-row group">
+                            <div class="col-span-12 md:col-span-6"><input name="description[]" required placeholder="Service or product description" class="biz-input"></div>
+                            <div class="col-span-4 md:col-span-2"><input name="quantity[]" type="number" step="0.01" value="1" class="biz-input biz-num quantity" style="text-align:center"></div>
+                            <div class="col-span-4 md:col-span-2"><input name="unit_price[]" type="number" step="0.01" value="0.00" class="biz-input biz-num price" style="text-align:right"></div>
+                            <div class="col-span-4 md:col-span-2 flex items-center gap-1">
+                                <input readonly value="0.00" class="biz-input biz-num line-total" style="text-align:right;background:var(--bz-head)">
+                                <button type="button" onclick="this.closest('.item-row').remove(); calculateGrandTotal();" class="biz-t-red shrink-0" style="font-size:12px">&times;</button>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="bg-white p-4 rounded-3xl shadow-sm border border-gray-100">
-                <label class="block mb-2 text-[11px] font-bold text-gray-400 uppercase tracking-widest">Notes</label>
-                <textarea name="notes" rows="3" class="w-full border border-slate-300 bg-gray-50/50 rounded-2xl p-3 focus:ring-emerald-500 focus:bg-white transition-all text-sm" placeholder="Optional terms or notes for this quote..."></textarea>
+            <div class="biz-panel biz-panel-body">
+                <label class="block"><span class="biz-label">Notes</span>
+                    <textarea name="notes" rows="3" class="biz-input" placeholder="Optional terms or notes for this quote…"></textarea></label>
             </div>
         </section>
 
-        <aside class="space-y-4 xl:sticky xl:top-4">
-            <div class="bg-white p-4 rounded-3xl shadow-sm border border-gray-100 space-y-4">
-                <h3 class="text-sm font-black text-slate-900">Quote Meta</h3>
-                <div class="grid grid-cols-1 gap-4">
-                    <div>
-                        <label class="block mb-2 text-[11px] font-bold text-gray-400 uppercase tracking-widest">Issue Date</label>
-                        <input type="date" name="issue_date" value="<?= date('Y-m-d') ?>" required class="w-full border border-slate-300 bg-gray-50/50 rounded-2xl px-3 py-2.5 focus:ring-emerald-500 transition-all text-sm">
-                    </div>
-                    <div>
-                        <label class="block mb-2 text-[11px] font-bold text-amber-500 uppercase tracking-widest">Expiry Date</label>
-                        <input type="date" name="expiry_date" class="w-full border border-amber-200 bg-amber-50/20 rounded-2xl px-3 py-2.5 focus:ring-amber-500 transition-all text-sm">
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-white p-4 rounded-3xl shadow-sm border border-gray-100 space-y-4">
-                <div class="flex justify-between items-center pb-3 border-b border-gray-50">
-                    <label class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Estimated Subtotal</label>
-                    <span id="subtotal-display" class="font-mono font-bold text-slate-600">$0.00</span>
-                </div>
-
+        <aside class="space-y-3 xl:sticky xl:top-2">
+            <div class="biz-panel biz-panel-body">
                 <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block mb-2 text-[11px] font-bold text-blue-500 uppercase tracking-widest">Tax</label>
-                        <input name="tax" id="tax-input" type="number" step="0.01" value="0.00" class="w-full border border-blue-200 bg-blue-50/20 rounded-xl px-3 py-2.5 focus:ring-blue-500 text-sm font-mono transition-all">
-                    </div>
-                    <div>
-                        <label class="block mb-2 text-[11px] font-bold text-red-500 uppercase tracking-widest">Discount</label>
-                        <input name="discount" id="discount-input" type="number" step="0.01" value="0.00" class="w-full border border-red-200 bg-red-50/20 rounded-xl px-3 py-2.5 focus:ring-red-500 text-sm font-mono transition-all">
-                    </div>
-                </div>
-
-                <div class="bg-[#1a1a1a] px-4 py-4 rounded-2xl text-white">
-                    <div class="flex items-center justify-between gap-3">
-                        <span class="text-[11px] font-bold uppercase tracking-widest opacity-60">Estimated Total</span>
-                        <span id="total-display" class="text-xl font-black text-emerald-400">$0.00</span>
-                    </div>
+                    <label class="block"><span class="biz-label">Issue date</span>
+                        <input type="date" name="issue_date" value="<?= date('Y-m-d') ?>" required class="biz-input"></label>
+                    <label class="block"><span class="biz-label">Expiry date</span>
+                        <input type="date" name="expiry_date" class="biz-input"></label>
                 </div>
             </div>
 
-            <div class="bg-white p-4 rounded-3xl shadow-sm border border-gray-100">
-                <div class="flex items-center justify-between gap-3">
-                    <a href="<?= BASE_URL ?>/?page=quotes" class="text-xs font-bold text-gray-400 hover:text-slate-900 transition-colors">Discard</a>
-                    <button class="bg-[#1a1a1a] hover:bg-emerald-600 text-white px-6 py-2.5 rounded-2xl font-black shadow-lg shadow-gray-200 transition-all hover:scale-105 active:scale-95 text-sm">
-                        Save Quote
-                    </button>
+            <div class="biz-panel biz-panel-body space-y-2">
+                <div class="flex justify-between items-center">
+                    <span class="biz-label" style="margin:0">Subtotal</span>
+                    <span id="subtotal-display" class="biz-num font-bold">$0.00</span>
                 </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <label class="block"><span class="biz-label">Tax</span>
+                        <input name="tax" id="tax-input" type="number" step="0.01" value="0.00" class="biz-input biz-num" style="text-align:right"></label>
+                    <label class="block"><span class="biz-label">Discount</span>
+                        <input name="discount" id="discount-input" type="number" step="0.01" value="0.00" class="biz-input biz-num" style="text-align:right"></label>
+                </div>
+                <div class="flex items-center justify-between rounded px-3 py-2" style="background:#0f172a;color:#fff">
+                    <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;opacity:.7">Estimated total</span>
+                    <span id="total-display" class="biz-num" style="font-size:16px;font-weight:800;color:#34d399">$0.00</span>
+                </div>
+            </div>
+
+            <div class="biz-panel biz-panel-body flex items-center justify-between gap-2">
+                <a href="<?= BASE_URL ?>/?page=quotes" class="biz-btn biz-btn-ghost">Discard</a>
+                <button class="biz-btn biz-btn-primary">Save quote</button>
             </div>
         </aside>
     </div>
 </form>
+</div>
+<!-- /.biz -->
 
 <script>
 document.getElementById('quote-customer-search')?.addEventListener('input', function(e) {
@@ -276,29 +209,21 @@ document.querySelectorAll('[data-customer-option]').forEach((button) => {
         select.dispatchEvent(new Event('change', { bubbles: true }));
 
         document.querySelectorAll('[data-customer-option]').forEach((node) => {
-            node.classList.remove('bg-emerald-50', 'border-emerald-200');
+            node.classList.remove('is-active');
         });
-        button.classList.add('bg-emerald-50', 'border-emerald-200');
+        button.classList.add('is-active');
     });
 });
 
 function addItem() {
     const row = `
-        <div class="grid grid-cols-12 gap-4 item-row group animate-in slide-in-from-left duration-300">
-            <div class="col-span-12 md:col-span-6">
-                <input name="description[]" required placeholder="Service or product description" class="w-full border border-slate-300 bg-gray-50/50 rounded-xl px-3 py-2.5 focus:ring-emerald-500 transition-all text-sm">
-            </div>
-            <div class="col-span-4 md:col-span-2">
-                <input name="quantity[]" type="number" step="0.01" value="1" class="w-full border border-slate-300 bg-gray-50/50 rounded-xl px-3 py-2.5 focus:ring-emerald-500 transition-all text-sm quantity text-center">
-            </div>
-            <div class="col-span-4 md:col-span-2">
-                <input name="unit_price[]" type="number" step="0.01" value="0.00" class="w-full border border-slate-300 bg-gray-50/50 rounded-xl px-3 py-2.5 focus:ring-emerald-500 transition-all text-sm price text-right">
-            </div>
-            <div class="col-span-4 md:col-span-2 relative">
-                <input readonly value="0.00" class="w-full border-transparent bg-emerald-50/30 text-emerald-700 font-bold rounded-xl px-3 py-2.5 text-sm line-total text-right outline-none">
-                <button type="button" onclick="this.closest('.item-row').remove(); calculateGrandTotal();" class="absolute -right-2 -top-2 bg-red-500 text-white p-1 rounded-full opacity-100 transition-opacity">
-                    <i data-lucide="x" class="w-3 h-3"></i>
-                </button>
+        <div class="grid grid-cols-12 gap-2 item-row group">
+            <div class="col-span-12 md:col-span-6"><input name="description[]" required placeholder="Service or product description" class="biz-input"></div>
+            <div class="col-span-4 md:col-span-2"><input name="quantity[]" type="number" step="0.01" value="1" class="biz-input biz-num quantity" style="text-align:center"></div>
+            <div class="col-span-4 md:col-span-2"><input name="unit_price[]" type="number" step="0.01" value="0.00" class="biz-input biz-num price" style="text-align:right"></div>
+            <div class="col-span-4 md:col-span-2 flex items-center gap-1">
+                <input readonly value="0.00" class="biz-input biz-num line-total" style="text-align:right;background:var(--bz-head)">
+                <button type="button" onclick="this.closest('.item-row').remove(); calculateGrandTotal();" class="biz-t-red shrink-0" style="font-size:12px">&times;</button>
             </div>
         </div>
     `;

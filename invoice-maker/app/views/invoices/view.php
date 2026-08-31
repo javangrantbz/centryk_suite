@@ -11,11 +11,7 @@ $stmt->execute([$id, current_company_id()]);
 $invoice = $stmt->fetch();
 
 if (!$invoice) {
-    echo '<div class="bg-red-50 text-red-600 p-8 rounded-3xl text-center">
-            <i data-lucide="file-x" class="w-12 h-12 mx-auto mb-4"></i>
-            <p class="font-bold text-xl">Invoice not found.</p>
-            <a href="'.BASE_URL.'/?page=invoices" class="text-sm underline mt-4 block">Return to list</a>
-          </div>';
+    echo '<div class="biz"><div class="biz-notice biz-notice-red">Invoice not found. <a href="'.BASE_URL.'/?page=invoices" class="underline">Return to list</a></div></div>';
     return;
 }
 
@@ -148,205 +144,128 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-function getStatusBadge($status) {
-    return match($status) {
-        'paid' => 'bg-emerald-50 text-emerald-700 border-emerald-100',
-        'sent' => 'bg-blue-50 text-blue-700 border-blue-100',
-        'draft' => 'bg-gray-50 text-gray-600 border-gray-200',
-        'overdue' => 'bg-red-50 text-red-700 border-red-100',
-        'cancelled' => 'bg-slate-100 text-slate-500 border-slate-200',
-        default => 'bg-gray-50 text-gray-600 border-gray-200'
-    };
-}
 ?>
 
+<div class="biz">
 <div class="mb-3">
-    <div class="flex items-center space-x-2 text-sm text-gray-400 mb-3">
-        <a href="<?= BASE_URL ?>/?page=invoices" class="hover:text-emerald-600 transition-colors">Invoices</a>
-        <i data-lucide="chevron-right" class="w-4 h-4"></i>
-        <span class="text-slate-900 font-medium"><?= e($invoice['invoice_number']) ?></span>
-    </div>
+    <p class="biz-kicker"><a href="<?= BASE_URL ?>/?page=invoices" class="biz-t-green">Invoices</a> · <?= e($invoice['invoice_number']) ?></p>
 
-    <?php if ($sourceQuote): ?>
-    <div class="mb-4 inline-flex items-center gap-2 rounded-xl bg-amber-50 border border-amber-100 px-3 py-1.5 text-xs font-bold text-amber-700">
-        <i data-lucide="git-merge" class="w-3.5 h-3.5"></i>
-        Created from quote
-        <a href="<?= BASE_URL ?>/?page=quotes-view&id=<?= (int)$sourceQuote['id'] ?>" class="font-mono underline hover:text-amber-900"><?= e($sourceQuote['quote_number']) ?></a>
-    </div>
-    <?php endif; ?>
-
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div class="flex items-center">
-            <h2 class="text-3xl font-extrabold text-slate-900 tracking-tight mr-3"><?= e($invoice['invoice_number']) ?></h2>
-            <span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border <?= getStatusBadge($invoice['status']) ?>">
-                <?= e($invoice['status']) ?>
-            </span>
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mt-0.5">
+        <div class="flex items-center gap-2 flex-wrap">
+            <h1 class="mt-0" style="font-family:ui-monospace,monospace"><?= e($invoice['invoice_number']) ?></h1>
+            <span class="biz-chip <?= inv_status_chip($invoice['status']) ?>"><?= e($invoice['status']) ?></span>
+            <?php if ($sourceQuote): ?>
+            <a href="<?= BASE_URL ?>/?page=quotes-view&id=<?= (int)$sourceQuote['id'] ?>" class="biz-chip biz-c-amber" style="text-decoration:none">from <?= e($sourceQuote['quote_number']) ?></a>
+            <?php endif; ?>
         </div>
 
-        <div class="flex items-center gap-2.5">
-            <a href="https://wa.me/?text=<?= rawurlencode($shareMsg) ?>" target="_blank" rel="noopener" title="Share via WhatsApp" class="flex items-center justify-center w-12 h-12 rounded-2xl bg-[#25D366] text-white hover:opacity-90 transition shadow-lg shadow-green-100">
-                <i data-lucide="message-circle" class="w-5 h-5"></i>
-            </a>
+        <div class="flex items-center gap-1.5">
+            <a href="https://wa.me/?text=<?= rawurlencode($shareMsg) ?>" target="_blank" rel="noopener" class="biz-btn biz-btn-ghost biz-btn-sm" title="Share via WhatsApp"><i data-lucide="message-circle" class="w-3.5 h-3.5"></i></a>
             <button type="button" id="btnEmailInvoice"
                     data-invoice-id="<?= (int)$invoice['id'] ?>"
                     data-customer-email="<?= e($invoice['email'] ?? '') ?>"
                     title="<?= !empty($invoice['email']) ? 'Email this invoice to ' . e($invoice['email']) : 'This customer has no email address on file' ?>"
                     <?= empty($invoice['email']) ? 'disabled' : '' ?>
-                    class="flex items-center justify-center w-12 h-12 rounded-2xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition disabled:opacity-40 disabled:cursor-not-allowed">
-                <i data-lucide="mail" class="w-5 h-5"></i>
-            </button>
-            <a href="<?= BASE_URL ?>/pdf-invoice.php?id=<?= $invoice['id'] ?>" target="_blank" class="flex items-center bg-[#1a1a1a] hover:bg-emerald-600 text-white px-5 py-2.5 rounded-2xl font-bold transition-all shadow-lg shadow-gray-200">
-                <i data-lucide="download" class="w-4 h-4 mr-2"></i>
-                Download PDF
-            </a>
-            
+                    class="biz-btn biz-btn-ghost biz-btn-sm"><i data-lucide="mail" class="w-3.5 h-3.5"></i></button>
+            <a href="<?= BASE_URL ?>/pdf-invoice.php?id=<?= $invoice['id'] ?>" target="_blank" class="biz-btn biz-btn-primary biz-btn-sm"><i data-lucide="download" class="w-3.5 h-3.5"></i> PDF</a>
             <?php if (inv_is_pos_receipt($invoice)): ?>
-                <span class="p-3 text-slate-300 cursor-not-allowed rounded-2xl" title="<?= e(inv_pos_receipt_delete_message()) ?>">
-                    <i data-lucide="lock" class="w-5 h-5"></i>
-                </span>
+                <span class="biz-btn biz-btn-ghost biz-btn-sm" style="opacity:.4;cursor:not-allowed" title="<?= e(inv_pos_receipt_delete_message()) ?>"><i data-lucide="lock" class="w-3.5 h-3.5"></i></span>
             <?php else: ?>
                 <form method="POST" onsubmit="return confirm('Delete this invoice permanently?')">
-                    <button name="delete" value="1" class="p-3 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-2xl transition-all" title="Delete Invoice">
-                        <i data-lucide="trash-2" class="w-5 h-5"></i>
-                    </button>
+                    <button name="delete" value="1" class="biz-btn biz-btn-danger biz-btn-sm" title="Delete invoice"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
                 </form>
             <?php endif; ?>
         </div>
     </div>
 </div>
 
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
-    <!-- Invoice Content -->
-    <div class="lg:col-span-2 space-y-5">
-        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-            <div class="flex justify-between items-start mb-8">
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-3 items-start">
+    <div class="lg:col-span-2">
+        <div class="biz-panel biz-panel-body">
+            <div class="flex justify-between items-start gap-4 mb-4">
                 <div>
-                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Client Information</h3>
-                    <div class="text-xl font-black text-slate-900"><?= e($invoice['customer_name']) ?></div>
-                    <div class="text-sm text-gray-500 mt-1"><?= e($invoice['email']) ?></div>
-                    <div class="text-sm text-gray-500"><?= e($invoice['phone']) ?></div>
-                    <div class="text-sm text-gray-400 mt-4 leading-relaxed italic max-w-xs">
-                        <?= nl2br(e($invoice['address'])) ?>
-                    </div>
+                    <p class="biz-label">Bill to</p>
+                    <div class="font-bold" style="font-size:14px"><?= e($invoice['customer_name']) ?></div>
+                    <div class="biz-muted"><?= e($invoice['email']) ?></div>
+                    <div class="biz-muted"><?= e($invoice['phone']) ?></div>
+                    <div class="biz-muted mt-2" style="max-width:20rem;white-space:pre-line"><?= e($invoice['address']) ?></div>
                 </div>
-
-                <div class="text-right space-y-3">
-                    <div>
-                        <div class="text-xs font-bold text-gray-400 uppercase tracking-widest">Issue Date</div>
-                        <div class="text-sm font-bold text-slate-900"><?= date('M d, Y', strtotime($invoice['issue_date'])) ?></div>
-                    </div>
-                    <div>
-                        <div class="text-xs font-bold text-gray-400 uppercase tracking-widest text-red-400">Due Date</div>
-                        <div class="text-sm font-bold text-slate-900"><?= date('M d, Y', strtotime($invoice['due_date'])) ?></div>
-                    </div>
+                <div class="text-right space-y-2 shrink-0">
+                    <div><p class="biz-label">Issue date</p><div class="font-bold"><?= date('j M Y', strtotime($invoice['issue_date'])) ?></div></div>
+                    <div><p class="biz-label">Due date</p><div class="font-bold"><?= date('j M Y', strtotime($invoice['due_date'])) ?></div></div>
                 </div>
             </div>
 
-            <table class="w-full text-left border-collapse">
+            <table class="w-full biz-num" style="font-size:12px">
                 <thead>
-                    <tr class="border-b border-gray-100">
-                        <th class="py-3 text-xs font-bold text-gray-400 uppercase tracking-widest">Description</th>
-                        <th class="py-3 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Qty</th>
-                        <th class="py-3 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Unit Price</th>
-                        <th class="py-3 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Amount</th>
+                    <tr class="biz-muted" style="text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid var(--bz-line)">
+                        <th class="py-2 font-bold">Description</th>
+                        <th class="py-2 font-bold text-center">Qty</th>
+                        <th class="py-2 font-bold text-right">Unit price</th>
+                        <th class="py-2 font-bold text-right">Amount</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-50">
+                <tbody>
                     <?php foreach ($items as $item): ?>
-                        <tr>
-                            <td class="py-3.5">
-                                <div class="text-sm font-bold text-slate-800"><?= e($item['description']) ?></div>
-                            </td>
-                            <td class="py-3.5 text-center text-sm text-gray-500"><?= e($item['quantity']) ?></td>
-                            <td class="py-3.5 text-right text-sm text-gray-500"><?= money($item['unit_price']) ?></td>
-                            <td class="py-3.5 text-right font-bold text-slate-900"><?= money($item['total']) ?></td>
+                        <tr style="border-top:1px solid var(--bz-line-soft)">
+                            <td class="py-2 font-bold" style="font-family:inherit"><?= e($item['description']) ?></td>
+                            <td class="py-2 text-center biz-muted"><?= e($item['quantity']) ?></td>
+                            <td class="py-2 text-right biz-muted"><?= money($item['unit_price']) ?></td>
+                            <td class="py-2 text-right font-bold"><?= money($item['total']) ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>
 
             <?php if ($invoice['notes']): ?>
-                <div class="mt-8 p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Notes & Terms</h4>
-                    <p class="text-sm text-gray-600 leading-relaxed"><?= nl2br(e($invoice['notes'])) ?></p>
+                <div class="mt-4 p-3 rounded" style="background:var(--bz-head);border:1px solid var(--bz-line-soft)">
+                    <p class="biz-label">Notes &amp; terms</p>
+                    <p class="biz-muted" style="white-space:pre-line"><?= e($invoice['notes']) ?></p>
                 </div>
             <?php endif; ?>
         </div>
     </div>
 
-    <!-- Summary Sidebar -->
-    <div class="space-y-5">
-        <div class="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 space-y-4">
-            <h3 class="text-lg font-bold text-slate-900 flex items-center">
-                <i data-lucide="pie-chart" class="w-5 h-5 mr-3 text-emerald-600"></i>
-                Summary
-            </h3>
-
-            <div class="space-y-4">
-                <div class="flex justify-between text-sm">
-                    <span class="text-gray-500 font-medium">Subtotal</span>
-                    <span class="font-bold text-slate-700"><?= money($invoice['subtotal']) ?></span>
-                </div>
-                <div class="flex justify-between text-sm">
-                    <span class="text-blue-500 font-medium">Tax</span>
-                    <span class="font-bold text-blue-600"><?= money($invoice['tax']) ?></span>
-                </div>
-                <div class="flex justify-between text-sm">
-                    <span class="text-red-500 font-medium">Discount</span>
-                    <span class="font-bold text-red-600">-<?= money($invoice['discount']) ?></span>
-                </div>
-                
-                <div class="pt-3 border-t border-gray-50 flex justify-between items-end">
-                    <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Total Amount</span>
-                    <span class="text-2xl font-black text-slate-900"><?= money($invoice['total']) ?></span>
-                </div>
+    <div class="space-y-3">
+        <div class="biz-panel biz-panel-body space-y-2">
+            <div class="flex justify-between"><span class="biz-muted">Subtotal</span><span class="biz-num font-bold"><?= money($invoice['subtotal']) ?></span></div>
+            <div class="flex justify-between"><span class="biz-muted">Tax</span><span class="biz-num font-bold"><?= money($invoice['tax']) ?></span></div>
+            <div class="flex justify-between"><span class="biz-muted">Discount</span><span class="biz-num font-bold">-<?= money($invoice['discount']) ?></span></div>
+            <div class="flex justify-between items-end pt-2" style="border-top:1px solid var(--bz-line)">
+                <span class="biz-label" style="margin:0">Total</span>
+                <span class="biz-num" style="font-size:18px;font-weight:800"><?= money($invoice['total']) ?></span>
             </div>
         </div>
 
-        <div class="bg-[#1a1a1a] p-5 rounded-3xl shadow-xl shadow-gray-200 space-y-4 text-white">
-            <h3 class="text-lg font-bold flex items-center">
-                <i data-lucide="wallet" class="w-5 h-5 mr-3 text-emerald-400"></i>
-                Payment
-            </h3>
+        <div class="biz-panel biz-panel-body space-y-3" style="background:#0f172a;color:#fff;border-color:#1e293b">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;opacity:.6">Payment</div>
 
             <?php if (!empty($_GET['pay_err'])): ?>
-                <div class="bg-rose-500/10 border border-rose-500/30 text-rose-300 px-3 py-2 rounded-xl text-xs font-bold">
-                    <?= e($_GET['pay_err']) ?>
-                </div>
+                <div class="rounded px-2 py-1.5" style="font-size:11px;font-weight:700;background:rgba(244,63,94,.12);color:#fda4af"><?= e($_GET['pay_err']) ?></div>
             <?php elseif (!empty($_GET['pay_ok'])): ?>
-                <div class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 px-3 py-2 rounded-xl text-xs font-bold">
-                    Payment recorded.
-                </div>
+                <div class="rounded px-2 py-1.5" style="font-size:11px;font-weight:700;background:rgba(16,185,129,.12);color:#6ee7b7">Payment recorded.</div>
             <?php endif; ?>
 
             <?php $balanceDue = round((float)$invoice['total'] - (float)$invoice['amount_paid'], 2); ?>
 
-            <div class="space-y-4">
-                <div class="flex justify-between text-sm">
-                    <span class="text-gray-400">Already Paid</span>
-                    <span class="font-bold text-emerald-400"><?= money($invoice['amount_paid']) ?></span>
-                </div>
-                <div class="flex justify-between text-lg pt-2">
-                    <span class="text-gray-400">Balance Due</span>
-                    <span class="font-black text-white"><?= money($balanceDue) ?></span>
-                </div>
+            <div class="space-y-1.5 biz-num">
+                <div class="flex justify-between" style="font-size:12px"><span style="opacity:.6">Already paid</span><span style="color:#34d399;font-weight:700"><?= money($invoice['amount_paid']) ?></span></div>
+                <div class="flex justify-between"><span style="opacity:.6">Balance due</span><span style="font-weight:800"><?= money($balanceDue) ?></span></div>
             </div>
 
             <?php if ($payments): ?>
-            <div class="border-t border-white/10 pt-3">
-                <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Payment History</div>
-                <div class="space-y-1.5 max-h-44 overflow-y-auto">
+            <div style="border-top:1px solid rgba(255,255,255,.1);padding-top:8px">
+                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;opacity:.4;margin-bottom:4px">History</div>
+                <div class="space-y-1 biz-num" style="max-height:11rem;overflow-y:auto">
                     <?php foreach ($payments as $p): ?>
-                    <div class="flex items-start justify-between gap-2 text-xs">
+                    <div class="flex items-start justify-between gap-2" style="font-size:11px">
                         <div class="min-w-0">
-                            <div class="text-gray-300 font-semibold"><?= date('M j, Y', strtotime($p['payment_date'])) ?></div>
+                            <div style="opacity:.8;font-weight:600"><?= date('j M Y', strtotime($p['payment_date'])) ?></div>
                             <?php if (!empty($p['method']) || !empty($p['notes'])): ?>
-                            <div class="text-[10px] text-gray-500 truncate max-w-[150px]">
-                                <?= e(trim(($p['method'] ?? '') . (!empty($p['notes']) ? ' · ' . $p['notes'] : ''), ' ·')) ?>
-                            </div>
+                            <div class="truncate" style="font-size:10px;opacity:.5;max-width:150px"><?= e(trim(($p['method'] ?? '') . (!empty($p['notes']) ? ' · ' . $p['notes'] : ''), ' ·')) ?></div>
                             <?php endif; ?>
                         </div>
-                        <span class="shrink-0 font-black text-emerald-400"><?= money($p['amount']) ?></span>
+                        <span class="shrink-0" style="color:#34d399;font-weight:700"><?= money($p['amount']) ?></span>
                     </div>
                     <?php endforeach; ?>
                 </div>
@@ -354,38 +273,31 @@ function getStatusBadge($status) {
             <?php endif; ?>
 
             <?php if ($balanceDue > 0.005): ?>
-                <form method="POST" class="pt-2 space-y-2 border-t border-white/10">
-                    <div class="text-[10px] font-black uppercase tracking-widest text-gray-500 pt-3">Record a Payment</div>
-                    <div class="flex gap-2">
+                <form method="POST" class="space-y-1.5" style="border-top:1px solid rgba(255,255,255,.1);padding-top:8px">
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;opacity:.4">Record a payment</div>
+                    <div class="flex gap-1.5">
                         <input type="number" step="0.01" min="0.01" max="<?= $balanceDue ?>" name="payment_amount"
-                               placeholder="<?= number_format($balanceDue, 2, '.', '') ?>" required
-                               class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-emerald-500 focus:outline-none">
-                        <input type="text" name="payment_method" placeholder="Cash, cheque…" maxlength="100"
-                               class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-emerald-500 focus:outline-none">
+                               placeholder="<?= number_format($balanceDue, 2, '.', '') ?>" required class="biz-input biz-num"
+                               style="background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12);color:#fff">
+                        <input type="text" name="payment_method" placeholder="Cash, cheque…" maxlength="100" class="biz-input"
+                               style="background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12);color:#fff">
                     </div>
-                    <input type="text" name="payment_notes" placeholder="Reference / note (optional)" maxlength="500"
-                           class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-emerald-500 focus:outline-none">
-                    <button name="record_payment" value="1" class="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-2.5 rounded-2xl transition-all flex items-center justify-center text-sm">
-                        <i data-lucide="plus-circle" class="w-4 h-4 mr-2"></i>
-                        Record Payment
-                    </button>
+                    <input type="text" name="payment_notes" placeholder="Reference / note (optional)" maxlength="500" class="biz-input"
+                           style="background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12);color:#fff">
+                    <button name="record_payment" value="1" class="biz-btn biz-btn-sm" style="width:100%;background:rgba(255,255,255,.12);color:#fff;border-color:transparent">Record payment</button>
                 </form>
 
                 <form method="POST" onsubmit="return confirm('Settle the full <?= money($balanceDue) ?> balance now?')">
-                    <button name="mark_paid" value="1" class="w-full bg-emerald-500 hover:bg-emerald-600 text-[#1a1a1a] font-black py-3 rounded-2xl transition-all shadow-lg shadow-emerald-900/20 flex items-center justify-center">
-                        <i data-lucide="check-circle-2" class="w-5 h-5 mr-2"></i>
-                        Mark as Fully Paid
-                    </button>
+                    <button name="mark_paid" value="1" class="biz-btn biz-btn-sm" style="width:100%;background:#10b981;color:#04231a;border-color:transparent;font-weight:800">Mark as fully paid</button>
                 </form>
             <?php else: ?>
-                <div class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 p-4 rounded-2xl text-center text-sm font-bold flex items-center justify-center">
-                    <i data-lucide="shield-check" class="w-4 h-4 mr-2"></i>
-                    Fully Paid
-                </div>
+                <div class="rounded px-3 py-2 text-center" style="font-size:12px;font-weight:700;background:rgba(16,185,129,.1);color:#34d399">Fully paid</div>
             <?php endif; ?>
         </div>
     </div>
 </div>
+</div>
+<!-- /.biz -->
 
 <script>
 document.getElementById('btnEmailInvoice')?.addEventListener('click', async function () {

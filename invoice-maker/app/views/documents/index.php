@@ -112,156 +112,81 @@ function getFileIcon($type) {
 }
 ?>
 
-<?php if (!empty($uploadError)): ?>
-    <div class="bg-red-50 text-red-600 p-4 rounded-2xl mb-8 flex items-center">
-        <i data-lucide="alert-circle" class="w-5 h-5 mr-3"></i>
-        <?= e($uploadError) ?>
-    </div>
-<?php endif; ?>
+<div class="biz">
+    <p class="biz-kicker">Invoice engine</p>
+    <h1 class="mt-0.5 mb-3">Files</h1>
 
-<div class="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] gap-5 items-start">
-    <!-- Upload Section -->
-    <div>
-        <div class="bg-white p-4 rounded-3xl shadow-sm border border-gray-100 sticky top-4">
-            <div class="mb-3 flex items-center justify-between gap-3">
-                <h3 class="text-base font-bold flex items-center">
-                    <i data-lucide="upload-cloud" class="w-4 h-4 mr-2 text-emerald-600"></i>
-                    Upload Document
-                </h3>
-                <button class="shrink-0 bg-[#1a1a1a] hover:bg-[#2a2a2a] text-white px-4 py-2 rounded-xl font-bold transition-all flex items-center justify-center text-xs">
-                    <i data-lucide="arrow-up" class="w-3.5 h-3.5 mr-1.5"></i>
-                    Upload
-                </button>
-            </div>
+    <?php if (!empty($uploadError)): ?>
+        <div class="biz-notice biz-notice-red mb-3"><?= e($uploadError) ?></div>
+    <?php endif; ?>
 
-            <form method="POST" enctype="multipart/form-data" class="space-y-3">
-                <div>
-                    <label class="block mb-2 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Document Title</label>
-                    <input name="title" required class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" placeholder="e.g. Contract v1">
-                </div>
-
-                <div>
-                    <label class="block mb-2 text-[11px] font-bold text-gray-500 uppercase tracking-wider">File Selection</label>
-                    <div class="border-2 border-dashed border-gray-100 rounded-2xl p-3 text-center hover:border-emerald-200 transition-colors bg-gray-50/30">
-                        <input type="file" name="document" required id="file-upload" class="hidden">
-                        <label for="file-upload" class="cursor-pointer">
-                            <i data-lucide="paperclip" class="w-5 h-5 mx-auto text-gray-300 mb-1.5"></i>
-                            <span class="text-sm text-gray-400">Choose file</span>
-                        </label>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block mb-2 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Reference</label>
-                    <div class="grid grid-cols-1 gap-2">
-                        <select name="customer_id" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100">
-                            <option value="">Customer: None</option>
-                            <?php foreach ($customers as $customer): ?>
-                                <option value="<?= $customer['id'] ?>"><?= e($customer['name']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                        <select name="quote_id" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100">
-                            <option value="">Quote: None</option>
+    <div class="grid grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)] gap-3 items-start">
+        <!-- Upload -->
+        <div class="biz-panel lg:sticky lg:top-2">
+            <div class="biz-panel-head"><span>Upload a file</span></div>
+            <form method="POST" enctype="multipart/form-data" class="biz-panel-body space-y-2">
+                <label class="block"><span class="biz-label">Title</span>
+                    <input name="title" required class="biz-input" placeholder="e.g. Contract v1"></label>
+                <label class="block"><span class="biz-label">File</span>
+                    <input type="file" name="document" required class="biz-input" style="height:auto;padding:4px 6px"></label>
+                <label class="block"><span class="biz-label">Link to client</span>
+                    <select name="customer_id" class="biz-select">
+                        <option value="">—</option>
+                        <?php foreach ($customers as $customer): ?>
+                            <option value="<?= $customer['id'] ?>"><?= e($customer['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select></label>
+                <div class="grid grid-cols-2 gap-2">
+                    <label class="block"><span class="biz-label">Quote</span>
+                        <select name="quote_id" class="biz-select">
+                            <option value="">—</option>
                             <?php foreach ($quotes as $quote): ?>
                                 <option value="<?= $quote['id'] ?>"><?= e($quote['quote_number']) ?></option>
                             <?php endforeach; ?>
-                        </select>
-                        <select name="invoice_id" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100">
-                            <option value="">Invoice: None</option>
+                        </select></label>
+                    <label class="block"><span class="biz-label">Invoice</span>
+                        <select name="invoice_id" class="biz-select">
+                            <option value="">—</option>
                             <?php foreach ($invoices as $invoice): ?>
                                 <option value="<?= $invoice['id'] ?>"><?= e($invoice['invoice_number']) ?></option>
                             <?php endforeach; ?>
-                        </select>
-                    </div>
+                        </select></label>
                 </div>
+                <div class="pt-1"><button class="biz-btn biz-btn-primary" style="width:100%"><i data-lucide="upload" class="w-3.5 h-3.5"></i> Upload</button></div>
             </form>
         </div>
-    </div>
 
-    <!-- Documents List -->
-    <div class="min-w-0">
-        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-            <div class="px-5 py-3 border-b border-gray-100 bg-slate-50/60">
-                <p class="text-sm font-semibold text-slate-500">Manage files, agreements, and attachments.</p>
+        <!-- List -->
+        <div class="biz-panel min-w-0 overflow-hidden">
+            <div class="biz-panel-head"><span><?= count($documents) ?> file(s)</span></div>
+            <?php if (empty($documents)): ?>
+                <div class="biz-panel-empty">No files stored yet.</div>
+            <?php else: ?>
+            <div class="biz-list">
+                <?php foreach ($documents as $document): ?>
+                <div class="biz-row" style="align-items:flex-start">
+                    <i data-lucide="<?= getFileIcon($document['file_type']) ?>" class="w-4 h-4 shrink-0" style="color:var(--bz-muted);margin-top:2px"></i>
+                    <span class="min-w-0 flex-1">
+                        <span class="block font-bold truncate"><?= e($document['title']) ?></span>
+                        <span class="block biz-muted truncate" style="font-size:11px;font-family:ui-monospace,monospace"><?= e($document['file_name']) ?></span>
+                        <span class="block biz-muted" style="font-size:11px">
+                            <?= e(date('j M Y', strtotime($document['created_at']))) ?>
+                            <?php
+                            $link = $document['customer_name'] ?: ($document['quote_number'] ?: ($document['invoice_number'] ?: ''));
+                            if ($link): ?> · <?= e($link) ?><?php else: ?> · general file<?php endif; ?>
+                        </span>
+                    </span>
+                    <span class="shrink-0 flex items-center gap-1">
+                        <a href="<?= BASE_URL ?>/download.php?id=<?= $document['id'] ?>" class="biz-t-blue" style="font-size:11px" title="Download"><i data-lucide="download" class="w-3.5 h-3.5"></i></a>
+                        <form method="POST" onsubmit="return confirm('Permanently delete this file?')" class="inline">
+                            <input type="hidden" name="document_id" value="<?= $document['id'] ?>">
+                            <button name="delete" value="1" class="biz-t-red" style="font-size:11px"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+                        </form>
+                    </span>
+                </div>
+                <?php endforeach; ?>
             </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="bg-gray-50/50 border-b border-gray-100">
-                            <th class="px-5 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-widest">Document</th>
-                            <th class="px-5 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-widest">Linked To</th>
-                            <th class="px-5 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-widest text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-50">
-                        <?php if (empty($documents)): ?>
-                            <tr>
-                                <td colspan="3" class="px-6 py-12 text-center text-gray-400">
-                                    <i data-lucide="archive" class="w-10 h-10 mx-auto mb-4 opacity-20"></i>
-                                    <p>No documents stored yet.</p>
-                                </td>
-                            </tr>
-                        <?php endif; ?>
-
-                        <?php foreach ($documents as $document): ?>
-                            <tr class="hover:bg-gray-50/50 transition-colors">
-                                <td class="px-5 py-4">
-                                    <div class="flex items-start">
-                                        <div class="p-2.5 bg-gray-50 rounded-xl text-emerald-600 mr-3">
-                                            <i data-lucide="<?= getFileIcon($document['file_type']) ?>" class="w-4 h-4"></i>
-                                        </div>
-                                        <div>
-                                            <div class="text-sm font-bold text-slate-900"><?= e($document['title']) ?></div>
-                                            <div class="text-xs text-gray-400 font-mono"><?= e($document['file_name']) ?></div>
-                                            <div class="text-[10px] text-gray-300 mt-1 uppercase font-bold tracking-tighter">
-                                                <?= e(date('M d, Y', strtotime($document['created_at']))) ?>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="px-5 py-4">
-                                    <div class="space-y-1">
-                                        <?php if ($document['customer_name']): ?>
-                                            <div class="flex items-center text-xs text-slate-600">
-                                                <i data-lucide="user" class="w-3 h-3 mr-2 text-gray-300"></i>
-                                                <?= e($document['customer_name']) ?>
-                                            </div>
-                                        <?php endif; ?>
-                                        <?php if ($document['quote_number']): ?>
-                                            <div class="flex items-center text-xs text-slate-600 font-mono">
-                                                <i data-lucide="file-spreadsheet" class="w-3 h-3 mr-2 text-gray-300"></i>
-                                                <?= e($document['quote_number']) ?>
-                                            </div>
-                                        <?php endif; ?>
-                                        <?php if ($document['invoice_number']): ?>
-                                            <div class="flex items-center text-xs text-slate-600 font-mono">
-                                                <i data-lucide="receipt" class="w-3 h-3 mr-2 text-gray-300"></i>
-                                                <?= e($document['invoice_number']) ?>
-                                            </div>
-                                        <?php endif; ?>
-                                        <?php if (!$document['customer_id'] && !$document['quote_id'] && !$document['invoice_id']): ?>
-                                            <span class="text-xs text-gray-300 italic">General file</span>
-                                        <?php endif; ?>
-                                    </div>
-                                </td>
-                                <td class="px-5 py-4 text-right">
-                                    <div class="flex justify-end space-x-1">
-                                        <a href="<?= BASE_URL ?>/download.php?id=<?= $document['id'] ?>" class="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all" title="Download">
-                                            <i data-lucide="download" class="w-4 h-4"></i>
-                                        </a>
-                                        <form method="POST" onsubmit="return confirm('Permanently delete this document?')" class="inline">
-                                            <input type="hidden" name="document_id" value="<?= $document['id'] ?>">
-                                            <button name="delete" value="1" class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all">
-                                                <i data-lucide="trash-2" class="w-4 h-4"></i>
-                                            </button>
-                                        </form>
-                                    </div>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
+            <?php endif; ?>
         </div>
     </div>
 </div>
