@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS gl_account_map (
     slot       VARCHAR(40)  NOT NULL,   -- ar, ap, bank_default, undeposited_funds, gst_output, gst_input,
                                         -- sales_default, cogs_default, sales_returns, bad_debt,
                                         -- opening_balance_equity, retained_earnings, rounding, bank_charges,
-                                        -- payroll_clearing, paye_payable, ssb_payable,
+                                        -- payroll_clearing, payroll_deductions, paye_payable, ssb_payable,
                                         -- payroll_wages_expense, payroll_employer_ss_expense, pos_clearing
     account_id INT UNSIGNED NOT NULL,
     PRIMARY KEY (company_id, slot),
