@@ -11,6 +11,17 @@ function e($value)
     return htmlspecialchars($value ?? '', ENT_QUOTES, 'UTF-8');
 }
 
+/** .biz-chip colour class for an invoice/quote status. */
+function inv_status_chip(?string $status): string
+{
+    return match ($status) {
+        'paid', 'accepted'     => 'biz-c-green',
+        'sent'                 => 'biz-c-blue',
+        'overdue', 'rejected'  => 'biz-c-red',
+        default                => 'biz-c-slate',
+    };
+}
+
 function active($page)
 {
     return ($_GET['page'] ?? 'dashboard') === $page

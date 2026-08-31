@@ -57,17 +57,6 @@ $invoiceStats = [
 ];
 ?>
 
-<?php
-$_bizStatusChip = static function ($s) {
-    return match ($s) {
-        'paid', 'accepted'     => 'biz-c-green',
-        'sent'                 => 'biz-c-blue',
-        'overdue', 'rejected'  => 'biz-c-red',
-        'expired', 'cancelled' => 'biz-c-slate',
-        default                => 'biz-c-slate',
-    };
-};
-?>
 <div class="biz h-full flex flex-col">
 
     <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -125,7 +114,7 @@ $_bizStatusChip = static function ($s) {
                         <td class="px-3 py-1.5 font-bold" style="font-family:ui-monospace,monospace"><?= e($r['number']) ?></td>
                         <td class="px-3 py-1.5 biz-muted truncate" style="max-width:200px"><?= e($r['customer_name'] ?: '—') ?></td>
                         <td class="px-3 py-1.5 biz-faint hidden sm:table-cell" style="color:var(--bz-faint)"><?= $r['issue_date'] ? date('j M Y', strtotime($r['issue_date'])) : '' ?></td>
-                        <td class="px-3 py-1.5"><span class="biz-chip <?= $_bizStatusChip($r['status']) ?>"><?= e($r['status']) ?></span></td>
+                        <td class="px-3 py-1.5"><span class="biz-chip <?= inv_status_chip($r['status']) ?>"><?= e($r['status']) ?></span></td>
                         <td class="px-3 py-1.5 font-bold" style="text-align:right"><?= money($r['total']) ?></td>
                     </tr>
                     <?php endforeach; ?>

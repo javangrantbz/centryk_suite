@@ -27,54 +27,51 @@ $kpis = [
 ];
 ?>
 
-<div class="mb-3 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
-    <div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-        <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <?php foreach ($kpis as $i => $k): ?>
-            <?php if ($i > 0): ?><span class="hidden h-4 w-px bg-slate-200 sm:block"></span><?php endif; ?>
-            <div class="flex items-center gap-1.5">
-                <i data-lucide="<?= $k['icon'] ?>" class="w-4 h-4 text-<?= $k['tint'] ?>-500"></i>
-                <span class="text-sm font-black text-slate-900"><?= $k['value'] ?></span>
-                <span class="text-[11px] font-bold uppercase tracking-wide text-slate-400"><?= $k['label'] ?></span>
-            </div>
-            <?php endforeach; ?>
+<div class="biz">
+    <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <div>
+            <p class="biz-kicker">Invoice engine</p>
+            <h1 class="mt-0.5">Overview</h1>
         </div>
         <div class="flex shrink-0 items-center gap-2">
-            <a href="<?= BASE_URL ?>/?page=quotes-create" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 transition">
-                <i data-lucide="plus" class="w-4 h-4"></i> New Quote
-            </a>
-            <a href="<?= BASE_URL ?>/?page=invoices-create" class="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-emerald-700 transition shadow-sm shadow-emerald-200">
-                <i data-lucide="plus" class="w-4 h-4"></i> New Invoice
-            </a>
+            <a href="<?= BASE_URL ?>/?page=quotes-create" class="biz-btn biz-btn-ghost"><i data-lucide="plus" class="w-3.5 h-3.5"></i> New quote</a>
+            <a href="<?= BASE_URL ?>/?page=invoices-create" class="biz-btn biz-btn-primary"><i data-lucide="plus" class="w-3.5 h-3.5"></i> New invoice</a>
         </div>
     </div>
-</div>
 
-<!-- Recent activity -->
-<div class="mt-6 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-    <div class="flex items-center justify-between px-5 py-3 border-b border-gray-50">
-        <h3 class="text-sm font-black text-slate-900">Recent</h3>
-        <a href="<?= BASE_URL ?>/?page=invoices" class="text-xs font-bold text-emerald-600 hover:text-emerald-700">View all →</a>
+    <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <?php foreach ($kpis as $k): ?>
+        <div class="biz-tile">
+            <div class="biz-tile-l"><?= e($k['label']) ?></div>
+            <div class="biz-tile-v biz-num"><?= $k['value'] ?></div>
+        </div>
+        <?php endforeach; ?>
     </div>
-    <?php if (empty($recentRows)): ?>
-    <p class="px-5 py-10 text-center text-sm text-slate-400">No invoices or quotes yet.</p>
-    <?php else: ?>
-    <div class="divide-y divide-gray-50">
+
+    <div class="biz-panel mt-3">
+        <div class="biz-panel-head">
+            <span>Recent</span>
+            <a href="<?= BASE_URL ?>/?page=invoices" class="biz-t-green" style="font-size:11px;font-weight:700">View all →</a>
+        </div>
+        <?php if (empty($recentRows)): ?>
+        <div class="biz-panel-empty">No invoices or quotes yet.</div>
+        <?php else: ?>
+        <div class="biz-list">
         <?php foreach ($recentRows as $r):
             $isInv = $r['type'] === 'invoice';
             $href  = BASE_URL . ($isInv ? '/?page=invoices-view&id=' : '/?page=quotes-view&id=') . (int)$r['id'];
         ?>
-        <a href="<?= $href ?>" class="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition">
-            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg <?= $isInv ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600' ?>">
-                <i data-lucide="<?= $isInv ? 'file-text' : 'clipboard-list' ?>" class="w-4 h-4"></i>
+        <a href="<?= $href ?>" class="biz-row">
+            <span class="biz-chip <?= $isInv ? 'biz-c-blue' : 'biz-c-amber' ?>"><?= $isInv ? 'Invoice' : 'Quote' ?></span>
+            <span class="min-w-0 flex-1">
+                <span class="font-bold" style="font-family:ui-monospace,monospace"><?= e($r['number']) ?></span>
+                <span class="biz-muted"> · <?= e($r['customer'] ?: 'No customer') ?></span>
+                <span class="block biz-chip <?= inv_status_chip($r['status']) ?>" style="margin-top:2px"><?= e($r['status']) ?></span>
             </span>
-            <div class="min-w-0 flex-1">
-                <p class="text-sm font-bold text-slate-800 truncate"><?= e($r['number']) ?> <span class="text-slate-300">·</span> <?= e($r['customer'] ?: 'No customer') ?></p>
-                <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400"><?= e($r['type']) ?> · <?= e($r['status']) ?></p>
-            </div>
-            <span class="shrink-0 text-sm font-black text-slate-900"><?= money($r['total']) ?></span>
+            <span class="shrink-0 font-bold biz-num"><?= money($r['total']) ?></span>
         </a>
         <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
     </div>
-    <?php endif; ?>
 </div>

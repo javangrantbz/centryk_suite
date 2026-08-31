@@ -124,127 +124,81 @@ $receiptStats = [
 $rangeTabs = ['all' => 'All', 'today' => 'Today', 'week' => 'This Week', 'month' => 'This Month', 'custom' => 'Custom'];
 ?>
 
-<div class="h-full flex flex-col">
-    <div class="mb-3 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-sm flex-shrink-0">
-        <div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-            <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
-                <?php foreach ($receiptStats as $i => $stat): ?>
-                <?php if ($i > 0): ?><span class="hidden h-4 w-px bg-slate-200 sm:block"></span><?php endif; ?>
-                <div class="flex items-center gap-1.5">
-                    <i data-lucide="<?= $stat['icon'] ?>" class="w-4 h-4 text-<?= $stat['tint'] ?>-500"></i>
-                    <span class="text-sm font-black text-slate-900"><?= $stat['value'] ?></span>
-                    <span class="text-[11px] font-bold uppercase tracking-wide text-slate-400"><?= $stat['label'] ?></span>
-                </div>
-                <?php endforeach; ?>
-            </div>
-            <div class="flex shrink-0 items-center gap-1.5 text-[11px] font-semibold text-slate-400">
-                <i data-lucide="info" class="w-3.5 h-3.5"></i>
-                Receipts are created automatically at POS checkout.
-            </div>
+<div class="biz h-full flex flex-col">
+    <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <div>
+            <p class="biz-kicker">Invoice engine</p>
+            <h1 class="mt-0.5">POS receipts</h1>
         </div>
+        <span class="biz-muted" style="font-size:11px">Created automatically at OnePay checkout.</span>
     </div>
 
-    <div class="mb-3 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-sm flex-shrink-0">
-        <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div class="flex flex-wrap items-center gap-1.5">
-                <?php foreach ($rangeTabs as $key => $label): ?>
-                    <?php $active = $range === $key; ?>
-                    <a href="<?= $key === 'custom' ? '#' : e($rcpLink(['range' => $key, 'p' => null, 'from' => null, 'to' => null])) ?>"
-                       <?= $key === 'custom' ? 'id="rcp-custom-toggle"' : '' ?>
-                       class="rounded-lg px-2.5 py-1 text-xs font-bold transition <?= $active ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-100' ?>">
-                        <?= $label ?>
-                    </a>
-                <?php endforeach; ?>
-            </div>
+    <div class="mb-3 grid grid-cols-3 gap-2 flex-shrink-0">
+        <?php foreach ($receiptStats as $stat): ?>
+        <div class="biz-tile"><div class="biz-tile-l"><?= e($stat['label']) ?></div><div class="biz-tile-v biz-num"><?= $stat['value'] ?></div></div>
+        <?php endforeach; ?>
+    </div>
 
+    <div class="biz-panel flex-1 min-h-0 flex flex-col overflow-hidden">
+        <div class="biz-panel-head" style="text-transform:none;letter-spacing:0">
+            <span class="biz-seg">
+                <?php foreach ($rangeTabs as $key => $label): ?>
+                    <a href="<?= $key === 'custom' ? '#' : e($rcpLink(['range' => $key, 'p' => null, 'from' => null, 'to' => null])) ?>"
+                       <?= $key === 'custom' ? 'id="rcp-custom-toggle"' : '' ?> class="<?= $range === $key ? 'is-active' : '' ?>"><?= $label ?></a>
+                <?php endforeach; ?>
+            </span>
             <form method="GET" action="<?= BASE_URL ?>/" class="flex flex-wrap items-center gap-1.5">
-                <input type="hidden" name="page"  value="receipts">
+                <input type="hidden" name="page" value="receipts">
                 <input type="hidden" name="range" value="<?= e($range) ?>">
                 <div id="rcp-custom-inputs" class="<?= $range === 'custom' ? 'flex' : 'hidden' ?> items-center gap-1.5">
-                    <input type="date" name="from" value="<?= e($rawFrom) ?>" class="rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700">
-                    <span class="text-xs text-slate-400">to</span>
-                    <input type="date" name="to" value="<?= e($rawTo) ?>" class="rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700">
+                    <input type="date" name="from" value="<?= e($rawFrom) ?>" class="biz-input" style="width:auto">
+                    <span class="biz-muted" style="font-size:11px">to</span>
+                    <input type="date" name="to" value="<?= e($rawTo) ?>" class="biz-input" style="width:auto">
                 </div>
-                <div class="relative">
-                    <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-gray-400"></i>
-                    <input type="text" name="q" value="<?= e($search) ?>" placeholder="Search receipt # or customer"
-                           class="w-full sm:w-60 pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-emerald-500 focus:border-emerald-500 transition">
-                </div>
-                <button class="rounded-xl bg-slate-900 px-3 py-2 text-xs font-bold text-white hover:bg-slate-700 transition">Apply</button>
-                <?php if ($isFiltered): ?>
-                    <a href="<?= e(BASE_URL . '/?page=receipts') ?>" class="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">Clear</a>
-                <?php endif; ?>
+                <input type="text" name="q" value="<?= e($search) ?>" placeholder="Receipt # or client" class="biz-input" style="width:170px">
+                <button class="biz-btn biz-btn-primary biz-btn-sm">Apply</button>
+                <?php if ($isFiltered): ?><a href="<?= e(BASE_URL . '/?page=receipts') ?>" class="biz-btn biz-btn-ghost biz-btn-sm">Clear</a><?php endif; ?>
             </form>
-        </div>
-    </div>
-
-    <div class="flex-1 min-h-0 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
-        <div class="flex flex-col gap-3 border-b border-gray-100 px-4 py-3 flex-shrink-0 sm:flex-row sm:items-center sm:justify-between">
-            <h2 class="text-sm font-black uppercase tracking-wide text-slate-700">POS Receipts</h2>
-            <?php if ($totalRows > 0): ?>
-            <span class="text-[11px] font-bold text-slate-400">
-                Showing <?= number_format($offset + 1) ?>–<?= number_format(min($offset + $perPage, $totalRows)) ?> of <?= number_format($totalRows) ?>
-            </span>
-            <?php endif; ?>
         </div>
         <div class="flex-1 overflow-y-auto custom-scrollbar">
             <?php if (empty($rows)): ?>
-            <div class="py-20 text-center text-gray-400">
-                <i data-lucide="shopping-cart" class="w-8 h-8 mx-auto mb-2 opacity-20"></i>
-                <?php if ($isFiltered): ?>
-                    <p class="text-sm font-medium">No receipts match this filter.</p>
-                    <a href="<?= e(BASE_URL . '/?page=receipts') ?>" class="text-xs mt-1 text-emerald-600 hover:underline">Clear filters</a>
-                <?php else: ?>
-                    <p class="text-sm font-medium">No POS receipts yet.</p>
-                    <p class="text-xs mt-1 text-gray-300">Completed checkouts from OnePay will appear here.</p>
-                <?php endif; ?>
-            </div>
+            <div class="biz-panel-empty"><?= $isFiltered ? 'No receipts match this filter.' : 'No POS receipts yet.' ?></div>
             <?php else: ?>
-            <table class="w-full text-sm">
-                <thead class="sticky top-0 bg-gray-50/90 backdrop-blur border-b border-gray-100 text-[10px] uppercase tracking-widest text-slate-400">
-                    <tr>
-                        <th class="text-left font-black px-5 py-3">Receipt #</th>
-                        <th class="text-left font-black px-3 py-3">Customer</th>
-                        <th class="text-left font-black px-3 py-3 hidden sm:table-cell">Date</th>
-                        <th class="text-left font-black px-3 py-3">Status</th>
-                        <th class="text-right font-black px-5 py-3">Total</th>
+            <table class="w-full biz-num" style="font-size:12px">
+                <thead>
+                    <tr class="biz-muted" style="text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.06em">
+                        <th class="px-3 py-2 font-bold">Receipt #</th>
+                        <th class="px-3 py-2 font-bold">Client</th>
+                        <th class="px-3 py-2 font-bold hidden sm:table-cell">Date</th>
+                        <th class="px-3 py-2 font-bold">Status</th>
+                        <th class="px-3 py-2 font-bold" style="text-align:right">Total</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-50">
+                <tbody>
                     <?php foreach ($rows as $r):
                         $href = BASE_URL . '/?page=invoices-view&id=' . (int)$r['id'];
                     ?>
-                    <tr class="receipt-row hover:bg-gray-50 cursor-pointer transition" onclick="window.location='<?= $href ?>'">
-                        <td class="px-5 py-3 font-mono font-bold text-slate-900">
-                            <span class="inline-flex items-center gap-1.5">
-                                <i data-lucide="shopping-cart" class="w-3.5 h-3.5 text-emerald-500"></i><?= e($r['number']) ?>
-                            </span>
-                        </td>
-                        <td class="px-3 py-3 font-semibold text-slate-600 truncate max-w-[180px]"><?= e($r['customer_name'] ?: 'Walk-in Customer') ?></td>
-                        <td class="px-3 py-3 text-slate-400 hidden sm:table-cell"><?= $r['issue_date'] ? date('M j, Y', strtotime($r['issue_date'])) : '' ?></td>
-                        <td class="px-3 py-3"><span class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider <?= inv_status_badge($r['status']) ?>"><?= e($r['status']) ?></span></td>
-                        <td class="px-5 py-3 text-right font-black text-slate-900"><?= money($r['total']) ?></td>
+                    <tr class="receipt-row" style="border-top:1px solid var(--bz-line-soft);cursor:pointer" onclick="window.location='<?= $href ?>'"
+                        onmouseover="this.style.background='var(--bz-head)'" onmouseout="this.style.background=''">
+                        <td class="px-3 py-1.5 font-bold" style="font-family:ui-monospace,monospace"><?= e($r['number']) ?></td>
+                        <td class="px-3 py-1.5 biz-muted truncate" style="max-width:200px"><?= e($r['customer_name'] ?: 'Walk-in') ?></td>
+                        <td class="px-3 py-1.5 hidden sm:table-cell" style="color:var(--bz-faint)"><?= $r['issue_date'] ? date('j M Y', strtotime($r['issue_date'])) : '' ?></td>
+                        <td class="px-3 py-1.5"><span class="biz-chip <?= inv_status_chip($r['status']) ?>"><?= e($r['status']) ?></span></td>
+                        <td class="px-3 py-1.5 font-bold" style="text-align:right"><?= money($r['total']) ?></td>
                     </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>
             <?php endif; ?>
         </div>
-
         <?php if ($totalPages > 1): ?>
-        <div class="flex items-center justify-between border-t border-gray-100 px-4 py-2.5 flex-shrink-0">
-            <span class="text-[11px] font-bold text-slate-400">Page <?= $page ?> of <?= $totalPages ?></span>
+        <div class="flex items-center justify-between px-3 py-2 flex-shrink-0" style="border-top:1px solid var(--bz-line)">
+            <span class="biz-muted" style="font-size:11px">Page <?= $page ?> of <?= $totalPages ?></span>
             <div class="flex items-center gap-1.5">
-                <?php if ($page > 1): ?>
-                    <a href="<?= e($rcpLink(['p' => $page - 1])) ?>" class="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-bold text-slate-600 hover:bg-slate-50 transition">Previous</a>
-                <?php else: ?>
-                    <span class="rounded-lg border border-slate-100 px-2.5 py-1 text-xs font-bold text-slate-300 cursor-not-allowed">Previous</span>
-                <?php endif; ?>
-                <?php if ($page < $totalPages): ?>
-                    <a href="<?= e($rcpLink(['p' => $page + 1])) ?>" class="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-bold text-slate-600 hover:bg-slate-50 transition">Next</a>
-                <?php else: ?>
-                    <span class="rounded-lg border border-slate-100 px-2.5 py-1 text-xs font-bold text-slate-300 cursor-not-allowed">Next</span>
-                <?php endif; ?>
+                <?php if ($page > 1): ?><a href="<?= e($rcpLink(['p' => $page - 1])) ?>" class="biz-btn biz-btn-ghost biz-btn-sm">Previous</a>
+                <?php else: ?><span class="biz-btn biz-btn-ghost biz-btn-sm" style="opacity:.4">Previous</span><?php endif; ?>
+                <?php if ($page < $totalPages): ?><a href="<?= e($rcpLink(['p' => $page + 1])) ?>" class="biz-btn biz-btn-ghost biz-btn-sm">Next</a>
+                <?php else: ?><span class="biz-btn biz-btn-ghost biz-btn-sm" style="opacity:.4">Next</span><?php endif; ?>
             </div>
         </div>
         <?php endif; ?>
