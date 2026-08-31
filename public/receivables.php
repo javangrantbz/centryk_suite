@@ -60,16 +60,6 @@ $headerActionsHtml = ob_get_clean();
             <p class="biz-kicker">Centryk Business · Receivables</p>
             <h1 class="mt-0.5">Customer ledger</h1>
         </div>
-        <?php if (count($companies) > 1): ?>
-            <div class="biz-seg">
-                <?php foreach ($companies as $c): ?>
-                    <a href="receivables.php?company_id=<?= (int)$c['id'] ?>"
-                       class="<?= $activeCompany && (int)$c['id'] === (int)$activeCompany['id'] ? 'is-active' : '' ?>">
-                        <?= htmlspecialchars($c['name']) ?>
-                    </a>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
     </div>
 
     <?php if (!$companies): ?>

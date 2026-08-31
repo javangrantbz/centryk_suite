@@ -8,7 +8,7 @@
  *
  * No auth — this is a pitch / reference page (like about.php).
  */
-$updated = '1 September 2026';
+$updated = '30 August 2026';
 
 /* Table of contents — [id, label]. Order = page order. */
 $toc = [
@@ -252,11 +252,39 @@ $toc = [
         <h2 class="text-2xl font-black tracking-tight text-slate-900">Centryk Business — the paid tier</h2>
         <p>
             The hub is free. <strong>Centryk Business</strong> is an optional subscription that
-            switches on capability for a company — four packages, granted one at a time by a
-            Centryk advisor after a conversation. Nothing self-activates.
+            switches on capability for a company — five packages: Accounting, Receivables,
+            Reconciliation, Field Sales &amp; Routes, and Enterprise.
         </p>
 
+        <div class="mt-4 rounded-xl border border-violet-200 bg-violet-50 p-5">
+            <p class="text-[11px] font-black uppercase tracking-[0.14em] text-violet-600">Free preview · limited time</p>
+            <p class="mt-1 text-base font-black text-slate-900">Every Centryk Business package is free to use until 31 December 2027.</p>
+            <p class="mt-1 text-sm leading-relaxed text-slate-600">
+                We roll out officially in January 2027 and paid plans begin
+                <strong>1 January 2028</strong>. Until then any company can switch on the whole tier —
+                the general ledger, receivables, bank reconciliation, delivery routes, multi-entity
+                structure — from the <strong>Explore more services</strong> page, in one click, with
+                no card and no commitment. The earlier you start, the longer you have. After the
+                preview, a Centryk advisor helps you pick the packages you actually want.
+            </p>
+        </div>
+
         <div class="mt-5 space-y-5">
+            <div class="rounded-xl border border-slate-200 p-5">
+                <p class="text-base font-black text-slate-900">Accounting</p>
+                <p class="mt-1 text-sm leading-relaxed text-slate-600">
+                    A double-entry general ledger the accounting department works in directly — not a
+                    bolt-on to something else. A <strong>Belize starter chart of accounts</strong> (or
+                    import your own, including a QuickBooks account list), manual journals with a
+                    live balanced check, accounting periods you can lock, and the statements built on
+                    them: <strong>trial balance, profit &amp; loss, balance sheet</strong> and
+                    general-ledger drill-down. <strong>Expenses and bills</strong> with GST-input
+                    tracking and an accounts-payable balance. Once switched on, every invoice, receipt
+                    and write-off from Receivables <strong>auto-posts to the ledger</strong> (opening
+                    balance taken on the day you start), and a posted payroll run in myPay posts its
+                    own journal. Books stay tied to the subledgers to the cent.
+                </p>
+            </div>
             <div class="rounded-xl border border-slate-200 p-5">
                 <p class="text-base font-black text-slate-900">Receivables</p>
                 <p class="mt-1 text-sm leading-relaxed text-slate-600">
@@ -491,8 +519,8 @@ $toc = [
         <div class="mt-4 space-y-3">
             <?php
             $qa = [
-                ['Is Centryk free?', 'The hub — login, company directory, calendar, notifications, the storefront, the invoice engine, and the free apps — is free. OneLink charges a small transactional fee on collections. Centryk Business is a monthly subscription, per package, per company.'],
-                ['How does a company get Centryk Business?', 'A Centryk advisor grants a package after a conversation, or a company admin requests one from the "Explore more services" page — which creates a lead, not an activation. Nothing switches on by itself.'],
+                ['Is Centryk free?', 'The hub — login, company directory, calendar, notifications, the storefront, the invoice engine, and the free apps — is free. OneLink charges a small transactional fee on collections. Centryk Business will be a monthly subscription (per package, per company) from January 2028 — but every package is free to use until 31 December 2027.'],
+                ['How does a company get Centryk Business?', 'Until 31 December 2027 a company admin can switch on the whole tier for free in one click from the "Explore more services" page — no card, no advisor call. After the free preview, an advisor helps you choose the packages you want, or a company admin requests one (which creates a lead, not an activation).'],
                 ['Does turning on Centryk Business change our existing free features?', 'No. Centryk Business is only ever new capability on top. Nothing that was free moves behind the subscription.'],
                 ['Can one person work across several companies?', 'Yes. A person can be a member of many companies, each with its own role, and their app enrolment travels with them.'],
                 ['What if a subscription lapses?', 'The package drops to read-only — you can still see and export your data — and returns to full access when billing is resolved. Data is never deleted for non-payment.'],

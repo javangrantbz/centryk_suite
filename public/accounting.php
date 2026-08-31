@@ -73,14 +73,6 @@ include __DIR__ . '/partials/business_sidebar.php';
                 <p class="biz-kicker">Centryk Business</p>
                 <h1 class="mt-0.5">Accounting</h1>
             </div>
-            <?php if (count($companies) > 1): ?>
-            <div class="biz-seg">
-                <?php foreach ($companies as $c): ?>
-                    <a href="accounting.php?company_id=<?= (int)$c['id'] ?>"
-                       class="<?= (int)$c['id'] === (int)$activeCompany['id'] ? 'is-active' : '' ?>"><?= htmlspecialchars($c['name']) ?></a>
-                <?php endforeach; ?>
-            </div>
-            <?php endif; ?>
         </div>
 
         <?php require __DIR__ . '/partials/accounting_nav.php'; ?>
