@@ -59,6 +59,25 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
             animation-delay: calc(var(--i, 0) * 70ms + 100ms);
         }
 
+        /* Category label floats above the first card of its section so the grid
+           keeps flowing 5-up with no break between categories. */
+        #appsGrid { padding-top: 1.35rem; row-gap: 1.9rem; }
+        #appsGrid > [data-cat-label] { overflow: visible; }
+        #appsGrid > [data-cat-label]::before {
+            content: attr(data-cat-label);
+            position: absolute; left: 2px; bottom: calc(100% + 5px);
+            font-size: 9.5px; font-weight: 800; letter-spacing: 0.16em;
+            text-transform: uppercase; color: #94a3b8;
+            white-space: nowrap; pointer-events: none;
+        }
+        /* Cards that lost overflow-hidden (so the label can escape) still need
+           their top bar and bottom row clipped to the rounded corner. */
+        #appsGrid > .app-card > :first-child,
+        #appsGrid > #onelinkPaymentsCard > :first-child { border-radius: 1rem 1rem 0 0; }
+        #appsGrid > .app-card > :last-child,
+        #appsGrid > #onelinkPaymentsCard > :last-child { border-bottom-left-radius: 1rem; border-bottom-right-radius: 1rem; }
+        @media (max-width: 640px) { #appsGrid { row-gap: 1.5rem; } }
+
         @keyframes centryk-logo-settle {
             0%   { opacity: 0; transform: translateY(-2px) scale(0.965); filter: saturate(0.92); }
             62%  { opacity: 1; transform: translateY(0) scale(1.018);  filter: saturate(1.03); }
@@ -460,21 +479,22 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
     // Drives the dash-fade entrance stagger, one step per card.
     $_gridIdx = 0;
 
-    // Categories still drive render order (business → finance → insights →
-    // marketing) and the drag-to-reorder scope, but there is no visual divider:
-    // the grid flows up to 5-up continuously so a row can hold cards from two
-    // categories instead of leaving a short row wherever a category ends.
-    // TODO (Javan): wants the category headers back without the stubby rows.
+    // Category headers no longer render their own row. syncCatLabels() (JS)
+    // stamps data-cat-label on the first card of each section after layout and
+    // after any drag-reorder; CSS floats the label just above that card. The
+    // grid keeps flowing 5-up so one category's row can be finished by the
+    // next category's cards.
     $renderCatHeader = static function (string $label): void {};
+    $catLabelAttr = static fn (): string => '';
 
     // One DB-backed app card. $cat is stamped on the element so the
     // drag-to-reorder JS keeps a card within its own section.
-    $renderAppCard = function (array $app, string $cat) use (&$_gridIdx) {
+    $renderAppCard = function (array $app, string $cat) use (&$_gridIdx, $catLabelAttr) {
         $_gridIdx++;
         $enrolled = !empty($app['enrolled']);
         $optIn    = !empty($app['opt_in']);
         ?>
-        <button style="--i:<?= $_gridIdx ?>" class="dash-fade app-card group flex flex-col overflow-hidden rounded-2xl border text-left shadow-sm transition
+        <button style="--i:<?= $_gridIdx ?>" class="dash-fade app-card group relative flex flex-col rounded-2xl border text-left shadow-sm transition
                     <?= $enrolled
                         ? 'border-slate-200 bg-white hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-y-0 disabled:shadow-sm'
                         : ($optIn
@@ -486,7 +506,7 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
                 data-opt-in="<?= $optIn ? '1' : '0' ?>"
                 <?= $enrolled ? 'draggable="true"' : '' ?>
                 <?= ($enrolled || $optIn) ? '' : 'disabled' ?>>
-            <div class="h-1.5 w-full" style="background:<?= htmlspecialchars($app['color']) . ($enrolled ? '' : ';opacity:.4') ?>"></div>
+            <div class="h-1.5 w-full rounded-t-2xl" style="background:<?= htmlspecialchars($app['color']) . ($enrolled ? '' : ';opacity:.4') ?>"></div>
             <div class="flex flex-1 flex-col p-3">
                 <div class="flex items-center gap-3">
                     <?php if ($app['key'] === 'onepay'): ?>
@@ -605,7 +625,7 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
         <!-- Apps grid — grouped into category sections. DB-backed cards flow
              through $renderAppCard; the hand-built cards (OneLink, TV, Store,
              Case Management) are slotted into the matching section by hand. -->
-        <div id="appsGrid" class="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        <div id="appsGrid" class="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
 
             <?php
             // ── Business ───────────────────────────────────────────────────
@@ -645,9 +665,9 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
             $renderCatHeader('Finance & Insights');
             ?>
             <?php if ($canUseOnelink): ?>
-            <button type="button" style="--i:<?= ++$_gridIdx ?>" id="onelinkPaymentsCard"
-                    class="dash-fade group flex flex-col overflow-hidden rounded-2xl border border-cyan-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]">
-                <div class="h-1.5 w-full bg-cyan-500"></div>
+            <button type="button" style="--i:<?= ++$_gridIdx ?>" id="onelinkPaymentsCard" data-category="finance"
+                    class="dash-fade group relative flex flex-col rounded-2xl border border-cyan-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]">
+                <div class="h-1.5 w-full rounded-t-2xl bg-cyan-500"></div>
             <div class="flex flex-1 flex-col p-3">
                 <div class="flex items-center gap-3">
                     <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-100 text-cyan-700">
@@ -673,8 +693,8 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
         </button>
         <?php else: ?>
         <!-- OneLink Payments — coming soon for users without company/platform admin access -->
-        <div style="--i:<?= ++$_gridIdx ?>" class="dash-fade flex flex-col overflow-hidden rounded-2xl border border-cyan-200/70 bg-cyan-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
-            <div class="h-1.5 w-full bg-cyan-500/50"></div>
+        <div style="--i:<?= ++$_gridIdx ?>" data-category="finance" class="dash-fade relative flex flex-col rounded-2xl border border-cyan-200/70 bg-cyan-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
+            <div class="h-1.5 w-full rounded-t-2xl bg-cyan-500/50"></div>
             <div class="flex flex-1 flex-col p-3">
                 <div class="flex items-center gap-3">
                     <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-100 text-cyan-700">
@@ -1024,6 +1044,7 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
     var ctxText      = document.getElementById('companyContext');
     var noCompNotice = document.getElementById('noCompanyNotice');
     var appsGrid     = document.getElementById('appsGrid');
+    if (appsGrid) { setTimeout(function () { syncCatLabels(); }, 0); }
     var draggingAppCard = null;
     var appOrderChanged = false;
     var suppressAppClick = false;
@@ -1178,6 +1199,25 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
                 return ra - rb;
             });
             group.forEach(function (card) { appsGrid.insertBefore(card, anchor); });
+        });
+        syncCatLabels();
+    }
+
+    // Put the category label on whichever card is currently first in each
+    // section (DOM order), so it stays correct after a drag-reorder. The grid
+    // then flows 5-up with the label floating above that first card.
+    var CAT_LABELS = { business: 'Business', finance: 'Finance & Insights', insights: 'Finance & Insights', marketing: 'Marketing' };
+    function syncCatLabels() {
+        if (!appsGrid) { return; }
+        appsGrid.querySelectorAll('[data-cat-label]').forEach(function (el) { el.removeAttribute('data-cat-label'); });
+        var placed = {};
+        Array.prototype.forEach.call(appsGrid.children, function (c) {
+            if (getComputedStyle(c).display === 'none') { return; }
+            var cat = c.dataset.category;
+            var label = cat && CAT_LABELS[cat];
+            if (!label || placed[label]) { return; }
+            placed[label] = true;
+            c.setAttribute('data-cat-label', label);
         });
     }
 
@@ -1777,6 +1817,7 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
             card.addEventListener('dragend', function () {
                 card.classList.remove('opacity-60', 'ring-2', 'ring-slate-300');
                 draggingAppCard = null;
+                syncCatLabels();
                 if (appOrderChanged) {
                     suppressAppClick = true;
                     saveCompanyAppOrder();
