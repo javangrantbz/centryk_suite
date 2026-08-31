@@ -450,12 +450,13 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
     // ── Group apps into categories ─────────────────────────────────────────
     // Section render order follows the key order here.
     $_catLabels = [
-        'business'  => 'Business',
-        'finance'   => 'Finance',
-        'marketing' => 'Marketing',
-        'insights'  => 'Insights',
+        'business'   => 'Business',
+        'finance'    => 'Finance',
+        'insights'   => 'Insights',
+        'operations' => 'Operations',
+        'marketing'  => 'Marketing',
     ];
-    $_catApps = ['business' => [], 'finance' => [], 'marketing' => [], 'insights' => []];
+    $_catApps = ['business' => [], 'finance' => [], 'insights' => [], 'operations' => [], 'marketing' => []];
     foreach ($apps as $_app) {
         $_k = (string)($_app['key'] ?? '');
         if ($_k === '' || isset($_comingSoonAppKeys[$_k]) || isset($_gridSkipKeys[$_k])) {
@@ -614,6 +615,20 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
         </button>
         <?php }; // end $renderAppCard ?>
 
+        <?php
+        // Centryk Business module cards. Not rows in `apps` — a dashboard-only
+        // group. Hidden by default; selectCompany() reveals the ones the
+        // chosen company holds (its own grant or one inherited from its
+        // group) when the viewer is an admin/manager of it.
+        $_bizCards = [
+            ['key' => 'accounting',     'href' => 'accounting.php',     'param' => 'company_id', 'label' => 'Accounting',          'icon' => 'book-open',  'blurb' => 'General ledger, chart of accounts, journals, P&L and balance sheet.'],
+            ['key' => 'receivables',    'href' => 'receivables.php',    'param' => 'company_id', 'label' => 'Receivables',         'icon' => 'wallet',     'blurb' => 'Customer ledger, balances and aging for this company.'],
+            ['key' => 'reconciliation', 'href' => 'reconciliation.php', 'param' => 'company_id', 'label' => 'Reconciliation',      'icon' => 'scale',      'blurb' => 'Match bank deposits to open customer invoices.'],
+            ['key' => 'routes',         'href' => 'routes.php',         'param' => 'company_id', 'label' => 'Field Sales & Routes', 'icon' => 'truck',      'blurb' => 'Delivery runs and end-of-day driver cash settlement.'],
+            ['key' => 'enterprise',     'href' => 'groups.php',         'param' => '',          'label' => 'Company Groups',       'icon' => 'building-2', 'blurb' => "A consolidated view across the group's companies."],
+        ];
+        ?>
+
         <section class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
 
         <?php if ($_enrolledAppCount === 0): ?>
@@ -633,7 +648,7 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
             foreach ($_catApps['business'] as $_a) { $renderAppCard($_a, 'business'); }
             ?>
             <!-- Case Management — coming soon (static, not in DB) -->
-            <div style="--i:<?= ++$_gridIdx ?>" class="dash-fade flex flex-col overflow-hidden rounded-2xl border border-blue-200/70 bg-blue-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
+            <div style="--i:<?= ++$_gridIdx ?>" data-category="business" class="dash-fade relative flex flex-col overflow-hidden rounded-2xl border border-blue-200/70 bg-blue-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
                 <div class="h-1.5 w-full bg-blue-500/50"></div>
                 <div class="flex flex-1 flex-col p-3">
                     <div class="flex items-center gap-3">
@@ -658,11 +673,45 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
             </div>
 
             <?php
-            // ── Finance & Insights ─────────────────────────────────────────
-            // Kept as distinct categories in the DB and on each card
-            // (data-category), but shown under one heading while each holds
-            // only a card or two. Split back out when either fills up.
-            $renderCatHeader('Finance & Insights');
+            // ── Centryk Business ───────────────────────────────────────────
+            // The AR/GL/routes/groups module cards. Not rows in `apps`; this
+            // is a dashboard-only grouping. Hidden until selectCompany()
+            // reveals the ones the chosen company is entitled to — so the
+            // "Centryk Business" label only appears once at least one shows.
+            $renderCatHeader('Centryk Business');
+            foreach ($_bizCards as $_bc): ?>
+            <a href="<?= htmlspecialchars($_bc['href']) ?>" data-biz-card="<?= htmlspecialchars($_bc['key']) ?>" data-biz-param="<?= htmlspecialchars($_bc['param']) ?>"
+               data-category="centryk_business"
+               style="--i:<?= $_gridIdx ?>"
+               class="biz-module-card dash-fade group relative hidden flex-col overflow-hidden rounded-2xl border border-violet-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]">
+                <div class="h-1.5 w-full bg-violet-500"></div>
+                <div class="flex flex-1 flex-col p-3">
+                    <div class="flex items-center gap-3">
+                        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-700">
+                            <i data-lucide="<?= htmlspecialchars($_bc['icon']) ?>" class="h-5 w-5"></i>
+                        </span>
+                        <div>
+                            <div class="text-[10px] font-black uppercase tracking-[0.16em] text-violet-600/80">Centryk Business</div>
+                            <div class="text-base font-black tracking-tight text-slate-900"><?= htmlspecialchars($_bc['label']) ?></div>
+                        </div>
+                    </div>
+                    <p class="mt-2 text-xs font-semibold leading-relaxed text-slate-500"><?= htmlspecialchars($_bc['blurb']) ?></p>
+                    <div class="mt-2.5 flex items-center gap-1.5">
+                        <span data-biz-dot class="inline-block h-1.5 w-1.5 rounded-full bg-violet-500"></span>
+                        <span data-biz-state class="text-[11px] font-bold text-violet-700">Active</span>
+                    </div>
+                    <div data-biz-metric class="mt-1.5 hidden text-[11px] font-semibold text-slate-500"></div>
+                </div>
+                <div class="flex items-center justify-between border-t border-violet-100 px-4 py-3 text-xs font-bold text-violet-700 transition-colors group-hover:text-violet-900">
+                    <span>Open</span>
+                    <i data-lucide="arrow-right" class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"></i>
+                </div>
+            </a>
+            <?php endforeach; ?>
+
+            <?php
+            // ── Finance ────────────────────────────────────────────────────
+            $renderCatHeader($_catLabels['finance']);
             ?>
             <?php if ($canUseOnelink): ?>
             <button type="button" style="--i:<?= ++$_gridIdx ?>" id="onelinkPaymentsCard" data-category="finance"
@@ -717,53 +766,17 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
         <?php endif; ?>
 
         <?php
-        // ── Centryk Business modules ───────────────────────────────────────
-        // Hidden by default; selectCompany() reveals the ones the chosen
-        // company holds (its own grant or one inherited from its group) when
-        // the viewer is an admin/manager of it.
-        $_bizCards = [
-            ['key' => 'accounting',     'href' => 'accounting.php',     'param' => 'company_id', 'label' => 'Accounting',          'icon' => 'book-open',  'blurb' => 'General ledger, chart of accounts, journals, P&L and balance sheet.'],
-            ['key' => 'receivables',    'href' => 'receivables.php',    'param' => 'company_id', 'label' => 'Receivables',         'icon' => 'wallet',     'blurb' => 'Customer ledger, balances and aging for this company.'],
-            ['key' => 'reconciliation', 'href' => 'reconciliation.php', 'param' => 'company_id', 'label' => 'Reconciliation',      'icon' => 'scale',      'blurb' => 'Match bank deposits to open customer invoices.'],
-            ['key' => 'routes',         'href' => 'routes.php',         'param' => 'company_id', 'label' => 'Field Sales & Routes', 'icon' => 'truck',      'blurb' => 'Delivery runs and end-of-day driver cash settlement.'],
-            ['key' => 'enterprise',     'href' => 'groups.php',         'param' => '',          'label' => 'Company Groups',       'icon' => 'building-2', 'blurb' => "A consolidated view across the group's companies."],
-        ];
-        foreach ($_bizCards as $_bc): ?>
-        <a href="<?= htmlspecialchars($_bc['href']) ?>" data-biz-card="<?= htmlspecialchars($_bc['key']) ?>" data-biz-param="<?= htmlspecialchars($_bc['param']) ?>"
-           style="--i:<?= $_gridIdx ?>"
-           class="biz-module-card dash-fade group hidden flex-col overflow-hidden rounded-2xl border border-violet-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]">
-            <div class="h-1.5 w-full bg-violet-500"></div>
-            <div class="flex flex-1 flex-col p-3">
-                <div class="flex items-center gap-3">
-                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-700">
-                        <i data-lucide="<?= htmlspecialchars($_bc['icon']) ?>" class="h-5 w-5"></i>
-                    </span>
-                    <div>
-                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-violet-600/80">Centryk Business</div>
-                        <div class="text-base font-black tracking-tight text-slate-900"><?= htmlspecialchars($_bc['label']) ?></div>
-                    </div>
-                </div>
-                <p class="mt-2 text-xs font-semibold leading-relaxed text-slate-500"><?= htmlspecialchars($_bc['blurb']) ?></p>
-                <div class="mt-2.5 flex items-center gap-1.5">
-                    <span data-biz-dot class="inline-block h-1.5 w-1.5 rounded-full bg-violet-500"></span>
-                    <span data-biz-state class="text-[11px] font-bold text-violet-700">Active</span>
-                </div>
-                <div data-biz-metric class="mt-1.5 hidden text-[11px] font-semibold text-slate-500"></div>
-            </div>
-            <div class="flex items-center justify-between border-t border-violet-100 px-4 py-3 text-xs font-bold text-violet-700 transition-colors group-hover:text-violet-900">
-                <span>Open</span>
-                <i data-lucide="arrow-right" class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"></i>
-            </div>
-        </a>
-        <?php endforeach; ?>
+        // ── Finance ────────────────────────────────────────────────────────
+        foreach ($_catApps['finance'] as $_a) { $renderAppCard($_a, 'finance'); }
 
-        <?php
-        // Remaining Finance + Insights cards share the heading above.
-        foreach ($_catApps['finance'] as $_a)  { $renderAppCard($_a, 'finance'); }
+        // ── Insights ───────────────────────────────────────────────────────
+        $renderCatHeader($_catLabels['insights']);
         foreach ($_catApps['insights'] as $_a) { $renderAppCard($_a, 'insights'); }
-        ?>
 
-        <?php
+        // ── Operations ─────────────────────────────────────────────────────
+        $renderCatHeader($_catLabels['operations']);
+        foreach ($_catApps['operations'] as $_a) { $renderAppCard($_a, 'operations'); }
+
         // ── Marketing ──────────────────────────────────────────────────────
         $renderCatHeader($_catLabels['marketing']);
         foreach ($_catApps['marketing'] as $_a) { $renderAppCard($_a, 'marketing'); }
@@ -772,7 +785,7 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
         <!-- Centryk TV — still "Coming Soon" for everyone not on the early-access
              allowlist, but clickable: lands on tv.php's teaser/pitch page instead
              of dead-ending, so interest can build ahead of the real rollout. -->
-        <a href="tv.php" style="--i:<?= ++$_gridIdx ?>" class="dash-fade group flex flex-col overflow-hidden rounded-2xl border border-teal-200/70 bg-teal-50/40 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md hover:bg-teal-50 active:scale-[0.98]">
+        <a href="tv.php" data-category="marketing" style="--i:<?= ++$_gridIdx ?>" class="dash-fade group relative flex flex-col overflow-hidden rounded-2xl border border-teal-200/70 bg-teal-50/40 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md hover:bg-teal-50 active:scale-[0.98]">
             <div class="h-1.5 w-full" style="background:#0f766e80"></div>
             <div class="flex flex-1 flex-col p-3">
                 <div class="flex items-center gap-3">
@@ -802,8 +815,8 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
         </a>
         <?php else: ?>
         <!-- Centryk TV — real link: either not production, or this viewer is on the early-access allowlist -->
-        <a href="<?= htmlspecialchars($tvBaseUrl) ?>/" style="--i:<?= ++$_gridIdx ?>"
-           class="dash-fade group flex flex-col overflow-hidden rounded-2xl border border-teal-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]">
+        <a href="<?= htmlspecialchars($tvBaseUrl) ?>/" data-category="marketing" style="--i:<?= ++$_gridIdx ?>"
+           class="dash-fade group relative flex flex-col overflow-hidden rounded-2xl border border-teal-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]">
             <div class="h-1.5 w-full bg-teal-600"></div>
             <div class="flex flex-1 flex-col p-3">
                 <div class="flex items-center gap-3">
@@ -834,7 +847,7 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
         <?php endif; ?>
 
         <!-- Store -->
-        <button type="button" style="--i:<?= ++$_gridIdx ?>" id="storeCard" class="dash-fade group flex flex-col overflow-hidden rounded-2xl border border-violet-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]">
+        <button type="button" data-category="marketing" style="--i:<?= ++$_gridIdx ?>" id="storeCard" class="dash-fade group relative flex flex-col overflow-hidden rounded-2xl border border-violet-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]">
             <div class="h-1.5 w-full bg-violet-500"></div>
             <div class="flex flex-1 flex-col p-3">
                 <div class="flex items-center gap-3">
@@ -1206,7 +1219,14 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
     // Put the category label on whichever card is currently first in each
     // section (DOM order), so it stays correct after a drag-reorder. The grid
     // then flows 5-up with the label floating above that first card.
-    var CAT_LABELS = { business: 'Business', finance: 'Finance & Insights', insights: 'Finance & Insights', marketing: 'Marketing' };
+    var CAT_LABELS = {
+        business: 'Business',
+        centryk_business: 'Centryk Business',
+        finance: 'Finance',
+        insights: 'Insights',
+        operations: 'Operations',
+        marketing: 'Marketing'
+    };
     function syncCatLabels() {
         if (!appsGrid) { return; }
         appsGrid.querySelectorAll('[data-cat-label]').forEach(function (el) { el.removeAttribute('data-cat-label'); });
