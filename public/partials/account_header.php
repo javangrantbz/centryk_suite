@@ -145,11 +145,6 @@ $awCurrent = $awCurrent ?? 'centryk';
                     <a href="profile.php" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition">
                         <i data-lucide="user-cog" class="h-4 w-4 shrink-0"></i> Manage your Centryk Account
                     </a>
-                    <button id="themeToggle" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition text-left">
-                        <i data-lucide="sun"  id="themeIconSun"  class="h-4 w-4 shrink-0"></i>
-                        <i data-lucide="moon" id="themeIconMoon" class="h-4 w-4 shrink-0 hidden"></i>
-                        <span id="themeLabel">Light mode</span>
-                    </button>
                     <button id="logoutBtn" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-red-50 hover:text-red-600 transition text-left">
                         <i data-lucide="log-out" class="h-4 w-4 shrink-0"></i> Sign out
                     </button>
@@ -232,23 +227,10 @@ $awCurrent = $awCurrent ?? 'centryk';
         fetch('api/auth/logout.php', { method: 'POST' }).finally(() => { window.location.href = 'index.php'; });
     });
 
-    // Theme
-    const sun = document.getElementById('themeIconSun');
-    const moon = document.getElementById('themeIconMoon');
-    const lbl = document.getElementById('themeLabel');
-    function applyTheme(theme) {
-        document.body.classList.toggle('light', theme === 'light');
-        if (sun)  sun.classList.toggle('hidden', theme === 'light');
-        if (moon) moon.classList.toggle('hidden', theme !== 'light');
-        if (lbl)  lbl.textContent = theme === 'light' ? 'Dark mode' : 'Light mode';
-    }
-    applyTheme(localStorage.getItem('centrikyTheme') || 'light');
-    document.getElementById('themeToggle')?.addEventListener('click', () => {
-        const next = document.body.classList.contains('light') ? 'dark' : 'light';
-        localStorage.setItem('centrikyTheme', next);
-        applyTheme(next);
-        document.dispatchEvent(new CustomEvent('centryk:themechange', { detail: { theme: next } }));
-        if (window.lucide) lucide.createIcons();
-    });
+    // Theme — the dark theme is unfinished (chrome goes dark, content stays
+    // light), so it's disabled for now: force light and clear any stored 'dark'.
+    document.body.classList.add('light');
+    document.body.classList.remove('dark');
+    try { localStorage.setItem('centrikyTheme', 'light'); } catch (e) {}
 })();
 </script>
