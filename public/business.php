@@ -8,6 +8,7 @@
  */
 require_once __DIR__ . '/../app/core/Auth.php';
 require_once __DIR__ . '/../app/core/DB.php';
+require_once __DIR__ . '/../app/core/Entitlements.php';
 require_once __DIR__ . '/../app/services/AuthService.php';
 
 Auth::start();
@@ -72,6 +73,16 @@ if ($activeCompany) {
     }
 }
 
+// Free preview promo state.
+$promoActive = Entitlements::promoActive();
+$promoInfo   = $activeCompany ? Entitlements::promoInfo((int)$activeCompany['id']) : null;
+$promoEndsLabel  = date('j M Y', strtotime(Entitlements::PROMO_ENDS_ON));
+$promoPaidLabel  = date('F Y', strtotime(Entitlements::PROMO_PAID_FROM));
+$onPreview   = $promoInfo !== null;
+// Show the "start preview" CTA only while the offer is open and the company
+// isn't already on a plan or a preview.
+$showPreviewCta = $promoActive && $activeCompany && !$onPreview && $entStates === [];
+
 $fmtPrice = static function (array $p): string {
     $amount = (float)($p['monthly_price'] ?? 0);
     if ($amount <= 0) {
@@ -114,11 +125,20 @@ $headerActionsHtml = ob_get_clean();
         <div>
             <p class="text-[10px] font-black uppercase tracking-[0.18em] text-violet-600">Centryk Business</p>
             <h1 class="mt-0.5 text-2xl font-black tracking-tight text-slate-950">More tools for growing operations</h1>
+            <?php if ($promoActive): ?>
+            <p class="mt-1 max-w-2xl text-sm font-semibold text-slate-500">
+                Your Centryk hub stays free. Everything below — the general ledger, receivables,
+                bank reconciliation, field routes, multi-entity structure — is
+                <span class="font-black text-slate-800">free to use until <?= htmlspecialchars($promoEndsLabel) ?></span>.
+                Paid plans begin <?= htmlspecialchars($promoPaidLabel) ?>; the earlier you start, the longer you have.
+            </p>
+            <?php else: ?>
             <p class="mt-1 max-w-2xl text-sm font-semibold text-slate-500">
                 Your Centryk hub stays free. These are optional add-ons for companies that need
                 receivables, reconciliation, field routes, or multi-entity structure. A Centryk
                 advisor sets them up with you — nothing switches on automatically.
             </p>
+            <?php endif; ?>
         </div>
         <?php if ($activeCompany && (in_array('active', $entStates, true) || in_array('suspended', $entStates, true))): ?>
         <div class="flex shrink-0 flex-wrap gap-2">
@@ -156,6 +176,35 @@ $headerActionsHtml = ob_get_clean();
 
         <div id="alert" class="mb-4 hidden rounded-xl border p-3 text-sm font-semibold"></div>
 
+        <?php if ($showPreviewCta): ?>
+        <div class="mb-5 rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50 to-white p-5">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <p class="text-[10px] font-black uppercase tracking-[0.16em] text-violet-600">Limited-time offer</p>
+                    <p class="mt-0.5 text-lg font-black text-slate-950">Try every Centryk Business tool, free</p>
+                    <p class="mt-1 max-w-xl text-sm font-semibold text-slate-500">
+                        One click turns on the general ledger, receivables, reconciliation and routes for
+                        <?= htmlspecialchars($activeCompany['name']) ?> — free until <?= htmlspecialchars($promoEndsLabel) ?>,
+                        no card, no commitment. We officially launch paid plans in <?= htmlspecialchars($promoPaidLabel) ?>.
+                    </p>
+                </div>
+                <button id="startPreviewBtn" class="shrink-0 rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-black uppercase tracking-[0.08em] text-white hover:bg-violet-700">
+                    Start free preview
+                </button>
+            </div>
+        </div>
+        <?php elseif ($onPreview): ?>
+        <div class="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-violet-200 bg-violet-50 px-5 py-3">
+            <p class="text-sm font-bold text-violet-800">
+                Free preview active — every tool below is open until <?= htmlspecialchars($promoEndsLabel) ?>.
+                <?php if ($promoInfo['days_left'] <= 60): ?>
+                    <span class="font-black"><?= (int)$promoInfo['days_left'] ?> days left.</span>
+                <?php endif; ?>
+            </p>
+            <span class="text-xs font-bold text-violet-500">Paid plans from <?= htmlspecialchars($promoPaidLabel) ?></span>
+        </div>
+        <?php endif; ?>
+
         <div class="grid gap-4 sm:grid-cols-2">
             <?php foreach ($catalog as $p):
                 $key   = $p['key'];
@@ -168,7 +217,9 @@ $headerActionsHtml = ob_get_clean();
                     <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
                         <i data-lucide="<?= htmlspecialchars($icon) ?>" class="h-5 w-5"></i>
                     </div>
-                    <?php if ($state === 'active'): ?>
+                    <?php if ($state === 'active' && $onPreview): ?>
+                        <span class="rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-violet-700">Preview</span>
+                    <?php elseif ($state === 'active'): ?>
                         <span class="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-emerald-700">Active</span>
                     <?php elseif ($state === 'suspended'): ?>
                         <span class="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-amber-700">Paused</span>
@@ -181,18 +232,33 @@ $headerActionsHtml = ob_get_clean();
                 <p class="mt-1 flex-1 text-sm font-semibold text-slate-500"><?= htmlspecialchars($p['description']) ?></p>
 
                 <div class="mt-4 flex items-center justify-between gap-3">
-                    <span class="text-xs font-black uppercase tracking-[0.1em] text-slate-400"><?= $fmtPrice($p) ?></span>
+                    <?php if ($promoActive && (float)($p['monthly_price'] ?? 0) > 0): ?>
+                        <span class="text-xs font-black uppercase tracking-[0.1em] text-violet-600">Free now
+                            <span class="text-slate-300">·</span>
+                            <span class="text-slate-400">then <?= htmlspecialchars($p['currency'] ?: 'BZD') ?> <?= number_format((float)$p['monthly_price'], 2) ?>/mo</span>
+                        </span>
+                    <?php else: ?>
+                        <span class="text-xs font-black uppercase tracking-[0.1em] text-slate-400"><?= $fmtPrice($p) ?></span>
+                    <?php endif; ?>
                     <?php
-                    $moduleLinks = ['receivables' => ['receivables.php', 'Open ledger'], 'reconciliation' => ['reconciliation.php', 'Open workbench'], 'routes' => ['routes.php', 'Open routes'], 'enterprise' => ['groups.php', 'Open groups']];
+                    $moduleLinks = [
+                        'accounting'     => ['accounting.php',     'Open'],
+                        'receivables'    => ['receivables.php',    'Open ledger'],
+                        'reconciliation' => ['reconciliation.php', 'Open workbench'],
+                        'routes'         => ['routes.php',         'Open routes'],
+                        'enterprise'     => ['groups.php',         'Open groups'],
+                    ];
                     ?>
                     <?php if ($state === 'active' && isset($moduleLinks[$key])): ?>
-                        <a href="<?= $moduleLinks[$key][0] ?>?company_id=<?= (int)$activeCompany['id'] ?>" class="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-white hover:bg-emerald-700"><?= $moduleLinks[$key][1] ?></a>
+                        <a href="<?= $moduleLinks[$key][0] ?>?company_id=<?= (int)$activeCompany['id'] ?>" class="rounded-xl <?= $onPreview ? 'bg-violet-600 hover:bg-violet-700' : 'bg-emerald-600 hover:bg-emerald-700' ?> px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-white"><?= $moduleLinks[$key][1] ?></a>
                     <?php elseif ($state === 'active'): ?>
-                        <span class="text-xs font-bold text-slate-400">On your plan</span>
+                        <span class="text-xs font-bold text-slate-400"><?= $onPreview ? 'In your preview' : 'On your plan' ?></span>
                     <?php elseif ($state === 'suspended'): ?>
                         <button data-package="<?= htmlspecialchars($key) ?>" class="reqBtn rounded-xl bg-amber-500 px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-white hover:bg-amber-600">Reactivate</button>
                     <?php elseif ($req): ?>
                         <span class="text-xs font-bold text-slate-400">We'll be in touch</span>
+                    <?php elseif ($promoActive): ?>
+                        <span class="text-xs font-bold text-violet-500">Free in preview</span>
                     <?php else: ?>
                         <button data-package="<?= htmlspecialchars($key) ?>" class="reqBtn rounded-xl bg-violet-600 px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-white hover:bg-violet-700">Request access</button>
                     <?php endif; ?>
@@ -279,6 +345,26 @@ async function loadActivity(){
 }
 document.getElementById('actRefresh')?.addEventListener('click', loadActivity);
 loadActivity();
+
+document.getElementById('startPreviewBtn')?.addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    btn.textContent = 'Turning on…';
+    try {
+        const res = await fetch('api/business/start_preview.php', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ company_id: COMPANY_ID }),
+        });
+        const data = await res.json();
+        if (!res.ok || data.success !== true) throw new Error(data.message || 'Could not start the preview.');
+        showAlert(data.message, 'ok');
+        setTimeout(() => window.location.reload(), 900);
+    } catch (err) {
+        showAlert(err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Start free preview';
+    }
+});
 
 document.querySelectorAll('.reqBtn').forEach(btn => {
     btn.addEventListener('click', async () => {

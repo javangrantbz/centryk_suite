@@ -40,6 +40,7 @@ if (!empty($_bsUser['id'])) {
 
 $_bsHeld = $_bsCid ? Entitlements::forCompany($_bsCid) : [];   // package_key => level
 $_bsHasAny = $_bsHeld !== [];
+$_bsPromo  = $_bsCid ? Entitlements::promoInfo($_bsCid) : null;
 
 // key => [label, href, icon, requires-package (null = show whenever any package is held)]
 $_bsModules = [
@@ -80,6 +81,12 @@ $_bsLink = static function (string $href) use ($_bsCid): string {
     <div class="biz-side-co"><div class="biz-nav-label" style="padding-top:2px"><?= htmlspecialchars($activeCompany['name']) ?></div></div>
     <?php endif; ?>
 
+    <?php if ($_bsPromo): ?>
+    <div class="biz-side-co" style="margin-top:0">
+      <span class="biz-chip biz-c-blue" style="width:100%; text-align:center; padding:3px 0;">Free preview</span>
+    </div>
+    <?php endif; ?>
+
     <div class="biz-nav-label">Modules</div>
     <?php foreach ($_bsModules as [$key, $label, $href, $icon, $needs]):
         $show = $needs === null ? $_bsHasAny : isset($_bsHeld[$needs]);
@@ -105,4 +112,5 @@ $_bsLink = static function (string $href) use ($_bsCid): string {
     <?php endforeach; ?>
   </aside>
   <div class="biz-layout-main">
+<?php include __DIR__ . '/business_promo_notice.php'; ?>
 <?php /* page content follows; closed by business_sidebar_end.php */ ?>
