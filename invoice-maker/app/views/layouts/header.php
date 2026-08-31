@@ -308,6 +308,12 @@ $invOnelinkUrl      = rtrim(CENTRYK_BASE, '/') . '/onelink-payments.php' . ($inv
                                 </div>
                                 <p class="mt-0.5 text-xs text-gray-400 truncate"><?= e(current_user()['email']) ?></p>
                             </div>
+                            <a href="<?= CENTRYK_BASE ?>/connections.php" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">
+                                <i data-lucide="handshake" class="w-4 h-4"></i> Centryk Connect
+                            </a>
+                            <a href="<?= CENTRYK_BASE ?>/business.php" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">
+                                <i data-lucide="briefcase" class="w-4 h-4"></i> Centryk Business
+                            </a>
                             <a href="<?= CENTRYK_BASE ?>/profile.php" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">
                                 <i data-lucide="user-cog" class="w-4 h-4"></i> Manage your Centryk Account
                             </a>

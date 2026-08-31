@@ -187,13 +187,17 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
                     <p class="text-xs text-slate-400 mt-0.5 truncate"><?= htmlspecialchars($user['email']) ?></p>
                 </div>
                 <div class="p-2 space-y-0.5">
-                    <a href="profile.php" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition">
-                        <i data-lucide="user-cog" class="h-4 w-4 shrink-0"></i>
-                        Manage your Centryk Account
+                    <a href="connections.php" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition">
+                        <i data-lucide="handshake" class="h-4 w-4 shrink-0"></i>
+                        Centryk Connect
                     </a>
                     <a href="business.php" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition">
                         <i data-lucide="briefcase" class="h-4 w-4 shrink-0"></i>
                         Centryk Business
+                    </a>
+                    <a href="profile.php" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition">
+                        <i data-lucide="user-cog" class="h-4 w-4 shrink-0"></i>
+                        Manage your Centryk Account
                     </a>
                     <?php if (!empty($user['is_admin'])): ?>
                     <a href="profile.php#companies" class="flex sm:hidden items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition">
