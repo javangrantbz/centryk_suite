@@ -265,8 +265,9 @@ $toc = [
                 <strong>1 January 2028</strong>. Until then any company can switch on the whole tier —
                 the general ledger, receivables, bank reconciliation, delivery routes, multi-entity
                 structure — from the <strong>Explore more services</strong> page, in one click, with
-                no card and no commitment. The earlier you start, the longer you have. After the
-                preview, a Centryk advisor helps you pick the packages you actually want.
+                no card and no commitment. Turn on the whole tier at once or one package at a time,
+                yourself. The earlier you start, the longer you have. A Centryk advisor is there to
+                help whenever you want one — never a requirement.
             </p>
         </div>
 

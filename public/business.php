@@ -2,9 +2,11 @@
 /**
  * Centryk Business — customer-facing "Explore more services".
  *
- * Company admins see the paid capability packages, what their company already
- * has, and can ask a Centryk advisor to set one up. Requesting never activates
- * anything — it creates a lead (api/apps/request_package.php).
+ * Company admins see the paid capability packages and what their company
+ * already has. Each package can be switched on self-serve
+ * (api/business/start_package.php) — free while the preview promo is open.
+ * "Talk to us" stays available and only ever creates a lead
+ * (api/apps/request_package.php); it never activates anything.
  */
 require_once __DIR__ . '/../app/core/Auth.php';
 require_once __DIR__ . '/../app/core/DB.php';
@@ -135,8 +137,8 @@ $headerActionsHtml = ob_get_clean();
             <?php else: ?>
             <p class="mt-1 max-w-2xl text-sm font-semibold text-slate-500">
                 Your Centryk hub stays free. These are optional add-ons for companies that need
-                receivables, reconciliation, field routes, or multi-entity structure. A Centryk
-                advisor sets them up with you — nothing switches on automatically.
+                receivables, reconciliation, field routes, or multi-entity structure. Turn any of
+                them on yourself — or have a Centryk advisor set them up with you.
             </p>
             <?php endif; ?>
         </div>
@@ -257,10 +259,10 @@ $headerActionsHtml = ob_get_clean();
                         <button data-package="<?= htmlspecialchars($key) ?>" class="reqBtn rounded-xl bg-amber-500 px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-white hover:bg-amber-600">Reactivate</button>
                     <?php elseif ($req): ?>
                         <span class="text-xs font-bold text-slate-400">We'll be in touch</span>
-                    <?php elseif ($promoActive): ?>
-                        <span class="text-xs font-bold text-violet-500">Free in preview</span>
+                    <?php elseif ($key === 'enterprise'): ?>
+                        <a href="groups.php" class="rounded-xl bg-violet-600 px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-white hover:bg-violet-700">Set up a group</a>
                     <?php else: ?>
-                        <button data-package="<?= htmlspecialchars($key) ?>" class="reqBtn rounded-xl bg-violet-600 px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-white hover:bg-violet-700">Request access</button>
+                        <button data-package="<?= htmlspecialchars($key) ?>" class="startPkgBtn rounded-xl bg-violet-600 px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-white hover:bg-violet-700"><?= $promoActive ? 'Start using it' : 'Start free trial' ?></button>
                     <?php endif; ?>
                 </div>
             </div>
@@ -364,6 +366,29 @@ document.getElementById('startPreviewBtn')?.addEventListener('click', async (e) 
         btn.disabled = false;
         btn.textContent = 'Start free preview';
     }
+});
+
+document.querySelectorAll('.startPkgBtn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+        const pkg = btn.dataset.package;
+        const original = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'Turning on…';
+        try {
+            const res = await fetch('api/business/start_package.php', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ company_id: COMPANY_ID, package_key: pkg }),
+            });
+            const data = await res.json();
+            if (!res.ok || data.success !== true) throw new Error(data.message || 'Could not turn it on.');
+            showAlert(data.message, 'ok');
+            setTimeout(() => window.location.reload(), 900);
+        } catch (e) {
+            showAlert(e.message, 'error');
+            btn.disabled = false;
+            btn.textContent = original;
+        }
+    });
 });
 
 document.querySelectorAll('.reqBtn').forEach(btn => {

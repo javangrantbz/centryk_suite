@@ -3,8 +3,10 @@
  * Company groups (Centryk Business — Enterprise).
  *
  * A group admin sees a consolidated view across the member companies and
- * manages which companies and people belong to the group. Group-level packages
- * are granted by a Centryk advisor; the members inherit them.
+ * manages which companies and people belong to the group. Any company admin
+ * can create a group themselves (api/groups/create.php grants it Enterprise on
+ * the spot); a Centryk advisor can also set one up. Members inherit the
+ * group-level packages.
  */
 require_once __DIR__ . '/../app/core/Auth.php';
 require_once __DIR__ . '/../app/core/DB.php';
@@ -33,6 +35,13 @@ if ($groups) {
 
 $level = $activeGroup ? Entitlements::groupLevel((int)$activeGroup['id'], 'enterprise') : Entitlements::NONE;
 $myRole = $activeGroup ? $activeGroup['role'] : null;
+
+// Self-serve: any company admin can spin up their own group, no advisor.
+$cgStmt = DB::pdo()->prepare(
+    "SELECT 1 FROM company_members WHERE user_id = :uid AND role = 'admin' AND status = 'active' LIMIT 1"
+);
+$cgStmt->execute(['uid' => (int)$user['id']]);
+$canCreateGroup = (bool)$cgStmt->fetchColumn();
 
 ob_start();
 include __DIR__ . '/partials/admin_tools_dropdown.php';
@@ -68,18 +77,41 @@ $headerActionsHtml = ob_get_clean();
             <div style="margin:0 auto;display:flex;height:36px;width:36px;align-items:center;justify-content:center;border-radius:4px;background:#eef2ff;color:#4f46e5">
                 <i data-lucide="building-2" style="height:18px;width:18px"></i>
             </div>
-            <h2 style="margin-top:10px;font-size:15px">Company groups are part of Centryk Business</h2>
+            <h2 style="margin-top:10px;font-size:15px">Run several companies as one</h2>
             <p class="biz-muted" style="margin:4px auto 0;max-width:30rem;font-size:12px">
-                Run several companies as one organisation — a consolidated view of receivables,
-                cash on the road and bank reconciliation, and one subscription for all of them.
-                Ask a Centryk advisor to set up a group.
+                A group gives you a consolidated view of receivables, cash on the road and bank
+                reconciliation across every company you own — and one place to manage them.
+                <?php if (Entitlements::promoActive()): ?>Free while the Centryk Business preview is on.<?php endif; ?>
             </p>
+            <?php if ($canCreateGroup): ?>
+            <div style="margin:14px auto 0;max-width:24rem;display:flex;gap:6px">
+                <input id="newGroupName" class="biz-input" placeholder="Group name — e.g. Bowen Holdings" style="flex:1">
+                <button id="createGroupBtn" class="biz-btn biz-btn-primary">Create group</button>
+            </div>
+            <p class="biz-muted" style="margin-top:8px;font-size:11px">
+                Prefer a hand? <a href="business.php" class="biz-t-green">Talk to a Centryk advisor</a>.
+            </p>
+            <?php else: ?>
+            <p class="biz-muted" style="margin-top:10px;font-size:11px">You need to be an admin of a company to create a group.</p>
             <a href="business.php" class="biz-btn biz-btn-primary" style="margin-top:12px">Explore Centryk Business</a>
+            <?php endif; ?>
         </div>
     <?php elseif ($level === Entitlements::NONE): ?>
-        <div class="biz-panel biz-panel-empty">
-            <?= htmlspecialchars($activeGroup['name']) ?> doesn't have an active Enterprise subscription.
-            <span class="block" style="margin-top:3px">A Centryk advisor needs to activate it before the group view is available.</span>
+        <div class="biz-panel" style="padding:24px 16px;text-align:center">
+            <h2 style="font-size:15px"><?= htmlspecialchars($activeGroup['name']) ?> isn't switched on yet</h2>
+            <p class="biz-muted" style="margin:4px auto 0;max-width:28rem;font-size:12px">
+                Turn on the consolidated group view — receivables, cash and reconciliation across
+                every member company.
+                <?php if (Entitlements::promoActive()): ?>Free while the Centryk Business preview is on.<?php endif; ?>
+            </p>
+            <?php if ($myRole === 'group_admin'): ?>
+            <button id="enableGroupBtn" class="biz-btn biz-btn-primary" style="margin-top:12px">Turn on the group view</button>
+            <p class="biz-muted" style="margin-top:8px;font-size:11px">
+                Prefer a hand? <a href="business.php" class="biz-t-green">Talk to a Centryk advisor</a>.
+            </p>
+            <?php else: ?>
+            <p class="biz-muted" style="margin-top:8px;font-size:11px">Ask a group admin to turn it on.</p>
+            <?php endif; ?>
         </div>
     <?php else: ?>
 
@@ -142,6 +174,7 @@ if (window.lucide) lucide.createIcons();
 const GID = <?= $activeGroup ? (int)$activeGroup['id'] : 'null' ?>;
 const IS_ADMIN = <?= $myRole === 'group_admin' ? 'true' : 'false' ?>;
 const CAN_WRITE = IS_ADMIN && <?= $level === Entitlements::FULL ? 'true' : 'false' ?>;
+const HAS_GROUP_VIEW = <?= ($activeGroup && $level !== Entitlements::NONE) ? 'true' : 'false' ?>;
 let STATE = null;
 
 function esc(s){ return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -169,7 +202,7 @@ function tile(label, value, tone){
 }
 
 async function load(){
-    if (GID === null) return;
+    if (GID === null || !HAS_GROUP_VIEW) return;
     try { STATE = await api('overview.php'); render(); }
     catch (e){ showAlert(e.message, 'error'); }
 }
@@ -264,6 +297,43 @@ if (amf) amf.addEventListener('submit', async (e) => {
         await api('member_set.php', { email: amf.email.value, role: amf.role.value });
         showAlert('Member added.', 'ok'); amf.reset(); load();
     } catch (err){ showAlert(err.message, 'error'); }
+});
+
+// ── Self-serve group creation / activation ──────────────────────────────
+async function postJson(path, body) {
+    const res = await fetch(path, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body || {}),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.success !== true) throw new Error(data.message || ('Request failed (' + res.status + ')'));
+    return data;
+}
+
+const cgBtn = document.getElementById('createGroupBtn');
+if (cgBtn) cgBtn.addEventListener('click', async () => {
+    const name = (document.getElementById('newGroupName').value || '').trim();
+    if (!name) { document.getElementById('newGroupName').focus(); return; }
+    cgBtn.disabled = true; cgBtn.textContent = 'Creating…';
+    try {
+        const d = await postJson('api/groups/create.php', { name });
+        location.href = 'groups.php?group_id=' + d.group_id;
+    } catch (e) {
+        showAlert(e.message, 'error');
+        cgBtn.disabled = false; cgBtn.textContent = 'Create group';
+    }
+});
+
+const egBtn = document.getElementById('enableGroupBtn');
+if (egBtn) egBtn.addEventListener('click', async () => {
+    egBtn.disabled = true; egBtn.textContent = 'Turning on…';
+    try {
+        await postJson('api/groups/enable.php', { group_id: GID });
+        location.reload();
+    } catch (e) {
+        showAlert(e.message, 'error');
+        egBtn.disabled = false; egBtn.textContent = 'Turn on the group view';
+    }
 });
 
 load();

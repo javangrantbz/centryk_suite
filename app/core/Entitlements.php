@@ -323,6 +323,45 @@ class Entitlements
     }
 
     /**
+     * Self-serve a single Centryk Business package — no advisor in the loop.
+     * While the promo is open the grant carries the promo expiry; after it, the
+     * package is granted as a trial with no end date (billing is handled
+     * separately by the subscription system). An existing real grant is left
+     * untouched.
+     *
+     * @return array{granted:bool, promo:bool, ends_on:string}
+     */
+    public static function startPackage(int $companyId, ?int $actorUserId, string $packageKey): array
+    {
+        if (!in_array($packageKey, self::PROMO_PACKAGES, true)) {
+            throw new RuntimeException('Unknown Centryk Business package.');
+        }
+
+        $cur = DB::pdo()->prepare(
+            "SELECT source, state FROM company_entitlements
+              WHERE company_id = :c AND package_key = :k AND state <> 'revoked' LIMIT 1"
+        );
+        $cur->execute(['c' => $companyId, 'k' => $packageKey]);
+        $row = $cur->fetch();
+        if ($row && $row['source'] !== 'promo' && $row['state'] === 'active') {
+            return ['granted' => false, 'promo' => false, 'ends_on' => self::PROMO_ENDS_ON];
+        }
+
+        $promo = self::promoActive();
+        self::grant(
+            $companyId,
+            $packageKey,
+            null,
+            $actorUserId,
+            $promo ? 'promo' : 'trial',
+            $promo ? self::PROMO_EXPIRES_AT : null,
+            $promo ? 'Self-serve (free preview)' : 'Self-serve trial'
+        );
+
+        return ['granted' => true, 'promo' => $promo, 'ends_on' => self::PROMO_ENDS_ON];
+    }
+
+    /**
      * Preview status for the on-page notice. Null when the company holds no
      * active promo entitlement.
      *

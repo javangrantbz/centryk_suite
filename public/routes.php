@@ -73,9 +73,10 @@ $headerActionsHtml = ob_get_clean();
             <h2 style="margin-top:10px;font-size:15px">Field Sales &amp; Routes is part of Centryk Business</h2>
             <p class="biz-muted" style="margin:4px auto 0;max-width:28rem;font-size:12px">
                 Plan delivery runs, record what each stop pays, and settle every driver's cash at
-                the end of the day. Ask a Centryk advisor to switch it on for <?= htmlspecialchars($activeCompany['name']) ?>.
+                the end of the day. Turn it on for <?= htmlspecialchars($activeCompany['name']) ?> yourself on Centryk
+                Business — a Centryk advisor can also help.
             </p>
-            <a href="business.php?company_id=<?= (int)$activeCompany['id'] ?>" class="biz-btn biz-btn-primary" style="margin-top:12px">Explore Centryk Business</a>
+            <a href="business.php?company_id=<?= (int)$activeCompany['id'] ?>" class="biz-btn biz-btn-primary" style="margin-top:12px">Turn on Field Sales &amp; Routes</a>
         </div>
     <?php else: ?>
 

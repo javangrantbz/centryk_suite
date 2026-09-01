@@ -227,6 +227,39 @@ class GroupsService
 
     // ── mutations ──────────────────────────────────────────────────────────
 
+    /**
+     * Self-serve: a company admin creates their own group and it is switched on
+     * immediately (the group gets the Enterprise entitlement so the consolidated
+     * view works) — no Centryk advisor needed.
+     *
+     * @return int  the new group id
+     */
+    public static function createForUser(int $userId, string $name): int
+    {
+        $name = trim($name);
+        if ($name === '') {
+            throw new InvalidArgumentException('Give the group a name.');
+        }
+
+        $isCompanyAdmin = DB::pdo()->prepare("
+            SELECT 1 FROM company_members
+            WHERE user_id = :uid AND role = 'admin' AND status = 'active' LIMIT 1
+        ");
+        $isCompanyAdmin->execute(['uid' => $userId]);
+        if (!$isCompanyAdmin->fetch()) {
+            throw new RuntimeException('Only a company admin can create a group.');
+        }
+
+        $groupId = self::saveGroup($userId, ['name' => $name]);
+        Entitlements::grantGroup(
+            $groupId,
+            'enterprise',
+            $userId,
+            Entitlements::promoActive() ? 'Self-serve group (free preview)' : 'Self-serve group'
+        );
+        return $groupId;
+    }
+
     /** Create a group (creator becomes owner + group_admin) or rename one. */
     public static function saveGroup(int $actorId, array $d, bool $actorIsPlatformAdmin = false): int
     {

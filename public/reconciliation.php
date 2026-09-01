@@ -71,9 +71,10 @@ $headerActionsHtml = ob_get_clean();
             <h2 style="margin-top:10px;font-size:15px">Reconciliation is part of Centryk Business</h2>
             <p class="biz-muted" style="margin:4px auto 0;max-width:28rem;font-size:12px">
                 Import your bank statement and match each deposit to the right customer invoice in
-                minutes instead of by hand. Ask a Centryk advisor to switch it on for <?= htmlspecialchars($activeCompany['name']) ?>.
+                minutes instead of by hand. Turn it on for <?= htmlspecialchars($activeCompany['name']) ?> yourself on
+                Centryk Business — a Centryk advisor can also help.
             </p>
-            <a href="business.php?company_id=<?= (int)$activeCompany['id'] ?>" class="biz-btn biz-btn-primary" style="margin-top:12px">Explore Centryk Business</a>
+            <a href="business.php?company_id=<?= (int)$activeCompany['id'] ?>" class="biz-btn biz-btn-primary" style="margin-top:12px">Turn on Reconciliation</a>
         </div>
     <?php else: ?>
 
