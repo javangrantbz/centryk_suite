@@ -83,12 +83,16 @@ class GroupsService
     /** Companies the user administers that aren't in any group yet. */
     public static function attachableFor(int $userId): array
     {
+        // Every active company the user administers. Ones already in a group
+        // come back flagged so the UI can offer to move them (a company admin
+        // has authority over their own company's grouping).
         $stmt = DB::pdo()->prepare("
-            SELECT c.id, c.name
+            SELECT c.id, c.name, c.group_id AS current_group_id, g.name AS current_group_name
             FROM company_members cm
             JOIN companies c ON c.id = cm.company_id
+            LEFT JOIN company_groups g ON g.id = c.group_id
             WHERE cm.user_id = :uid AND cm.role = 'admin' AND cm.status = 'active'
-              AND c.status = 'active' AND c.group_id IS NULL
+              AND c.status = 'active'
             ORDER BY c.name ASC
         ");
         $stmt->execute(['uid' => $userId]);
@@ -297,11 +301,14 @@ class GroupsService
 
     /**
      * Put a company under a group. The actor must be a group_admin (or platform
-     * admin) and an admin of the company being attached.
+     * admin) and an admin of the company being attached. If the company is
+     * already in another group, an admin of that company may still move it here
+     * (they have authority over their own company's grouping).
      */
     public static function attachCompany(int $groupId, int $companyId, int $actorId, bool $actorIsPlatformAdmin = false): void
     {
         $pdo = DB::pdo();
+        $actorIsCompanyAdmin = false;
         if (!$actorIsPlatformAdmin) {
             if (self::role($groupId, $actorId) !== 'group_admin') {
                 throw new RuntimeException('Only a group admin can attach companies.');
@@ -311,7 +318,8 @@ class GroupsService
                 WHERE company_id = :cid AND user_id = :uid AND role = 'admin' AND status = 'active' LIMIT 1
             ");
             $chk->execute(['cid' => $companyId, 'uid' => $actorId]);
-            if (!$chk->fetch()) {
+            $actorIsCompanyAdmin = (bool)$chk->fetch();
+            if (!$actorIsCompanyAdmin) {
                 throw new RuntimeException('You must be an admin of that company to add it.');
             }
         }
@@ -322,17 +330,19 @@ class GroupsService
         if (!$company) {
             throw new RuntimeException('Company not found.');
         }
-        if ($company['group_id'] !== null && (int)$company['group_id'] !== $groupId) {
+        $fromGroup = $company['group_id'] !== null ? (int)$company['group_id'] : null;
+        if ($fromGroup !== null && $fromGroup !== $groupId && !$actorIsPlatformAdmin && !$actorIsCompanyAdmin) {
             throw new RuntimeException('That company already belongs to another group.');
         }
 
         $pdo->prepare("UPDATE companies SET group_id = :gid WHERE id = :id")
             ->execute(['gid' => $groupId, 'id' => $companyId]);
 
+        $moved = $fromGroup !== null && $fromGroup !== $groupId;
         Audit::log([
             'actor_user_id' => $actorId, 'company_id' => $companyId, 'event_type' => 'group.company.attached',
-            'summary' => "Added {$company['name']} to group #{$groupId}",
-            'metadata' => ['group_id' => $groupId, 'company_id' => $companyId],
+            'summary' => ($moved ? "Moved {$company['name']} to group #{$groupId}" : "Added {$company['name']} to group #{$groupId}"),
+            'metadata' => ['group_id' => $groupId, 'company_id' => $companyId, 'from_group_id' => $fromGroup],
         ]);
     }
 

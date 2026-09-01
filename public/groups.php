@@ -57,8 +57,8 @@ $headerActionsHtml = ob_get_clean();
 
     <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div>
-            <p class="biz-kicker">Centryk Business · Enterprise</p>
-            <h1 class="mt-0.5">Company groups</h1>
+            <p class="biz-kicker">Centryk Business · Company Groups</p>
+            <h1 class="mt-0.5"><?= $activeGroup ? htmlspecialchars($activeGroup['name']) : 'Company groups' ?></h1>
         </div>
         <?php if (count($groups) > 1): ?>
             <div class="biz-seg">
@@ -251,16 +251,31 @@ function render(){
                 <span class="block biz-muted" style="font-size:11px">${Object.keys(co.entitlements || {}).join(', ') || 'no packages'}</span>
             </span>
             ${CAN_WRITE ? `<button onclick="detachCompany(${co.id})" class="biz-btn biz-btn-ghost biz-btn-sm shrink-0">Remove</button>` : ''}
-        </div>`).join('') || '<div class="biz-panel-empty">No companies yet.</div>';
+        </div>`).join('') || `<div class="biz-panel-empty">No companies in the group yet.${CAN_WRITE ? ' Add one below.' : ''}</div>`;
 
     if (CAN_WRITE) {
         const box = document.getElementById('attachBox');
         if (box) {
-            box.innerHTML = (STATE.attachable || []).length
-                ? `<div class="flex gap-2"><select id="attachSel" class="biz-select min-w-0 flex-1">
-                      ${STATE.attachable.map(a => `<option value="${a.id}">${esc(a.name)}</option>`).join('')}
-                   </select><button onclick="attachCompany()" class="biz-btn biz-btn-primary">Add</button></div>`
-                : '<p class="biz-muted" style="font-size:11px">No unassigned companies you admin.</p>';
+            const inThisGroup = new Set((g.companies || []).map(co => co.id));
+            const options = (STATE.attachable || []).filter(a => !inThisGroup.has(a.id));
+            if (options.length) {
+                const anyMoves = options.some(a => a.current_group_id);
+                box.innerHTML = `
+                   <p class="biz-label" style="margin-bottom:4px">Add a company you administer</p>
+                   <div class="flex gap-2">
+                     <select id="attachSel" class="biz-select min-w-0 flex-1">
+                       ${options.map(a => `<option value="${a.id}">${esc(a.name)}${a.current_group_id ? ' — currently in ' + esc(a.current_group_name) : ''}</option>`).join('')}
+                     </select>
+                     <button onclick="attachCompany()" class="biz-btn biz-btn-primary">Add to group</button>
+                   </div>
+                   <p class="biz-muted" style="font-size:11px;margin-top:4px">
+                     ${anyMoves ? 'Picking one that is in another group moves it here. ' : ''}Only companies where you are an admin appear.
+                   </p>`;
+            } else {
+                box.innerHTML = `
+                   <p class="biz-label" style="margin-bottom:4px">Add a company</p>
+                   <p class="biz-muted" style="font-size:11px">Every company you administer is already in this group. Create another company first, or have its admin add it.</p>`;
+            }
         }
     }
 
@@ -282,8 +297,14 @@ async function detachCompany(id){
     catch (e){ showAlert(e.message, 'error'); }
 }
 async function attachCompany(){
-    const id = parseInt(document.getElementById('attachSel').value, 10);
-    try { await api('company.php', { company_id: id, action: 'attach' }); showAlert('Company added.', 'ok'); load(); }
+    const sel = document.getElementById('attachSel');
+    const id = parseInt(sel.value, 10);
+    const opt = sel.options[sel.selectedIndex];
+    if (opt && opt.textContent.includes(' — currently in ') &&
+        !confirm(opt.textContent.split(' — currently in ')[0].trim() + ' will be moved out of its current group into this one. Continue?')) {
+        return;
+    }
+    try { await api('company.php', { company_id: id, action: 'attach' }); showAlert('Company added to the group.', 'ok'); load(); }
     catch (e){ showAlert(e.message, 'error'); }
 }
 async function setMember(userId, role){
