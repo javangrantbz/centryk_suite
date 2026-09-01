@@ -78,7 +78,7 @@ SELECT 'forms', 'Centryk Forms',
        'insights',
        'http://localhost/centryk/public/forms.php',
        'https://centryk.net/forms.php',
-       'clipboard-list', '#4f46e5', 7, 1, 'active'
+       '📋', '#4f46e5', 7, 1, 'active'
 FROM DUAL
 WHERE NOT EXISTS (SELECT 1 FROM `apps` WHERE `key` = 'forms');
 
