@@ -653,8 +653,8 @@ $headerActionsHtml = ob_get_clean();
     <?php endif; ?>
 
     <?php if ($hiringCheckUrl !== ''): ?>
-    <a id="storeHiringBadge" href="#" hidden
-       class="mb-6 flex items-center justify-between gap-3 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 transition hover:border-orange-300 hover:bg-orange-100">
+    <a id="storeHiringBadge" href="#"
+       class="mb-6 hidden items-center justify-between gap-3 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 transition hover:border-orange-300 hover:bg-orange-100">
         <span class="flex items-center gap-2.5">
             <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-orange-700 shadow-sm">
                 <i data-lucide="briefcase" class="h-4 w-4"></i>
@@ -670,12 +670,16 @@ $headerActionsHtml = ob_get_clean();
         fetch(<?= json_encode($hiringCheckUrl) ?>)
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (d) {
-                var n = d && d.success ? (parseInt(d.count, 10) || 0) : 0;
-                if (n < 1) { return; }
+                if (!d || !d.success) { return; }
+                var n = parseInt(d.count, 10) || 0;
+                // No open, publicly-listed vacancies (or nowhere to send the
+                // visitor): leave the badge hidden rather than show a dead link.
+                if (n < 1 || !d.board_url) { return; }
                 document.getElementById('storeHiringText').textContent =
                     <?= json_encode($name) ?> + ' is hiring — ' + n + ' open ' + (n === 1 ? 'role' : 'roles');
-                if (d.board_url) { badge.href = d.board_url; }
-                badge.hidden = false;
+                badge.href = d.board_url;
+                badge.classList.remove('hidden');
+                badge.classList.add('flex');
             })
             .catch(function () {});
     })();
