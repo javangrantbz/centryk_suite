@@ -148,14 +148,14 @@ $toc = [
         <div class="mt-5 grid gap-4 sm:grid-cols-2">
             <?php
             $apps = [
-                ['OnePay', 'Inventory &amp; point of sale', 'Ring up sales, track stock, price breaks for bulk, and (optionally) mirror each checkout into an invoice on the customer\'s account.'],
+                ['OnePay', 'Inventory &amp; point of sale', 'Ring up sales, track stock, price breaks for bulk, publish items to the storefront, and (optionally) mirror each checkout into an invoice on the customer\'s account.'],
                 ['MyPay', 'HR &amp; payroll', 'Staff records, attendance, pay runs with Belize PAYE and Social Security, payslips, TD4 employee slips, the monthly SSB and PAYE returns, and job-vacancy forms for recruitment.'],
                 ['Invoices', 'Quotes, invoices &amp; receipts', 'The shared invoice engine — hosted in the hub, used by OnePay and by Centryk Business Receivables. Send by email, share a link, or export a PDF.'],
                 ['Calendar', 'Shared scheduling', 'A company calendar surfaced across the suite, with a drawer preview on every page.'],
                 ['Centryk Forms', 'Surveys, polls &amp; feedback', 'Build a form — short text, choices, ratings, yes/no — open it, and share a public link. Responses collect in the hub with a per-question summary and CSV export.'],
                 ['Vision Board', 'Digital signage', 'Run the screens in your store or lobby — playlists, promotions, marquee messages, QR codes — driven from your Centryk data: inventory turns into low-stock and promo slides, the calendar into today\'s events.'],
                 ['Centryk TV', 'Live broadcasting &amp; ticketing', 'Browser-based live streaming of an event with pay-per-view tickets sold through OneLink (coming soon).'],
-                ['Storefront', 'Public menu / catalog', 'Every company gets a public page at a short link — menu, catalog, contact, and a link to pay.'],
+                ['Storefront', 'Public menu / catalog', 'Every company gets a public page at a short link — menu, catalog, contact, and a link to pay. Choose which OnePay items appear and to which audience.'],
                 ['OneLink', 'Payment links &amp; collections', 'Company-scoped view of what has been collected across POS, invoices and payment forms.'],
             ];
             foreach ($apps as [$n, $tag, $desc]): ?>
@@ -362,6 +362,13 @@ $toc = [
             <li>The bank deposit of that cash reconciles against the settled trip.</li>
         </ul>
 
+        <h3>Inventory becomes a storefront</h3>
+        <ul>
+            <li>From <strong>OnePay</strong> inventory (or the hub&rsquo;s <em>Sell on Store</em> page) you pick which items go on the <strong>storefront</strong> and to whom &mdash; staff only, the public Centryk Market, or everyone.</li>
+            <li>Listed items track the OnePay item&rsquo;s live price and photo; an <em>On Store</em> badge in OnePay shows what&rsquo;s already public.</li>
+            <li>A shopper opens the page at your short link, and a payment link on it collects through <strong>OneLink</strong>.</li>
+        </ul>
+
         <h3>Identity everywhere</h3>
         <ul>
             <li>Hire in <strong>MyPay</strong> → the person is provisioned in the hub → they appear on the <strong>OnePay</strong> roster and can be enrolled in the POS.</li>
@@ -409,6 +416,7 @@ $toc = [
         <ul>
             <li><strong>Storefront</strong> — a public page per company with your menu or catalog, contact details and hours, reachable at a short link (<code class="rounded bg-slate-100 px-1 text-xs">/s/your-company</code>) you can put on a card, a bag or a sign.</li>
             <li><strong>Menus &amp; catalogs</strong> — driven from the same product and price data as the POS, so what a customer sees is what they are charged. Bulk price breaks show as a ladder.</li>
+            <li><strong>You choose what&rsquo;s listed</strong> — publish OnePay items to the storefront one at a time or in bulk, each to an audience: <em>Employees only</em>, <em>Centryk Market</em> (the public store), or <em>Everyone</em> — with an optional start / end date. Nothing is public until you list it, and it stays in sync with the item&rsquo;s live price and photo.</li>
             <li><strong>Pay online</strong> — a payment link on the storefront and on every invoice; collections roll up in OneLink.</li>
             <li><strong>Shared statements</strong> — email a customer their statement of account, or send them a link; account customers can see exactly what they owe and why.</li>
             <li><strong>Public discovery</strong> — an opt-in business directory and a job board that list companies and vacancies across the platform.</li>
