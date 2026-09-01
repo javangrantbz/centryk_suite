@@ -66,6 +66,20 @@ function sell_price_label($value): string
     return '$' . number_format((float)$value, 2);
 }
 
+/**
+ * Plain-language label for a store_listings.audience enum value. The stored
+ * values (employee|market|both) never change — this is display only.
+ */
+function sell_audience_label(string $enum): string
+{
+    switch ($enum) {
+        case 'employee': return 'Employees only';
+        case 'market':   return 'Centryk Market';
+        case 'both':     return 'Everyone';
+        default:         return 'Published';
+    }
+}
+
 function sell_h($value): string
 {
     return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
@@ -176,13 +190,21 @@ unset($item);
 
 $publishedItems = [];
 $unpublishedItems = [];
+$storeNames = [];
 foreach ($inventoryItems as $item) {
     if ((int)($item['listing_enabled'] ?? 0) === 1) {
         $publishedItems[] = $item;
     } else {
         $unpublishedItems[] = $item;
     }
+    $sn = trim((string)($item['store_name'] ?? ''));
+    if ($sn !== '' && !in_array($sn, $storeNames, true)) {
+        $storeNames[] = $sn;
+    }
 }
+sort($storeNames);
+// Single list, published first so the "already live" items lead.
+$orderedItems = array_merge($publishedItems, $unpublishedItems);
 
 $pageTitle = 'Sell on Store';
 $headerMaxW = 'max-w-7xl';
@@ -214,7 +236,7 @@ $headerActionsHtml = ob_get_clean();
 <body class="min-h-screen bg-slate-100 font-sans antialiased text-slate-900">
 <?php include __DIR__ . '/partials/account_header.php'; ?>
 
-<main class="mx-auto max-w-7xl px-6 pt-1 pb-5">
+<main class="mx-auto max-w-7xl px-4 pt-1 pb-4">
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
             <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Centryk Store</p>
@@ -271,15 +293,20 @@ $headerActionsHtml = ob_get_clean();
                     <label class="mb-1 block text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Audience</label>
                     <div class="grid gap-2 sm:grid-cols-3">
                         <label class="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm font-bold text-slate-700">
-                            <input type="radio" name="audience" value="employee" checked class="mr-2"> Employees
+                            <input type="radio" name="audience" value="employee" checked class="mr-2"> Employees only
                         </label>
                         <label class="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm font-bold text-slate-700">
                             <input type="radio" name="audience" value="market" class="mr-2"> Centryk Market
                         </label>
                         <label class="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm font-bold text-slate-700">
-                            <input type="radio" name="audience" value="both" class="mr-2"> Both
+                            <input type="radio" name="audience" value="both" class="mr-2"> Everyone
                         </label>
                     </div>
+                    <p class="mt-1.5 text-[11px] font-semibold leading-relaxed text-slate-400">
+                        <b class="text-slate-500">Employees only</b> &mdash; signed-in members of your company &middot;
+                        <b class="text-slate-500">Centryk Market</b> &mdash; anyone browsing the public store &middot;
+                        <b class="text-slate-500">Everyone</b> &mdash; the public store and your members
+                    </p>
                 </div>
                 <div>
                     <label class="mb-1 block text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Visibility Window</label>
@@ -296,47 +323,55 @@ $headerActionsHtml = ob_get_clean();
             </div>
         </section>
 
-        <details class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm" open>
-            <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4">
-                <span>
-                    <span class="block text-lg font-black tracking-tight">Published Items</span>
-                    <span class="block text-xs font-semibold text-slate-400"><?= count($publishedItems) ?> item(s) currently visible through Centryk Store rules.</span>
-                </span>
-                <i data-lucide="chevron-down" class="h-5 w-5 text-slate-400"></i>
-            </summary>
-            <div class="border-t border-slate-100 p-5">
-                <?php if ($publishedItems): ?>
-                    <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                        <?php foreach ($publishedItems as $item): ?>
+        <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
+                <div>
+                    <span class="block text-lg font-black tracking-tight">Inventory</span>
+                    <span class="block text-xs font-semibold text-slate-400">
+                        <?= count($publishedItems) ?> on store &middot; <?= count($inventoryItems) ?> active item<?= count($inventoryItems) === 1 ? '' : 's' ?> total
+                    </span>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <label class="relative">
+                        <i data-lucide="search" class="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400"></i>
+                        <input id="sellSearch" type="search" placeholder="Search name or SKU"
+                               class="w-52 rounded-lg border border-slate-200 bg-slate-50 py-1.5 pl-8 pr-3 text-sm font-semibold text-slate-700 outline-none focus:border-violet-500 focus:bg-white">
+                    </label>
+                    <div id="sellStatusChips" class="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+                        <button type="button" data-status="all" class="rounded-md px-3 py-1.5 text-xs font-black transition bg-white text-slate-900 shadow-sm">All</button>
+                        <button type="button" data-status="listed" class="rounded-md px-3 py-1.5 text-xs font-black transition text-slate-500 hover:text-slate-800">On store</button>
+                        <button type="button" data-status="unlisted" class="rounded-md px-3 py-1.5 text-xs font-black transition text-slate-500 hover:text-slate-800">Not listed</button>
+                    </div>
+                    <select id="sellAudience" class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-bold text-slate-700 outline-none focus:border-violet-500">
+                        <option value="all">Any audience</option>
+                        <option value="employee">Employees only</option>
+                        <option value="market">Centryk Market</option>
+                        <option value="both">Everyone</option>
+                    </select>
+                    <?php if (count($storeNames) > 1): ?>
+                    <select id="sellStore" class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-bold text-slate-700 outline-none focus:border-violet-500">
+                        <option value="all">All stores</option>
+                        <?php foreach ($storeNames as $sn): ?>
+                        <option value="<?= sell_h($sn) ?>"><?= sell_h($sn) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <div class="p-4">
+                <?php if ($orderedItems): ?>
+                    <div id="sellGrid" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                        <?php foreach ($orderedItems as $item): ?>
                             <?php include __DIR__ . '/partials/sell_inventory_row.php'; ?>
                         <?php endforeach; ?>
                     </div>
+                    <div id="sellEmpty" class="hidden rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm font-bold text-slate-600">No items match these filters.</div>
+                    <div id="sellPager" class="mt-4 flex flex-wrap items-center justify-between gap-3"></div>
                 <?php else: ?>
-                    <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm font-bold text-slate-600">No published items yet.</div>
+                    <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm font-bold text-slate-600">No active OnePay inventory items found for this company.</div>
                 <?php endif; ?>
             </div>
-        </details>
-
-        <details class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm" open>
-            <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4">
-                <span>
-                    <span class="block text-lg font-black tracking-tight">Non-published Items</span>
-                    <span class="block text-xs font-semibold text-slate-400"><?= count($unpublishedItems) ?> active OnePay inventory item(s) not currently listed.</span>
-                </span>
-                <i data-lucide="chevron-down" class="h-5 w-5 text-slate-400"></i>
-            </summary>
-            <div class="border-t border-slate-100 p-5">
-                <?php if ($unpublishedItems): ?>
-                    <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                        <?php foreach ($unpublishedItems as $item): ?>
-                            <?php include __DIR__ . '/partials/sell_inventory_row.php'; ?>
-                        <?php endforeach; ?>
-                    </div>
-                <?php else: ?>
-                    <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm font-bold text-slate-600">All active inventory items are published.</div>
-                <?php endif; ?>
-            </div>
-        </details>
+        </section>
     </form>
     <?php endif; ?>
 </main>
@@ -373,6 +408,96 @@ if (window.lucide) { lucide.createIcons(); }
     });
 
     syncSetup();
+
+    // ── Filters + pagination (client-side; all rows are already in the DOM) ──
+    var grid = document.getElementById('sellGrid');
+    if (!grid) { return; }
+    var rows = Array.prototype.slice.call(grid.querySelectorAll('.sell-row'));
+    var searchInput = document.getElementById('sellSearch');
+    var audienceSel = document.getElementById('sellAudience');
+    var storeSel = document.getElementById('sellStore');
+    var statusChips = document.getElementById('sellStatusChips');
+    var pager = document.getElementById('sellPager');
+    var emptyEl = document.getElementById('sellEmpty');
+    var PAGE_SIZE = 15;
+    var statusFilter = 'all';
+    var page = 1;
+
+    function chipClass(on) {
+        return 'rounded-md px-3 py-1.5 text-xs font-black transition ' +
+            (on ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800');
+    }
+
+    function rowMatches(row) {
+        if (statusFilter !== 'all' && row.dataset.status !== statusFilter) { return false; }
+        var a = audienceSel ? audienceSel.value : 'all';
+        if (a !== 'all' && row.dataset.audience !== a) { return false; }
+        var s = storeSel ? storeSel.value : 'all';
+        if (s !== 'all' && row.dataset.store !== s) { return false; }
+        var q = (searchInput ? searchInput.value : '').trim().toLowerCase();
+        if (q && (row.dataset.search || '').indexOf(q) === -1) { return false; }
+        return true;
+    }
+
+    function renderPager(total, pages) {
+        if (!pager) { return; }
+        if (total <= PAGE_SIZE) { pager.innerHTML = ''; return; }
+        var from = (page - 1) * PAGE_SIZE + 1;
+        var to = Math.min(page * PAGE_SIZE, total);
+        var nav = '<button type="button" data-nav="prev" class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-black uppercase tracking-[0.1em] text-slate-600 transition hover:bg-slate-50 disabled:opacity-40"' + (page <= 1 ? ' disabled' : '') + '>Prev</button>';
+        for (var p = 1; p <= pages; p++) {
+            nav += '<button type="button" data-nav="' + p + '" class="rounded-lg px-3 py-1.5 text-xs font-black transition ' +
+                (p === page ? 'bg-slate-950 text-white' : 'border border-slate-200 text-slate-600 hover:bg-slate-50') + '">' + p + '</button>';
+        }
+        nav += '<button type="button" data-nav="next" class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-black uppercase tracking-[0.1em] text-slate-600 transition hover:bg-slate-50 disabled:opacity-40"' + (page >= pages ? ' disabled' : '') + '>Next</button>';
+        pager.innerHTML =
+            '<span class="text-xs font-semibold text-slate-400">' + from + '–' + to + ' of ' + total + '</span>' +
+            '<span class="flex flex-wrap items-center gap-1.5">' + nav + '</span>';
+    }
+
+    function apply() {
+        var visible = rows.filter(rowMatches);
+        var pages = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
+        if (page > pages) { page = pages; }
+        var start = (page - 1) * PAGE_SIZE;
+        var shown = visible.slice(start, start + PAGE_SIZE);
+        rows.forEach(function (r) { r.classList.add('hidden'); });
+        shown.forEach(function (r) { r.classList.remove('hidden'); });
+        if (emptyEl) { emptyEl.classList.toggle('hidden', visible.length > 0); }
+        renderPager(visible.length, pages);
+        if (window.lucide) { lucide.createIcons(); }
+    }
+
+    function resetAndApply() { page = 1; apply(); }
+
+    if (searchInput) { searchInput.addEventListener('input', resetAndApply); }
+    if (audienceSel) { audienceSel.addEventListener('change', resetAndApply); }
+    if (storeSel) { storeSel.addEventListener('change', resetAndApply); }
+    if (statusChips) {
+        statusChips.addEventListener('click', function (e) {
+            var btn = e.target.closest('button[data-status]');
+            if (!btn) { return; }
+            statusFilter = btn.dataset.status;
+            Array.prototype.forEach.call(statusChips.children, function (c) {
+                c.className = chipClass(c.dataset.status === statusFilter);
+            });
+            resetAndApply();
+        });
+    }
+    if (pager) {
+        pager.addEventListener('click', function (e) {
+            var btn = e.target.closest('button[data-nav]');
+            if (!btn) { return; }
+            var nav = btn.dataset.nav;
+            if (nav === 'prev') { page = Math.max(1, page - 1); }
+            else if (nav === 'next') { page = page + 1; }
+            else { page = parseInt(nav, 10) || 1; }
+            apply();
+            grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    }
+
+    apply();
 })();
 </script>
 </body>
