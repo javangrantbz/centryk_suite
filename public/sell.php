@@ -360,6 +360,10 @@ $headerActionsHtml = ob_get_clean();
             </div>
             <div class="p-4">
                 <?php if ($orderedItems): ?>
+                    <p class="mb-3 flex items-center gap-1.5 text-xs font-semibold text-slate-500">
+                        <i data-lucide="check-square" class="h-3.5 w-3.5 text-slate-400"></i>
+                        Tick the items you want to change, then set an audience and Publish, Update, or Unpublish. Selections carry across pages.
+                    </p>
                     <div id="sellGrid" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                         <?php foreach ($orderedItems as $item): ?>
                             <?php include __DIR__ . '/partials/sell_inventory_row.php'; ?>
