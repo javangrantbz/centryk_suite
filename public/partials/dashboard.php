@@ -650,18 +650,15 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
                         <div class="text-[10px] font-black uppercase tracking-[0.16em] text-violet-600/80">Centryk Business</div>
                         <div class="text-base font-black tracking-tight text-slate-900">Workspace</div>
                     </div>
-                    <span id="bizWsBadge" class="ml-1 rounded-full bg-violet-600 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-white"></span>
+                    <span id="bizWsBadge" class="ml-1 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-violet-700"></span>
                 </div>
-                <a id="bizWsOpen" href="business.php" class="inline-flex items-center gap-1.5 rounded-xl bg-violet-600 px-3.5 py-2 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-violet-700">
+                <a id="bizWsOpen" href="business.php" class="inline-flex items-center gap-1.5 rounded-xl border border-violet-200 bg-violet-50 px-3.5 py-2 text-xs font-black uppercase tracking-[0.12em] text-violet-700 transition hover:bg-violet-100 hover:text-violet-800">
                     Open workspace <i data-lucide="arrow-right" class="h-3.5 w-3.5"></i>
                 </a>
             </div>
-            <div class="grid gap-4 p-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
-                <div class="min-w-0">
-                    <div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Modules</div>
-                    <div id="bizWsModules" class="mt-2 flex flex-wrap gap-1.5"></div>
-                </div>
-                <div id="bizWsStats" class="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:min-w-[22rem]"></div>
+            <div class="space-y-3 p-5">
+                <div id="bizWsModules" class="flex flex-nowrap gap-1.5 overflow-x-auto pb-0.5"></div>
+                <div id="bizWsStats" class="grid grid-cols-2 gap-2 sm:grid-cols-3"></div>
             </div>
         </section>
 
@@ -1447,8 +1444,8 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
                     wsBadge.textContent = bizPausedCount
                         ? bizPausedCount + ' of ' + bizKeys.length + ' paused'
                         : bizKeys.length + ' module' + (bizKeys.length === 1 ? '' : 's') + ' active';
-                    wsBadge.className = 'ml-1 rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-white '
-                        + (allPausedWs ? 'bg-amber-600' : 'bg-violet-600');
+                    wsBadge.className = 'ml-1 rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] '
+                        + (allPausedWs ? 'bg-amber-100 text-amber-700' : 'bg-violet-100 text-violet-700');
                 }
                 var wsOpen = document.getElementById('bizWsOpen');
                 if (wsOpen) { wsOpen.href = 'business.php?company_id=' + encodeURIComponent(selectedId); }
@@ -1458,11 +1455,11 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
                     wsMods.innerHTML = BIZ_MODULES.filter(function (m) { return !!bizEnts[m.key]; }).map(function (m) {
                         var paused = bizEnts[m.key] === 'read';
                         var href = m.href + (m.param ? ('?' + m.param + '=' + encodeURIComponent(selectedId)) : '');
-                        return '<a href="' + href + '" class="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition '
+                        return '<a href="' + href + '" class="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 py-1.5 text-xs font-bold transition '
                             + (paused
                                 ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100'
                                 : 'border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100')
-                            + '"><i data-lucide="' + esc(m.icon) + '" class="h-3.5 w-3.5"></i>' + esc(m.label)
+                            + '"><i data-lucide="' + esc(m.icon) + '" class="h-3.5 w-3.5 shrink-0"></i>' + esc(m.label)
                             + (paused ? '<span class="text-[9px] font-black uppercase">· paused</span>' : '') + '</a>';
                     }).join('');
                 }
