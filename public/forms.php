@@ -116,11 +116,19 @@ include __DIR__ . '/partials/account_header.php';
             <div class="biz-panel-head"><span><?= count($forms) ?> form<?= count($forms) === 1 ? '' : 's' ?></span></div>
             <div class="biz-list">
                 <?php foreach ($forms as $f): ?>
-                <div class="biz-row" style="align-items:flex-start">
+                <div class="biz-row" style="align-items:flex-start" data-form-id="<?= (int)$f['id'] ?>">
                     <div class="min-w-0 flex-1">
-                        <a href="form-edit.php?id=<?= (int)$f['id'] ?>&company_id=<?= (int)$activeCompany['id'] ?>" class="block font-bold" style="text-decoration:none;color:var(--bz-accent-d)">
-                            <?= htmlspecialchars($f['title']) ?>
-                        </a>
+                        <div class="fname-view flex items-center gap-1">
+                            <a href="form-edit.php?id=<?= (int)$f['id'] ?>&company_id=<?= (int)$activeCompany['id'] ?>" class="fname-text block font-bold" style="text-decoration:none;color:var(--bz-accent-d)">
+                                <?= htmlspecialchars($f['title']) ?>
+                            </a>
+                            <button type="button" onclick="renameForm(<?= (int)$f['id'] ?>)" class="biz-btn biz-btn-ghost biz-btn-sm" title="Rename"><i data-lucide="pencil" class="w-3 h-3"></i></button>
+                        </div>
+                        <form class="fname-edit hidden flex items-center gap-1" onsubmit="submitRename(event, <?= (int)$f['id'] ?>)">
+                            <input class="biz-input fname-input" type="text" value="<?= htmlspecialchars($f['title'], ENT_QUOTES) ?>" maxlength="200" autocomplete="off" style="flex:1;min-width:12rem">
+                            <button type="submit" class="biz-btn biz-btn-primary biz-btn-sm">Save</button>
+                            <button type="button" class="biz-btn biz-btn-ghost biz-btn-sm" onclick="cancelRename(<?= (int)$f['id'] ?>)">Cancel</button>
+                        </form>
                         <div class="biz-muted mt-0.5" style="font-size:11px">
                             <span class="biz-chip <?= $statusChip($f['status']) ?>"><?= htmlspecialchars($f['status']) ?></span>
                             · <?= (int)$f['question_count'] ?> question<?= (int)$f['question_count'] === 1 ? '' : 's' ?>
@@ -199,8 +207,56 @@ async function submitCreateForm(e) {
 }
 
 document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') hideCreateForm();
+    if (e.key !== 'Escape') return;
+    hideCreateForm();
+    document.querySelectorAll('.biz-row[data-form-id]').forEach((row) => {
+        if (!row.querySelector('.fname-edit').classList.contains('hidden')) {
+            cancelRename(row.dataset.formId);
+        }
+    });
 });
+
+function formRow(id) {
+    return document.querySelector('.biz-row[data-form-id="' + id + '"]');
+}
+
+function renameForm(id) {
+    const row = formRow(id);
+    if (!row) return;
+    row.querySelector('.fname-view').classList.add('hidden');
+    const edit = row.querySelector('.fname-edit');
+    edit.classList.remove('hidden');
+    const input = edit.querySelector('.fname-input');
+    input.focus();
+    input.select();
+}
+
+function cancelRename(id) {
+    const row = formRow(id);
+    if (!row) return;
+    row.querySelector('.fname-edit').classList.add('hidden');
+    row.querySelector('.fname-view').classList.remove('hidden');
+    row.querySelector('.fname-input').value = row.querySelector('.fname-text').textContent.trim();
+}
+
+async function submitRename(e, id) {
+    e.preventDefault();
+    const row = formRow(id);
+    const title = row.querySelector('.fname-input').value.trim();
+    if (!title) { showAlert('Form title cannot be empty.', 'error'); return; }
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    try {
+        await api('save.php', { id, title });
+        row.querySelector('.fname-text').textContent = title;
+        cancelRename(id);
+        showAlert('Renamed.');
+    } catch (err) {
+        showAlert(err.message, 'error');
+    } finally {
+        btn.disabled = false;
+    }
+}
 
 async function dupForm(id) {
     try {
