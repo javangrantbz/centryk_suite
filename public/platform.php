@@ -336,6 +336,7 @@ $toc = [
 
         <h3>On top of the packages</h3>
         <ul>
+            <li><strong>Tier status at a glance</strong> — a <strong>Business</strong> badge sits next to the company name on the dashboard and on every Business tool page, and the dashboard names which packages are active (or amber, if a lapsed subscription has dropped one to read-only).</li>
             <li><strong>Business Insights</strong> — a finance dashboard per company: days sales outstanding, collection ratio, aging, write-off rate, cash in transit, reconciliation match rate.</li>
             <li><strong>Belize GST summary</strong> — a monthly output-tax working sheet from your sales, with bad-debt relief and a 12.5% GST-inclusive back-out for invoices with no tax split. A working summary to help prepare the return — not the return, and not tax advice.</li>
             <li><strong>Subscription billing</strong> — monthly charges, and a dunning sweep that drops an overdue subscription to read-only and restores it on payment.</li>
