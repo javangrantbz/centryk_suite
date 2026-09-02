@@ -316,9 +316,8 @@ $headerActionsHtml = ob_get_clean();
                     </div>
                 </div>
                 <div class="flex flex-wrap gap-2">
-                    <button type="submit" data-action="publish" class="rounded-xl bg-slate-950 px-4 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-slate-800">Publish</button>
-                    <button type="submit" data-action="update" class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-slate-700 transition hover:bg-slate-50">Update</button>
-                    <button type="submit" data-action="unpublish" class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-rose-700 transition hover:bg-rose-100">Unpublish</button>
+                    <button type="submit" data-action="publish" class="rounded-xl bg-slate-950 px-4 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-slate-800">Save to store</button>
+                    <button type="submit" data-action="unpublish" class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-rose-700 transition hover:bg-rose-100">Remove from store</button>
                 </div>
             </div>
         </section>
@@ -391,14 +390,49 @@ if (window.lucide) { lucide.createIcons(); }
     var selectedText = document.getElementById('selectedCountText');
     if (!form || !setup || !actionInput || !selectedText) { return; }
 
+    var AUD_LABEL = { employee: 'Employees only', market: 'Centryk Market', both: 'Everyone' };
+
     function selectedBoxes() {
         return Array.prototype.slice.call(form.querySelectorAll('input[name="item_ids[]"]:checked'));
     }
 
+    // When a selection changes, mirror the panel to what the selected items are
+    // ALREADY set to — so the radio/dates show the current listing, not a stale
+    // default. If the selection is mixed (or none are listed), fall back to the
+    // "Employees only" default with a note.
     function syncSetup() {
         var selected = selectedBoxes();
         setup.classList.toggle('hidden', selected.length === 0);
-        selectedText.textContent = selected.length + ' item(s) selected.';
+        if (selected.length === 0) { return; }
+
+        var selRows = selected.map(function (b) { return b.closest('.sell-row'); }).filter(Boolean);
+        var listed = selRows.filter(function (r) { return r.dataset.status === 'listed'; });
+        var allListed = listed.length > 0 && listed.length === selRows.length;
+
+        var auds = listed.map(function (r) { return r.dataset.audience || 'employee'; });
+        var sharedAud = (allListed && auds.every(function (a) { return a === auds[0]; })) ? auds[0] : '';
+
+        var radio = form.querySelector('input[name="audience"][value="' + (sharedAud || 'employee') + '"]');
+        if (radio) { radio.checked = true; }
+
+        var starts = listed.map(function (r) { return r.dataset.starts || ''; });
+        var ends = listed.map(function (r) { return r.dataset.ends || ''; });
+        var startInput = form.querySelector('input[name="starts_at"]');
+        var endInput = form.querySelector('input[name="ends_at"]');
+        if (startInput) { startInput.value = (allListed && starts.every(function (s) { return s === starts[0]; })) ? starts[0] : ''; }
+        if (endInput) { endInput.value = (allListed && ends.every(function (s) { return s === ends[0]; })) ? ends[0] : ''; }
+
+        var note;
+        if (listed.length === 0) {
+            note = 'not on the store yet';
+        } else if (allListed && sharedAud) {
+            note = 'currently ' + AUD_LABEL[sharedAud];
+        } else if (allListed) {
+            note = 'mixed audiences — Save will set them all to the choice below';
+        } else {
+            note = listed.length + ' of ' + selRows.length + ' already listed';
+        }
+        selectedText.textContent = selected.length + (selected.length === 1 ? ' item' : ' items') + ' selected · ' + note;
     }
 
     form.querySelectorAll('input[name="item_ids[]"]').forEach(function (box) {
