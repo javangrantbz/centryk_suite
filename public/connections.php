@@ -55,6 +55,19 @@ $headerActionsHtml = ob_get_clean();
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] } } } }</script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @keyframes connectCardPulse {
+            0% { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0); border-color: rgb(226 232 240); }
+            20% { box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.10); border-color: rgb(167 139 250); }
+            100% { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0); border-color: rgb(226 232 240); }
+        }
+        .connect-card-highlight {
+            animation: connectCardPulse 1.2s ease-out 1;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .connect-card-highlight { animation: none; border-color: rgb(167 139 250); }
+        }
+    </style>
 </head>
 <body class="min-h-screen bg-slate-100 text-slate-900 font-sans antialiased">
 <?php $pageTitle = 'Centryk Connect'; $headerMaxW = 'max-w-4xl'; $awCurrent = 'centryk'; include __DIR__ . '/partials/account_header.php'; ?>
@@ -63,7 +76,10 @@ $headerActionsHtml = ob_get_clean();
 
     <div class="mb-4">
         <p class="text-[10px] font-black uppercase tracking-[0.18em] text-violet-600">Centryk Connect</p>
-        <h1 class="mt-0.5 text-2xl font-black tracking-tight text-slate-950">Company connections</h1>
+        <div class="mt-0.5 flex flex-wrap items-center gap-2">
+            <h1 class="text-2xl font-black tracking-tight text-slate-950">Company connections</h1>
+            <span id="connectInboxBadge" class="hidden rounded-full bg-violet-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-violet-700"></span>
+        </div>
         <p class="mt-1 max-w-2xl text-sm font-semibold text-slate-500">Connect with other businesses on Centryk to unlock cross-company features, then manage the relationship with notes and permission scopes. Both sides must approve before anything is shared.</p>
     </div>
 
@@ -91,7 +107,10 @@ $headerActionsHtml = ob_get_clean();
         <div class="md:col-span-2 space-y-5">
             <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
                 <div class="border-b border-slate-100 px-4 py-4">
-                    <p class="text-[10px] font-black uppercase tracking-[0.16em] text-violet-500">Partner Inbox</p>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <p class="text-[10px] font-black uppercase tracking-[0.16em] text-violet-500">Partner Inbox</p>
+                        <span id="inboxNeedsActionBadge" class="hidden rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-violet-700"></span>
+                    </div>
                     <h2 class="mt-0.5 text-lg font-black tracking-tight text-slate-900">Action queue</h2>
                     <p class="mt-1 text-sm font-semibold text-slate-500">What this company needs to respond to right now, plus recent Connect updates.</p>
                 </div>
@@ -335,11 +354,29 @@ function renderInbox() {
     const countsEl = document.getElementById('inboxCounts');
     const needsEl = document.getElementById('inboxNeedsActionList');
     const recentEl = document.getElementById('inboxRecentList');
+    const pageBadge = document.getElementById('connectInboxBadge');
+    const inboxBadge = document.getElementById('inboxNeedsActionBadge');
     if (!countsEl || !needsEl || !recentEl) {
         return;
     }
 
     const counts = inboxState.counts || {};
+    const actionCount = Number(counts.needs_action || 0);
+    if (pageBadge) {
+        pageBadge.textContent = actionCount > 0 ? `${actionCount} need action` : 'Inbox clear';
+        pageBadge.classList.remove('hidden');
+        pageBadge.className = actionCount > 0
+            ? 'rounded-full bg-violet-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-violet-700'
+            : 'rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700';
+    }
+    if (inboxBadge) {
+        inboxBadge.textContent = actionCount > 0 ? `${actionCount} pending` : 'Clear';
+        inboxBadge.classList.remove('hidden');
+        inboxBadge.className = actionCount > 0
+            ? 'rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-violet-700'
+            : 'rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700';
+    }
+
     const statCards = [
         ['Needs action', counts.needs_action || 0, 'text-violet-700'],
         ['Messages unread', counts.messages_unread || 0, 'text-amber-600'],
@@ -745,6 +782,13 @@ window.jumpToInboxTarget = function (targetAnchor, connectionId) {
         anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
     if (connectionId) {
+        const card = document.getElementById(`connection-card-${connectionId}`);
+        if (card) {
+            card.classList.remove('connect-card-highlight');
+            void card.offsetWidth;
+            card.classList.add('connect-card-highlight');
+            setTimeout(() => card.classList.remove('connect-card-highlight'), 1600);
+        }
         const messageBox = document.getElementById(`messageBody-${connectionId}`);
         if (messageBox) {
             setTimeout(() => {
@@ -789,8 +833,10 @@ window.handleInboxAction = async function (itemId, action) {
             showAlert(read.message || 'Could not mark message as read.', 'error');
             return;
         }
+        // Rebuild the lists first, then scroll to / highlight the fresh card —
+        // otherwise loadAll()'s re-render wipes the highlight mid-animation.
+        await loadAll();
         jumpToInboxTarget(item.target_anchor || '', Number(item.connection_id || 0));
-        loadAll();
         return;
     }
 
