@@ -278,64 +278,59 @@ $headerActionsHtml = ob_get_clean();
         <input type="hidden" name="company_uuid" value="<?= sell_h($activeCompany['uuid']) ?>">
         <input type="hidden" name="action" id="publishAction" value="publish">
 
-        <section id="listingSetup" class="hidden rounded-2xl border border-violet-200 bg-white p-5 shadow-sm">
-            <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <div>
-                    <h2 class="text-lg font-black tracking-tight">Store Listing Setup</h2>
-                    <p id="selectedCountText" class="text-xs font-semibold text-slate-400">0 items selected.</p>
+        <section id="listingSetup" class="hidden rounded-xl border border-violet-200 bg-violet-50 p-3 shadow-sm">
+            <div class="mb-2.5 flex flex-wrap items-center justify-between gap-2">
+                <div class="min-w-0">
+                    <span class="text-sm font-black tracking-tight text-slate-900">Store listing setup</span>
+                    <span id="selectedCountText" class="ml-1.5 text-[11px] font-semibold text-slate-400">0 items selected.</span>
                 </div>
-                <a href="store.php<?= '?company_uuid=' . urlencode((string)$activeCompany['uuid']) ?>" class="inline-flex items-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-violet-700 transition hover:bg-violet-100">
-                    <i data-lucide="store" class="h-4 w-4"></i> Preview
+                <a href="store.php<?= '?company_uuid=' . urlencode((string)$activeCompany['uuid']) ?>" class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-violet-200 bg-white px-2.5 py-1 text-[11px] font-black uppercase tracking-[0.1em] text-violet-700 transition hover:bg-violet-100">
+                    <i data-lucide="store" class="h-3.5 w-3.5"></i> Preview
                 </a>
             </div>
-            <div class="space-y-4">
-                <div>
-                    <label class="mb-1.5 block text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Audience</label>
-                    <div class="flex flex-wrap gap-1.5">
-                        <label class="cursor-pointer">
-                            <input type="radio" name="audience" value="employee" checked class="peer sr-only">
-                            <span class="inline-block rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-600 transition peer-checked:border-violet-400 peer-checked:bg-violet-50 peer-checked:text-violet-700">Employees only</span>
-                        </label>
-                        <label class="cursor-pointer">
-                            <input type="radio" name="audience" value="market" class="peer sr-only">
-                            <span class="inline-block rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-600 transition peer-checked:border-violet-400 peer-checked:bg-violet-50 peer-checked:text-violet-700">Centryk Market</span>
-                        </label>
-                        <label class="cursor-pointer">
-                            <input type="radio" name="audience" value="both" class="peer sr-only">
-                            <span class="inline-block rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-600 transition peer-checked:border-violet-400 peer-checked:bg-violet-50 peer-checked:text-violet-700">Everyone</span>
-                        </label>
-                    </div>
-                    <p class="mt-1.5 text-[11px] font-semibold leading-relaxed text-slate-400">
-                        <b class="text-slate-500">Employees only</b> &mdash; signed-in members of your company &middot;
-                        <b class="text-slate-500">Centryk Market</b> &mdash; anyone browsing the public store &middot;
-                        <b class="text-slate-500">Everyone</b> &mdash; the public store and your members
-                    </p>
+
+            <div class="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                <span class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Audience</span>
+                <label class="cursor-pointer">
+                    <input type="radio" name="audience" value="employee" checked class="peer sr-only">
+                    <span title="Signed-in members of your company only" class="inline-block rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-500 transition hover:text-slate-800 peer-checked:border-violet-500 peer-checked:text-violet-700 peer-checked:shadow-sm">Employees only</span>
+                </label>
+                <label class="cursor-pointer">
+                    <input type="radio" name="audience" value="market" class="peer sr-only">
+                    <span title="Anyone browsing the public Centryk store" class="inline-block rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-500 transition hover:text-slate-800 peer-checked:border-violet-500 peer-checked:text-violet-700 peer-checked:shadow-sm">Centryk Market</span>
+                </label>
+                <label class="cursor-pointer">
+                    <input type="radio" name="audience" value="both" class="peer sr-only">
+                    <span title="The public store and your signed-in members" class="inline-block rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-500 transition hover:text-slate-800 peer-checked:border-violet-500 peer-checked:text-violet-700 peer-checked:shadow-sm">Everyone</span>
+                </label>
+
+                <span class="px-0.5 text-sm font-bold text-slate-300">|</span>
+
+                <span class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Visibility</span>
+                <div id="windowPresets" class="flex flex-wrap gap-1">
+                    <button type="button" data-window="always" class="rounded-lg border border-violet-500 bg-white px-2.5 py-1 text-[11px] font-bold text-violet-700 shadow-sm transition">Always</button>
+                    <button type="button" data-window="today" class="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-500 transition hover:text-slate-800">Today</button>
+                    <button type="button" data-window="week" class="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-500 transition hover:text-slate-800">This week</button>
+                    <button type="button" data-window="month" class="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-500 transition hover:text-slate-800">This month</button>
+                    <button type="button" data-window="custom" class="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-500 transition hover:text-slate-800">Custom</button>
                 </div>
-                <div>
-                    <label class="mb-1.5 block text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Visibility</label>
-                    <div id="windowPresets" class="flex flex-wrap gap-1.5">
-                        <button type="button" data-window="always" class="rounded-lg border border-violet-400 bg-violet-50 px-3 py-1.5 text-xs font-bold text-violet-700 transition">Always</button>
-                        <button type="button" data-window="today" class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-white">Today</button>
-                        <button type="button" data-window="week" class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-white">This week</button>
-                        <button type="button" data-window="month" class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-white">This month</button>
-                        <button type="button" data-window="custom" class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-white">Custom</button>
-                    </div>
-                    <div id="windowCustom" class="mt-2 hidden grid-cols-2 gap-2 sm:max-w-sm">
-                        <label class="block">
-                            <span class="mb-0.5 block text-[10px] font-semibold text-slate-400">From</span>
-                            <input type="date" name="starts_at" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700 outline-none focus:border-violet-500">
-                        </label>
-                        <label class="block">
-                            <span class="mb-0.5 block text-[10px] font-semibold text-slate-400">Until</span>
-                            <input type="date" name="ends_at" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700 outline-none focus:border-violet-500">
-                        </label>
-                    </div>
-                    <p id="windowSummary" class="mt-1.5 text-[11px] font-semibold text-slate-400">Shown on the store as soon as you save, with no end date.</p>
-                </div>
-                <div class="flex flex-wrap gap-2 border-t border-slate-100 pt-4">
-                    <button type="submit" data-action="publish" class="rounded-xl bg-slate-950 px-4 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-slate-800">Save to store</button>
-                    <button type="submit" data-action="unpublish" class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-rose-700 transition hover:bg-rose-100">Remove from store</button>
-                </div>
+            </div>
+
+            <div id="windowCustom" class="mt-2 hidden grid-cols-2 gap-2 sm:max-w-xs">
+                <label class="block">
+                    <span class="mb-0.5 block text-[10px] font-semibold text-slate-400">From</span>
+                    <input type="date" name="starts_at" class="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 outline-none focus:border-violet-500">
+                </label>
+                <label class="block">
+                    <span class="mb-0.5 block text-[10px] font-semibold text-slate-400">Until</span>
+                    <input type="date" name="ends_at" class="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 outline-none focus:border-violet-500">
+                </label>
+            </div>
+            <p id="windowSummary" class="mt-1.5 text-[11px] font-semibold text-slate-400">Shown on the store as soon as you save, with no end date.</p>
+
+            <div class="mt-2.5 flex flex-wrap gap-1.5 border-t border-violet-100 pt-2.5">
+                <button type="submit" data-action="publish" class="rounded-lg bg-slate-950 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.1em] text-white transition hover:bg-slate-800">Save to store</button>
+                <button type="submit" data-action="unpublish" class="rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.1em] text-rose-700 transition hover:bg-rose-50">Remove from store</button>
             </div>
         </section>
 
@@ -427,8 +422,8 @@ if (window.lucide) { lucide.createIcons(); }
         if (!windowPresets) { return; }
         Array.prototype.forEach.call(windowPresets.children, function (b) {
             var on = b.dataset.window === key;
-            b.className = 'rounded-lg border px-3 py-1.5 text-xs font-bold transition '
-                + (on ? 'border-violet-400 bg-violet-50 text-violet-700' : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-white');
+            b.className = 'rounded-lg border bg-white px-2.5 py-1 text-[11px] font-bold transition '
+                + (on ? 'border-violet-500 text-violet-700 shadow-sm' : 'border-slate-200 text-slate-500 hover:text-slate-800');
         });
         if (windowCustom) { windowCustom.classList.toggle('hidden', key !== 'custom'); windowCustom.classList.toggle('grid', key === 'custom'); }
     }
