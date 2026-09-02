@@ -94,6 +94,7 @@
   .biz-c-amber { background: #fffbeb; color: #b45309; }
   .biz-c-blue  { background: #eff6ff; color: #1d4ed8; }
   .biz-c-slate { background: #f1f5f9; color: #475569; }
+  .biz-c-accent { background: var(--bz-accent); color: #fff; }
   .biz-t-red   { color: #dc2626; }
   .biz-t-green { color: #059669; }
   .biz-t-blue  { color: #2563eb; }

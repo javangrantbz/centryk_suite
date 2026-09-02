@@ -286,6 +286,7 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
                     <div class="flex flex-wrap items-center gap-2">
                         <span id="coName" class="text-xl font-black tracking-tight text-slate-900 truncate">—</span>
                         <span id="coRoleBadge" class="rounded-full bg-white/55 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] ring-1 ring-white/60">—</span>
+                        <span id="coBizBadge" class="hidden items-center gap-1 rounded-full bg-violet-600 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-white"></span>
                     </div>
                     <p class="mt-0.5 text-sm font-bold text-slate-700">
                         Welcome back, <?= htmlspecialchars($user['first_name']) ?>
@@ -892,18 +893,28 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
 
     </div>
 
-    <!-- Centryk Business note — a quiet line under the apps, revealed by
-         selectCompany() only for an admin/manager of the selected company that
-         holds no Business package yet. Dismissible per browser. -->
-    <div id="bizPromo" class="mt-5 hidden items-center gap-2 border-t border-slate-100 px-1 pt-4 text-xs font-semibold text-slate-400">
-        <i data-lucide="briefcase" class="h-3.5 w-3.5 shrink-0"></i>
-        <span class="min-w-0 flex-1">
-            Need receivables, bank reconciliation, delivery routes or multi-company reporting?
-            <a href="business.php" class="font-bold text-slate-600 underline decoration-slate-300 underline-offset-2 hover:text-violet-700 hover:decoration-violet-400">See Centryk Business</a>.
-        </span>
-        <button type="button" id="bizPromoDismiss" title="Dismiss" class="shrink-0 rounded p-1 text-slate-300 transition hover:text-slate-500">
-            <i data-lucide="x" class="h-3.5 w-3.5"></i>
-        </button>
+    <!-- Centryk Business strip — a quiet line under the apps, set by
+         selectCompany() for an admin/manager of the selected company. Two
+         states: an "active" status line for a company that holds a package,
+         or a dismissible upsell for one that holds none. -->
+    <div id="bizPromo" class="mt-5 hidden border-t border-slate-100 px-1 pt-4">
+        <div id="bizPromoUpsell" class="hidden items-center gap-2 text-xs font-semibold text-slate-400">
+            <i data-lucide="briefcase" class="h-3.5 w-3.5 shrink-0"></i>
+            <span class="min-w-0 flex-1">
+                Need receivables, bank reconciliation, delivery routes or multi-company reporting?
+                <a href="business.php" class="font-bold text-slate-600 underline decoration-slate-300 underline-offset-2 hover:text-violet-700 hover:decoration-violet-400">See Centryk Business</a>.
+            </span>
+            <button type="button" id="bizPromoDismiss" title="Dismiss" class="shrink-0 rounded p-1 text-slate-300 transition hover:text-slate-500">
+                <i data-lucide="x" class="h-3.5 w-3.5"></i>
+            </button>
+        </div>
+        <div id="bizPromoActive" class="hidden items-center gap-2 text-xs font-semibold text-slate-500">
+            <i data-lucide="briefcase" class="h-3.5 w-3.5 shrink-0 text-violet-600"></i>
+            <span class="min-w-0 flex-1">
+                <span class="font-black text-violet-700">Centryk Business active</span><span id="bizPromoActiveList"></span> &middot;
+                <a href="business.php" class="font-bold text-slate-600 underline decoration-slate-300 underline-offset-2 hover:text-violet-700 hover:decoration-violet-400">Manage plan</a>
+            </span>
+        </div>
     </div>
 
     <!-- No-company notice (shown when no companies exist) -->
@@ -1456,14 +1467,43 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
                 });
             }
 
-            // Promo strip — only for an admin/manager of a company with no package.
+            // ── Business tier signal: name badge + status strip ───────────
+            var BIZ_LABELS = { receivables: 'Receivables', reconciliation: 'Reconciliation', routes: 'Routes', enterprise: 'Enterprise', accounting: 'Accounting' };
+            var bizKeys = Object.keys(bizEnts);
+            var bizPausedCount = bizKeys.filter(function (k) { return bizEnts[k] === 'read'; }).length;
+
+            var coBizBadge = document.getElementById('coBizBadge');
+            if (coBizBadge) {
+                if (bizKeys.length > 0) {
+                    var allPaused = bizPausedCount === bizKeys.length;
+                    coBizBadge.textContent = 'Business';
+                    coBizBadge.title = bizKeys.length + ' module' + (bizKeys.length === 1 ? '' : 's')
+                        + (bizPausedCount ? ' — ' + bizPausedCount + ' paused' : ' active');
+                    coBizBadge.className = 'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-white '
+                        + (allPaused ? 'bg-amber-600' : 'bg-violet-600');
+                } else {
+                    coBizBadge.className = 'hidden items-center gap-1 rounded-full bg-violet-600 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-white';
+                }
+            }
+
             var bizPromo = document.getElementById('bizPromo');
-            if (bizPromo) {
+            var bizPromoUpsell = document.getElementById('bizPromoUpsell');
+            var bizPromoActive = document.getElementById('bizPromoActive');
+            if (bizPromo && bizPromoUpsell && bizPromoActive) {
                 var promoDismissed = false;
                 try { promoDismissed = localStorage.getItem('centryk_bizpromo_dismissed') === '1'; } catch (e) {}
-                var showPromo = bizRole && Object.keys(bizEnts).length === 0 && !promoDismissed;
-                bizPromo.classList.toggle('hidden', !showPromo);
-                bizPromo.classList.toggle('flex', showPromo);
+                var showActive = bizRole && bizKeys.length > 0;
+                var showUpsell = bizRole && bizKeys.length === 0 && !promoDismissed;
+                if (showActive) {
+                    var names = bizKeys.map(function (k) { return BIZ_LABELS[k] || k; });
+                    document.getElementById('bizPromoActiveList').textContent =
+                        ' — ' + names.join(', ') + (bizPausedCount ? ' (' + bizPausedCount + ' paused)' : '');
+                }
+                bizPromoActive.classList.toggle('hidden', !showActive);
+                bizPromoActive.classList.toggle('flex', showActive);
+                bizPromoUpsell.classList.toggle('hidden', !showUpsell);
+                bizPromoUpsell.classList.toggle('flex', showUpsell);
+                bizPromo.classList.toggle('hidden', !(showActive || showUpsell));
             }
             if (window.lucide) { lucide.createIcons(); }
 
