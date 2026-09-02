@@ -637,6 +637,34 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
         ];
         ?>
 
+        <!-- Centryk Business workspace — one panel replacing the per-module
+             cards, floated above the app grid. Hidden until selectCompany()
+             finds the chosen company holds ≥1 package. -->
+        <section id="bizWorkspace" class="mb-3 hidden overflow-hidden rounded-2xl border border-violet-200 bg-white shadow-sm">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-violet-100 bg-violet-50/60 px-5 py-3">
+                <div class="flex items-center gap-2.5">
+                    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white">
+                        <i data-lucide="briefcase" class="h-4 w-4"></i>
+                    </span>
+                    <div>
+                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-violet-600/80">Centryk Business</div>
+                        <div class="text-base font-black tracking-tight text-slate-900">Workspace</div>
+                    </div>
+                    <span id="bizWsBadge" class="ml-1 rounded-full bg-violet-600 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-white"></span>
+                </div>
+                <a id="bizWsOpen" href="business.php" class="inline-flex items-center gap-1.5 rounded-xl bg-violet-600 px-3.5 py-2 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-violet-700">
+                    Open workspace <i data-lucide="arrow-right" class="h-3.5 w-3.5"></i>
+                </a>
+            </div>
+            <div class="grid gap-4 p-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+                <div class="min-w-0">
+                    <div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Modules</div>
+                    <div id="bizWsModules" class="mt-2 flex flex-wrap gap-1.5"></div>
+                </div>
+                <div id="bizWsStats" class="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:min-w-[22rem]"></div>
+            </div>
+        </section>
+
         <section class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
 
         <?php if ($_enrolledAppCount === 0): ?>
@@ -681,43 +709,10 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
             </div>
 
             <?php
-            // ── Centryk Business ───────────────────────────────────────────
-            // The AR/GL/routes/groups module cards. Not rows in `apps`; this
-            // is a dashboard-only grouping. Hidden until selectCompany()
-            // reveals the ones the chosen company is entitled to — so the
-            // "Centryk Business" label only appears once at least one shows.
-            $renderCatHeader('Centryk Business');
-            foreach ($_bizCards as $_bc): ?>
-            <a href="<?= htmlspecialchars($_bc['href']) ?>" data-biz-card="<?= htmlspecialchars($_bc['key']) ?>" data-biz-param="<?= htmlspecialchars($_bc['param']) ?>"
-               data-category="centryk_business"
-               style="--i:<?= $_gridIdx ?>"
-               class="biz-module-card dash-fade group relative hidden flex-col overflow-hidden rounded-2xl border border-violet-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]">
-                <div class="h-1.5 w-full bg-violet-500"></div>
-                <div class="flex flex-1 flex-col p-3">
-                    <div class="flex items-center gap-3">
-                        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-700">
-                            <i data-lucide="<?= htmlspecialchars($_bc['icon']) ?>" class="h-5 w-5"></i>
-                        </span>
-                        <div>
-                            <div class="text-[10px] font-black uppercase tracking-[0.16em] text-violet-600/80">Centryk Business</div>
-                            <div class="text-base font-black tracking-tight text-slate-900"><?= htmlspecialchars($_bc['label']) ?></div>
-                        </div>
-                    </div>
-                    <p class="mt-2 text-xs font-semibold leading-relaxed text-slate-500"><?= htmlspecialchars($_bc['blurb']) ?></p>
-                    <div class="mt-2.5 flex items-center gap-1.5">
-                        <span data-biz-dot class="inline-block h-1.5 w-1.5 rounded-full bg-violet-500"></span>
-                        <span data-biz-state class="text-[11px] font-bold text-violet-700">Active</span>
-                    </div>
-                    <div data-biz-metric class="mt-1.5 hidden text-[11px] font-semibold text-slate-500"></div>
-                </div>
-                <div class="flex items-center justify-between border-t border-violet-100 px-4 py-3 text-xs font-bold text-violet-700 transition-colors group-hover:text-violet-900">
-                    <span>Open</span>
-                    <i data-lucide="arrow-right" class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"></i>
-                </div>
-            </a>
-            <?php endforeach; ?>
+            // Centryk Business modules used to render as individual cards
+            // here; they now live in the #bizWorkspace panel above the grid
+            // (revealed by selectCompany() for an entitled company).
 
-            <?php
             // ── Finance ────────────────────────────────────────────────────
             $renderCatHeader($_catLabels['finance']);
             ?>
@@ -1067,6 +1062,7 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
     var companies    = [];
     var selectedId   = null;
     var selectedUuid = null;
+    var BIZ_MODULES  = <?= json_encode($_bizCards) ?>;   // [{key,href,param,label,icon,blurb}]
 
     var pickerBtn    = document.getElementById('companyPickerBtn');
     var pickerLabel  = document.getElementById('companyPickerLabel');
@@ -1289,19 +1285,21 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
         });
     }
 
-    // Pull the one-line health number for each entitled Business card.
+    // Headline health numbers for the Business workspace panel. One call per
+    // company switch; renders a tile per entitled module into #bizWsStats.
     function loadBizSnapshot(companyId) {
         var money = function (v) {
             return 'BZD ' + (Number(v) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         };
-        var set = function (key, text, tone) {
-            var card = document.querySelector('.biz-module-card[data-biz-card="' + key + '"]');
-            if (!card) { return; }
-            var el = card.querySelector('[data-biz-metric]');
-            if (!el) { return; }
-            if (!text) { el.classList.add('hidden'); el.textContent = ''; return; }
-            el.textContent = text;
-            el.className = 'mt-1.5 text-[11px] font-semibold ' + (tone || 'text-slate-500');
+        var wrap = document.getElementById('bizWsStats');
+        if (wrap) {
+            wrap.innerHTML = '<div class="col-span-full text-[11px] font-semibold text-slate-400">Loading…</div>';
+        }
+        var tile = function (label, value, tone) {
+            return '<div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">'
+                + '<div class="text-[9px] font-black uppercase tracking-[0.14em] text-slate-400">' + esc(label) + '</div>'
+                + '<div class="mt-0.5 text-[13px] font-black ' + (tone || 'text-slate-800') + '">' + esc(value) + '</div>'
+                + '</div>';
         };
         fetch('api/business/company_snapshot.php', {
             method: 'POST',
@@ -1310,36 +1308,34 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
         })
         .then(function (r) { return r.json(); })
         .then(function (res) {
-            if (!res || !res.success) { return; }
+            if (!wrap) { return; }
             if (companyId != selectedId) { return; }   // switched away mid-flight
-            var d = res;
+            if (!res || !res.success) { wrap.innerHTML = ''; return; }
+            var d = res, tiles = [];
 
             if (d.receivables) {
                 var ar = d.receivables;
-                set('receivables',
-                    ar.overdue > 0.004
-                        ? money(ar.overdue) + ' overdue of ' + money(ar.outstanding)
-                        : money(ar.outstanding) + ' outstanding',
-                    ar.overdue > 0.004 ? 'text-rose-600' : 'text-slate-500');
+                tiles.push(ar.overdue > 0.004
+                    ? tile('AR overdue', money(ar.overdue), 'text-rose-600')
+                    : tile('AR outstanding', money(ar.outstanding), 'text-slate-800'));
             }
             if (d.reconciliation) {
                 var rc = d.reconciliation;
-                set('reconciliation',
-                    rc.unmatched_credits > 0
-                        ? rc.unmatched_credits + ' unmatched · ' + money(rc.unmatched_value)
-                        : 'All deposits matched',
-                    rc.unmatched_credits > 0 ? 'text-amber-600' : 'text-slate-500');
+                tiles.push(rc.unmatched_credits > 0
+                    ? tile('Unmatched deposits', rc.unmatched_credits + ' · ' + money(rc.unmatched_value), 'text-amber-600')
+                    : tile('Deposits', 'All matched', 'text-slate-800'));
             }
             if (d.routes) {
                 var rt = d.routes;
-                set('routes',
-                    rt.awaiting_approval > 0
-                        ? rt.awaiting_approval + ' awaiting approval'
-                        : (rt.out > 0 ? rt.out + ' on the road · ' + money(rt.cash_in_transit) + ' in transit' : 'No active runs'),
-                    rt.awaiting_approval > 0 ? 'text-amber-600' : 'text-slate-500');
+                tiles.push(rt.awaiting_approval > 0
+                    ? tile('Routes', rt.awaiting_approval + ' awaiting approval', 'text-amber-600')
+                    : (rt.out > 0
+                        ? tile('Cash in transit', money(rt.cash_in_transit), 'text-slate-800')
+                        : tile('Routes', 'No active runs', 'text-slate-800')));
             }
+            wrap.innerHTML = tiles.join('') || '<div class="col-span-full text-[11px] font-semibold text-slate-400">No figures for the active modules yet.</div>';
         })
-        .catch(function () {});
+        .catch(function () { if (wrap) { wrap.innerHTML = ''; } });
     }
 
     // ── Company picker ────────────────────────────────────────────────────────
@@ -1432,45 +1428,50 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
             if (coOnelinkBtn) { coOnelinkBtn.href = onelinkUrl; }
             loadCampaignLibrary(selectedId);
 
-            // ── Centryk Business module cards ─────────────────────────────
+            // ── Centryk Business workspace ────────────────────────────────
             var bizRole = ['owner', 'admin', 'manager'].indexOf(String(c.role || '').toLowerCase()) !== -1;
             var bizEnts = (c.entitlements && typeof c.entitlements === 'object') ? c.entitlements : {};
-            document.querySelectorAll('.biz-module-card').forEach(function (card) {
-                var key = card.getAttribute('data-biz-card');
-                var lvl = bizEnts[key];                 // 'full' | 'read' | undefined
-                var show = bizRole && !!lvl;
-                card.classList.toggle('hidden', !show);
-                card.classList.toggle('flex', show);
-                if (!show) { return; }
-
-                var base  = card.getAttribute('href').split('?')[0];
-                var param = card.getAttribute('data-biz-param');
-                card.setAttribute('href', base + (param ? ('?' + param + '=' + encodeURIComponent(selectedId)) : ''));
-
-                var st  = card.querySelector('[data-biz-state]');
-                var dot = card.querySelector('[data-biz-dot]');
-                if (lvl === 'read') {
-                    if (st)  { st.textContent = 'Paused'; st.className = 'text-[11px] font-bold text-amber-600'; }
-                    if (dot) { dot.className = 'inline-block h-1.5 w-1.5 rounded-full bg-amber-500'; }
-                } else {
-                    if (st)  { st.textContent = 'Active'; st.className = 'text-[11px] font-bold text-violet-700'; }
-                    if (dot) { dot.className = 'inline-block h-1.5 w-1.5 rounded-full bg-violet-500'; }
-                }
-            });
-
-            // One-line health numbers per entitled card. One call per switch.
-            if (bizRole && Object.keys(bizEnts).length > 0) {
-                loadBizSnapshot(selectedId);
-            } else {
-                document.querySelectorAll('[data-biz-metric]').forEach(function (el) {
-                    el.classList.add('hidden'); el.textContent = '';
-                });
-            }
-
-            // ── Business tier signal: name badge + status strip ───────────
             var BIZ_LABELS = { receivables: 'Receivables', reconciliation: 'Reconciliation', routes: 'Routes', enterprise: 'Enterprise', accounting: 'Accounting' };
             var bizKeys = Object.keys(bizEnts);
             var bizPausedCount = bizKeys.filter(function (k) { return bizEnts[k] === 'read'; }).length;
+
+            var bizWs = document.getElementById('bizWorkspace');
+            var showWs = bizRole && bizKeys.length > 0;
+            if (bizWs) {
+                bizWs.classList.toggle('hidden', !showWs);
+            }
+            if (showWs) {
+                var allPausedWs = bizPausedCount === bizKeys.length;
+                var wsBadge = document.getElementById('bizWsBadge');
+                if (wsBadge) {
+                    wsBadge.textContent = bizPausedCount
+                        ? bizPausedCount + ' of ' + bizKeys.length + ' paused'
+                        : bizKeys.length + ' module' + (bizKeys.length === 1 ? '' : 's') + ' active';
+                    wsBadge.className = 'ml-1 rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-white '
+                        + (allPausedWs ? 'bg-amber-600' : 'bg-violet-600');
+                }
+                var wsOpen = document.getElementById('bizWsOpen');
+                if (wsOpen) { wsOpen.href = 'business.php?company_id=' + encodeURIComponent(selectedId); }
+
+                var wsMods = document.getElementById('bizWsModules');
+                if (wsMods) {
+                    wsMods.innerHTML = BIZ_MODULES.filter(function (m) { return !!bizEnts[m.key]; }).map(function (m) {
+                        var paused = bizEnts[m.key] === 'read';
+                        var href = m.href + (m.param ? ('?' + m.param + '=' + encodeURIComponent(selectedId)) : '');
+                        return '<a href="' + href + '" class="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition '
+                            + (paused
+                                ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100'
+                                : 'border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100')
+                            + '"><i data-lucide="' + esc(m.icon) + '" class="h-3.5 w-3.5"></i>' + esc(m.label)
+                            + (paused ? '<span class="text-[9px] font-black uppercase">· paused</span>' : '') + '</a>';
+                    }).join('');
+                }
+
+                loadBizSnapshot(selectedId);
+            } else {
+                var wsStatsReset = document.getElementById('bizWsStats');
+                if (wsStatsReset) { wsStatsReset.innerHTML = ''; }
+            }
 
             var coBizBadge = document.getElementById('coBizBadge');
             if (coBizBadge) {
