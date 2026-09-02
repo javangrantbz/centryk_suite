@@ -81,6 +81,12 @@ $_bsLink = static function (string $href) use ($_bsCid): string {
     <div class="biz-side-co"><div class="biz-nav-label" style="padding-top:2px"><?= htmlspecialchars($activeCompany['name']) ?></div></div>
     <?php endif; ?>
 
+    <?php if ($_bsHasAny): ?>
+    <div class="biz-side-co" style="margin-top:0">
+      <span class="biz-chip biz-c-accent" style="width:100%; text-align:center; padding:3px 0;">Centryk Business</span>
+    </div>
+    <?php endif; ?>
+
     <?php if ($_bsPromo): ?>
     <div class="biz-side-co" style="margin-top:0">
       <span class="biz-chip biz-c-blue" style="width:100%; text-align:center; padding:3px 0;">Free preview</span>
