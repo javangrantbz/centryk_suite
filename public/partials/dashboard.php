@@ -1292,11 +1292,17 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
         if (wrap) {
             wrap.innerHTML = '<div class="col-span-full text-[11px] font-semibold text-slate-400">Loading…</div>';
         }
-        var tile = function (label, value, tone) {
-            return '<div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">'
-                + '<div class="text-[9px] font-black uppercase tracking-[0.14em] text-slate-400">' + esc(label) + '</div>'
+        var tile = function (label, value, tone, href) {
+            return '<a href="' + href + '" class="group/tile block rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 transition hover:border-violet-300 hover:bg-white">'
+                + '<div class="flex items-center justify-between gap-1">'
+                +   '<span class="text-[9px] font-black uppercase tracking-[0.14em] text-slate-400">' + esc(label) + '</span>'
+                +   '<i data-lucide="arrow-up-right" class="h-3 w-3 text-slate-300 transition group-hover/tile:text-violet-500"></i>'
+                + '</div>'
                 + '<div class="mt-0.5 text-[13px] font-black ' + (tone || 'text-slate-800') + '">' + esc(value) + '</div>'
-                + '</div>';
+                + '</a>';
+        };
+        var moduleHref = function (page) {
+            return page + '?company_id=' + encodeURIComponent(companyId);
         };
         fetch('api/business/company_snapshot.php', {
             method: 'POST',
@@ -1311,26 +1317,27 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
             var d = res, tiles = [];
 
             if (d.receivables) {
-                var ar = d.receivables;
+                var ar = d.receivables, arHref = moduleHref('receivables.php');
                 tiles.push(ar.overdue > 0.004
-                    ? tile('AR overdue', money(ar.overdue), 'text-rose-600')
-                    : tile('AR outstanding', money(ar.outstanding), 'text-slate-800'));
+                    ? tile('AR overdue', money(ar.overdue), 'text-rose-600', arHref)
+                    : tile('AR outstanding', money(ar.outstanding), 'text-slate-800', arHref));
             }
             if (d.reconciliation) {
-                var rc = d.reconciliation;
+                var rc = d.reconciliation, rcHref = moduleHref('reconciliation.php');
                 tiles.push(rc.unmatched_credits > 0
-                    ? tile('Unmatched deposits', rc.unmatched_credits + ' · ' + money(rc.unmatched_value), 'text-amber-600')
-                    : tile('Deposits', 'All matched', 'text-slate-800'));
+                    ? tile('Unmatched deposits', rc.unmatched_credits + ' · ' + money(rc.unmatched_value), 'text-amber-600', rcHref)
+                    : tile('Deposits', 'All matched', 'text-slate-800', rcHref));
             }
             if (d.routes) {
-                var rt = d.routes;
+                var rt = d.routes, rtHref = moduleHref('routes.php');
                 tiles.push(rt.awaiting_approval > 0
-                    ? tile('Routes', rt.awaiting_approval + ' awaiting approval', 'text-amber-600')
+                    ? tile('Routes', rt.awaiting_approval + ' awaiting approval', 'text-amber-600', rtHref)
                     : (rt.out > 0
-                        ? tile('Cash in transit', money(rt.cash_in_transit), 'text-slate-800')
-                        : tile('Routes', 'No active runs', 'text-slate-800')));
+                        ? tile('Cash in transit', money(rt.cash_in_transit), 'text-slate-800', rtHref)
+                        : tile('Routes', 'No active runs', 'text-slate-800', rtHref)));
             }
             wrap.innerHTML = tiles.join('') || '<div class="col-span-full text-[11px] font-semibold text-slate-400">No figures for the active modules yet.</div>';
+            if (window.lucide) { lucide.createIcons(); }
         })
         .catch(function () { if (wrap) { wrap.innerHTML = ''; } });
     }
