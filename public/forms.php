@@ -218,11 +218,32 @@ async function delForm(id, responseCount) {
     } catch (e) { showAlert(e.message, 'error'); }
 }
 
+function copyToClipboard(text, okMsg) {
+    const ok = () => showAlert(okMsg);
+    const manual = () => showAlert('Copy this link: ' + text, 'error');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(ok, () => legacyCopy(text) ? ok() : manual());
+    } else {
+        legacyCopy(text) ? ok() : manual();
+    }
+}
+
+function legacyCopy(text) {
+    const input = document.createElement('input');
+    input.value = text;
+    input.setAttribute('readonly', '');
+    input.style.position = 'fixed';
+    input.style.opacity = '0';
+    document.body.appendChild(input);
+    input.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(input);
+    return ok;
+}
+
 function copyLink(url) {
-    navigator.clipboard.writeText(url).then(
-        () => showAlert('Link copied: ' + url),
-        () => prompt('Copy this link', url)
-    );
+    copyToClipboard(url, 'Link copied: ' + url);
 }
 
 if (window.lucide) lucide.createIcons();

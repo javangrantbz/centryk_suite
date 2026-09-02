@@ -223,11 +223,28 @@ async function saveAccess() {
     } catch (e) { showAlert(e.message, 'error'); }
 }
 
+function legacyCopy(text) {
+    const input = document.createElement('input');
+    input.value = text;
+    input.setAttribute('readonly', '');
+    input.style.position = 'fixed';
+    input.style.opacity = '0';
+    document.body.appendChild(input);
+    input.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(input);
+    return ok;
+}
+
 function copyShare() {
-    navigator.clipboard.writeText(SHARE_URL).then(
-        () => showAlert('Link copied.'),
-        () => prompt('Copy this link', SHARE_URL)
-    );
+    const ok = () => showAlert('Link copied.');
+    const manual = () => showAlert('Copy this link: ' + SHARE_URL, 'error');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(SHARE_URL).then(ok, () => legacyCopy(SHARE_URL) ? ok() : manual());
+    } else {
+        legacyCopy(SHARE_URL) ? ok() : manual();
+    }
 }
 
 // ── Question list ────────────────────────────────────────────────────────
