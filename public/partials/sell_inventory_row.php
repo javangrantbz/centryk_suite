@@ -20,6 +20,8 @@ $searchBlob = strtolower(trim(($item['name'] ?? '') . ' ' . $sku . ' ' . $storeN
 <label class="sell-row block rounded-xl border border-slate-200 bg-slate-50 p-3 transition hover:border-violet-200 hover:bg-white"
        data-status="<?= $isPublished ? 'listed' : 'unlisted' ?>"
        data-audience="<?= sell_h($audience) ?>"
+       data-starts="<?= sell_h($startsAt !== '' ? substr($startsAt, 0, 10) : '') ?>"
+       data-ends="<?= sell_h($endsAt !== '' ? substr($endsAt, 0, 10) : '') ?>"
        data-store="<?= sell_h($storeName) ?>"
        data-search="<?= sell_h($searchBlob) ?>">
     <div class="flex items-start gap-2.5">
