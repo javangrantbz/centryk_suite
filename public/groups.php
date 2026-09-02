@@ -272,18 +272,24 @@ function render(){
             const inThisGroup = new Set((g.companies || []).map(co => co.id));
             const options = (STATE.attachable || []).filter(a => !inThisGroup.has(a.id));
             if (options.length) {
-                const anyMoves = options.some(a => a.current_group_id);
                 box.innerHTML = `
-                   <p class="biz-label" style="margin-bottom:4px">Add a company you administer</p>
-                   <div class="flex gap-2">
-                     <select id="attachSel" class="biz-select min-w-0 flex-1">
-                       ${options.map(a => `<option value="${a.id}">${esc(a.name)}${a.current_group_id ? ' — currently in ' + esc(a.current_group_name) : ''}</option>`).join('')}
-                     </select>
-                     <button onclick="attachCompany()" class="biz-btn biz-btn-primary">Add to group</button>
+                   <p class="biz-label" style="margin-bottom:4px">Companies you administer</p>
+                   <div class="biz-list" style="border:1px solid var(--bz-line);border-radius:3px">
+                     ${options.map(a => {
+                        const moving = !!a.current_group_id;
+                        return `<div class="biz-row" style="cursor:default">
+                            <span class="min-w-0 flex-1">
+                                <span class="block truncate" style="font-weight:600">${esc(a.name)}</span>
+                                <span class="block biz-muted" style="font-size:11px">${moving ? 'in ' + esc(a.current_group_name) : 'not in a group'}</span>
+                            </span>
+                            <button onclick="attachCompanyById(${a.id}, ${moving}, '${esc(a.name).replace(/'/g, "\\'")}')"
+                                    class="biz-btn ${moving ? 'biz-btn-ghost' : 'biz-btn-primary'} biz-btn-sm shrink-0">
+                                ${moving ? 'Move here' : 'Add to this group'}
+                            </button>
+                        </div>`;
+                     }).join('')}
                    </div>
-                   <p class="biz-muted" style="font-size:11px;margin-top:4px">
-                     ${anyMoves ? 'Picking one that is in another group moves it here. ' : ''}Only companies where you are an admin appear.
-                   </p>`;
+                   <p class="biz-muted" style="font-size:11px;margin-top:4px">Only companies where you are an admin appear.</p>`;
             } else {
                 box.innerHTML = `
                    <p class="biz-label" style="margin-bottom:4px">Add a company</p>
@@ -309,16 +315,13 @@ async function detachCompany(id){
     try { await api('company.php', { company_id: id, action: 'detach' }); showAlert('Company removed.', 'ok'); load(); }
     catch (e){ showAlert(e.message, 'error'); }
 }
-async function attachCompany(){
-    const sel = document.getElementById('attachSel');
-    const id = parseInt(sel.value, 10);
-    const opt = sel.options[sel.selectedIndex];
-    if (opt && opt.textContent.includes(' — currently in ') &&
-        !confirm(opt.textContent.split(' — currently in ')[0].trim() + ' will be moved out of its current group into this one. Continue?')) {
-        return;
-    }
-    try { await api('company.php', { company_id: id, action: 'attach' }); showAlert('Company added to the group.', 'ok'); load(); }
-    catch (e){ showAlert(e.message, 'error'); }
+async function attachCompanyById(id, isMove, name){
+    if (isMove && !confirm(name + ' will be moved out of its current group into this one. Continue?')) return;
+    try {
+        await api('company.php', { company_id: id, action: 'attach' });
+        showAlert(isMove ? name + ' moved into the group.' : name + ' added to the group.', 'ok');
+        load();
+    } catch (e){ showAlert(e.message, 'error'); }
 }
 async function setMember(userId, role){
     try { await api('member_set.php', { user_id: userId, role }); showAlert('Updated.', 'ok'); load(); }
