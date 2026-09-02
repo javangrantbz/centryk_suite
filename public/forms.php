@@ -85,6 +85,16 @@ include __DIR__ . '/partials/account_header.php';
 
     <div id="alert" class="biz-notice mb-3 hidden"></div>
 
+    <?php if ($activeCompany): ?>
+    <div id="createBox" class="biz-panel mb-3 hidden" style="padding:10px 12px">
+        <form onsubmit="submitCreateForm(event)" class="flex items-center gap-2">
+            <input id="newFormTitle" class="biz-input" style="flex:1" type="text" placeholder="Form title" maxlength="200" autocomplete="off">
+            <button type="submit" class="biz-btn biz-btn-primary biz-btn-sm">Create</button>
+            <button type="button" class="biz-btn biz-btn-ghost biz-btn-sm" onclick="hideCreateForm()">Cancel</button>
+        </form>
+    </div>
+    <?php endif; ?>
+
     <?php if (!$companies): ?>
         <div class="biz-panel biz-panel-empty">
             You need to be an admin or manager of a company to build forms.
@@ -160,14 +170,37 @@ async function api(path, body) {
     return data;
 }
 
-async function createForm() {
-    const title = prompt('Form title', 'Untitled form');
-    if (title === null) return;
+function createForm() {
+    const box = document.getElementById('createBox');
+    if (!box) return;
+    box.classList.remove('hidden');
+    const input = document.getElementById('newFormTitle');
+    input.value = '';
+    input.focus();
+}
+
+function hideCreateForm() {
+    document.getElementById('createBox')?.classList.add('hidden');
+}
+
+async function submitCreateForm(e) {
+    e.preventDefault();
+    const input = document.getElementById('newFormTitle');
+    const title = input.value.trim() || 'Untitled form';
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
     try {
         const { id } = await api('save.php', { title });
         location.href = 'form-edit.php?id=' + id + '&company_id=' + COMPANY_ID;
-    } catch (e) { showAlert(e.message, 'error'); }
+    } catch (err) {
+        showAlert(err.message, 'error');
+        btn.disabled = false;
+    }
 }
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') hideCreateForm();
+});
 
 async function dupForm(id) {
     try {
