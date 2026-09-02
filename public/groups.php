@@ -37,11 +37,23 @@ $level = $activeGroup ? Entitlements::groupLevel((int)$activeGroup['id'], 'enter
 $myRole = $activeGroup ? $activeGroup['role'] : null;
 
 // Self-serve: any company admin can spin up their own group, no advisor.
-$cgStmt = DB::pdo()->prepare(
-    "SELECT 1 FROM company_members WHERE user_id = :uid AND role = 'admin' AND status = 'active' LIMIT 1"
-);
+$cgStmt = DB::pdo()->prepare("
+    SELECT c.name
+    FROM company_members cm
+    JOIN companies c ON c.id = cm.company_id
+    WHERE cm.user_id = :uid AND cm.role = 'admin' AND cm.status = 'active' AND c.status = 'active'
+    ORDER BY c.name ASC
+");
 $cgStmt->execute(['uid' => (int)$user['id']]);
-$canCreateGroup = (bool)$cgStmt->fetchColumn();
+$adminCompanyNames = $cgStmt->fetchAll(PDO::FETCH_COLUMN);
+$canCreateGroup = $adminCompanyNames !== [];
+
+// A starting name for the create form — the admin's surname is the usual
+// holding-company convention; fall back to a lone company's name.
+$lastName = trim((string)($user['last_name'] ?? ''));
+$suggestedGroupName = $lastName !== ''
+    ? $lastName . ' Group'
+    : (count($adminCompanyNames) === 1 ? $adminCompanyNames[0] . ' Group' : '');
 
 ob_start();
 include __DIR__ . '/partials/admin_tools_dropdown.php';
@@ -85,7 +97,8 @@ $headerActionsHtml = ob_get_clean();
             </p>
             <?php if ($canCreateGroup): ?>
             <div style="margin:14px auto 0;max-width:24rem;display:flex;gap:6px">
-                <input id="newGroupName" class="biz-input" placeholder="Group name — e.g. Bowen Holdings" style="flex:1">
+                <input id="newGroupName" class="biz-input" placeholder="Group name — e.g. Bowen Holdings" style="flex:1"
+                       value="<?= htmlspecialchars($suggestedGroupName) ?>">
                 <button id="createGroupBtn" class="biz-btn biz-btn-primary">Create group</button>
             </div>
             <p class="biz-muted" style="margin-top:8px;font-size:11px">
@@ -332,6 +345,9 @@ async function postJson(path, body) {
 }
 
 const cgBtn = document.getElementById('createGroupBtn');
+const cgInput = document.getElementById('newGroupName');
+if (cgInput && cgInput.value) { cgInput.focus(); cgInput.select(); }
+if (cgInput) cgInput.addEventListener('keydown', e => { if (e.key === 'Enter' && cgBtn) cgBtn.click(); });
 if (cgBtn) cgBtn.addEventListener('click', async () => {
     const name = (document.getElementById('newGroupName').value || '').trim();
     if (!name) { document.getElementById('newGroupName').focus(); return; }
