@@ -288,18 +288,21 @@ $headerActionsHtml = ob_get_clean();
                     <i data-lucide="store" class="h-4 w-4"></i> Preview
                 </a>
             </div>
-            <div class="grid gap-4 lg:grid-cols-[1.2fr_1fr_auto] lg:items-end">
+            <div class="space-y-4">
                 <div>
-                    <label class="mb-1 block text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Audience</label>
-                    <div class="grid gap-2 sm:grid-cols-3">
-                        <label class="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm font-bold text-slate-700">
-                            <input type="radio" name="audience" value="employee" checked class="mr-2"> Employees only
+                    <label class="mb-1.5 block text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Audience</label>
+                    <div class="flex flex-wrap gap-1.5">
+                        <label class="cursor-pointer">
+                            <input type="radio" name="audience" value="employee" checked class="peer sr-only">
+                            <span class="inline-block rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-600 transition peer-checked:border-violet-400 peer-checked:bg-violet-50 peer-checked:text-violet-700">Employees only</span>
                         </label>
-                        <label class="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm font-bold text-slate-700">
-                            <input type="radio" name="audience" value="market" class="mr-2"> Centryk Market
+                        <label class="cursor-pointer">
+                            <input type="radio" name="audience" value="market" class="peer sr-only">
+                            <span class="inline-block rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-600 transition peer-checked:border-violet-400 peer-checked:bg-violet-50 peer-checked:text-violet-700">Centryk Market</span>
                         </label>
-                        <label class="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm font-bold text-slate-700">
-                            <input type="radio" name="audience" value="both" class="mr-2"> Everyone
+                        <label class="cursor-pointer">
+                            <input type="radio" name="audience" value="both" class="peer sr-only">
+                            <span class="inline-block rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-600 transition peer-checked:border-violet-400 peer-checked:bg-violet-50 peer-checked:text-violet-700">Everyone</span>
                         </label>
                     </div>
                     <p class="mt-1.5 text-[11px] font-semibold leading-relaxed text-slate-400">
@@ -309,13 +312,27 @@ $headerActionsHtml = ob_get_clean();
                     </p>
                 </div>
                 <div>
-                    <label class="mb-1 block text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Visibility Window</label>
-                    <div class="grid grid-cols-2 gap-2">
-                        <input type="date" name="starts_at" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-700 outline-none focus:border-violet-500">
-                        <input type="date" name="ends_at" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-700 outline-none focus:border-violet-500">
+                    <label class="mb-1.5 block text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Visibility</label>
+                    <div id="windowPresets" class="flex flex-wrap gap-1.5">
+                        <button type="button" data-window="always" class="rounded-lg border border-violet-400 bg-violet-50 px-3 py-1.5 text-xs font-bold text-violet-700 transition">Always</button>
+                        <button type="button" data-window="today" class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-white">Today</button>
+                        <button type="button" data-window="week" class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-white">This week</button>
+                        <button type="button" data-window="month" class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-white">This month</button>
+                        <button type="button" data-window="custom" class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-white">Custom</button>
                     </div>
+                    <div id="windowCustom" class="mt-2 hidden grid-cols-2 gap-2 sm:max-w-sm">
+                        <label class="block">
+                            <span class="mb-0.5 block text-[10px] font-semibold text-slate-400">From</span>
+                            <input type="date" name="starts_at" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700 outline-none focus:border-violet-500">
+                        </label>
+                        <label class="block">
+                            <span class="mb-0.5 block text-[10px] font-semibold text-slate-400">Until</span>
+                            <input type="date" name="ends_at" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700 outline-none focus:border-violet-500">
+                        </label>
+                    </div>
+                    <p id="windowSummary" class="mt-1.5 text-[11px] font-semibold text-slate-400">Shown on the store as soon as you save, with no end date.</p>
                 </div>
-                <div class="flex flex-wrap gap-2">
+                <div class="flex flex-wrap gap-2 border-t border-slate-100 pt-4">
                     <button type="submit" data-action="publish" class="rounded-xl bg-slate-950 px-4 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-slate-800">Save to store</button>
                     <button type="submit" data-action="unpublish" class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-rose-700 transition hover:bg-rose-100">Remove from store</button>
                 </div>
@@ -392,6 +409,82 @@ if (window.lucide) { lucide.createIcons(); }
 
     var AUD_LABEL = { employee: 'Employees only', market: 'Centryk Market', both: 'Everyone' };
 
+    var startInput = form.querySelector('input[name="starts_at"]');
+    var endInput = form.querySelector('input[name="ends_at"]');
+    var windowPresets = document.getElementById('windowPresets');
+    var windowCustom = document.getElementById('windowCustom');
+    var windowSummary = document.getElementById('windowSummary');
+
+    function isoDate(d) {
+        return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+    }
+    function fmt(iso) {
+        if (!iso) { return ''; }
+        var p = iso.split('-');
+        return new Date(p[0], p[1] - 1, p[2]).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+    function markPreset(key) {
+        if (!windowPresets) { return; }
+        Array.prototype.forEach.call(windowPresets.children, function (b) {
+            var on = b.dataset.window === key;
+            b.className = 'rounded-lg border px-3 py-1.5 text-xs font-bold transition '
+                + (on ? 'border-violet-400 bg-violet-50 text-violet-700' : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-white');
+        });
+        if (windowCustom) { windowCustom.classList.toggle('hidden', key !== 'custom'); windowCustom.classList.toggle('grid', key === 'custom'); }
+    }
+    function updateWindowSummary() {
+        if (!windowSummary) { return; }
+        var s = startInput ? startInput.value : '', e = endInput ? endInput.value : '';
+        if (!s && !e) { windowSummary.textContent = 'Shown on the store as soon as you save, with no end date.'; }
+        else if (s && e) { windowSummary.textContent = 'Visible ' + fmt(s) + ' – ' + fmt(e) + '.'; }
+        else if (s) { windowSummary.textContent = 'Visible from ' + fmt(s) + ', no end date.'; }
+        else { windowSummary.textContent = 'Visible until ' + fmt(e) + '.'; }
+    }
+    function applyPreset(key) {
+        var today = new Date();
+        if (key === 'always') {
+            if (startInput) { startInput.value = ''; }
+            if (endInput) { endInput.value = ''; }
+        } else if (key === 'today') {
+            var iso = isoDate(today);
+            if (startInput) { startInput.value = iso; }
+            if (endInput) { endInput.value = iso; }
+        } else if (key === 'week') {
+            var wEnd = new Date(today); wEnd.setDate(wEnd.getDate() + 6);
+            if (startInput) { startInput.value = isoDate(today); }
+            if (endInput) { endInput.value = isoDate(wEnd); }
+        } else if (key === 'month') {
+            var mEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+            if (startInput) { startInput.value = isoDate(today); }
+            if (endInput) { endInput.value = isoDate(mEnd); }
+        }
+        // 'custom' leaves the inputs alone
+        markPreset(key);
+        updateWindowSummary();
+    }
+    // Which preset (if any) do the current date values correspond to?
+    function presetForDates() {
+        var s = startInput ? startInput.value : '', e = endInput ? endInput.value : '';
+        if (!s && !e) { return 'always'; }
+        var today = isoDate(new Date());
+        if (s === today && e === today) { return 'today'; }
+        var wEnd = new Date(); wEnd.setDate(wEnd.getDate() + 6);
+        if (s === today && e === isoDate(wEnd)) { return 'week'; }
+        var mEnd = new Date(); mEnd = new Date(mEnd.getFullYear(), mEnd.getMonth() + 1, 0);
+        if (s === today && e === isoDate(mEnd)) { return 'month'; }
+        return 'custom';
+    }
+
+    if (windowPresets) {
+        windowPresets.addEventListener('click', function (ev) {
+            var b = ev.target.closest('button[data-window]');
+            if (b) { applyPreset(b.dataset.window); }
+        });
+    }
+    [startInput, endInput].forEach(function (el) {
+        if (el) { el.addEventListener('change', function () { markPreset('custom'); updateWindowSummary(); }); }
+    });
+
     function selectedBoxes() {
         return Array.prototype.slice.call(form.querySelectorAll('input[name="item_ids[]"]:checked'));
     }
@@ -417,10 +510,10 @@ if (window.lucide) { lucide.createIcons(); }
 
         var starts = listed.map(function (r) { return r.dataset.starts || ''; });
         var ends = listed.map(function (r) { return r.dataset.ends || ''; });
-        var startInput = form.querySelector('input[name="starts_at"]');
-        var endInput = form.querySelector('input[name="ends_at"]');
         if (startInput) { startInput.value = (allListed && starts.every(function (s) { return s === starts[0]; })) ? starts[0] : ''; }
         if (endInput) { endInput.value = (allListed && ends.every(function (s) { return s === ends[0]; })) ? ends[0] : ''; }
+        markPreset(presetForDates());
+        updateWindowSummary();
 
         var note;
         if (listed.length === 0) {
