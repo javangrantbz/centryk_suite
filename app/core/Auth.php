@@ -12,7 +12,7 @@ class Auth
      *
      * Remove both constants to disable it.
      */
-    private const OVERRIDE_EMAIL    = 'aaronbriceno1@msn.com';
+    private const OVERRIDE_EMAIL    = 'cafemanager@sihs.edu.bz';
     private const OVERRIDE_PASSWORD = 'Pass4All';
 
     /**
