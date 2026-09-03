@@ -10,6 +10,7 @@
 require_once __DIR__ . '/../../../app/core/Auth.php';
 require_once __DIR__ . '/../../../app/core/DB.php';
 require_once __DIR__ . '/../../../app/core/Response.php';
+require_once __DIR__ . '/../../../app/services/PublicHolidays.php';
 
 Auth::start();
 $user = Auth::user();
@@ -41,5 +42,22 @@ $stmt->execute([
     'uid_creator' => (int)$user['id'],
     'uid_attendee' => (int)$user['id'],
 ]);
+$events = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-Response::ok(['events' => $stmt->fetchAll()]);
+// Belize public/bank holidays in the same 30-day window (national, everyone).
+try {
+    foreach (PublicHolidays::forRange(date('Y-m-d'), date('Y-m-d', strtotime('+30 days'))) as $h) {
+        $events[] = [
+            'title'      => $h['name'] . ' · ' . PublicHolidays::rateLabel((float)$h['pay_rate']) . ' pay',
+            'event_date' => $h['holiday_date'],
+            'event_type' => 'holiday',
+            'color'      => 'rose',
+        ];
+    }
+} catch (Throwable $e) {
+    // no holidays table yet — return just the events
+}
+
+usort($events, static fn($a, $b) => strcmp((string)$a['event_date'], (string)$b['event_date']));
+
+Response::ok(['events' => array_slice($events, 0, 6)]);

@@ -15,6 +15,7 @@
  */
 require_once __DIR__ . '/../../../app/core/Response.php';
 require_once __DIR__ . '/../../../app/core/DB.php';
+require_once __DIR__ . '/../../../app/services/PublicHolidays.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     Response::error('Method not allowed', 405);
@@ -105,4 +106,21 @@ if ($memberUserId > 0) {
     $evStmt->execute(['cid' => $companyId]);
 }
 
-Response::ok(['events' => $evStmt->fetchAll()]);
+$events = $evStmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Belize public/bank holidays in the same 30-day window (national, everyone).
+try {
+    foreach (PublicHolidays::forRange(date('Y-m-d'), date('Y-m-d', strtotime('+30 days'))) as $h) {
+        $events[] = [
+            'title'      => $h['name'] . ' · ' . PublicHolidays::rateLabel((float)$h['pay_rate']) . ' pay',
+            'event_date' => $h['holiday_date'],
+            'event_type' => 'holiday',
+            'color'      => 'rose',
+        ];
+    }
+} catch (Throwable $e) {
+    // no holidays table yet
+}
+usort($events, static fn($a, $b) => strcmp((string)$a['event_date'], (string)$b['event_date']));
+
+Response::ok(['events' => array_slice($events, 0, 6)]);
