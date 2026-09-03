@@ -80,8 +80,14 @@
         const mon = isNaN(d) ? '' : d.toLocaleString('en-US', { month: 'short' });
         const day = isNaN(d) ? '' : d.getDate();
         const esc = s => String(s || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-        const isHol = (ev.event_type || '') === 'holiday';
-        const badge = isHol ? 'bg-rose-50 text-rose-700' : 'bg-teal-50 text-teal-700';
+        const t = ev.event_type || '';
+        const SPECIAL = {
+            holiday:     ['bg-rose-50 text-rose-700',  'Belize holiday'],
+            birthday:    ['bg-pink-50 text-pink-700',  'Birthday'],
+            anniversary: ['bg-teal-50 text-teal-700',  'Work anniversary'],
+        };
+        const spec = SPECIAL[t];
+        const badge = spec ? spec[0] : 'bg-teal-50 text-teal-700';
         return '<div class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50">' +
             '<div class="flex flex-col items-center justify-center h-11 w-11 shrink-0 rounded-lg ' + badge + '">' +
                 '<span class="text-[9px] font-black uppercase leading-none">' + mon + '</span>' +
@@ -89,7 +95,7 @@
             '</div>' +
             '<div class="min-w-0">' +
                 '<p class="text-sm font-bold text-slate-800 truncate">' + esc(ev.title) + '</p>' +
-                '<p class="text-[11px] font-semibold text-slate-400 capitalize">' + (isHol ? 'Belize holiday' : esc(ev.event_type || 'event')) + '</p>' +
+                '<p class="text-[11px] font-semibold text-slate-400 capitalize">' + (spec ? spec[1] : esc(t || 'event')) + '</p>' +
             '</div>' +
         '</div>';
     }

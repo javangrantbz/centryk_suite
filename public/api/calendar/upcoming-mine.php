@@ -11,6 +11,7 @@ require_once __DIR__ . '/../../../app/core/Auth.php';
 require_once __DIR__ . '/../../../app/core/DB.php';
 require_once __DIR__ . '/../../../app/core/Response.php';
 require_once __DIR__ . '/../../../app/services/PublicHolidays.php';
+require_once __DIR__ . '/../../../app/services/PeopleMilestones.php';
 
 Auth::start();
 $user = Auth::user();
@@ -58,6 +59,33 @@ try {
     // no holidays table yet — return just the events
 }
 
+// Birthdays & work anniversaries in the user's own companies.
+try {
+    $myCos = $pdo->prepare("
+        SELECT c.uuid FROM company_members cm
+        JOIN companies c ON c.id = cm.company_id AND c.status = 'active'
+        WHERE cm.user_id = :uid AND cm.status = 'active'
+    ");
+    $myCos->execute(['uid' => (int)$user['id']]);
+    $myUuids = array_flip($myCos->fetchAll(PDO::FETCH_COLUMN));
+    if ($myUuids) {
+        foreach (PeopleMilestones::forRange(date('Y-m-d'), date('Y-m-d', strtotime('+30 days'))) as $m) {
+            if (!isset($myUuids[$m['company_uuid'] ?? ''])) { continue; }
+            $isAnniv = ($m['kind'] ?? '') === 'anniversary';
+            $events[] = [
+                'title'      => $isAnniv
+                    ? trim((string)$m['employee_name']) . ' · ' . (int)($m['years'] ?? 0) . ' yr' . ((int)($m['years'] ?? 0) === 1 ? '' : 's')
+                    : trim((string)$m['employee_name']) . ' · birthday',
+                'event_date' => $m['date'],
+                'event_type' => $isAnniv ? 'anniversary' : 'birthday',
+                'color'      => $isAnniv ? 'teal' : 'pink',
+            ];
+        }
+    }
+} catch (Throwable $e) {
+    // MyPay unreachable — skip milestones
+}
+
 usort($events, static fn($a, $b) => strcmp((string)$a['event_date'], (string)$b['event_date']));
 
-Response::ok(['events' => array_slice($events, 0, 6)]);
+Response::ok(['events' => array_slice($events, 0, 8)]);

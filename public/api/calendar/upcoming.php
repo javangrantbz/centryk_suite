@@ -16,6 +16,7 @@
 require_once __DIR__ . '/../../../app/core/Response.php';
 require_once __DIR__ . '/../../../app/core/DB.php';
 require_once __DIR__ . '/../../../app/services/PublicHolidays.php';
+require_once __DIR__ . '/../../../app/services/PeopleMilestones.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     Response::error('Method not allowed', 405);
@@ -121,6 +122,24 @@ try {
 } catch (Throwable $e) {
     // no holidays table yet
 }
+
+// Birthdays & work anniversaries for this company.
+try {
+    foreach (PeopleMilestones::forRange(date('Y-m-d'), date('Y-m-d', strtotime('+30 days')), $companyUuid) as $m) {
+        $isAnniv = ($m['kind'] ?? '') === 'anniversary';
+        $events[] = [
+            'title'      => $isAnniv
+                ? trim((string)$m['employee_name']) . ' · ' . (int)($m['years'] ?? 0) . ' yr' . ((int)($m['years'] ?? 0) === 1 ? '' : 's')
+                : trim((string)$m['employee_name']) . ' · birthday',
+            'event_date' => $m['date'],
+            'event_type' => $isAnniv ? 'anniversary' : 'birthday',
+            'color'      => $isAnniv ? 'teal' : 'pink',
+        ];
+    }
+} catch (Throwable $e) {
+    // MyPay unreachable
+}
+
 usort($events, static fn($a, $b) => strcmp((string)$a['event_date'], (string)$b['event_date']));
 
-Response::ok(['events' => array_slice($events, 0, 6)]);
+Response::ok(['events' => array_slice($events, 0, 8)]);
