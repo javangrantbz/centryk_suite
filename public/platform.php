@@ -518,6 +518,7 @@ $toc = [
         <ul>
             <li><strong>Belize dollars</strong> throughout.</li>
             <li><strong>GST at 12.5%</strong> — the monthly output-tax summary, and GST-inclusive pricing handled correctly.</li>
+            <li><strong>Public &amp; bank holidays</strong> — the national list (Holidays Act) shows on the calendar and in MyPay, each day tagged with its Labour Act pay rate for hours worked: double time for Good Friday, Easter Monday and Christmas Day, time-and-a-half for the rest. MyPay's payroll-period view flags any holidays that fall inside the run.</li>
             <li><strong>A cash-and-cheque economy</strong> — route settlement and cash-in-transit tracking exist because a lot of money still moves by hand on delivery runs. <strong>Cheque tracking</strong> gives every cheque a lifecycle — uncleared, post-dated, cleared, or bounced — and a bounced cheque automatically reverses the receipt so the customer owes again.</li>
             <li><strong>Districts</strong> — territory reporting by Corozal, Orange Walk, Belize, Cayo, Stann Creek and Toledo is planned for customers and routes.</li>
             <li><strong>The modernisation push</strong> — the impetus for Centryk Business was the call from major Belizean companies to move off cash on delivery routes, have electronic payments post straight to a customer account, and cut manual reconciliation. Those three are exactly what Receivables, Routes and Reconciliation do.</li>
