@@ -3,6 +3,7 @@ require_once __DIR__ . '/../app/core/Auth.php';
 require_once __DIR__ . '/../app/core/DB.php';
 require_once __DIR__ . '/../app/services/AuthService.php';
 require_once __DIR__ . '/../app/services/MyPayCalendarFeed.php';
+require_once __DIR__ . '/../app/services/PublicHolidays.php';
 
 Auth::start();
 
@@ -101,6 +102,7 @@ $lastDate      = date('Y-m-t', $firstOfMonth);
 
 // ── Events for the month, grouped by day ────────────────────────────────────
 $eventsByDay = [];
+$holidayDays = [];   // day-of-month => true, for cell tinting
 if ($activeCompanyId) {
     $eStmt = $pdo->prepare("
         SELECT e.id, e.company_id, e.title, e.description, e.event_date, e.event_type, e.color, e.created_by,
@@ -223,6 +225,24 @@ if ($activeCompanyId) {
                 $eventsByDay[$day][] = $pill;
                 $cursor = strtotime('+1 day', $cursor);
             }
+        }
+    }
+
+    // ── Belize public & bank holidays (national, read-only) ────────────────
+    if (class_exists('PublicHolidays')) {
+        try {
+            foreach (PublicHolidays::forRange($firstDate, $lastDate) as $h) {
+                $day = (int)date('j', strtotime($h['holiday_date']));
+                $rate = (float)$h['pay_rate'];
+                $eventsByDay[$day][] = [
+                    'title'  => $h['name'] . ' · ' . PublicHolidays::rateLabel($rate) . ' pay',
+                    'color'  => 'holiday',
+                    'source' => 'holiday',
+                ];
+                $holidayDays[$day] = true;
+            }
+        } catch (Throwable $e) {
+            // pre-migration / DB issue — calendar still renders without holidays
         }
     }
 }
@@ -454,26 +474,38 @@ function calLink(int $companyId, string $ym): string {
                 $isToday  = ($d === $todayDay && $month === $todayMon && $year === $todayYr);
                 $dateStr  = sprintf('%04d-%02d-%02d', $year, $month, $d);
                 $dayEvts  = $eventsByDay[$d] ?? [];
+                $isHoliday = !empty($holidayDays[$d]);
             ?>
-            <div class="day-cell group relative min-h-[<?= $dayCellMinH ?>] border-b border-r border-slate-100 p-2 transition hover:bg-slate-50 cursor-pointer" data-date="<?= $dateStr ?>">
+            <div class="day-cell group relative min-h-[<?= $dayCellMinH ?>] border-b border-r border-slate-100 p-2 transition cursor-pointer <?= $isHoliday ? 'bg-rose-50/50 hover:bg-rose-50' : 'hover:bg-slate-50' ?>" data-date="<?= $dateStr ?>">
                 <div class="flex items-center justify-between">
-                    <span class="flex h-7 w-7 items-center justify-center rounded-full text-xs font-black <?= $isToday ? 'bg-slate-900 text-white' : 'text-slate-700' ?>"><?= $d ?></span>
+                    <span class="flex h-7 w-7 items-center justify-center rounded-full text-xs font-black <?= $isToday ? 'bg-slate-900 text-white' : ($isHoliday ? 'text-rose-600' : 'text-slate-700') ?>"><?= $d ?></span>
+                    <?php if ($isHoliday): ?>
+                    <i data-lucide="flag" class="h-3.5 w-3.5 text-rose-400"></i>
+                    <?php else: ?>
                     <i data-lucide="plus" class="h-3.5 w-3.5 text-slate-300 opacity-0 group-hover:opacity-100 transition"></i>
+                    <?php endif; ?>
                 </div>
                 <?php if (!empty($dayEvts)): ?>
                 <div class="mt-1 space-y-1">
                     <?php foreach ($dayEvts as $ev):
                         $bg = match ($ev['color']) {
-                            'blue'   => 'bg-blue-500   hover:bg-blue-600',
-                            'teal'   => 'bg-teal-500   hover:bg-teal-600',
-                            'green'  => 'bg-green-500  hover:bg-green-600',
-                            'amber'  => 'bg-amber-500  hover:bg-amber-600',
-                            'red'    => 'bg-red-500    hover:bg-red-600',
-                            'purple' => 'bg-purple-500 hover:bg-purple-600',
-                            default  => 'bg-slate-500  hover:bg-slate-600',
+                            'blue'    => 'bg-blue-500   hover:bg-blue-600',
+                            'teal'    => 'bg-teal-500   hover:bg-teal-600',
+                            'green'   => 'bg-green-500  hover:bg-green-600',
+                            'amber'   => 'bg-amber-500  hover:bg-amber-600',
+                            'red'     => 'bg-red-500    hover:bg-red-600',
+                            'purple'  => 'bg-purple-500 hover:bg-purple-600',
+                            'holiday' => 'bg-rose-400   hover:bg-rose-500',
+                            default   => 'bg-slate-500  hover:bg-slate-600',
                         };
                     ?>
-                    <?php if (!empty($ev['url'])): ?>
+                    <?php if (($ev['source'] ?? '') === 'holiday'): ?>
+                    <div class="event-pill-readonly flex items-center gap-1 truncate rounded-md px-2 py-1 text-left text-[11px] font-bold text-white shadow-sm <?= $bg ?>"
+                         title="<?= htmlspecialchars($ev['title']) ?> — Belize public &amp; bank holiday">
+                        <i data-lucide="flag" class="h-3 w-3 shrink-0 opacity-80"></i>
+                        <span class="truncate"><?= htmlspecialchars($ev['title']) ?></span>
+                    </div>
+                    <?php elseif (!empty($ev['url'])): ?>
                     <a href="<?= htmlspecialchars($ev['url']) ?>" target="_blank" rel="noopener"
                        class="event-pill-readonly flex items-center gap-1 truncate rounded-md px-2 py-1 text-left text-[11px] font-bold text-white shadow-sm transition <?= $bg ?>"
                        title="<?= htmlspecialchars($ev['title']) ?> — review in MyPay">
