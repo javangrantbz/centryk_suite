@@ -292,6 +292,8 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
                         Welcome back, <?= htmlspecialchars($user['first_name']) ?>
                     </p>
 
+                    <p id="peoplePulse" class="mt-1.5 hidden items-center gap-1.5 text-xs font-bold text-slate-600"></p>
+
                     <!-- Actions -->
                     <div class="mt-3 flex flex-wrap items-center gap-2">
                     <button id="coInviteBtn" type="button"
@@ -1156,6 +1158,37 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
         if (window.lucide) { lucide.createIcons(); }
     }
 
+    // Birthdays & work anniversaries in the next ~2 weeks for the selected company.
+    function loadPeoplePulse(companyId) {
+        var el = document.getElementById('peoplePulse');
+        if (!el) { return; }
+        el.classList.add('hidden');
+        el.classList.remove('flex');
+        fetch('api/calendar/milestones.php?company_id=' + encodeURIComponent(companyId) + '&days=14')
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (String(companyId) !== String(selectedId)) { return; }
+                var rows = (d && d.milestones) || [];
+                if (!rows.length) { return; }
+                var parts = rows.slice(0, 3).map(function (m) {
+                    var when = '';
+                    var dt = new Date((m.date || '') + 'T00:00:00');
+                    if (!isNaN(dt)) {
+                        var diff = Math.round((dt - new Date(new Date().toDateString())) / 86400000);
+                        when = diff <= 0 ? 'today' : diff === 1 ? 'tomorrow' : dt.toLocaleDateString('en-US', { weekday: 'short' });
+                    }
+                    if (m.kind === 'anniversary') {
+                        return '🎉 ' + esc(m.employee_name) + ' — ' + (parseInt(m.years, 10) || 0) + 'y ' + when;
+                    }
+                    return '🎂 ' + esc(m.employee_name) + ' ' + when;
+                });
+                el.innerHTML = parts.join(' &nbsp;·&nbsp; ') + (rows.length > 3 ? ' &nbsp;·&nbsp; +' + (rows.length - 3) + ' more' : '');
+                el.classList.remove('hidden');
+                el.classList.add('flex');
+            })
+            .catch(function () {});
+    }
+
     function loadCampaignLibrary(companyId) {
         if (!companyId) {
             clearCampaignLibrary();
@@ -1431,6 +1464,7 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
             var coOnelinkBtn = document.getElementById('coOnelinkPaymentsBtn');
             if (coOnelinkBtn) { coOnelinkBtn.href = onelinkUrl; }
             loadCampaignLibrary(selectedId);
+            loadPeoplePulse(selectedId);
 
             // ── Centryk Business workspace ────────────────────────────────
             var bizRole = ['owner', 'admin', 'manager'].indexOf(String(c.role || '').toLowerCase()) !== -1;
@@ -2040,6 +2074,12 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
     }
 
     loadCompanies();
+
+    // Self-priming daily pulse — first load of the day pushes holiday / birthday
+    // / anniversary notifications. Idempotent server-side; fire and forget.
+    setTimeout(function () {
+        fetch('api/pulse/tick.php').catch(function () {});
+    }, 2500);
 
     // Expose for cross-script use (create company modal)
     window._ctrykLoadCompanies  = loadCompanies;

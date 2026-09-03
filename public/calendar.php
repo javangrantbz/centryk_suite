@@ -4,6 +4,7 @@ require_once __DIR__ . '/../app/core/DB.php';
 require_once __DIR__ . '/../app/services/AuthService.php';
 require_once __DIR__ . '/../app/services/MyPayCalendarFeed.php';
 require_once __DIR__ . '/../app/services/PublicHolidays.php';
+require_once __DIR__ . '/../app/services/PeopleMilestones.php';
 
 Auth::start();
 
@@ -243,6 +244,32 @@ if ($activeCompanyId) {
             }
         } catch (Throwable $e) {
             // pre-migration / DB issue — calendar still renders without holidays
+        }
+    }
+
+    // ── Staff birthdays & work anniversaries (from MyPay, company-scoped) ───
+    if (class_exists('PeopleMilestones') && $activeCompanyUuid !== '') {
+        try {
+            foreach (PeopleMilestones::forRange($firstDate, $lastDate, $activeCompanyUuid) as $m) {
+                $day = (int)date('j', strtotime((string)$m['date']));
+                if ($day < 1) { continue; }
+                if (($m['kind'] ?? '') === 'anniversary') {
+                    $yrs = (int)($m['years'] ?? 0);
+                    $eventsByDay[$day][] = [
+                        'title'  => trim((string)$m['employee_name']) . ' · ' . $yrs . ' year' . ($yrs === 1 ? '' : 's'),
+                        'color'  => 'anniversary',
+                        'source' => 'anniversary',
+                    ];
+                } else {
+                    $eventsByDay[$day][] = [
+                        'title'  => trim((string)$m['employee_name']) . ' · birthday',
+                        'color'  => 'birthday',
+                        'source' => 'birthday',
+                    ];
+                }
+            }
+        } catch (Throwable $e) {
+            // MyPay unreachable — calendar still renders
         }
     }
 }
@@ -489,20 +516,28 @@ function calLink(int $companyId, string $ym): string {
                 <div class="mt-1 space-y-1">
                     <?php foreach ($dayEvts as $ev):
                         $bg = match ($ev['color']) {
-                            'blue'    => 'bg-blue-500   hover:bg-blue-600',
-                            'teal'    => 'bg-teal-500   hover:bg-teal-600',
-                            'green'   => 'bg-green-500  hover:bg-green-600',
-                            'amber'   => 'bg-amber-500  hover:bg-amber-600',
-                            'red'     => 'bg-red-500    hover:bg-red-600',
-                            'purple'  => 'bg-purple-500 hover:bg-purple-600',
-                            'holiday' => 'bg-rose-400   hover:bg-rose-500',
-                            default   => 'bg-slate-500  hover:bg-slate-600',
+                            'blue'        => 'bg-blue-500   hover:bg-blue-600',
+                            'teal'        => 'bg-teal-500   hover:bg-teal-600',
+                            'green'       => 'bg-green-500  hover:bg-green-600',
+                            'amber'       => 'bg-amber-500  hover:bg-amber-600',
+                            'red'         => 'bg-red-500    hover:bg-red-600',
+                            'purple'      => 'bg-purple-500 hover:bg-purple-600',
+                            'holiday'     => 'bg-rose-400   hover:bg-rose-500',
+                            'birthday'    => 'bg-pink-400   hover:bg-pink-500',
+                            'anniversary' => 'bg-teal-500   hover:bg-teal-600',
+                            default       => 'bg-slate-500  hover:bg-slate-600',
                         };
+                        $_src = $ev['source'] ?? '';
                     ?>
-                    <?php if (($ev['source'] ?? '') === 'holiday'): ?>
+                    <?php if (in_array($_src, ['holiday', 'birthday', 'anniversary'], true)): ?>
+                    <?php
+                        $_icon = $_src === 'birthday' ? 'cake' : ($_src === 'anniversary' ? 'gift' : 'flag');
+                        $_hint = $_src === 'holiday' ? ' — Belize public &amp; bank holiday'
+                               : ($_src === 'birthday' ? ' — birthday' : ' — work anniversary');
+                    ?>
                     <div class="event-pill-readonly flex items-center gap-1 truncate rounded-md px-2 py-1 text-left text-[11px] font-bold text-white shadow-sm <?= $bg ?>"
-                         title="<?= htmlspecialchars($ev['title']) ?> — Belize public &amp; bank holiday">
-                        <i data-lucide="flag" class="h-3 w-3 shrink-0 opacity-80"></i>
+                         title="<?= htmlspecialchars($ev['title']) . $_hint ?>">
+                        <i data-lucide="<?= $_icon ?>" class="h-3 w-3 shrink-0 opacity-80"></i>
                         <span class="truncate"><?= htmlspecialchars($ev['title']) ?></span>
                     </div>
                     <?php elseif (!empty($ev['url'])): ?>
