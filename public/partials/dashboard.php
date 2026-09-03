@@ -720,134 +720,59 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
         <!-- ── Explore Centryk ──────────────────────────────────────────── -->
         <div>
             <?php $_secHead('Explore Centryk'); ?>
-            <div class="<?= $_gridClass ?>">
+            <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
 
-            <!-- Case Management — coming soon (static, not in DB) -->
-            <div style="--i:<?= ++$_gridIdx ?>" data-category="business" class="dash-fade relative flex flex-col overflow-hidden rounded-2xl border border-blue-200/70 bg-blue-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
-                <div class="h-1.5 w-full bg-blue-500/50"></div>
-                <div class="flex flex-1 flex-col p-3">
-                    <div class="flex items-center gap-3">
-                        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100">
-                            <svg class="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 14.15v4.073a2.25 2.25 0 01-2.25 2.25H5.904a2.25 2.25 0 01-2.25-2.25V14.15M16.5 6.75V5.625a2.25 2.25 0 00-2.25-2.25h-2.25a2.25 2.25 0 00-2.25 2.25V6.75M3.375 6.75h17.25a1.125 1.125 0 011.125 1.125v3.026a48.34 48.34 0 01-10.5 1.299 48.34 48.34 0 01-10.5-1.299V7.875A1.125 1.125 0 013.375 6.75z"/>
-                            </svg>
-                        </span>
-                        <div>
-                            <div class="text-[10px] font-black uppercase tracking-[0.16em] text-blue-600/80">Cases &amp; Workflows</div>
-                            <div class="text-base font-black tracking-tight text-slate-800">Case Management</div>
-                        </div>
-                    </div>
-                    <p class="mt-2 text-xs font-semibold leading-relaxed text-slate-500">
-                        Track and resolve cases across your team — from intake to outcome — all in one place.
-                    </p>
-                    <div class="mt-4 flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] bg-blue-100 text-blue-700 border border-blue-200">
-                        <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2m6-2a10 10 0 1 1-20 0 10 10 0 0 1 20 0Z"/></svg>
-                        Coming Soon
-                    </div>
-                </div>
-            </div>
-
-        <?php if (Env::isProduction() && !$canUseTv): ?>
-        <!-- Centryk TV — still "Coming Soon" for everyone not on the early-access
-             allowlist, but clickable: lands on tv.php's teaser/pitch page instead
-             of dead-ending, so interest can build ahead of the real rollout. -->
-        <a href="tv.php" data-category="marketing" style="--i:<?= ++$_gridIdx ?>" class="dash-fade group relative flex flex-col overflow-hidden rounded-2xl border border-teal-200/70 bg-teal-50/40 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md hover:bg-teal-50 active:scale-[0.98]">
-            <div class="h-1.5 w-full" style="background:#0f766e80"></div>
-            <div class="flex flex-1 flex-col p-3">
-                <div class="flex items-center gap-3">
-                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-100 text-teal-700">
-                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="2" y="5" width="20" height="14" rx="2"/><path d="m10 9 5 3-5 3V9Z"/><path d="M8 21h8"/>
-                        </svg>
-                    </span>
-                    <div>
-                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-teal-600/80">Live Streaming</div>
-                        <div class="text-base font-black tracking-tight text-slate-800">Centryk TV</div>
-                    </div>
-                </div>
-                <p class="mt-2 text-xs font-semibold leading-relaxed text-slate-500">
-                    Watch live broadcasts and replays from participating organizations.
-                </p>
-                <span role="link" tabindex="0"
-                      class="tv-watch-link mt-2.5 inline-flex cursor-pointer items-center gap-1 self-start rounded-full border border-teal-200 bg-teal-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-teal-700 transition hover:bg-teal-100"
-                      data-watch-url="<?= htmlspecialchars($tvWatchUrl) ?>">
-                    <i data-lucide="play-circle" class="h-3 w-3"></i> Watch
+            <!-- Centryk TV — compact -->
+            <?php $_tvSoon = Env::isProduction() && !$canUseTv; ?>
+            <a href="<?= $_tvSoon ? 'tv.php' : (htmlspecialchars($tvBaseUrl) . '/') ?>" style="--i:<?= ++$_gridIdx ?>"
+               class="dash-fade group flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 transition hover:border-slate-300 hover:bg-white">
+                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal-100 text-teal-700">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="m10 9 5 3-5 3V9Z"/><path d="M8 21h8"/></svg>
                 </span>
-                <div class="mt-4 flex items-center justify-center gap-1.5 rounded-xl border border-teal-200 bg-teal-100 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-teal-700 transition-colors group-hover:bg-teal-200">
-                    <i data-lucide="clock-3" class="h-3 w-3"></i>
-                    Coming Soon
-                </div>
-            </div>
-        </a>
-        <?php else: ?>
-        <!-- Centryk TV — real link: either not production, or this viewer is on the early-access allowlist -->
-        <a href="<?= htmlspecialchars($tvBaseUrl) ?>/" data-category="marketing" style="--i:<?= ++$_gridIdx ?>"
-           class="dash-fade group relative flex flex-col overflow-hidden rounded-2xl border border-teal-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]">
-            <div class="h-1.5 w-full bg-teal-600"></div>
-            <div class="flex flex-1 flex-col p-3">
-                <div class="flex items-center gap-3">
-                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-100 text-teal-700">
-                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="2" y="5" width="20" height="14" rx="2"/><path d="m10 9 5 3-5 3V9Z"/><path d="M8 21h8"/>
-                        </svg>
+                <span class="min-w-0 flex-1">
+                    <span class="flex items-center gap-1.5">
+                        <span class="text-sm font-black tracking-tight text-slate-800">Centryk TV</span>
+                        <?php if ($_tvSoon): ?><span class="rounded bg-slate-200 px-1 py-0.5 text-[8px] font-black uppercase tracking-wide text-slate-500">Soon</span><?php endif; ?>
                     </span>
-                    <div>
-                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-teal-600/80">Live Streaming</div>
-                        <div class="text-base font-black tracking-tight text-slate-900">Centryk TV</div>
-                    </div>
-                </div>
-                <p class="mt-2 text-xs font-semibold leading-relaxed text-slate-500">
-                    Watch live broadcasts and replays from participating organizations.
-                </p>
-                <span role="link" tabindex="0"
-                      class="tv-watch-link mt-2.5 inline-flex cursor-pointer items-center gap-1 self-start rounded-full border border-teal-200 bg-teal-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-teal-700 transition hover:bg-teal-100"
-                      data-watch-url="<?= htmlspecialchars($tvWatchUrl) ?>">
-                    <i data-lucide="play-circle" class="h-3 w-3"></i> Watch
+                    <span class="mt-0.5 block text-[11px] font-semibold leading-snug text-slate-500 line-clamp-2">Live broadcasts and replays from participating organizations.</span>
+                    <span role="link" tabindex="0"
+                          class="tv-watch-link mt-1.5 inline-flex cursor-pointer items-center gap-1 rounded-full border border-teal-200 bg-white px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-teal-700 transition hover:bg-teal-50"
+                          data-watch-url="<?= htmlspecialchars($tvWatchUrl) ?>">
+                        <i data-lucide="play-circle" class="h-3 w-3"></i> Watch
+                    </span>
+                </span>
+            </a>
+
+            <!-- Store — compact -->
+            <button type="button" id="storeCard" style="--i:<?= ++$_gridIdx ?>"
+                    class="dash-fade group flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-slate-300 hover:bg-white">
+                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-700">
+                    <i data-lucide="store" class="h-4 w-4"></i>
+                </span>
+                <span class="min-w-0 flex-1">
+                    <span class="block text-sm font-black tracking-tight text-slate-800">Store</span>
+                    <span class="mt-0.5 block text-[11px] font-semibold leading-snug text-slate-500 line-clamp-2">Employee offers and Centryk Market listings from participating companies.</span>
+                    <span role="link" tabindex="0"
+                          class="store-feed-link mt-1.5 inline-flex cursor-pointer items-center gap-1 rounded-full border border-violet-200 bg-white px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-violet-700 transition hover:bg-violet-50"
+                          data-store-feed-url="store.php">
+                        <i data-lucide="layout-grid" class="h-3 w-3"></i> Browse all
+                    </span>
+                </span>
+            </button>
+
+            <!-- Case Management — coming soon (static) -->
+            <div style="--i:<?= ++$_gridIdx ?>" class="dash-fade flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 opacity-80 select-none">
+                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 14.15v4.073a2.25 2.25 0 01-2.25 2.25H5.904a2.25 2.25 0 01-2.25-2.25V14.15M16.5 6.75V5.625a2.25 2.25 0 00-2.25-2.25h-2.25a2.25 2.25 0 00-2.25 2.25V6.75M3.375 6.75h17.25a1.125 1.125 0 011.125 1.125v3.026a48.34 48.34 0 01-10.5 1.299 48.34 48.34 0 01-10.5-1.299V7.875A1.125 1.125 0 013.375 6.75z"/></svg>
+                </span>
+                <span class="min-w-0 flex-1">
+                    <span class="block text-sm font-black tracking-tight text-slate-800">Case Management</span>
+                    <span class="mt-0.5 block text-[11px] font-semibold leading-snug text-slate-500 line-clamp-2">Track and resolve cases across your team — from intake to outcome.</span>
+                    <span class="mt-1.5 inline-flex items-center gap-1 rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-slate-500">
+                        <i data-lucide="clock" class="h-3 w-3"></i> Coming Soon
+                    </span>
                 </span>
             </div>
-            <div class="flex items-center justify-between border-t border-teal-100 px-4 py-3 text-xs font-bold text-teal-700 transition-colors group-hover:text-teal-900">
-                <span>Open Centryk TV</span>
-                <i data-lucide="arrow-right" class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"></i>
-            </div>
-        </a>
-        <?php endif; ?>
-
-        <!-- Store -->
-        <button type="button" data-category="marketing" style="--i:<?= ++$_gridIdx ?>" id="storeCard" class="dash-fade group relative flex flex-col overflow-hidden rounded-2xl border border-violet-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]">
-            <div class="h-1.5 w-full bg-violet-500"></div>
-            <div class="flex flex-1 flex-col p-3">
-                <div class="flex items-center gap-3">
-                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-700">
-                        <i data-lucide="store" class="h-5 w-5"></i>
-                    </span>
-                    <div>
-                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-violet-600/80">Marketplace</div>
-                        <div class="text-base font-black tracking-tight text-slate-800">Store</div>
-                    </div>
-                </div>
-                <p class="mt-2 text-xs font-semibold leading-relaxed text-slate-500">
-                    Browse employee offers and Centryk Market listings from participating companies.
-                </p>
-                <?php
-                // The card opens this company's own storefront; this chip jumps
-                // straight to the public marketplace feed (all companies). A
-                // <span>, not <a>, because it sits inside the card's <button>.
-                ?>
-                <span role="link" tabindex="0"
-                      class="store-feed-link mt-2.5 inline-flex cursor-pointer items-center gap-1 self-start rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-violet-700 transition hover:bg-violet-100"
-                      data-store-feed-url="store.php">
-                    <i data-lucide="layout-grid" class="h-3 w-3"></i> Browse all stores
-                </span>
-                <div class="mt-2.5 flex items-center gap-1.5">
-                    <span class="inline-block h-1.5 w-1.5 rounded-full bg-violet-500"></span>
-                    <span class="text-[11px] font-bold text-violet-700">Company listings</span>
-                </div>
-            </div>
-            <div class="flex items-center justify-between border-t border-violet-100 px-4 py-3 text-xs font-bold text-violet-700 transition-colors group-hover:text-violet-900">
-                <span>Open Store</span>
-                <i data-lucide="arrow-right" class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"></i>
-            </div>
-        </button>
 
             </div>
         </div>
