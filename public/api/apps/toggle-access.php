@@ -9,6 +9,7 @@
 require_once __DIR__ . '/../../../app/core/Auth.php';
 require_once __DIR__ . '/../../../app/core/DB.php';
 require_once __DIR__ . '/../../../app/core/Response.php';
+require_once __DIR__ . '/../../../app/services/AppAccess.php';
 
 Auth::start();
 $caller = Auth::user();
@@ -57,6 +58,7 @@ if (!$app) {
 if ($grant) {
     $pdo->prepare('INSERT IGNORE INTO user_app_access (user_id, app_id) VALUES (:uid, :aid)')
         ->execute(['uid' => $userId, 'aid' => (int)$app['id']]);
+    AppAccess::markGranted($userId, $appKey, (int)$caller['id']);
 } else {
     $pdo->prepare('DELETE FROM user_app_access WHERE user_id = :uid AND app_id = :aid')
         ->execute(['uid' => $userId, 'aid' => (int)$app['id']]);

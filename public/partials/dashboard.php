@@ -59,24 +59,13 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
             animation-delay: calc(var(--i, 0) * 70ms + 100ms);
         }
 
-        /* Category label floats above the first card of its section so the grid
-           keeps flowing 5-up with no break between categories. */
-        #appsGrid { padding-top: 1.35rem; row-gap: 1.9rem; }
-        #appsGrid > [data-cat-label] { overflow: visible; }
-        #appsGrid > [data-cat-label]::before {
-            content: attr(data-cat-label);
-            position: absolute; left: 2px; bottom: calc(100% + 5px);
-            font-size: 9.5px; font-weight: 800; letter-spacing: 0.16em;
-            text-transform: uppercase; color: #94a3b8;
-            white-space: nowrap; pointer-events: none;
-        }
-        /* Cards that lost overflow-hidden (so the label can escape) still need
-           their top bar and bottom row clipped to the rounded corner. */
-        #appsGrid > .app-card > :first-child,
-        #appsGrid > #onelinkPaymentsCard > :first-child { border-radius: 1rem 1rem 0 0; }
-        #appsGrid > .app-card > :last-child,
-        #appsGrid > #onelinkPaymentsCard > :last-child { border-bottom-left-radius: 1rem; border-bottom-right-radius: 1rem; }
-        @media (max-width: 640px) { #appsGrid { row-gap: 1.5rem; } }
+        /* App cards: the top colour bar and bottom row are clipped to the card's
+           rounded corners (the card itself isn't overflow-hidden so drag ghosts
+           render cleanly). */
+        .app-card > :first-child,
+        #onelinkPaymentsCard > :first-child { border-radius: 1rem 1rem 0 0; }
+        .app-card > :last-child,
+        #onelinkPaymentsCard > :last-child { border-bottom-left-radius: 1rem; border-bottom-right-radius: 1rem; }
 
         @keyframes centryk-logo-settle {
             0%   { opacity: 0; transform: translateY(-2px) scale(0.965); filter: saturate(0.92); }
@@ -433,83 +422,67 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
     </section>
 
     <?php
-    $_comingSoonAppKeys = Env::isProduction() ? ['tv' => true] : [];
+    require_once __DIR__ . '/../../app/services/AppAccess.php';
 
-    // Apps whose every state is handled by a dedicated hand-built card further
-    // down, so they never render through the DB-driven loop.
+    // Centryk TV lives in the "Explore Centryk" section as a hand-built card,
+    // never through the DB-driven app loop.
     $_gridSkipKeys = ['tv' => true];
 
-    $_enrolledAppCount = 0;
+    // Split the user's apps into what they have vs. what they could get. The
+    // "coming soon" hidden-in-prod trick is gone — TV is always in Explore.
+    $enrolledApps  = [];
+    $availableApps = [];
     foreach ($apps as $_app) {
         $_k = (string)($_app['key'] ?? '');
-        if (isset($_comingSoonAppKeys[$_k]) || isset($_gridSkipKeys[$_k])) {
+        if ($_k === '' || isset($_gridSkipKeys[$_k])) {
             continue;
         }
         if (!empty($_app['enrolled'])) {
-            $_enrolledAppCount++;
+            $enrolledApps[] = $_app;
+        } else {
+            $availableApps[] = $_app;
         }
     }
+    // $apps arrives ordered by apps.sort_order (AuthService::allAppsWithEnrollment),
+    // so both lists keep that order.
 
-    // ── Group apps into categories ─────────────────────────────────────────
-    // Section render order follows the key order here.
-    $_catLabels = [
-        'business'   => 'Business',
-        'finance'    => 'Finance',
-        'insights'   => 'Insights',
-        'operations' => 'Operations',
-        'marketing'  => 'Marketing',
-    ];
-    $_catApps = ['business' => [], 'finance' => [], 'insights' => [], 'operations' => [], 'marketing' => []];
-    foreach ($apps as $_app) {
-        $_k = (string)($_app['key'] ?? '');
-        if ($_k === '' || isset($_comingSoonAppKeys[$_k]) || isset($_gridSkipKeys[$_k])) {
-            continue;
-        }
-        $_cat = (string)($_app['category'] ?? 'business');
-        if (!isset($_catApps[$_cat])) {
-            $_cat = 'business';
-        }
-        $_catApps[$_cat][] = $_app;
-    }
-    // Within a section: enrolled first, then opt-in, then locked.
-    foreach ($_catApps as &$_bucket) {
-        usort($_bucket, static function ($a, $b) {
-            $rank = static fn ($x) => !empty($x['enrolled']) ? 0 : (!empty($x['opt_in']) ? 1 : 2);
-            return $rank($a) <=> $rank($b);
-        });
-    }
-    unset($_bucket);
+    $_enrolledAppCount = count($enrolledApps);
+    $pendingReq        = AppAccess::pendingKeys((int)$user['id']);
+
+    // Does the viewer belong to at least one active company?
+    $_hcStmt = DB::pdo()->prepare("
+        SELECT 1 FROM company_members cm
+        JOIN companies c ON c.id = cm.company_id AND c.status = 'active'
+        WHERE cm.user_id = :uid AND cm.status = 'active' LIMIT 1
+    ");
+    $_hcStmt->execute(['uid' => (int)$user['id']]);
+    $hasCompany = (bool)$_hcStmt->fetchColumn();
 
     // Drives the dash-fade entrance stagger, one step per card.
     $_gridIdx = 0;
 
-    // Category headers no longer render their own row. syncCatLabels() (JS)
-    // stamps data-cat-label on the first card of each section after layout and
-    // after any drag-reorder; CSS floats the label just above that card. The
-    // grid keeps flowing 5-up so one category's row can be finished by the
-    // next category's cards.
-    $renderCatHeader = static function (string $label): void {};
-    $catLabelAttr = static fn (): string => '';
-
-    // One DB-backed app card. $cat is stamped on the element so the
-    // drag-to-reorder JS keeps a card within its own section.
-    $renderAppCard = function (array $app, string $cat) use (&$_gridIdx, $catLabelAttr) {
+    // One DB-backed app card. $mode is 'enrolled' or 'available'.
+    $renderAppCard = function (array $app, string $mode) use (&$_gridIdx, $pendingReq) {
         $_gridIdx++;
-        $enrolled = !empty($app['enrolled']);
-        $optIn    = !empty($app['opt_in']);
+        $enrolled  = $mode === 'enrolled';
+        $optIn     = !empty($app['opt_in']);
+        $requested = !$enrolled && in_array($app['key'], $pendingReq, true);
+        // 'available' non-opt-in = needs an admin. Card is still tappable
+        // (opens the request flow) unless a request is already pending.
+        $interactive = $enrolled || $optIn || (!$requested);
         ?>
         <button style="--i:<?= $_gridIdx ?>" class="dash-fade app-card group relative flex flex-col rounded-2xl border text-left shadow-sm transition
                     <?= $enrolled
                         ? 'border-slate-200 bg-white hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-y-0 disabled:shadow-sm'
-                        : ($optIn
-                            ? 'border-dashed border-slate-300 bg-white hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98]'
-                            : 'border-slate-200/50 bg-slate-50 opacity-50 cursor-not-allowed') ?>"
+                        : ($requested
+                            ? 'border-slate-200 bg-slate-50 opacity-60 cursor-default'
+                            : 'border-dashed border-slate-300 bg-white hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98]') ?>"
                 data-app="<?= htmlspecialchars($app['key']) ?>"
-                data-category="<?= htmlspecialchars($cat) ?>"
                 data-enrolled="<?= $enrolled ? '1' : '0' ?>"
                 data-opt-in="<?= $optIn ? '1' : '0' ?>"
+                <?= (!$enrolled && !$optIn && !$requested) ? 'data-request="1"' : '' ?>
                 <?= $enrolled ? 'draggable="true"' : '' ?>
-                <?= ($enrolled || $optIn) ? '' : 'disabled' ?>>
+                <?= $interactive ? '' : 'disabled' ?>>
             <div class="h-1.5 w-full rounded-t-2xl" style="background:<?= htmlspecialchars($app['color']) . ($enrolled ? '' : ';opacity:.4') ?>"></div>
             <div class="flex flex-1 flex-col p-3">
                 <div class="flex items-center gap-3">
@@ -599,18 +572,23 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
                 <?php elseif ($optIn): ?>
                 <div class="mt-2.5 flex items-center gap-1.5">
                     <span class="inline-block h-1.5 w-1.5 rounded-full" style="background:<?= htmlspecialchars($app['color']) ?>"></span>
-                    <span class="text-[11px] font-bold" style="color:<?= htmlspecialchars($app['color']) ?>">Available — tap to enable</span>
+                    <span class="text-[11px] font-bold" style="color:<?= htmlspecialchars($app['color']) ?>">One tap to add</span>
+                </div>
+                <?php elseif ($requested): ?>
+                <div class="mt-2.5 flex items-center gap-1.5">
+                    <span class="inline-block h-1.5 w-1.5 rounded-full bg-slate-300"></span>
+                    <span class="text-[11px] font-bold text-slate-400">Waiting on your company admin</span>
                 </div>
                 <?php else: ?>
-                <div class="mt-4 flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] bg-slate-200 text-slate-400">
-                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"/></svg>
-                    Not enrolled
+                <div class="mt-2.5 flex items-center gap-1.5">
+                    <span class="inline-block h-1.5 w-1.5 rounded-full bg-slate-300"></span>
+                    <span class="text-[11px] font-bold text-slate-400">Your company can turn this on</span>
                 </div>
                 <?php endif; ?>
             </div>
             <?php if ($enrolled): ?>
             <div class="flex items-center justify-between border-t border-slate-100 px-4 py-3 text-xs font-bold text-slate-500 transition-colors group-hover:text-slate-800">
-                <span>Launch <?= htmlspecialchars($app['label']) ?></span>
+                <span>Open <?= htmlspecialchars($app['label']) ?></span>
                 <span class="flex items-center gap-2">
                     <i data-lucide="grip-vertical" class="app-drag-handle h-3.5 w-3.5 cursor-grab text-slate-300 transition-colors group-hover:text-slate-500"></i>
                     <i data-lucide="arrow-right" class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"></i>
@@ -618,8 +596,18 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
             </div>
             <?php elseif ($optIn): ?>
             <div class="flex items-center justify-between border-t border-dashed border-slate-200 px-4 py-3 text-xs font-bold text-slate-600 transition-colors group-hover:text-slate-900">
-                <span>Enable <?= htmlspecialchars($app['label']) ?></span>
+                <span>Add <?= htmlspecialchars($app['label']) ?></span>
                 <i data-lucide="plus" class="h-3.5 w-3.5"></i>
+            </div>
+            <?php elseif ($requested): ?>
+            <div class="flex items-center justify-between border-t border-slate-100 px-4 py-3 text-xs font-bold text-slate-400">
+                <span>Requested</span>
+                <i data-lucide="clock" class="h-3.5 w-3.5"></i>
+            </div>
+            <?php else: ?>
+            <div class="flex items-center justify-between border-t border-dashed border-slate-200 px-4 py-3 text-xs font-bold text-slate-600 transition-colors group-hover:text-slate-900">
+                <span>Request access</span>
+                <i data-lucide="send" class="h-3.5 w-3.5"></i>
             </div>
             <?php endif; ?>
         </button>
@@ -666,22 +654,74 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
 
         <section class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
 
-        <?php if ($_enrolledAppCount === 0): ?>
-        <div class="mb-4 rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-semibold text-slate-500">
-            You are not enrolled in any apps yet. Available apps are listed below.
+        <?php
+        // Apps grouped by what the viewer can do: Your Apps (enrolled) ·
+        // Available Through Your Organization (not enrolled — Add / Request
+        // access) · Explore Centryk (discovery). DB-backed cards flow through
+        // $renderAppCard; TV / Store / Case Management are hand-built.
+        $_gridClass = 'grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4';
+        $_secHead   = static function (string $t) {
+            echo '<h3 class="mb-3 text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">' . htmlspecialchars($t) . '</h3>';
+        };
+        ?>
+
+        <!-- ── Your Apps ─────────────────────────────────────────────────── -->
+        <?php if ($enrolledApps || $canUseOnelink): ?>
+        <div id="yourAppsSection" class="mb-8">
+            <?php $_secHead('Your Apps'); ?>
+            <div id="yourAppsGrid" class="<?= $_gridClass ?>">
+                <?php foreach ($enrolledApps as $_a) { $renderAppCard($_a, 'enrolled'); } ?>
+                <?php if ($canUseOnelink): ?>
+                <button type="button" style="--i:<?= ++$_gridIdx ?>" id="onelinkPaymentsCard"
+                        class="dash-fade group relative flex flex-col rounded-2xl border border-cyan-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]">
+                    <div class="h-1.5 w-full rounded-t-2xl bg-cyan-500"></div>
+                    <div class="flex flex-1 flex-col p-3">
+                        <div class="flex items-center gap-3">
+                            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-100 text-cyan-700">
+                                <i data-lucide="credit-card" class="h-5 w-5"></i>
+                            </span>
+                            <div>
+                                <div class="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-600/80">Collections</div>
+                                <div class="text-base font-black tracking-tight text-slate-900">OneLink Payments</div>
+                            </div>
+                        </div>
+                        <p class="mt-2 text-xs font-semibold leading-relaxed text-slate-500">
+                            View POS, invoice, and payment-form collections for the selected company.
+                        </p>
+                        <div class="mt-2.5 flex items-center gap-1.5">
+                            <span class="inline-block h-1.5 w-1.5 rounded-full bg-cyan-500"></span>
+                            <span class="text-[11px] font-bold text-cyan-700">Company-scoped ledger</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between border-t border-cyan-100 px-4 py-3 text-xs font-bold text-cyan-700 transition-colors group-hover:text-cyan-900">
+                        <span>View payments</span>
+                        <i data-lucide="arrow-right" class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"></i>
+                    </div>
+                </button>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php elseif ($_enrolledAppCount === 0): ?>
+        <div class="mb-8 rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-semibold text-slate-500">
+            You're not in any apps yet<?= $hasCompany ? ' — request access to one below.' : '. A company admin adds you to apps once you join a company.' ?>
         </div>
         <?php endif; ?>
 
-        <!-- Apps grid — grouped into category sections. DB-backed cards flow
-             through $renderAppCard; the hand-built cards (OneLink, TV, Store,
-             Case Management) are slotted into the matching section by hand. -->
-        <div id="appsGrid" class="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+        <!-- ── Available Through Your Organization ───────────────────────── -->
+        <?php if ($hasCompany && $availableApps): ?>
+        <div class="mb-8">
+            <?php $_secHead('Available Through Your Organization'); ?>
+            <div class="<?= $_gridClass ?>">
+                <?php foreach ($availableApps as $_a) { $renderAppCard($_a, 'available'); } ?>
+            </div>
+        </div>
+        <?php endif; ?>
 
-            <?php
-            // ── Business ───────────────────────────────────────────────────
-            $renderCatHeader($_catLabels['business']);
-            foreach ($_catApps['business'] as $_a) { $renderAppCard($_a, 'business'); }
-            ?>
+        <!-- ── Explore Centryk ──────────────────────────────────────────── -->
+        <div>
+            <?php $_secHead('Explore Centryk'); ?>
+            <div class="<?= $_gridClass ?>">
+
             <!-- Case Management — coming soon (static, not in DB) -->
             <div style="--i:<?= ++$_gridIdx ?>" data-category="business" class="dash-fade relative flex flex-col overflow-hidden rounded-2xl border border-blue-200/70 bg-blue-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
                 <div class="h-1.5 w-full bg-blue-500/50"></div>
@@ -707,82 +747,6 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
                 </div>
             </div>
 
-            <?php
-            // Centryk Business modules used to render as individual cards
-            // here; they now live in the #bizWorkspace panel above the grid
-            // (revealed by selectCompany() for an entitled company).
-
-            // ── Finance ────────────────────────────────────────────────────
-            $renderCatHeader($_catLabels['finance']);
-            ?>
-            <?php if ($canUseOnelink): ?>
-            <button type="button" style="--i:<?= ++$_gridIdx ?>" id="onelinkPaymentsCard" data-category="finance"
-                    class="dash-fade group relative flex flex-col rounded-2xl border border-cyan-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]">
-                <div class="h-1.5 w-full rounded-t-2xl bg-cyan-500"></div>
-            <div class="flex flex-1 flex-col p-3">
-                <div class="flex items-center gap-3">
-                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-100 text-cyan-700">
-                        <i data-lucide="credit-card" class="h-5 w-5"></i>
-                    </span>
-                    <div>
-                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-600/80">Collections</div>
-                        <div class="text-base font-black tracking-tight text-slate-900">OneLink Payments</div>
-                    </div>
-                </div>
-                <p class="mt-2 text-xs font-semibold leading-relaxed text-slate-500">
-                    View POS, invoice, and payment-form collections for the selected company.
-                </p>
-                <div class="mt-2.5 flex items-center gap-1.5">
-                    <span class="inline-block h-1.5 w-1.5 rounded-full bg-cyan-500"></span>
-                    <span class="text-[11px] font-bold text-cyan-700">Company-scoped ledger</span>
-                </div>
-            </div>
-            <div class="flex items-center justify-between border-t border-cyan-100 px-4 py-3 text-xs font-bold text-cyan-700 transition-colors group-hover:text-cyan-900">
-                <span>View payments</span>
-                <i data-lucide="arrow-right" class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"></i>
-            </div>
-        </button>
-        <?php else: ?>
-        <!-- OneLink Payments — coming soon for users without company/platform admin access -->
-        <div style="--i:<?= ++$_gridIdx ?>" data-category="finance" class="dash-fade relative flex flex-col rounded-2xl border border-cyan-200/70 bg-cyan-50/40 text-left shadow-sm opacity-75 cursor-not-allowed select-none">
-            <div class="h-1.5 w-full rounded-t-2xl bg-cyan-500/50"></div>
-            <div class="flex flex-1 flex-col p-3">
-                <div class="flex items-center gap-3">
-                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-100 text-cyan-700">
-                        <i data-lucide="credit-card" class="h-5 w-5"></i>
-                    </span>
-                    <div>
-                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-600/80">Collections</div>
-                        <div class="text-base font-black tracking-tight text-slate-800">OneLink Payments</div>
-                    </div>
-                </div>
-                <p class="mt-2 text-xs font-semibold leading-relaxed text-slate-500">
-                    Track POS, invoice, and payment-form collections once live payment data is available.
-                </p>
-                <div class="mt-4 flex items-center justify-center gap-1.5 rounded-xl border border-cyan-200 bg-cyan-100 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-cyan-700">
-                    <i data-lucide="clock-3" class="h-3 w-3"></i>
-                    Coming Soon
-                </div>
-            </div>
-        </div>
-        <?php endif; ?>
-
-        <?php
-        // ── Finance ────────────────────────────────────────────────────────
-        foreach ($_catApps['finance'] as $_a) { $renderAppCard($_a, 'finance'); }
-
-        // ── Insights ───────────────────────────────────────────────────────
-        $renderCatHeader($_catLabels['insights']);
-        foreach ($_catApps['insights'] as $_a) { $renderAppCard($_a, 'insights'); }
-
-        // ── Operations ─────────────────────────────────────────────────────
-        $renderCatHeader($_catLabels['operations']);
-        foreach ($_catApps['operations'] as $_a) { $renderAppCard($_a, 'operations'); }
-
-        // ── Marketing ──────────────────────────────────────────────────────
-        $renderCatHeader($_catLabels['marketing']);
-        foreach ($_catApps['marketing'] as $_a) { $renderAppCard($_a, 'marketing'); }
-        ?>
         <?php if (Env::isProduction() && !$canUseTv): ?>
         <!-- Centryk TV — still "Coming Soon" for everyone not on the early-access
              allowlist, but clickable: lands on tv.php's teaser/pitch page instead
@@ -885,7 +849,8 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
             </div>
         </button>
 
-    </div>
+            </div>
+        </div>
 
     <!-- Centryk Business strip — a quiet line under the apps, set by
          selectCompany() for an admin/manager of the selected company. Two
@@ -1069,8 +1034,7 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
     var dropdownList = document.getElementById('companyDropdownList');
     var ctxText      = document.getElementById('companyContext');
     var noCompNotice = document.getElementById('noCompanyNotice');
-    var appsGrid     = document.getElementById('appsGrid');
-    if (appsGrid) { setTimeout(function () { syncCatLabels(); }, 0); }
+    var appsGrid     = document.getElementById('yourAppsGrid');
     var draggingAppCard = null;
     var appOrderChanged = false;
     var suppressAppClick = false;
@@ -1230,59 +1194,22 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
         });
     }
 
-    // Re-apply a saved drag order. The grid is grouped into category sections,
-    // so cards are only reordered among their own section peers (same
-    // data-category) — that keeps every card inside its section.
+    // Re-apply the per-company saved order to the single "Your Apps" list.
+    // The OneLink card (no data-app) is left where it is.
     function applyAppOrder(order) {
         if (!appsGrid || !Array.isArray(order) || !order.length) { return; }
         var rank = {};
         order.forEach(function (key, i) { rank[key] = i; });
 
-        var byCat = {};
-        orderedActiveAppCards().forEach(function (card) {
-            var cat = card.dataset.category || '';
-            (byCat[cat] = byCat[cat] || []).push(card);
+        var cards = orderedActiveAppCards();
+        if (!cards.length) { return; }
+        var anchor = cards[cards.length - 1].nextSibling;
+        cards.sort(function (a, b) {
+            var ra = (a.dataset.app in rank) ? rank[a.dataset.app] : Infinity;
+            var rb = (b.dataset.app in rank) ? rank[b.dataset.app] : Infinity;
+            return ra - rb;
         });
-
-        Object.keys(byCat).forEach(function (cat) {
-            var group = byCat[cat];
-            // Anchor = whatever currently follows the group's last card. Every
-            // card is re-inserted just before it, in saved-rank order, so the
-            // group stays contiguous and in place.
-            var anchor = group[group.length - 1].nextSibling;
-            group.sort(function (a, b) {
-                var ra = (a.dataset.app in rank) ? rank[a.dataset.app] : Infinity;
-                var rb = (b.dataset.app in rank) ? rank[b.dataset.app] : Infinity;
-                return ra - rb;
-            });
-            group.forEach(function (card) { appsGrid.insertBefore(card, anchor); });
-        });
-        syncCatLabels();
-    }
-
-    // Put the category label on whichever card is currently first in each
-    // section (DOM order), so it stays correct after a drag-reorder. The grid
-    // then flows 5-up with the label floating above that first card.
-    var CAT_LABELS = {
-        business: 'Business',
-        centryk_business: 'Centryk Business',
-        finance: 'Finance',
-        insights: 'Insights',
-        operations: 'Operations',
-        marketing: 'Marketing'
-    };
-    function syncCatLabels() {
-        if (!appsGrid) { return; }
-        appsGrid.querySelectorAll('[data-cat-label]').forEach(function (el) { el.removeAttribute('data-cat-label'); });
-        var placed = {};
-        Array.prototype.forEach.call(appsGrid.children, function (c) {
-            if (getComputedStyle(c).display === 'none') { return; }
-            var cat = c.dataset.category;
-            var label = cat && CAT_LABELS[cat];
-            if (!label || placed[label]) { return; }
-            placed[label] = true;
-            c.setAttribute('data-cat-label', label);
-        });
+        cards.forEach(function (card) { appsGrid.insertBefore(card, anchor); });
     }
 
     function loadCompanyAppOrder() {
@@ -1923,7 +1850,6 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
             card.addEventListener('dragend', function () {
                 card.classList.remove('opacity-60', 'ring-2', 'ring-slate-300');
                 draggingAppCard = null;
-                syncCatLabels();
                 if (appOrderChanged) {
                     suppressAppClick = true;
                     saveCompanyAppOrder();
@@ -1936,6 +1862,7 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
             if (suppressAppClick) { return; }
             var enrolled = card.dataset.enrolled === '1';
             var optIn    = card.dataset.optIn    === '1';
+            var request  = card.dataset.request  === '1';
 
             // Opt-in app the user hasn't enabled yet → self-enable then reload
             if (!enrolled && optIn) {
@@ -1956,6 +1883,47 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
                 })
                 .catch(function () {
                     card.style.opacity = '';
+                    showToast('Network error. Please try again.', 'error');
+                });
+                return;
+            }
+
+            // Core app that needs an admin → request access (or self-grant if
+            // the caller is one).
+            if (!enrolled && request) {
+                card.style.opacity = '0.6';
+                card.setAttribute('disabled', 'disabled');
+                fetch('api/apps/request-access.php', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ app_key: card.dataset.app })
+                })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data && data.success && data.granted) {
+                        window.location.reload();
+                        return;
+                    }
+                    if (data && data.success && data.requested) {
+                        card.removeAttribute('data-request');
+                        var footer = card.querySelector('.flex.items-center.justify-between.border-t');
+                        if (footer) {
+                            footer.className = 'flex items-center justify-between border-t border-slate-100 px-4 py-3 text-xs font-bold text-slate-400';
+                            footer.innerHTML = '<span>Requested</span><i data-lucide="clock" class="h-3.5 w-3.5"></i>';
+                        }
+                        card.style.opacity = '0.6';
+                        card.classList.add('cursor-default');
+                        if (window.lucide) { lucide.createIcons(); }
+                        showToast('Request sent to your company admin.', 'success');
+                        return;
+                    }
+                    card.style.opacity = '';
+                    card.removeAttribute('disabled');
+                    showToast((data && data.message) || 'Could not request access.', 'error');
+                })
+                .catch(function () {
+                    card.style.opacity = '';
+                    card.removeAttribute('disabled');
                     showToast('Network error. Please try again.', 'error');
                 });
                 return;
