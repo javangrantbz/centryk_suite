@@ -90,7 +90,7 @@ $headerActionsHtml = ob_get_clean();
                 <strong>Not yet exercised against a live BTS certificate.</strong> Belize Tax Service's Electronic
                 Invoicing requires every invoice to be built as signed UBL 2.1 XML and authorized by BTS in real time
                 before it's legally valid. That mapping/signing/submission is built and follows BTS's own Orientation
-                Manual — but no company has generated a real certificate via BTS's EFDR Portal yet, so "Submit to BTS"
+                Manual - but no company has generated a real certificate via BTS's EFDR Portal yet, so "Submit to BTS"
                 has never actually reached their server. Upload a certificate below to try it for real; a rejected
                 test-environment submission has no legal effect.
             </div>
@@ -105,7 +105,7 @@ $headerActionsHtml = ob_get_clean();
             <form id="profileForm" class="biz-panel-body" style="display:grid;gap:12px">
                 <p class="biz-muted" style="font-size:11px;margin:-4px 0 4px">
                     This is the information BTS asks for to set up your test account. Name, TIN and address are
-                    pre-filled from your invoice settings the first time you visit — change them here if this profile
+                    pre-filled from your invoice settings the first time you visit - change them here if this profile
                     needs to differ.
                 </p>
                 <div class="grid gap-3 sm:grid-cols-2">
@@ -168,7 +168,7 @@ $headerActionsHtml = ob_get_clean();
             <div class="biz-panel-body" style="display:grid;gap:8px">
                 <p class="biz-muted" style="font-size:11px">
                     Generate and download your certificate yourself from BTS's <strong>EFDR Portal</strong> (PFX/P12,
-                    password = this company's TIN) — Centryk doesn't request or generate this on your behalf. Upload
+                    password = this company's TIN) - Centryk doesn't request or generate this on your behalf. Upload
                     the downloaded file here; it's used both to sign documents and to connect to BTS.
                 </p>
                 <div id="certStatus" class="text-sm font-semibold"></div>
@@ -302,7 +302,7 @@ async function loadInvoicePicker(){
     const d = await res.json().catch(() => null);
     const invoices = (d && d.invoices) || [];
     sel.innerHTML = invoices.length
-        ? invoices.map(i => `<option value="${i.id}">${esc(i.invoice_number || ('#' + i.id))} — ${bzd(i.total)}</option>`).join('')
+        ? invoices.map(i => `<option value="${i.id}">${esc(i.invoice_number || ('#' + i.id))} - ${bzd(i.total)}</option>`).join('')
         : '<option value="">No eligible invoices</option>';
 }
 
@@ -315,7 +315,7 @@ document.getElementById('btnBuildFromInvoice')?.addEventListener('click', async 
     });
     const d = await res.json();
     if (!d.success) { showAlert(d.message || 'Could not build a fiscal document.'); return; }
-    showAlert('Fiscal document built (status: Built — not submitted to BTS).', true);
+    showAlert('Fiscal document built (status: Built - not submitted to BTS).', true);
     loadDocuments();
 });
 
@@ -364,7 +364,7 @@ async function submitDoc(id){
     const d = await res.json();
     if (!d.success) { showAlert(d.message || 'Could not submit that document.'); loadDocuments(); return; }
     const status = d.document?.status;
-    showAlert(status === 'authorized' ? `Authorized — ETDUI ${d.document.etdui}` : `Result: ${STATUS_LABEL[status] || status}`, status === 'authorized');
+    showAlert(status === 'authorized' ? `Authorized - ETDUI ${d.document.etdui}` : `Result: ${STATUS_LABEL[status] || status}`, status === 'authorized');
     loadDocuments();
 }
 
@@ -376,7 +376,7 @@ async function cancelDoc(id){
     });
     const prepData = await prep.json();
     if (!prepData.success) { showAlert(prepData.message || 'Could not prepare the cancellation.'); return; }
-    showAlert('Cancellation prepared — submitting to BTS…', true);
+    showAlert('Cancellation prepared - submitting to BTS…', true);
     await submitDoc(prepData.document.id);
 }
 

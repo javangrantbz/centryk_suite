@@ -170,7 +170,7 @@ async function load(){
     profileRows.innerHTML = profiles.map(p => `
         <tr>
             <td class="px-4 py-2.5 font-bold">${esc(p.company_name)}</td>
-            <td class="px-4 py-2.5 font-mono text-xs">${esc(p.tin || '—')}</td>
+            <td class="px-4 py-2.5 font-mono text-xs">${esc(p.tin || '-')}</td>
             <td class="px-4 py-2.5">${esc(PROFILE_STATUS_LABEL[p.status] || p.status)}</td>
             <td class="px-4 py-2.5 uppercase text-xs font-bold text-slate-500">${esc(p.environment)}</td>
             <td class="px-4 py-2.5">${Number(p.enabled) === 1 ? '<span class="text-emerald-600 font-bold">Yes</span>' : '<span class="text-slate-400">No</span>'}</td>
@@ -189,7 +189,7 @@ async function load(){
             <td class="px-4 py-2.5">${esc(doc.our_number || ('#' + doc.id))}</td>
             <td class="px-4 py-2.5 text-xs text-slate-500">${esc(doc.document_type)}</td>
             <td class="px-4 py-2.5"><span class="rounded px-2 py-0.5 text-[10px] font-black uppercase ${STATUS_TONE[doc.status] || ''}">${esc(doc.status)}</span></td>
-            <td class="px-4 py-2.5 font-mono text-[10px] text-slate-500">${esc(doc.etdui || '—')}</td>
+            <td class="px-4 py-2.5 font-mono text-[10px] text-slate-500">${esc(doc.etdui || '-')}</td>
             <td class="px-4 py-2.5 text-xs text-slate-500">${esc((doc.created_at || '').slice(0, 16).replace('T', ' '))}</td>
             <td class="px-4 py-2.5 text-right font-mono">${bzd(doc.total)}</td>
             <td class="px-4 py-2.5 text-right"><button type="button" class="text-xs font-bold text-indigo-600 hover:underline" onclick="openDetail(${doc.id})">View</button></td>
@@ -207,7 +207,7 @@ async function openDetail(id){
     else {
         const doc = d.document;
         const lines = (doc.lines || []).map(l => `<div class="flex justify-between border-b border-slate-100 py-1 text-xs"><span>${esc(l.description)} × ${Number(l.quantity)}</span><span class="font-mono">${bzd(l.line_total)}</span></div>`).join('');
-        const events = (doc.events || []).map(e => `<div class="text-xs text-slate-500"><span class="font-bold text-slate-700">${esc(e.event_type)}</span> — ${esc(e.detail || '')} <span class="text-slate-400">(${esc((e.created_at||'').slice(0,16).replace('T',' '))})</span></div>`).join('');
+        const events = (doc.events || []).map(e => `<div class="text-xs text-slate-500"><span class="font-bold text-slate-700">${esc(e.event_type)}</span> - ${esc(e.detail || '')} <span class="text-slate-400">(${esc((e.created_at||'').slice(0,16).replace('T',' '))})</span></div>`).join('');
         body.innerHTML = `
             <p class="text-xs font-black uppercase tracking-wide text-indigo-500">${esc(doc.company_name)}</p>
             <h4 class="mt-0.5 text-lg font-black">${esc(doc.our_number || ('Doc #' + doc.id))}</h4>
