@@ -102,7 +102,9 @@ $headerActionsHtml = ob_get_clean();
             </div>
             <form id="profileForm" class="biz-panel-body" style="display:grid;gap:12px">
                 <p class="biz-muted" style="font-size:11px;margin:-4px 0 4px">
-                    This is the information BTS asks for to set up your test account.
+                    This is the information BTS asks for to set up your test account. Name, TIN and address are
+                    pre-filled from your invoice settings the first time you visit — change them here if this profile
+                    needs to differ.
                 </p>
                 <div class="grid gap-3 sm:grid-cols-2">
                     <label class="block"><span class="biz-label">Company / organization name</span>
