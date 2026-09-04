@@ -153,6 +153,10 @@ $headerActionsHtml = ob_get_clean();
                class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-slate-600 hover:border-violet-200">
                 GST summary
             </a>
+            <a href="business_fiscal.php?company_id=<?= (int)$activeCompany['id'] ?>"
+               class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.1em] text-slate-600 hover:border-violet-200">
+                E-Invoicing (BTS)
+            </a>
             <?php endif; ?>
         </div>
         <?php endif; ?>
