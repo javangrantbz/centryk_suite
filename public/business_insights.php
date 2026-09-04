@@ -57,6 +57,7 @@ $headerActionsHtml = ob_get_clean();
         <span class="flex flex-wrap items-center gap-2">
             <?php if ($activeCompany): ?>
             <a href="business_tax.php?company_id=<?= (int)$activeCompany['id'] ?>" class="biz-btn biz-btn-ghost biz-btn-sm">GST summary</a>
+            <a href="business_fiscal.php?company_id=<?= (int)$activeCompany['id'] ?>" class="biz-btn biz-btn-ghost biz-btn-sm">E-Invoicing (BTS)</a>
             <?php endif; ?>
         </span>
     </div>
