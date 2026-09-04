@@ -45,6 +45,20 @@ if ($companies) {
     }
 }
 
+// BTS e-invoicing "enabled" flag per company, for the dashboard's company
+// profile card badge - see FiscalInvoicingService/company_fiscal_profiles.
+$fiscalEnabled = [];
+if ($companies) {
+    $fStmt = $pdo->prepare("
+        SELECT company_id, enabled FROM company_fiscal_profiles
+        WHERE company_id IN ($placeholders)
+    ");
+    $fStmt->execute($ids);
+    foreach ($fStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $fiscalEnabled[(int)$row['company_id']] = (bool)$row['enabled'];
+    }
+}
+
 foreach ($companies as &$c) {
     $cid = (int)$c['id'];
     $c['app_counts'] = isset($appCounts[$cid]) ? $appCounts[$cid] : (object)[];
@@ -52,6 +66,7 @@ foreach ($companies as &$c) {
     // group) — the dashboard uses this to show the module cards.
     $ent = Entitlements::forCompany($cid);
     $c['entitlements'] = $ent === [] ? (object)[] : $ent;
+    $c['fiscal_enabled'] = $fiscalEnabled[$cid] ?? false;
 }
 unset($c);
 
