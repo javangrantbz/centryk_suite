@@ -26,19 +26,65 @@ class FiscalInvoicingService
 
     // ── Company fiscal profile ──────────────────────────────────────────────
 
-    public static function getProfile(int $companyId): ?array
+    /**
+     * A company's fiscal profile. The first time this is called for a
+     * company, the row is created and seeded from whatever's already on
+     * file elsewhere in Centryk (invoice_settings' letterhead TIN/name/
+     * address, falling back to the company's own tax_number/name) - so the
+     * fiscal profile shows up already filled in rather than asking someone
+     * to retype a TIN Centryk already has.
+     */
+    public static function getProfile(int $companyId): array
     {
         $stmt = DB::pdo()->prepare('SELECT * FROM company_fiscal_profiles WHERE company_id = :c LIMIT 1');
         $stmt->execute(['c' => $companyId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $row ?: null;
+        if ($row) {
+            return $row;
+        }
+        return self::seedProfile($companyId);
+    }
+
+    private static function seedProfile(int $companyId): array
+    {
+        $pdo = DB::pdo();
+
+        $settingsStmt = $pdo->prepare('SELECT business_name, business_tax_number, business_address FROM invoice_settings WHERE company_id = :c LIMIT 1');
+        $settingsStmt->execute(['c' => $companyId]);
+        $settings = $settingsStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        $companyStmt = $pdo->prepare('SELECT name, tax_number FROM companies WHERE id = :c LIMIT 1');
+        $companyStmt->execute(['c' => $companyId]);
+        $company = $companyStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        // invoice_settings is the more specific, invoice-facing record (it's
+        // what actually prints on letterhead), so it wins when both exist.
+        $tin = self::nullableString($settings['business_tax_number'] ?? null, 40)
+            ?? self::nullableString($company['tax_number'] ?? null, 40);
+        $legalName = self::nullableString($settings['business_name'] ?? null, 180)
+            ?? self::nullableString($company['name'] ?? null, 180);
+        $address = self::nullableString($settings['business_address'] ?? null, 2000);
+
+        $pdo->prepare('
+            INSERT INTO company_fiscal_profiles (company_id, legal_name, tin, address)
+            VALUES (:company_id, :legal_name, :tin, :address)
+        ')->execute([
+            'company_id' => $companyId,
+            'legal_name' => $legalName,
+            'tin'        => $tin,
+            'address'    => $address,
+        ]);
+
+        $stmt = $pdo->prepare('SELECT * FROM company_fiscal_profiles WHERE company_id = :c LIMIT 1');
+        $stmt->execute(['c' => $companyId]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
     /**
-     * Insert or update a company's fiscal profile (the BTS registration
-     * fields, plus environment/enabled/status). $data keys are the columns
-     * below; anything omitted keeps its current value on update, or the
-     * column default on insert.
+     * Update a company's fiscal profile (the BTS registration fields, plus
+     * environment/enabled/status). getProfile() guarantees the row already
+     * exists (seeded on first read), so this is always an update; $data
+     * keys are the columns below, anything omitted keeps its current value.
      */
     public static function saveProfile(int $companyId, array $data): array
     {
@@ -72,20 +118,12 @@ class FiscalInvoicingService
             'notes'                  => self::nullableString($data['notes'] ?? $existing['notes'] ?? null, 4000),
         ];
 
-        if ($existing) {
-            $sql = 'UPDATE company_fiscal_profiles SET ' . implode(', ', array_map(
-                static fn($k) => "$k = :$k",
-                array_keys($fields)
-            )) . ' WHERE company_id = :company_id';
-            $fields['company_id'] = $companyId;
-            DB::pdo()->prepare($sql)->execute($fields);
-        } else {
-            $fields['company_id'] = $companyId;
-            $cols = array_keys($fields);
-            $sql = 'INSERT INTO company_fiscal_profiles (' . implode(', ', $cols) . ') VALUES (' .
-                implode(', ', array_map(static fn($k) => ":$k", $cols)) . ')';
-            DB::pdo()->prepare($sql)->execute($fields);
-        }
+        $sql = 'UPDATE company_fiscal_profiles SET ' . implode(', ', array_map(
+            static fn($k) => "$k = :$k",
+            array_keys($fields)
+        )) . ' WHERE company_id = :company_id';
+        $fields['company_id'] = $companyId;
+        DB::pdo()->prepare($sql)->execute($fields);
 
         return self::getProfile($companyId);
     }
