@@ -3,7 +3,6 @@
 require_once __DIR__ . '/../../../app/core/Auth.php';
 require_once __DIR__ . '/../../../app/core/DB.php';
 require_once __DIR__ . '/../../../app/core/Response.php';
-require_once __DIR__ . '/../../../app/core/Entitlements.php';
 require_once __DIR__ . '/../../../app/services/FiscalInvoicingService.php';
 
 Auth::start();
@@ -26,10 +25,6 @@ $m->execute(['u' => (int)$user['id'], 'c' => $companyId]);
 if (!$m->fetchColumn()) {
     Response::error('You need to be an admin or manager of this company.', 403);
 }
-if (Entitlements::level($companyId, 'receivables') === Entitlements::NONE) {
-    Response::error('E-invoicing builds on your sales data from Receivables.', 402, ['entitlement' => 'receivables']);
-}
-
 $document = FiscalInvoicingService::getDocument($companyId, $id);
 if (!$document) {
     Response::error('Document not found.', 404);

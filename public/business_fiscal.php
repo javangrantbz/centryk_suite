@@ -1,8 +1,11 @@
 <?php
 /**
  * Belize BTS Electronic Invoicing — admin page.
- * Gated: admin/manager of a company holding the 'receivables' package
- * (edit rights restricted to a company admin - see $isCompanyAdmin).
+ * Gated: admin/manager of any active company (edit rights restricted to a
+ * company admin - see $isCompanyAdmin). Deliberately NOT behind Centryk
+ * Business/the 'receivables' package — invoice-maker and OnePay POS are
+ * free, and BTS compliance is a legal requirement for any business that
+ * issues invoices/receipts through them, not a premium AR feature.
  *
  * Registration-info form, certificate upload, a document log, and the
  * actual "Submit to BTS" / "Cancel via BTS" actions (FiscalInvoicingService::
@@ -14,7 +17,6 @@
  */
 require_once __DIR__ . '/../app/core/Auth.php';
 require_once __DIR__ . '/../app/core/DB.php';
-require_once __DIR__ . '/../app/core/Entitlements.php';
 require_once __DIR__ . '/../app/services/AuthService.php';
 
 Auth::start();
@@ -35,8 +37,7 @@ $coStmt = $pdo->prepare("
     ORDER BY c.name ASC
 ");
 $coStmt->execute(['uid' => (int)$user['id']]);
-$all = $coStmt->fetchAll(PDO::FETCH_ASSOC);
-$companies = array_values(array_filter($all, static fn ($c) => Entitlements::level((int)$c['id'], 'receivables') !== Entitlements::NONE));
+$companies = $coStmt->fetchAll(PDO::FETCH_ASSOC);
 
 $activeCompany = null;
 if ($companies) {
@@ -66,7 +67,7 @@ $headerActionsHtml = ob_get_clean();
 <div class="biz mx-auto max-w-4xl px-4 py-4">
     <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div>
-            <p class="biz-kicker">Centryk Business · Belize</p>
+            <p class="biz-kicker">Belize Tax Service · Compliance</p>
             <h1 class="mt-0.5">E-Invoicing (BTS)</h1>
         </div>
         <?php if (count($companies) > 1): ?>
@@ -80,7 +81,7 @@ $headerActionsHtml = ob_get_clean();
     </div>
 
     <?php if (!$companies): ?>
-        <div class="biz-panel biz-panel-empty">E-invoicing builds on your sales data from Receivables. No company you manage has that package.</div>
+        <div class="biz-panel biz-panel-empty">You're not an admin or manager of any active company yet.</div>
     <?php else: ?>
         <div id="alert" class="biz-notice mb-3 hidden"></div>
 

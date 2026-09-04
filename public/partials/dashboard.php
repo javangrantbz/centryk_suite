@@ -203,6 +203,10 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
                         <i data-lucide="briefcase" class="h-4 w-4 shrink-0"></i>
                         Centryk Business
                     </a>
+                    <a href="business_fiscal.php" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition">
+                        <i data-lucide="file-check-2" class="h-4 w-4 shrink-0"></i>
+                        BTS E-Invoicing
+                    </a>
                     <a href="profile.php" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition">
                         <i data-lucide="user-cog" class="h-4 w-4 shrink-0"></i>
                         Manage your Centryk Account
