@@ -1,15 +1,16 @@
 <?php
 /**
- * Belize BTS Electronic Invoicing — foundation admin page.
- * Gated: admin/manager of a company holding the 'receivables' package.
+ * Belize BTS Electronic Invoicing — admin page.
+ * Gated: admin/manager of a company holding the 'receivables' package
+ * (edit rights restricted to a company admin - see $isCompanyAdmin).
  *
- * This is intentionally NOT a working BTS integration yet: there is no UBL
- * mapper, XAdES signer, or transmitter (see FiscalInvoicingService's class
- * doc for why - the Orientation Manual + schemas BTS promised were never
- * attached to their intake email, still pending a resend as of 2026-09-04).
- * What's here: capture the registration info BTS will ask for, and a
- * document log that can build canonical fiscal documents from real invoices
- * so the model is proven before the wire format is.
+ * Registration-info form, certificate upload, a document log, and the
+ * actual "Submit to BTS" / "Cancel via BTS" actions (FiscalInvoicingService::
+ * submitToBts()/issueCancellation() - map -> sign -> transmit). UNTESTED
+ * against BTS's live test environment: no company has uploaded a real
+ * BTS-issued certificate yet, so the "Submit to BTS" button has never
+ * actually reached BTS's server for any company. Treat the first real
+ * submission as the live integration test.
  */
 require_once __DIR__ . '/../app/core/Auth.php';
 require_once __DIR__ . '/../app/core/DB.php';
@@ -85,12 +86,12 @@ $headerActionsHtml = ob_get_clean();
 
         <div class="biz-panel mb-4" style="border-color:#fde68a;background:#fffbeb">
             <div class="biz-panel-body" style="font-size:12px;color:#78350f">
-                <strong>Not connected to BTS yet.</strong> Belize Tax Service's Electronic Invoicing program requires every
-                invoice to be built as signed UBL 2.1 XML and authorized by BTS in real time before it's legally valid.
-                We have BTS's intake email but not yet the Orientation Manual, XSD schemas, or sample documents they
-                referenced — those are pending a resend. Until then, this page only captures your registration details
-                and builds an internal fiscal document from an invoice (status stays at <em>Built</em>) — nothing is
-                submitted to BTS.
+                <strong>Not yet exercised against a live BTS certificate.</strong> Belize Tax Service's Electronic
+                Invoicing requires every invoice to be built as signed UBL 2.1 XML and authorized by BTS in real time
+                before it's legally valid. That mapping/signing/submission is built and follows BTS's own Orientation
+                Manual — but no company has generated a real certificate via BTS's EFDR Portal yet, so "Submit to BTS"
+                has never actually reached their server. Upload a certificate below to try it for real; a rejected
+                test-environment submission has no legal effect.
             </div>
         </div>
 
@@ -160,6 +161,25 @@ $headerActionsHtml = ob_get_clean();
             </form>
         </section>
 
+        <!-- ── Certificate ────────────────────────────────────────────────── -->
+        <section class="biz-panel mb-4">
+            <div class="biz-panel-head"><span>Certificate</span></div>
+            <div class="biz-panel-body" style="display:grid;gap:8px">
+                <p class="biz-muted" style="font-size:11px">
+                    Generate and download your certificate yourself from BTS's <strong>EFDR Portal</strong> (PFX/P12,
+                    password = this company's TIN) — Centryk doesn't request or generate this on your behalf. Upload
+                    the downloaded file here; it's used both to sign documents and to connect to BTS.
+                </p>
+                <div id="certStatus" class="text-sm font-semibold"></div>
+                <?php if ($isCompanyAdmin): ?>
+                <form id="certForm" class="flex flex-wrap items-center gap-2">
+                    <input type="file" id="f_certificate" accept=".pfx,.p12" class="biz-input" style="width:auto">
+                    <button type="submit" class="biz-btn biz-btn-primary">Upload certificate</button>
+                </form>
+                <?php endif; ?>
+            </div>
+        </section>
+
         <!-- ── Build a fiscal document from an existing invoice ──────────── -->
         <section class="biz-panel mb-4">
             <div class="biz-panel-head"><span>Build from an invoice</span></div>
@@ -220,7 +240,30 @@ async function loadProfile(){
     document.getElementById('f_enabled').checked = !!Number(p.enabled || 0);
     document.getElementById('f_notes').value = p.notes || '';
     document.getElementById('profileStatusBadge').textContent = p.status ? (STATUS_LABEL[p.status] || p.status) : 'Not started';
+
+    const certBox = document.getElementById('certStatus');
+    if (p.has_certificate) {
+        const expiry = p.certificate_expires_on ? ` · expires ${esc(p.certificate_expires_on)}` : '';
+        certBox.innerHTML = `<span class="biz-t-green">Certificate on file</span><span class="biz-muted" style="font-weight:400">${expiry}</span>`;
+    } else {
+        certBox.innerHTML = '<span class="biz-t-red">No certificate uploaded yet</span>';
+    }
 }
+
+document.getElementById('certForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const file = document.getElementById('f_certificate').files[0];
+    if (!file) { showAlert('Choose a .pfx/.p12 file first.'); return; }
+    const form = new FormData();
+    form.append('company_id', CID);
+    form.append('certificate', file);
+    const res = await fetch('api/fiscal/certificate_upload.php', { method: 'POST', body: form });
+    const d = await res.json();
+    if (!d.success) { showAlert(d.message || 'Could not upload the certificate.'); return; }
+    showAlert('Certificate uploaded.', true);
+    document.getElementById('f_certificate').value = '';
+    loadProfile();
+});
 
 document.getElementById('profileForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -286,17 +329,54 @@ async function loadDocuments(){
         box.innerHTML = '<div class="biz-panel-body biz-muted" style="font-size:12px">No fiscal documents yet.</div>';
         return;
     }
-    box.innerHTML = docs.map(doc => `
-        <div class="biz-row" style="padding:10px 16px;border-bottom:1px solid var(--bz-line)">
-            <span class="min-w-0 flex-1">
-                <span style="font-weight:700">${esc(doc.our_number || ('Doc #' + doc.id))}</span>
-                <span class="biz-muted" style="font-size:11px"> · ${esc(doc.document_type)} · ${esc((doc.created_at || '').slice(0, 10))}</span>
-                ${doc.source_app ? `<span class="biz-muted" style="font-size:11px"> · from ${esc(doc.source_app)}</span>` : ''}
-            </span>
-            <span class="rounded px-2 py-0.5 text-[10px] font-bold uppercase ${STATUS_TONE[doc.status] || ''}" style="border:1px solid currentColor">${STATUS_LABEL[doc.status] || doc.status}</span>
-            <span class="shrink-0 biz-num" style="min-width:90px;text-align:right">${bzd(doc.total)}</span>
+    box.innerHTML = docs.map(doc => {
+        const canSubmit = ['built', 'error', 'rejected'].includes(doc.status);
+        const canCancel = doc.status === 'authorized' && doc.document_type !== 'cancellation';
+        return `
+        <div style="padding:10px 16px;border-bottom:1px solid var(--bz-line)">
+            <div class="biz-row" style="padding:0">
+                <span class="min-w-0 flex-1">
+                    <span style="font-weight:700">${esc(doc.our_number || ('Doc #' + doc.id))}</span>
+                    <span class="biz-muted" style="font-size:11px"> · ${esc(doc.document_type)} · ${esc((doc.created_at || '').slice(0, 10))}</span>
+                    ${doc.source_app ? `<span class="biz-muted" style="font-size:11px"> · from ${esc(doc.source_app)}</span>` : ''}
+                </span>
+                <span class="rounded px-2 py-0.5 text-[10px] font-bold uppercase ${STATUS_TONE[doc.status] || ''}" style="border:1px solid currentColor">${STATUS_LABEL[doc.status] || doc.status}</span>
+                <span class="shrink-0 biz-num" style="min-width:90px;text-align:right">${bzd(doc.total)}</span>
+            </div>
+            ${doc.etdui ? `<div class="biz-muted mt-1" style="font-size:10px;font-family:monospace">ETDUI ${esc(doc.etdui)}</div>` : ''}
+            ${doc.error_message ? `<div class="mt-1" style="font-size:11px;color:#b91c1c">${esc(doc.error_message)}</div>` : ''}
+            ${canSubmit || canCancel ? `
+            <div class="mt-1.5 flex gap-2">
+                ${canSubmit && CAN_EDIT ? `<button type="button" class="biz-btn biz-btn-primary biz-btn-sm" onclick="submitDoc(${doc.id})">Submit to BTS</button>` : ''}
+                ${canCancel && CAN_EDIT ? `<button type="button" class="biz-btn biz-btn-ghost biz-btn-sm" onclick="cancelDoc(${doc.id})">Cancel via BTS</button>` : ''}
+            </div>` : ''}
         </div>
-    `).join('');
+    `; }).join('');
+}
+
+async function submitDoc(id){
+    if (!confirm('Submit this document to BTS now? In the test environment this has no legal effect, but it does consume the next serial number if authorized.')) return;
+    const res = await fetch('api/fiscal/submit.php', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ company_id: CID, id }),
+    });
+    const d = await res.json();
+    if (!d.success) { showAlert(d.message || 'Could not submit that document.'); loadDocuments(); return; }
+    const status = d.document?.status;
+    showAlert(status === 'authorized' ? `Authorized — ETDUI ${d.document.etdui}` : `Result: ${STATUS_LABEL[status] || status}`, status === 'authorized');
+    loadDocuments();
+}
+
+async function cancelDoc(id){
+    const reason = prompt('Reason for cancelling this document with BTS (optional):') || '';
+    const prep = await fetch('api/fiscal/cancel_via_bts.php', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ company_id: CID, id, reason }),
+    });
+    const prepData = await prep.json();
+    if (!prepData.success) { showAlert(prepData.message || 'Could not prepare the cancellation.'); return; }
+    showAlert('Cancellation prepared — submitting to BTS…', true);
+    await submitDoc(prepData.document.id);
 }
 
 if (CID !== null) {

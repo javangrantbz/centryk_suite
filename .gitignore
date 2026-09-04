@@ -11,6 +11,9 @@ vendor/
 # Uploaded invoice logos / documents are runtime data, not source
 public/invoice-maker/uploads/
 invoice-maker/storage/documents/
+# Uploaded BTS e-invoicing certificates (PFX/P12) + signed ETD XML - private,
+# outside the web root; runtime data, not source. See FiscalInvoicingService.
+storage/fiscal/
 
 # Local scratch — reference images, scraped assets, integration keys. Never source.
 gitignore/

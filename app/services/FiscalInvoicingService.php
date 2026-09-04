@@ -1,28 +1,50 @@
 <?php
 require_once __DIR__ . '/../core/DB.php';
+require_once __DIR__ . '/FiscalEtdui.php';
+require_once __DIR__ . '/FiscalUblBuilder.php';
+require_once __DIR__ . '/FiscalXadesSigner.php';
+require_once __DIR__ . '/FiscalBtsClient.php';
 
 /**
- * Belize BTS Electronic Invoicing — foundation layer.
+ * Belize BTS Electronic Invoicing.
  *
  * Owns the canonical fiscal-document model (company_fiscal_profiles,
  * fiscal_documents + lines/taxes/events) so any Centryk app can hand it a
- * normalized invoice and get back a structured tax document, independent of
- * BTS's actual wire format.
+ * normalized invoice and get back a real, BTS-authorized tax document.
  *
- * What this class does NOT do yet, because BTS's Orientation Manual, XSD
- * schemas and sample XMLs haven't arrived (see
- * gitignore/bts integration information.txt): map a document to UBL 2.1 XML,
- * apply an XAdES signature, or submit anything to BTS. issue() takes a
- * document to status 'built' and stops there — that's the honest state of
- * "we have a well-formed internal fiscal document, ready to be mapped and
- * signed once we know the target schema." Nothing here should be read as
- * BTS-compliant until a builder/signer/transmitter are added on top.
+ * issue()/fromInvoice() build a document to status 'built' - a well-formed
+ * internal fiscal document, not yet mapped or signed. submitToBts() takes it
+ * the rest of the way: assigns the ETDUI (serial number consumed only here,
+ * not at issue() time - see add_fiscal_invoicing_submission.sql), maps it to
+ * UBL via FiscalUblBuilder, signs it via FiscalXadesSigner, and posts it to
+ * BTS via FiscalBtsClient - built strictly to BTS's Orientation Manual
+ * v1.30 and cross-verified against their own sample documents (see
+ * FiscalEtdui/FiscalUblBuilder/FiscalXadesSigner class docs for exactly
+ * what was verified and how). UNTESTED against the live BTS test
+ * environment: no company has a real BTS-issued certificate yet.
  */
 class FiscalInvoicingService
 {
-    public const DOCUMENT_TYPES = ['invoice', 'credit_note', 'debit_note', 'cancellation'];
+    public const DOCUMENT_TYPES = ['invoice', 'tax_receipt', 'credit_note', 'debit_note', 'cancellation'];
     public const TAX_CATEGORIES = ['standard', 'zero_rated', 'exempt'];
     public const STANDARD_TAX_RATE = 12.50; // Belize GST
+
+    /** document_type -> FiscalEtdui::TYPE_* (manual Table 10-2). */
+    private const ETD_TYPE_MAP = [
+        'invoice'      => FiscalEtdui::TYPE_INVOICE,
+        'tax_receipt'  => FiscalEtdui::TYPE_TAX_RECEIPT,
+        'debit_note'   => FiscalEtdui::TYPE_DEBIT_NOTE,
+        'credit_note'  => FiscalEtdui::TYPE_CREDIT_NOTE,
+        'cancellation' => FiscalEtdui::TYPE_APPLICATION_RESPONSE,
+    ];
+
+    /** document_type -> the label BTS's own DocumentType domain uses (manual 7.4 rule INV11-14). */
+    private const TYPE_LABEL = [
+        'invoice'     => 'Tax Invoice',
+        'tax_receipt' => 'Tax Receipt',
+        'debit_note'  => 'Debit Note',
+        'credit_note' => 'Credit Note',
+    ];
 
     // ── Company fiscal profile ──────────────────────────────────────────────
 
@@ -388,14 +410,88 @@ class FiscalInvoicingService
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    /**
+     * Platform-wide view for the Centryk admin monitoring page (not scoped
+     * to one company) - every company that has touched e-invoicing at all,
+     * with its profile status and a quick document tally.
+     */
+    public static function platformProfiles(): array
+    {
+        $stmt = DB::pdo()->query('
+            SELECT p.*, c.name AS company_name,
+                   COALESCE(d.total, 0) AS document_count,
+                   COALESCE(d.authorized, 0) AS authorized_count,
+                   COALESCE(d.errored, 0) AS errored_count
+            FROM company_fiscal_profiles p
+            JOIN companies c ON c.id = p.company_id
+            LEFT JOIN (
+                SELECT company_id, COUNT(*) AS total,
+                       SUM(status = \'authorized\') AS authorized,
+                       SUM(status IN (\'rejected\', \'error\')) AS errored
+                FROM fiscal_documents
+                GROUP BY company_id
+            ) d ON d.company_id = p.company_id
+            ORDER BY p.enabled DESC, c.name ASC
+        ');
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($rows as &$row) {
+            $row['has_certificate'] = !empty($row['certificate_path']);
+            unset($row['certificate_path']);
+        }
+        unset($row);
+        return $rows;
+    }
+
+    /** Every fiscal document across every company, newest first - the admin document log. */
+    public static function platformDocuments(array $filters = []): array
+    {
+        $sql = '
+            SELECT f.*, c.name AS company_name
+            FROM fiscal_documents f
+            JOIN companies c ON c.id = f.company_id
+            WHERE 1=1
+        ';
+        $params = [];
+        if (!empty($filters['status']) && in_array($filters['status'], ['draft', 'built', 'signed', 'submitted', 'authorized', 'rejected', 'cancelled', 'error'], true)) {
+            $sql .= ' AND f.status = :status';
+            $params['status'] = $filters['status'];
+        }
+        if (!empty($filters['company_id'])) {
+            $sql .= ' AND f.company_id = :company_id';
+            $params['company_id'] = (int)$filters['company_id'];
+        }
+        $sql .= ' ORDER BY f.created_at DESC LIMIT 300';
+        $stmt = DB::pdo()->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     public static function getDocument(int $companyId, int $id): ?array
     {
         $stmt = DB::pdo()->prepare('SELECT * FROM fiscal_documents WHERE id = :id AND company_id = :c LIMIT 1');
         $stmt->execute(['id' => $id, 'c' => $companyId]);
-        $doc = $stmt->fetch(PDO::FETCH_ASSOC);
+        return self::hydrateDocument($stmt->fetch(PDO::FETCH_ASSOC));
+    }
+
+    /** Same as getDocument(), without the company scope - platform-admin use only. */
+    public static function adminGetDocument(int $id): ?array
+    {
+        $stmt = DB::pdo()->prepare('
+            SELECT f.*, c.name AS company_name FROM fiscal_documents f
+            JOIN companies c ON c.id = f.company_id
+            WHERE f.id = :id LIMIT 1
+        ');
+        $stmt->execute(['id' => $id]);
+        return self::hydrateDocument($stmt->fetch(PDO::FETCH_ASSOC));
+    }
+
+    /** @param array<string,mixed>|false $doc */
+    private static function hydrateDocument($doc): ?array
+    {
         if (!$doc) {
             return null;
         }
+        $id = (int)$doc['id'];
 
         $lines = DB::pdo()->prepare('SELECT * FROM fiscal_document_lines WHERE fiscal_document_id = :id ORDER BY line_number ASC');
         $lines->execute(['id' => $id]);
@@ -431,7 +527,277 @@ class FiscalInvoicingService
         return self::getDocument($companyId, $id);
     }
 
+    /**
+     * Create the fiscal document for cancelling an already-authorized ETD -
+     * an event (manual Table 4-27, code 050 "ETD Cancellation", authored and
+     * signed by the issuer) referencing the original document's ETDUI. Has
+     * no lines/taxes of its own. Call submitToBts() on the returned document
+     * to actually sign and send it.
+     */
+    public static function issueCancellation(int $companyId, int $originalDocumentId, ?int $userId = null, string $reason = ''): array
+    {
+        $original = self::getDocument($companyId, $originalDocumentId);
+        if (!$original) {
+            throw new InvalidArgumentException('The document to cancel was not found.');
+        }
+        if ($original['status'] !== 'authorized') {
+            throw new InvalidArgumentException('Only a BTS-authorized document can be cancelled through BTS. A document that was never submitted can just be voided (cancel()).');
+        }
+        if (in_array($original['document_type'], ['cancellation'], true)) {
+            throw new InvalidArgumentException('A cancellation event cannot itself be cancelled.');
+        }
+
+        $pdo = DB::pdo();
+        $uuid = self::uuid4();
+        $stmt = $pdo->prepare('
+            INSERT INTO fiscal_documents
+                (company_id, document_uuid, document_type, status, reference_document_id, our_number,
+                 seller_snapshot_json, buyer_snapshot_json, subtotal, tax_total, total, created_by)
+            VALUES
+                (:company_id, :uuid, \'cancellation\', \'built\', :ref_id, :our_number,
+                 :seller_json, :buyer_json, 0, 0, 0, :created_by)
+        ');
+        $stmt->execute([
+            'company_id'  => $companyId,
+            'uuid'        => $uuid,
+            'ref_id'      => $originalDocumentId,
+            'our_number'  => 'CANCEL-' . ($original['our_number'] ?: $originalDocumentId),
+            'seller_json' => $original['seller_snapshot_json'],
+            'buyer_json'  => $original['buyer_snapshot_json'],
+            'created_by'  => $userId,
+        ]);
+        $documentId = (int)$pdo->lastInsertId();
+        self::logEvent($pdo, $documentId, 'built', $reason !== '' ? $reason : 'Cancellation prepared for submission.', $userId);
+
+        return self::getDocument($companyId, $documentId);
+    }
+
+    /**
+     * Map, sign and submit a 'built' (or previously failed) document to BTS.
+     * Consumes the next serial number from the company's counter - see the
+     * class doc and add_fiscal_invoicing_submission.sql for why that
+     * happens here and not at issue() time. A rejected submission does NOT
+     * advance the counter (manual 3.3.2: "the corrected ETD candidate file
+     * can use the same series and serial number"), so a retry after fixing
+     * the underlying problem reuses the same number.
+     */
+    public static function submitToBts(int $companyId, int $documentId, ?int $userId = null): array
+    {
+        $profile = self::getProfile($companyId);
+        if (empty($profile['enabled'])) {
+            throw new InvalidArgumentException('E-invoicing is not enabled for this company yet - turn it on in the fiscal profile.');
+        }
+        if (empty($profile['tin'])) {
+            throw new InvalidArgumentException("This company's TIN is not set on the fiscal profile.");
+        }
+        if (empty($profile['certificate_path']) || !is_file($profile['certificate_path'])) {
+            throw new InvalidArgumentException("No certificate on file. Generate one via BTS's EFDR Portal and upload it in the fiscal profile.");
+        }
+
+        $document = self::getDocument($companyId, $documentId);
+        if (!$document) {
+            throw new InvalidArgumentException('Document not found.');
+        }
+        if (!in_array($document['status'], ['built', 'error', 'rejected'], true)) {
+            throw new InvalidArgumentException('Only a document with status "built" (or a previously failed attempt) can be submitted. This one is "' . $document['status'] . '".');
+        }
+
+        [$certPem, $privateKeyPem] = self::loadCertificate($profile);
+
+        $pdo = DB::pdo();
+        $pdo->beginTransaction();
+        try {
+            // Lock the profile row so two concurrent submissions for this
+            // company can never consume the same serial number.
+            $lockStmt = $pdo->prepare('SELECT * FROM company_fiscal_profiles WHERE company_id = :c FOR UPDATE');
+            $lockStmt->execute(['c' => $companyId]);
+            $lockedProfile = $lockStmt->fetch(PDO::FETCH_ASSOC);
+
+            $isCancellation = $document['document_type'] === 'cancellation';
+            $etdType = self::ETD_TYPE_MAP[$document['document_type']];
+            $environment = $lockedProfile['environment'] === 'production' ? 'production' : 'test';
+            $receptionEnv = $environment === 'production' ? FiscalEtdui::ENV_PRODUCTION : FiscalEtdui::ENV_TEST;
+            $series = $isCancellation ? FiscalEtdui::EVENT_ETD_CANCELLATION : ((string)$lockedProfile['default_series'] ?: '001');
+            $nextSerial = (int)$lockedProfile['last_serial_number'] + 1;
+
+            try {
+                $issuedAt = new DateTime('now', new DateTimeZone('America/Belize'));
+            } catch (Throwable $e) {
+                $issuedAt = new DateTime('now');
+            }
+
+            $etduiResult = FiscalEtdui::build(
+                $etdType, (string)$lockedProfile['tin'], $nextSerial, $series,
+                $issuedAt, FiscalEtdui::OPER_MODE_NORMAL, $receptionEnv
+            );
+
+            $pdo->prepare('
+                UPDATE fiscal_documents
+                SET etdui = :etdui, serial_number = :serial, series = :series, security_code = :sec,
+                    environment = :env, issue_date = :issue_date, issue_time = :issue_time
+                WHERE id = :id
+            ')->execute([
+                'etdui'      => $etduiResult['etdui'],
+                'serial'     => $nextSerial,
+                'series'     => $series,
+                'sec'        => $etduiResult['security_code'],
+                'env'        => $environment,
+                'issue_date' => $issuedAt->format('Y-m-d'),
+                'issue_time' => $issuedAt->format('H:i:sP'),
+                'id'         => $documentId,
+            ]);
+
+            $document['etdui'] = $etduiResult['etdui'];
+            $document['series'] = $series;
+            $document['environment'] = $environment;
+            $document['issue_date'] = $issuedAt->format('Y-m-d');
+            $document['issue_time'] = $issuedAt->format('H:i:sP');
+            $document['sequence_previous'] = $lockedProfile['last_sequence_hash'];
+
+            if ($isCancellation) {
+                $original = self::getDocument($companyId, (int)$document['reference_document_id']);
+                if (!$original || empty($original['etdui'])) {
+                    throw new InvalidArgumentException('The document being cancelled has no ETDUI on file.');
+                }
+                $original['document_type_label'] = self::TYPE_LABEL[$original['document_type']] ?? 'Tax Invoice';
+                $issuer = ['name' => $lockedProfile['legal_name'], 'tin' => $lockedProfile['tin']];
+                $built = FiscalUblBuilder::buildCancellation($document, $original, $issuer);
+            } else {
+                $seller = [
+                    'name'    => $lockedProfile['legal_name'],
+                    'tin'     => $lockedProfile['tin'],
+                    'address' => $lockedProfile['address'],
+                ];
+                $buyer = json_decode((string)$document['buyer_snapshot_json'], true) ?: [];
+                $built = FiscalUblBuilder::build($document, $document['lines'], $document['taxes'], $seller, $buyer);
+            }
+
+            $privateKey = openssl_pkey_get_private($privateKeyPem);
+            if ($privateKey === false) {
+                throw new RuntimeException('Could not load the private key from the certificate.');
+            }
+            $signedXml = FiscalXadesSigner::sign($built['xml'], $certPem, $privateKey);
+
+            // Persisted before the network call, so a signed document is
+            // never lost even if the HTTP submission itself fails.
+            $xmlPath = self::signedXmlPath($companyId, $documentId);
+            self::ensureDir(dirname($xmlPath));
+            file_put_contents($xmlPath, $signedXml);
+
+            $pdo->prepare("UPDATE fiscal_documents SET status = 'signed', signed_xml_path = :path WHERE id = :id")
+                ->execute(['path' => $xmlPath, 'id' => $documentId]);
+            self::logEvent($pdo, $documentId, 'signed', null, $userId);
+
+            $pdo->commit();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+
+        // The network call happens outside the DB transaction (it can take
+        // real wall-clock time and shouldn't hold a row lock while it does).
+        $btsDocType = $isCancellation ? 'cancellation' : $document['document_type'];
+        $response = FiscalBtsClient::submit($btsDocType, $environment, $signedXml, $certPem, $privateKeyPem);
+
+        $newStatus = $response['authorized'] ? 'authorized' : ($response['http_status'] === 0 ? 'error' : 'rejected');
+
+        $pdo->beginTransaction();
+        try {
+            $pdo->prepare('
+                UPDATE fiscal_documents
+                SET status = :status, authorization_code = :auth, authorized_at = :authorized_at,
+                    bts_response_json = :resp, error_message = :err, submitted_at = NOW(),
+                    retry_count = retry_count + 1
+                WHERE id = :id
+            ')->execute([
+                'status'        => $newStatus,
+                'auth'          => $response['authorized'] ? $document['etdui'] : null,
+                'authorized_at' => $response['authorized'] ? date('Y-m-d H:i:s') : null,
+                'resp'          => json_encode($response, JSON_UNESCAPED_UNICODE),
+                'err'           => $response['error'],
+                'id'            => $documentId,
+            ]);
+            self::logEvent($pdo, $documentId, $newStatus, $response['error'] ?? ('HTTP ' . $response['http_status'] . ($response['description'] ? ' - ' . $response['description'] : '')), $userId);
+
+            // Only a confirmed authorization advances the numbering chain -
+            // a rejected/failed attempt keeps the same serial/series
+            // available for a corrected retry (manual 3.3.2).
+            if ($response['authorized']) {
+                $pdo->prepare('UPDATE company_fiscal_profiles SET last_serial_number = :serial, last_sequence_hash = :hash WHERE company_id = :c')
+                    ->execute(['serial' => $nextSerial, 'hash' => $built['sequence_hash'], 'c' => $companyId]);
+
+                if ($isCancellation) {
+                    $pdo->prepare("UPDATE fiscal_documents SET status = 'cancelled' WHERE id = :id")
+                        ->execute(['id' => (int)$document['reference_document_id']]);
+                    self::logEvent($pdo, (int)$document['reference_document_id'], 'cancelled', 'Cancelled via BTS event ' . $document['etdui'], $userId);
+                }
+            }
+
+            $pdo->commit();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+
+        return self::getDocument($companyId, $documentId);
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
+
+    /**
+     * Extract the certificate + private key from the company's PFX/P12 file
+     * (password = the company's own TIN, per BTS's EFDR Portal convention -
+     * see project memory / the integration slide deck, section 3).
+     *
+     * @return array{0: string, 1: string} [certPem, privateKeyPem]
+     */
+    private static function loadCertificate(array $profile): array
+    {
+        $pfx = file_get_contents($profile['certificate_path']);
+        if ($pfx === false) {
+            throw new RuntimeException('Could not read the certificate file on disk.');
+        }
+        $certs = [];
+        if (!openssl_pkcs12_read($pfx, $certs, (string)$profile['tin'])) {
+            throw new RuntimeException('Could not open the certificate (PFX/P12) - the password should be this company\'s TIN.');
+        }
+        return [$certs['cert'], $certs['pkey']];
+    }
+
+    private static function signedXmlPath(int $companyId, int $documentId): string
+    {
+        return self::storageRoot() . '/documents/' . $companyId . '/' . $documentId . '.xml';
+    }
+
+    /** Where an uploaded certificate for a company should be written to. */
+    public static function certificatePath(int $companyId): string
+    {
+        return self::storageRoot() . '/certs/' . $companyId . '.pfx';
+    }
+
+    /**
+     * Outside the web root on purpose (certificates and signed tax documents
+     * are not public files). Known gap: stored as delivered, no
+     * encryption-at-rest yet - that needs a real key-management decision
+     * (where would the encryption key itself live?) before this handles a
+     * real company's live certificate; filesystem permissions are the only
+     * protection today.
+     */
+    private static function storageRoot(): string
+    {
+        return dirname(__DIR__, 2) . '/storage/fiscal';
+    }
+
+    private static function ensureDir(string $dir): void
+    {
+        if (!is_dir($dir)) {
+            mkdir($dir, 0700, true);
+        }
+    }
 
     private static function logEvent(PDO $pdo, int $documentId, string $eventType, ?string $detail, ?int $userId): void
     {

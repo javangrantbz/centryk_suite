@@ -29,4 +29,9 @@ if (Entitlements::level($companyId, 'receivables') === Entitlements::NONE) {
     Response::error('E-invoicing builds on your sales data from Receivables.', 402, ['entitlement' => 'receivables']);
 }
 
-Response::ok(['profile' => FiscalInvoicingService::getProfile($companyId)]);
+$profile = FiscalInvoicingService::getProfile($companyId);
+// The raw filesystem path never needs to leave the server.
+$profile['has_certificate'] = !empty($profile['certificate_path']);
+unset($profile['certificate_path']);
+
+Response::ok(['profile' => $profile]);
