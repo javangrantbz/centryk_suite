@@ -280,6 +280,7 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
                         <span id="coName" class="text-xl font-black tracking-tight text-slate-900 truncate">—</span>
                         <span id="coRoleBadge" class="rounded-full bg-white/55 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] ring-1 ring-white/60">—</span>
                         <span id="coBizBadge" class="hidden items-center gap-1 rounded-full bg-violet-600 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-white"></span>
+                        <span id="coFiscalBadge" class="hidden items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em]"></span>
                     </div>
                     <p class="mt-0.5 text-sm font-bold text-slate-700">
                         Welcome back, <?= htmlspecialchars($user['first_name']) ?>
@@ -1378,6 +1379,24 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
                         + (allPaused ? 'bg-amber-600' : 'bg-violet-600');
                 } else {
                     coBizBadge.className = 'hidden items-center gap-1 rounded-full bg-violet-600 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-white';
+                }
+            }
+
+            // BTS e-invoicing status - shown either way (unlike coBizBadge)
+            // so it's obvious at a glance whether this company is set up,
+            // not just when it is. Only meaningful for admin/manager, same
+            // roles that can reach business_fiscal.php.
+            var coFiscalBadge = document.getElementById('coFiscalBadge');
+            if (coFiscalBadge) {
+                if (bizRole) {
+                    coFiscalBadge.textContent = c.fiscal_enabled ? 'BTS Enabled' : 'BTS Not Enabled';
+                    coFiscalBadge.title = c.fiscal_enabled
+                        ? 'BTS e-invoicing is on for this company.'
+                        : 'BTS e-invoicing isn\'t set up yet - see business_fiscal.php.';
+                    coFiscalBadge.className = 'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] '
+                        + (c.fiscal_enabled ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500');
+                } else {
+                    coFiscalBadge.className = 'hidden items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em]';
                 }
             }
 

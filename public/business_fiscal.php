@@ -87,12 +87,12 @@ $headerActionsHtml = ob_get_clean();
 
         <div class="biz-panel mb-4" style="border-color:#fde68a;background:#fffbeb">
             <div class="biz-panel-body" style="font-size:12px;color:#78350f">
-                <strong>Not yet exercised against a live BTS certificate.</strong> Belize Tax Service's Electronic
-                Invoicing requires every invoice to be built as signed UBL 2.1 XML and authorized by BTS in real time
-                before it's legally valid. That mapping/signing/submission is built and follows BTS's own Orientation
-                Manual - but no company has generated a real certificate via BTS's EFDR Portal yet, so "Submit to BTS"
-                has never actually reached their server. Upload a certificate below to try it for real; a rejected
-                test-environment submission has no legal effect.
+                <strong>New: this feature hasn't been tried with a real BTS certificate yet.</strong> Belize Tax
+                Service now requires every invoice and receipt to be sent to them electronically and approved in
+                real time before it's legally valid. To use it, get your own certificate from BTS's EFDR Portal,
+                upload it below, and leave the environment set to "test" for your first few submissions. A rejected
+                test submission has no effect on your business - it just means something needs adjusting before you
+                switch to production.
             </div>
         </div>
 
