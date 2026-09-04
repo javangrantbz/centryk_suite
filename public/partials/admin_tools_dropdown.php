@@ -21,6 +21,9 @@
         <a href="admin-holidays.php" class="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900">
             <i data-lucide="flag" class="h-4 w-4 shrink-0"></i> Public Holidays
         </a>
+        <a href="admin-fiscal-invoicing.php" class="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900">
+            <i data-lucide="file-check-2" class="h-4 w-4 shrink-0"></i> BTS E-Invoicing
+        </a>
         <a href="audit.php" class="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900">
             <i data-lucide="history" class="h-4 w-4 shrink-0"></i> Audit Trail
         </a>
