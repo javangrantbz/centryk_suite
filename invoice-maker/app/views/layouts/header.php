@@ -35,6 +35,16 @@ if ($invHdrUuid !== '') {
 $invIsPlatformAdmin = !empty(Auth::user()['is_admin']);
 $invCanUseOnelink   = $invIsPlatformAdmin || $invActiveRole === 'admin';
 $invOnelinkUrl      = rtrim(CENTRYK_BASE, '/') . '/onelink-payments.php' . ($invHdrUuid !== '' ? '?company_uuid=' . urlencode($invHdrUuid) : '');
+
+// BTS e-invoicing status for the active company - same centryk_core
+// database as the rest of the suite, so a direct read, no S2S bridge
+// needed (contrast with OnePay, a separate install/database).
+$invFiscalEnabled = false;
+if ($invActiveCid) {
+    $__fs = $pdo->prepare('SELECT enabled FROM company_fiscal_profiles WHERE company_id = :c LIMIT 1');
+    $__fs->execute(['c' => $invActiveCid]);
+    $invFiscalEnabled = (bool)$__fs->fetchColumn();
+}
 ?>
 <?php $invPage = $_GET['page'] ?? 'dashboard'; ?>
 <!DOCTYPE html>
@@ -152,6 +162,12 @@ $invOnelinkUrl      = rtrim(CENTRYK_BASE, '/') . '/onelink-payments.php' . ($inv
                         </div>
                     </div>
                 </div>
+                <?php if ($invActiveCid): ?>
+                <span class="hidden shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] sm:inline-flex <?= $invFiscalEnabled ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500' ?>"
+                      title="<?= $invFiscalEnabled ? 'BTS e-invoicing is on for this company.' : "BTS e-invoicing isn't set up yet - see Centryk's business_fiscal.php." ?>">
+                    <?= $invFiscalEnabled ? 'BTS Enabled' : 'BTS Not Enabled' ?>
+                </span>
+                <?php endif; ?>
                 <?php endif; ?>
             </div>
 
@@ -321,6 +337,9 @@ $invOnelinkUrl      = rtrim(CENTRYK_BASE, '/') . '/onelink-payments.php' . ($inv
                             </a>
                             <a href="<?= CENTRYK_BASE ?>/business.php" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">
                                 <i data-lucide="briefcase" class="w-4 h-4"></i> Centryk Business
+                            </a>
+                            <a href="<?= CENTRYK_BASE ?>/business_fiscal.php" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">
+                                <i data-lucide="file-check-2" class="w-4 h-4"></i> BTS E-Invoicing
                             </a>
                             <a href="<?= CENTRYK_BASE ?>/profile.php" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">
                                 <i data-lucide="user-cog" class="w-4 h-4"></i> Manage your Centryk Account
