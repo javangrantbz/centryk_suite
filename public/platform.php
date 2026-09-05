@@ -8,7 +8,7 @@
  *
  * No auth — this is a pitch / reference page (like about.php).
  */
-$updated = '30 August 2026';
+$updated = '4 September 2026';
 
 /* Table of contents — [id, label]. Order = page order. */
 $toc = [
