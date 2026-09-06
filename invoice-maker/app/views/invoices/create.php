@@ -85,6 +85,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]);
     }
 
+    // BTS e-invoicing: when the company has fiscal invoicing switched on, an
+    // issued invoice has to clear BTS before it counts as a valid document -
+    // build and submit the fiscal document now. A transmission failure never
+    // blocks the invoice: the fiscal document is still created ('built' /
+    // 'error') and stays retryable from the invoice view and business_fiscal.
+    if (($_POST['status'] ?? 'draft') !== 'draft') {
+        require_once dirname(__DIR__, 4) . '/app/services/FiscalInvoicingService.php';
+        try {
+            $fp = FiscalInvoicingService::getProfile(current_company_id());
+            if (!empty($fp['enabled'])) {
+                $uid = (int)($_SESSION['user']['id'] ?? 0);
+                $fd = FiscalInvoicingService::fromInvoice(current_company_id(), (int)$invoiceId, $uid);
+                FiscalInvoicingService::submitToBts(current_company_id(), (int)$fd['id'], $uid);
+            }
+        } catch (Throwable $e) {
+            error_log('invoice-maker: BTS auto-clearance failed for invoice ' . $invoiceId . ': ' . $e->getMessage());
+        }
+    }
+
     redirect_response(BASE_URL . '/?page=invoices-view&id=' . $invoiceId);
 }
 

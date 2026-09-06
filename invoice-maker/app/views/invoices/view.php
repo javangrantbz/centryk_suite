@@ -19,6 +19,19 @@ $itemStmt = $pdo->prepare("SELECT * FROM invoice_items WHERE invoice_id = ?");
 $itemStmt->execute([$id]);
 $items = $itemStmt->fetchAll();
 
+// BTS e-invoicing: the fiscal document built from this invoice, if any, plus
+// whether this company has fiscal invoicing switched on at all.
+require_once dirname(__DIR__, 4) . '/app/services/FiscalInvoicingService.php';
+$fiscalProfile = FiscalInvoicingService::getProfile(current_company_id());
+$fiscalEnabled = !empty($fiscalProfile['enabled']);
+$fiscalDocStmt = $pdo->prepare(
+    "SELECT id, status, etdui, error_message FROM fiscal_documents
+     WHERE company_id = ? AND source_app = 'invoice-maker' AND source_ref = ?
+     ORDER BY id DESC LIMIT 1"
+);
+$fiscalDocStmt->execute([current_company_id(), (string)$id]);
+$fiscalDoc = $fiscalDocStmt->fetch() ?: null;
+
 $payStmt = $pdo->prepare("SELECT amount, payment_date, method, notes FROM payments WHERE invoice_id = ? ORDER BY payment_date DESC, id DESC");
 $payStmt->execute([$id]);
 $payments = $payStmt->fetchAll();
@@ -125,6 +138,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (Throwable $e) {
             header('Location: ' . BASE_URL . '/?page=invoices-view&id=' . $id . '&pay_err=' . rawurlencode($e->getMessage()));
         }
+        exit;
+    }
+
+    if (isset($_POST['send_to_bts'])) {
+        try {
+            $uid = (int)($_SESSION['user']['id'] ?? 0);
+            $fd = $fiscalDoc;
+            if (!$fd) {
+                $fd = FiscalInvoicingService::fromInvoice(current_company_id(), (int)$id, $uid);
+            }
+            $result = FiscalInvoicingService::submitToBts(current_company_id(), (int)$fd['id'], $uid);
+            $q = $result['status'] === 'authorized' ? '&bts_ok=1' : '&bts_err=' . rawurlencode($result['error_message'] ?: ('Result: ' . $result['status']));
+        } catch (Throwable $e) {
+            $q = '&bts_err=' . rawurlencode($e->getMessage());
+        }
+        header('Location: ' . BASE_URL . '/?page=invoices-view&id=' . $id . $q);
         exit;
     }
 
@@ -236,6 +265,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <span class="biz-num" style="font-size:18px;font-weight:800"><?= money($invoice['total']) ?></span>
             </div>
         </div>
+
+        <?php if ($fiscalEnabled): ?>
+        <?php
+            $fdStatus = $fiscalDoc['status'] ?? null;
+            $fdLabels = ['built' => 'Built, not sent', 'signed' => 'Signed', 'submitted' => 'Submitted',
+                        'authorized' => 'Authorized by BTS', 'rejected' => 'Rejected by BTS', 'error' => 'BTS unreachable', 'cancelled' => 'Cancelled'];
+            $fdOk = $fdStatus === 'authorized';
+        ?>
+        <div class="biz-panel biz-panel-body space-y-2">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em" class="biz-muted">BTS E-Invoicing</div>
+            <?php if (!empty($_GET['bts_ok'])): ?>
+                <div class="biz-notice biz-notice-green" style="font-size:11px">Authorized by BTS.</div>
+            <?php elseif (!empty($_GET['bts_err'])): ?>
+                <div class="biz-notice biz-notice-red" style="font-size:11px"><?= e($_GET['bts_err']) ?></div>
+            <?php endif; ?>
+            <?php if ($fiscalDoc): ?>
+                <div class="flex justify-between items-center">
+                    <span class="biz-muted" style="font-size:12px">Status</span>
+                    <span class="biz-chip <?= $fdOk ? 'biz-c-green' : ($fdStatus === 'rejected' || $fdStatus === 'error' ? 'biz-c-red' : 'biz-c-amber') ?>"><?= e($fdLabels[$fdStatus] ?? $fdStatus) ?></span>
+                </div>
+                <?php if (!empty($fiscalDoc['etdui'])): ?>
+                    <div class="biz-muted" style="font-size:10px;font-family:ui-monospace,monospace;word-break:break-all">ETDUI <?= e($fiscalDoc['etdui']) ?></div>
+                <?php endif; ?>
+                <?php if (!empty($fiscalDoc['error_message'])): ?>
+                    <div style="font-size:11px;color:#b91c1c"><?= e($fiscalDoc['error_message']) ?></div>
+                <?php endif; ?>
+            <?php else: ?>
+                <div class="biz-muted" style="font-size:12px">Not submitted to BTS yet.</div>
+            <?php endif; ?>
+            <?php if (!$fdOk && $invoice['status'] !== 'draft'): ?>
+            <form method="POST">
+                <button name="send_to_bts" value="1" class="biz-btn biz-btn-primary biz-btn-sm" style="width:100%">
+                    <?= $fiscalDoc ? 'Retry - Send to BTS' : 'Send to BTS' ?>
+                </button>
+            </form>
+            <?php endif; ?>
+            <a href="<?= CENTRYK_BASE ?>/business_fiscal.php" class="biz-t-green" style="font-size:11px">Manage e-invoicing &rarr;</a>
+        </div>
+        <?php endif; ?>
 
         <div class="biz-panel biz-panel-body space-y-3" style="background:#0f172a;color:#fff;border-color:#1e293b">
             <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;opacity:.6">Payment</div>

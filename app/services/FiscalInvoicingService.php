@@ -167,6 +167,7 @@ class FiscalInvoicingService
      */
     public static function issue(int $companyId, array $doc, ?int $userId = null): array
     {
+        $userId = $userId ?: null; // 0 / '' -> null, so created_by never breaks the FK
         $type = (string)($doc['document_type'] ?? 'invoice');
         if (!in_array($type, self::DOCUMENT_TYPES, true)) {
             throw new InvalidArgumentException('Unknown document type.');
@@ -584,7 +585,7 @@ class FiscalInvoicingService
             'our_number'  => 'CANCEL-' . ($original['our_number'] ?: $originalDocumentId),
             'seller_json' => $original['seller_snapshot_json'],
             'buyer_json'  => $original['buyer_snapshot_json'],
-            'created_by'  => $userId,
+            'created_by'  => $userId ?: null,
         ]);
         $documentId = (int)$pdo->lastInsertId();
         self::logEvent($pdo, $documentId, 'built', $reason !== '' ? $reason : 'Cancellation prepared for submission.', $userId);
@@ -990,7 +991,7 @@ class FiscalInvoicingService
             'doc_id'     => $documentId,
             'event_type' => substr($eventType, 0, 40),
             'detail'     => $detail,
-            'created_by' => $userId,
+            'created_by' => $userId ?: null,
         ]);
     }
 
