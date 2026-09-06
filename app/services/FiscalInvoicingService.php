@@ -257,15 +257,20 @@ class FiscalInvoicingService
 
             $uuid = self::uuid4();
 
+            $currency = strtoupper(trim((string)($doc['currency'] ?? 'BZD')));
+            if (!preg_match('/^[A-Z]{3}$/', $currency)) {
+                $currency = 'BZD';
+            }
+
             $stmt = $pdo->prepare('
                 INSERT INTO fiscal_documents
                     (company_id, document_uuid, document_type, status, source_app, source_ref,
                      reference_document_id, our_number, seller_snapshot_json, buyer_snapshot_json,
-                     subtotal, tax_total, total, created_by)
+                     subtotal, tax_total, total, currency, created_by)
                 VALUES
                     (:company_id, :uuid, :type, \'built\', :source_app, :source_ref,
                      :reference_document_id, :our_number, :seller_json, :buyer_json,
-                     :subtotal, :tax_total, :total, :created_by)
+                     :subtotal, :tax_total, :total, :currency, :created_by)
             ');
             $stmt->execute([
                 'company_id'             => $companyId,
@@ -280,6 +285,7 @@ class FiscalInvoicingService
                 'subtotal'               => $subtotal,
                 'tax_total'              => $taxTotal,
                 'total'                  => $total,
+                'currency'               => $currency,
                 'created_by'             => $userId,
             ]);
             $documentId = (int)$pdo->lastInsertId();
