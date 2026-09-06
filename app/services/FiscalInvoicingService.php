@@ -46,6 +46,26 @@ class FiscalInvoicingService
         'credit_note' => 'Credit Note',
     ];
 
+    /**
+     * Normalise a Belize TIN to its 6 digits, tolerating common formatting
+     * (a "-GST" suffix, spaces, dashes). Throws if it isn't 6 digits once
+     * stripped. BTS itself matches the TIN against the taxpayer register on
+     * submission - this only catches the obviously-malformed ones early, so
+     * a wrong number doesn't cost a real submission.
+     *
+     * @param string $whose  How to name the TIN in the error ("The customer's TIN", "Your TIN").
+     */
+    public static function normalizeTin(string $tin, string $whose = 'TIN'): string
+    {
+        $digits = preg_replace('/\D/', '', trim($tin)) ?? '';
+        if (strlen($digits) !== 6) {
+            throw new InvalidArgumentException(
+                $whose . ' ("' . trim($tin) . '") is not a valid Belize TIN - it must be 6 digits.'
+            );
+        }
+        return $digits;
+    }
+
     // ── Company fiscal profile ──────────────────────────────────────────────
 
     /**
@@ -397,6 +417,13 @@ class FiscalInvoicingService
         $buyerTin  = trim((string)($customer['tax_number'] ?? ''));
         $isPosSale = str_starts_with((string)($invoice['source_ref'] ?? ''), 'sale:');
         $documentType = ($isPosSale && $buyerTin === '') ? 'tax_receipt' : 'invoice';
+
+        // A B2B tax invoice identifies the buyer by TIN. Check the format now,
+        // pointing at the customer record - BTS matches it against the
+        // taxpayer register on submission, and a malformed one is rejected.
+        if ($buyerTin !== '') {
+            self::normalizeTin($buyerTin, 'The customer\'s TIN');
+        }
 
         return self::issue($companyId, [
             'document_type' => $documentType,
@@ -803,6 +830,15 @@ class FiscalInvoicingService
             $series = $isCancellation ? FiscalEtdui::EVENT_ETD_CANCELLATION : ((string)$lockedProfile['default_series'] ?: '001');
             $nextSerial = (int)$lockedProfile['last_serial_number'] + 1;
 
+            // The issuer TIN goes into the ETDUI as 6 digits; the buyer TIN
+            // (if any) into the customer party. Validate both before we mint
+            // a serial number or hit the network.
+            $issuerTin = self::normalizeTin((string)$lockedProfile['tin'], 'Your company TIN');
+            $buyerSnapshot = json_decode((string)$document['buyer_snapshot_json'], true) ?: [];
+            if (!empty($buyerSnapshot['tin'])) {
+                self::normalizeTin((string)$buyerSnapshot['tin'], 'The customer\'s TIN');
+            }
+
             try {
                 $issuedAt = new DateTime('now', new DateTimeZone('America/Belize'));
             } catch (Throwable $e) {
@@ -810,7 +846,7 @@ class FiscalInvoicingService
             }
 
             $etduiResult = FiscalEtdui::build(
-                $etdType, (string)$lockedProfile['tin'], $nextSerial, $series,
+                $etdType, $issuerTin, $nextSerial, $series,
                 $issuedAt, FiscalEtdui::OPER_MODE_NORMAL, $receptionEnv
             );
 
@@ -945,7 +981,11 @@ class FiscalInvoicingService
             throw new RuntimeException('Could not read the certificate file on disk.');
         }
         $certs = [];
-        if (!openssl_pkcs12_read($pfx, $certs, (string)$profile['tin'])) {
+        $tinAsStored = (string)$profile['tin'];
+        $tinDigits   = preg_replace('/\D/', '', $tinAsStored) ?? '';
+        $opened = openssl_pkcs12_read($pfx, $certs, $tinAsStored)
+            || ($tinDigits !== '' && $tinDigits !== $tinAsStored && openssl_pkcs12_read($pfx, $certs, $tinDigits));
+        if (!$opened) {
             throw new RuntimeException('Could not open the certificate (PFX/P12) - the password should be this company\'s TIN.');
         }
         return [$certs['cert'], $certs['pkey']];
