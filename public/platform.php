@@ -8,7 +8,7 @@
  *
  * No auth — this is a pitch / reference page (like about.php).
  */
-$updated = '4 September 2026';
+$updated = '5 September 2026';
 
 /* Table of contents — [id, label]. Order = page order. */
 $toc = [
@@ -518,7 +518,7 @@ $toc = [
         <ul>
             <li><strong>Belize dollars</strong> throughout.</li>
             <li><strong>GST at 12.5%</strong> — the monthly output-tax summary, and GST-inclusive pricing handled correctly.</li>
-            <li><strong>Built for BTS Electronic Invoicing</strong> — Belize Tax Service's upcoming requirement that invoices and receipts be submitted electronically and authorized in real time. Centryk can map an invoice into the required signed XML format and submit it to BTS today, in test mode. No company has completed a live production submission yet, since the mandate itself isn't in force yet — this is ready to test, not a certified production system.</li>
+            <li><strong>Built for BTS Electronic Invoicing</strong> — Belize Tax Service's upcoming requirement that tax documents be submitted electronically and authorized in real time. Centryk maps a sale into the required signed XML, submits it to BTS and records the authorization: tax invoices, tax receipts (a till sale to a walk-in is typed as a receipt, not an invoice), credit notes and debit notes against an authorized document, and cancellations. It runs against BTS's test environment today. No company has completed a live production submission yet, since the mandate itself isn't in force yet — this is ready to test, not a certified production system.</li>
             <li><strong>Public &amp; bank holidays</strong> — the national list (Holidays Act) shows on the calendar and in MyPay, each day tagged with its Labour Act pay rate for hours worked: double time for Good Friday, Easter Monday and Christmas Day, time-and-a-half for the rest. MyPay's payroll-period view flags any holidays that fall inside the run, and everyone gets a heads-up notification a few days before.</li>
             <li><strong>The team&rsquo;s calendar</strong> — staff birthdays and work anniversaries surface on the calendar and prompt a notification to the rest of the company, so nothing gets missed.</li>
             <li><strong>A cash-and-cheque economy</strong> — route settlement and cash-in-transit tracking exist because a lot of money still moves by hand on delivery runs. <strong>Cheque tracking</strong> gives every cheque a lifecycle — uncleared, post-dated, cleared, or bounced — and a bounced cheque automatically reverses the receipt so the customer owes again.</li>
@@ -544,7 +544,7 @@ $toc = [
                 ['Do we need a bank integration for reconciliation to be useful?', 'No. You upload the bank statement (CSV, OFX/QFX or MT940). A live bank feed depends on banking infrastructure that is not yet in place; the import-based workbench delivers the value now.'],
                 ['Can customers see what they owe?', 'Yes — email them a statement or send a link. Account customers see their ledger and balance; they do not see anything else about your business.'],
                 ['Is the GST summary our GST return?', 'No. It is a working summary to help prepare the return, built from your sales. Confirm the treatment of zero-rated and exempt supplies with your accountant. It is not tax advice.'],
-                ['Is Centryk certified/compliant with BTS Electronic Invoicing?', 'Centryk is built for it — invoices and receipts map to BTS\'s required format, get digitally signed, and submit to their system. No company has completed a real, live submission yet, and Belize\'s e-invoicing mandate itself is not yet in force. Treat this as ready to test in BTS\'s test environment, not a certified production system.'],
+                ['Is Centryk certified/compliant with BTS Electronic Invoicing?', 'Centryk is built for it — tax invoices, tax receipts, credit and debit notes, and cancellations all map to BTS\'s required format, get digitally signed, and submit to their system. No company has completed a real, live submission yet, and Belize\'s e-invoicing mandate itself is not yet in force. Treat this as ready to test in BTS\'s test environment, not a certified production system.'],
                 ['Where is our data hosted?', 'On managed cloud hosting with regular database backups. Schema changes are applied deliberately and reviewed before new code is released.'],
                 ['Can we run our group of companies together?', 'Yes — the Enterprise package. Each company keeps its own books; the group gives you a consolidated view and lets you grant packages once for everyone.'],
             ];
