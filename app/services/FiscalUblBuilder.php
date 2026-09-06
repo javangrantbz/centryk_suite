@@ -170,6 +170,23 @@ class FiscalUblBuilder
 
         self::text($doc, $root, 'cbc', 'LineCountNumeric', (string)$lineCount);
 
+        // ── BillingReference (credit / debit notes) ───────────────────────
+        // A note points back at the ETD it adjusts, by its serial (cbc:ID),
+        // ETDUI (cbc:UUID) and issue date. Placed after LineCountNumeric and
+        // before AccountingSupplierParty, per the UBL Invoice-2/CreditNote-2
+        // element order.
+        if (in_array($type, ['credit_note', 'debit_note'], true) && !empty($document['reference_etdui'])) {
+            $billingRef = $doc->createElementNS(self::NS_CAC, 'cac:BillingReference');
+            $root->appendChild($billingRef);
+            $invoiceRef = $doc->createElementNS(self::NS_CAC, 'cac:InvoiceDocumentReference');
+            $billingRef->appendChild($invoiceRef);
+            self::text($doc, $invoiceRef, 'cbc', 'ID', (string)($document['reference_serial'] ?? $document['reference_etdui']));
+            self::text($doc, $invoiceRef, 'cbc', 'UUID', (string)$document['reference_etdui']);
+            if (!empty($document['reference_issue_date'])) {
+                self::text($doc, $invoiceRef, 'cbc', 'IssueDate', (string)$document['reference_issue_date']);
+            }
+        }
+
         // ── Parties ────────────────────────────────────────────────────────
         $supplier = $doc->createElementNS(self::NS_CAC, 'cac:AccountingSupplierParty');
         $root->appendChild($supplier);
