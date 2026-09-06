@@ -316,6 +316,11 @@ class FiscalInvoicingService
      * subtotal rather than true per-line tax. Good enough to prove the
      * pipeline; the real UBL mapping will want invoice-maker to carry
      * per-line tax once that's built.
+     *
+     * Document type: a POS sale (invoices.source_ref = 'sale:<id>') to a
+     * customer with no TIN is a Tax Receipt (ETDType 02) - a final-consumer
+     * sale at the till. A POS sale to a business that gave its TIN, and any
+     * manually-raised invoice-maker invoice, stays a Tax Invoice (ETDType 01).
      */
     public static function fromInvoice(int $companyId, int $invoiceId, ?int $userId = null): array
     {
@@ -377,8 +382,12 @@ class FiscalInvoicingService
             ];
         }
 
+        $buyerTin  = trim((string)($customer['tax_number'] ?? ''));
+        $isPosSale = str_starts_with((string)($invoice['source_ref'] ?? ''), 'sale:');
+        $documentType = ($isPosSale && $buyerTin === '') ? 'tax_receipt' : 'invoice';
+
         return self::issue($companyId, [
-            'document_type' => 'invoice',
+            'document_type' => $documentType,
             'source_app'    => 'invoice-maker',
             'source_ref'    => (string)$invoiceId,
             'our_number'    => $invoice['invoice_number'],
