@@ -667,6 +667,74 @@ class FiscalInvoicingService
     }
 
     /**
+     * Create a debit note against a BTS-authorized invoice / tax receipt - an
+     * invoice-shaped document (ETDType 03, UBL Invoice-2) that adds charges
+     * to the original: a freight charge billed after the fact, an
+     * undercharge correction, a late fee, etc.
+     *
+     * $lines is a list of brand-new charge lines - NOT selections from the
+     * original: ['description', 'quantity', 'unit_price', 'tax_category',
+     * 'tax_rate']. At least one with a description, a positive quantity and a
+     * positive unit price is required.
+     *
+     * Returns a 'built' debit_note; call submitToBts() on it to sign and send.
+     *
+     * v1 limitation: like issueCreditNote(), the UBL carries no
+     * cac:BillingReference back to the original ETDUI - the link is kept in
+     * our own DB (reference_document_id).
+     */
+    public static function issueDebitNote(int $companyId, int $originalDocumentId, array $lines, ?int $userId = null, string $reason = ''): array
+    {
+        $original = self::getDocument($companyId, $originalDocumentId);
+        if (!$original) {
+            throw new InvalidArgumentException('The document to add a debit note to was not found.');
+        }
+        if ($original['status'] !== 'authorized') {
+            throw new InvalidArgumentException('Only a BTS-authorized document can have a debit note. This one is "' . $original['status'] . '".');
+        }
+        if (!in_array($original['document_type'], ['invoice', 'tax_receipt'], true)) {
+            throw new InvalidArgumentException('A debit note can only be raised against a tax invoice or tax receipt.');
+        }
+
+        $chargeLines = [];
+        foreach ($lines as $l) {
+            $desc  = trim((string)($l['description'] ?? ''));
+            $qty   = round((float)($l['quantity'] ?? 0), 4);
+            $price = round((float)($l['unit_price'] ?? 0), 4);
+            if ($desc === '' || $qty <= 0 || $price <= 0) {
+                continue;
+            }
+            $chargeLines[] = [
+                'description'  => $desc,
+                'quantity'     => $qty,
+                'unit_price'   => $price,
+                'tax_category' => (string)($l['tax_category'] ?? 'standard'),
+                'tax_rate'     => (float)($l['tax_rate'] ?? self::STANDARD_TAX_RATE),
+            ];
+        }
+        if (!$chargeLines) {
+            throw new InvalidArgumentException('Add at least one charge line - each needs a description, a quantity and a unit price.');
+        }
+
+        $document = self::issue($companyId, [
+            'document_type'         => 'debit_note',
+            'reference_document_id' => $originalDocumentId,
+            'source_app'            => $original['source_app'],
+            'source_ref'            => $original['source_ref'],
+            'our_number'            => 'DN-' . ($original['our_number'] ?: $originalDocumentId),
+            'seller'                => json_decode((string)$original['seller_snapshot_json'], true) ?: [],
+            'buyer'                 => json_decode((string)$original['buyer_snapshot_json'], true) ?: [],
+            'lines'                 => $chargeLines,
+        ], $userId);
+
+        if ($reason !== '') {
+            self::logEvent(DB::pdo(), (int)$document['id'], 'note', 'Reason: ' . $reason, $userId);
+        }
+
+        return $document;
+    }
+
+    /**
      * Map, sign and submit a 'built' (or previously failed) document to BTS.
      * Consumes the next serial number from the company's counter - see the
      * class doc and add_fiscal_invoicing_submission.sql for why that
