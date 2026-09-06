@@ -125,6 +125,19 @@ class FiscalUblBuilder
         $addElem->appendChild($doc->createElementNS(self::NS_EFDR, 'efdr:securityCode', $etduiParts['security_code']));
         $addElem->appendChild($doc->createElementNS(self::NS_EFDR, 'efdr:checkDigit', $etduiParts['check_digit']));
 
+        // contingencyInfo (manual 3.3.6.3) - mandatory when operMode is 2,
+        // not allowed otherwise. All three elements carry the same values for
+        // every ETD issued during the same contingency window.
+        if ($etduiParts['oper_mode'] === FiscalEtdui::OPER_MODE_CONTINGENCY) {
+            $started = $document['contingency_started_at'] ?? null;
+            $ts = $started ? strtotime((string)$started) : time();
+            $cInfo = $doc->createElementNS(self::NS_EFDR, 'efdr:contingencyInfo');
+            $efdr->appendChild($cInfo);
+            $cInfo->appendChild($doc->createElementNS(self::NS_EFDR, 'efdr:contingencyReason', (string)($document['contingency_reason'] ?? 'BTS unreachable')));
+            $cInfo->appendChild($doc->createElementNS(self::NS_EFDR, 'efdr:contingencyInitDate', date('Y-m-d', $ts)));
+            $cInfo->appendChild($doc->createElementNS(self::NS_EFDR, 'efdr:contingencyInitTime', date('H:i:sP', $ts)));
+        }
+
         // sequenceInfo (manual 4.3.4) - mandatory for the Invoice schema (rule
         // INV05/DBNT.., code 270 rejection if missing). Computed here since it
         // needs the final line count / tax / line-extension amounts.

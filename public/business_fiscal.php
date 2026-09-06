@@ -195,6 +195,12 @@ $headerActionsHtml = ob_get_clean();
         </section>
 
         <!-- ── Document log ───────────────────────────────────────────────── -->
+        <div id="contingencyBar" class="biz-notice mb-3" style="display:none;border-color:#fde68a;background:#fffbeb;color:#78350f">
+            <div class="flex items-center justify-between gap-3" style="font-size:12px">
+                <span><strong><span id="contingencyCount">0</span> contingency document(s)</strong> signed but not yet sent to BTS. Transmit them once BTS is reachable again.</span>
+                <button type="button" class="biz-btn biz-btn-primary biz-btn-sm" onclick="transmitContingency()">Transmit backlog</button>
+            </div>
+        </div>
         <section class="biz-panel">
             <div class="biz-panel-head"><span>Fiscal documents</span></div>
             <div id="documentLog" class="biz-panel-body" style="padding:0"></div>
@@ -385,8 +391,15 @@ async function loadDocuments(){
         box.innerHTML = '<div class="biz-panel-body biz-muted" style="font-size:12px">No fiscal documents yet.</div>';
         return;
     }
+    const contingencyPending = docs.filter(d => Number(d.oper_mode) === 2 && d.status === 'signed').length;
+    document.getElementById('contingencyBar').style.display = contingencyPending ? '' : 'none';
+    document.getElementById('contingencyCount').textContent = contingencyPending;
+
     box.innerHTML = docs.map(doc => {
-        const canSubmit = ['built', 'error', 'rejected'].includes(doc.status);
+        const isContingency = Number(doc.oper_mode) === 2;
+        const btsUnreachable = doc.status === 'error' && /connection failed|unreachable|timed out|could not resolve/i.test(doc.error_message || '');
+        const canSubmit = ['built', 'rejected'].includes(doc.status) || (doc.status === 'error' && !btsUnreachable);
+        const canContingency = ['built', 'error', 'rejected'].includes(doc.status) && doc.document_type !== 'cancellation' && !doc.superseded_by_document_id && !isContingency;
         const canCancel = doc.status === 'authorized' && doc.document_type !== 'cancellation';
         const canCredit = doc.status === 'authorized' && ['invoice', 'tax_receipt', 'debit_note'].includes(doc.document_type);
         const canDebit = doc.status === 'authorized' && ['invoice', 'tax_receipt'].includes(doc.document_type);
@@ -401,11 +414,14 @@ async function loadDocuments(){
                 <span class="rounded px-2 py-0.5 text-[10px] font-bold uppercase ${STATUS_TONE[doc.status] || ''}" style="border:1px solid currentColor">${STATUS_LABEL[doc.status] || doc.status}</span>
                 <span class="shrink-0 biz-num" style="min-width:90px;text-align:right">${bzd(doc.total)}</span>
             </div>
+            ${isContingency ? `<div class="biz-muted mt-1" style="font-size:10px"><span class="biz-t-amber" style="font-weight:700">CONTINGENCY</span>${doc.contingency_reason ? ' · ' + esc(doc.contingency_reason) : ''}</div>` : ''}
+            ${doc.superseded_by_document_id ? `<div class="biz-muted mt-1" style="font-size:10px">Superseded by contingency doc #${esc(doc.superseded_by_document_id)}</div>` : ''}
             ${doc.etdui ? `<div class="biz-muted mt-1" style="font-size:10px;font-family:monospace">ETDUI ${esc(doc.etdui)}</div>` : ''}
             ${doc.error_message ? `<div class="mt-1" style="font-size:11px;color:#b91c1c">${esc(doc.error_message)}</div>` : ''}
-            ${(canSubmit || canCancel || canCredit || canDebit) && CAN_EDIT ? `
-            <div class="mt-1.5 flex gap-2">
+            ${(canSubmit || canContingency || canCancel || canCredit || canDebit) && CAN_EDIT ? `
+            <div class="mt-1.5 flex gap-2 flex-wrap">
                 ${canSubmit ? `<button type="button" class="biz-btn biz-btn-primary biz-btn-sm" onclick="submitDoc(${doc.id})">Submit to BTS</button>` : ''}
+                ${canContingency ? `<button type="button" class="biz-btn biz-btn-ghost biz-btn-sm" onclick="issueContingency(${doc.id})">Issue in contingency</button>` : ''}
                 ${canCredit ? `<button type="button" class="biz-btn biz-btn-ghost biz-btn-sm" onclick="openCreditNote(${doc.id})">Credit note</button>` : ''}
                 ${canDebit ? `<button type="button" class="biz-btn biz-btn-ghost biz-btn-sm" onclick="openDebitNote(${doc.id})">Debit note</button>` : ''}
                 ${canCancel ? `<button type="button" class="biz-btn biz-btn-ghost biz-btn-sm" onclick="cancelDoc(${doc.id})">Cancel via BTS</button>` : ''}
@@ -424,6 +440,33 @@ async function submitDoc(id){
     if (!d.success) { showAlert(d.message || 'Could not submit that document.'); loadDocuments(); return; }
     const status = d.document?.status;
     showAlert(status === 'authorized' ? `Authorized - ETDUI ${d.document.etdui}` : `Result: ${STATUS_LABEL[status] || status}`, status === 'authorized');
+    loadDocuments();
+}
+
+// ── Contingency mode ─────────────────────────────────────────────────────
+async function issueContingency(id){
+    const reason = prompt('Why are you switching to contingency mode? (e.g. "No internet at the branch")');
+    if (reason === null) return;
+    const res = await fetch('api/fiscal/contingency_issue.php', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ company_id: CID, id, reason }),
+    });
+    const d = await res.json();
+    if (!d.success) { showAlert(d.message || 'Could not issue the contingency document.'); return; }
+    showAlert('Contingency document signed - the sale can proceed. Transmit it once BTS is back.', true);
+    loadDocuments();
+}
+
+async function transmitContingency(){
+    if (!confirm('Transmit all signed contingency documents to BTS now?')) return;
+    const res = await fetch('api/fiscal/contingency_transmit.php', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ company_id: CID }),
+    });
+    const d = await res.json();
+    if (!d.success) { showAlert(d.message || 'Could not transmit the backlog.'); return; }
+    const s = d.summary || {};
+    showAlert(`Backlog: ${s.authorized || 0} authorized, ${s.rejected || 0} rejected, ${s.still_failing || 0} still unreachable.`, (s.rejected || 0) === 0 && (s.still_failing || 0) === 0);
     loadDocuments();
 }
 
