@@ -48,10 +48,16 @@ if (empty($profile['tin'])) {
 
 // Sanity-check the file actually opens with the expected password (the
 // company's TIN) before accepting it, so a wrong file/password is caught
-// immediately rather than surfacing later at submission time.
+// immediately rather than surfacing later at submission time. Try both the
+// TIN as stored and its bare 6 digits (the EFDR Portal uses the 6-digit
+// TIN; the profile may hold it with a "-GST" suffix).
 $pfxContents = file_get_contents($file['tmp_name']);
 $certs = [];
-if (!openssl_pkcs12_read((string)$pfxContents, $certs, (string)$profile['tin'])) {
+$tinAsStored = (string)$profile['tin'];
+$tinDigits   = preg_replace('/\D/', '', $tinAsStored) ?? '';
+$opened = openssl_pkcs12_read((string)$pfxContents, $certs, $tinAsStored)
+    || ($tinDigits !== '' && $tinDigits !== $tinAsStored && openssl_pkcs12_read((string)$pfxContents, $certs, $tinDigits));
+if (!$opened) {
     Response::error('Could not open that certificate with this company\'s TIN as the password. Check you downloaded the right file from the EFDR Portal.');
 }
 
