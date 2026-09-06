@@ -431,6 +431,16 @@ class FiscalInvoicingService
             self::normalizeTin($buyerTin, 'The customer\'s TIN');
         }
 
+        // A tax invoice also needs the buyer's address (BTS's own samples
+        // carry a full AccountingCustomerParty address). A tax receipt to a
+        // walk-in doesn't - consumers don't give an address at the till.
+        if ($documentType === 'invoice' && trim((string)($customer['address'] ?? '')) === '') {
+            throw new InvalidArgumentException(
+                'A tax invoice needs the customer\'s address. Add it to '
+                . trim((string)($customer['name'] ?? 'the customer')) . '\'s customer record.'
+            );
+        }
+
         return self::issue($companyId, [
             'document_type' => $documentType,
             'source_app'    => 'invoice-maker',
@@ -839,6 +849,12 @@ class FiscalInvoicingService
             $buyerSnapshot = json_decode((string)$document['buyer_snapshot_json'], true) ?: [];
             if (!empty($buyerSnapshot['tin'])) {
                 self::normalizeTin((string)$buyerSnapshot['tin'], 'The customer\'s TIN');
+                // A TIN'd buyer on an invoice / note is a business - BTS wants
+                // its address on the document.
+                if (in_array($document['document_type'], ['invoice', 'debit_note', 'credit_note'], true)
+                    && trim((string)($buyerSnapshot['address'] ?? '')) === '') {
+                    throw new InvalidArgumentException("The customer's address is missing - a tax invoice / note needs it. Add it to the customer record and rebuild this document.");
+                }
             }
 
             try {
