@@ -310,12 +310,11 @@ class FiscalInvoicingService
      * (invoices + invoice_items + customers + invoice_settings) - proves the
      * model end to end against real data without needing BTS's schema.
      *
-     * Known gap: invoices.tax is a single lump sum and invoice_items has no
-     * per-line tax split, so every line here is treated as one 'standard'
-     * category and the invoice's recorded tax is applied as one document-level
-     * subtotal rather than true per-line tax. Good enough to prove the
-     * pipeline; the real UBL mapping will want invoice-maker to carry
-     * per-line tax once that's built.
+     * Per-line tax: invoice_items now carries tax_category / tax_rate
+     * (add_invoice_line_tax.sql), so a mixed standard / zero-rated / exempt
+     * invoice maps to the correct per-category TaxSubtotal. Invoices issued
+     * before that migration fall back to blending invoices.tax into one
+     * implied 'standard' rate.
      *
      * Document type: a POS sale (invoices.source_ref = 'sale:<id>') to a
      * customer with no TIN is a Tax Receipt (ETDType 02) - a final-consumer
@@ -361,9 +360,12 @@ class FiscalInvoicingService
         $companyStmt->execute(['c' => $companyId]);
         $companyName = (string)($companyStmt->fetchColumn() ?: '');
 
-        // Distribute the invoice's single recorded tax amount across lines,
-        // proportional to each line's share of the subtotal, so line totals
-        // still add up to the invoice total. Documented limitation above.
+        // Per-line tax if invoice-maker recorded it (add_invoice_line_tax.sql);
+        // otherwise fall back to the old behaviour - blend the invoice's
+        // single recorded tax amount into one implied 'standard' rate across
+        // every line. Once invoice-maker always carries per-line tax this
+        // fallback only matters for invoices issued before that migration.
+        $hasLineTax = $items && array_key_exists('tax_category', $items[0]);
         $itemsSubtotal = array_sum(array_map(static fn($i) => (float)$i['total'], $items));
         $invoiceTax = (float)($invoice['tax'] ?? 0);
         $impliedRate = $itemsSubtotal > 0 ? round($invoiceTax / $itemsSubtotal * 100, 2) : 0.0;
@@ -372,13 +374,22 @@ class FiscalInvoicingService
         foreach ($items as $item) {
             $qty = (float)$item['quantity'] ?: 1.0;
             $unitPrice = (float)$item['unit_price'];
+
+            if ($hasLineTax) {
+                $category = in_array($item['tax_category'], self::TAX_CATEGORIES, true) ? $item['tax_category'] : 'standard';
+                $rate = $category === 'standard' ? (float)$item['tax_rate'] : 0.0;
+            } else {
+                $category = $impliedRate > 0 ? 'standard' : 'zero_rated';
+                $rate = $impliedRate > 0 ? $impliedRate : 0.0;
+            }
+
             $lines[] = [
                 'description'     => (string)$item['description'],
                 'quantity'        => $qty,
                 'unit_price'      => $unitPrice,
                 'unit_of_measure' => 'unit',
-                'tax_category'    => $impliedRate > 0 ? 'standard' : 'zero_rated',
-                'tax_rate'        => $impliedRate > 0 ? $impliedRate : 0.0,
+                'tax_category'    => $category,
+                'tax_rate'        => $rate,
             ];
         }
 
