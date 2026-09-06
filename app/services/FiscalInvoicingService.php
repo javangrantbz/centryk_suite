@@ -573,6 +573,100 @@ class FiscalInvoicingService
     }
 
     /**
+     * Create a credit note against a BTS-authorized invoice / tax receipt /
+     * debit note - an invoice-shaped document (ETDType 04, UBL CreditNote-2)
+     * that reverses value on the original.
+     *
+     * $lineSelections is a list of ['line_number' => n, 'quantity' => q]
+     * choosing which of the original's lines to credit and how much of each.
+     * A quantity is capped at the original line's quantity (this flow only
+     * ever reverses value, it never adds any) and a line left out - or given
+     * quantity 0 - is not credited. Pass an empty array to credit the whole
+     * document. Unit price, tax category and tax rate carry over from the
+     * original line unchanged.
+     *
+     * Returns a 'built' credit_note; call submitToBts() on it to sign and send.
+     *
+     * v1 limitations:
+     *  - it does not track the running credited total across several credit
+     *    notes against the same invoice, so nothing here stops you crediting
+     *    the same line twice. The per-line cap is against the original
+     *    quantity only.
+     *  - the UBL carries no cac:BillingReference back to the original ETDUI.
+     *    BTS's own CreditNote/DebitNote samples don't either, so we match
+     *    that; the link to the original is kept in our own DB
+     *    (reference_document_id). If BTS's live validation turns out to
+     *    require an ETD reference, that's a targeted add to FiscalUblBuilder.
+     */
+    public static function issueCreditNote(int $companyId, int $originalDocumentId, array $lineSelections = [], ?int $userId = null, string $reason = ''): array
+    {
+        $original = self::getDocument($companyId, $originalDocumentId);
+        if (!$original) {
+            throw new InvalidArgumentException('The document to credit was not found.');
+        }
+        if ($original['status'] !== 'authorized') {
+            throw new InvalidArgumentException('Only a BTS-authorized document can be credited. This one is "' . $original['status'] . '".');
+        }
+        if (!in_array($original['document_type'], ['invoice', 'tax_receipt', 'debit_note'], true)) {
+            throw new InvalidArgumentException('A ' . self::TYPE_LABEL[$original['document_type']] . ' cannot be credited.');
+        }
+        if (empty($original['lines'])) {
+            throw new InvalidArgumentException('The original document has no lines to credit.');
+        }
+
+        $wanted = [];
+        foreach ($lineSelections as $sel) {
+            $ln = (int)($sel['line_number'] ?? 0);
+            if ($ln > 0) {
+                $wanted[$ln] = round((float)($sel['quantity'] ?? 0), 4);
+            }
+        }
+        $creditWholeDocument = $wanted === [];
+
+        $creditLines = [];
+        foreach ($original['lines'] as $ol) {
+            $lineNo = (int)$ol['line_number'];
+            $origQty = (float)$ol['quantity'];
+            $qty = $creditWholeDocument ? $origQty : ($wanted[$lineNo] ?? 0.0);
+            if ($qty <= 0) {
+                continue;
+            }
+            if ($qty > $origQty) {
+                $qty = $origQty; // never credit more than was invoiced on that line
+            }
+            $creditLines[] = [
+                'item_code'       => $ol['item_code'],
+                'description'     => $ol['description'],
+                'quantity'        => $qty,
+                'unit_of_measure' => $ol['unit_of_measure'],
+                'unit_price'      => (float)$ol['unit_price'],
+                'tax_category'    => $ol['tax_category'],
+                'tax_rate'        => (float)$ol['tax_rate'],
+            ];
+        }
+        if (!$creditLines) {
+            throw new InvalidArgumentException('Choose at least one line, with a quantity, to credit.');
+        }
+
+        $document = self::issue($companyId, [
+            'document_type'         => 'credit_note',
+            'reference_document_id' => $originalDocumentId,
+            'source_app'            => $original['source_app'],
+            'source_ref'            => $original['source_ref'],
+            'our_number'            => 'CN-' . ($original['our_number'] ?: $originalDocumentId),
+            'seller'                => json_decode((string)$original['seller_snapshot_json'], true) ?: [],
+            'buyer'                 => json_decode((string)$original['buyer_snapshot_json'], true) ?: [],
+            'lines'                 => $creditLines,
+        ], $userId);
+
+        if ($reason !== '') {
+            self::logEvent(DB::pdo(), (int)$document['id'], 'note', 'Reason: ' . $reason, $userId);
+        }
+
+        return $document;
+    }
+
+    /**
      * Map, sign and submit a 'built' (or previously failed) document to BTS.
      * Consumes the next serial number from the company's counter - see the
      * class doc and add_fiscal_invoicing_submission.sql for why that
