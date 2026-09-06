@@ -202,6 +202,33 @@ $headerActionsHtml = ob_get_clean();
     <?php endif; ?>
 </div>
 
+<!-- ── Credit note dialog ─────────────────────────────────────────────── -->
+<div id="cnOverlay" class="hidden" style="position:fixed;inset:0;z-index:60;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;padding:16px">
+    <div class="biz" style="background:#fff;border-radius:12px;max-width:560px;width:100%;max-height:88vh;overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,.3)">
+        <div class="biz-panel-head" style="border-radius:12px 12px 0 0">
+            <span>Credit note</span>
+            <button type="button" onclick="closeCreditNote()" class="biz-muted" style="border:0;background:none;font-size:18px;cursor:pointer;line-height:1">&times;</button>
+        </div>
+        <div class="biz-panel-body" style="display:grid;gap:12px">
+            <p class="biz-muted" style="font-size:11px;margin:0">
+                Crediting <strong id="cnOriginalNumber"></strong>. Set how much of each line to credit
+                (defaults to the full quantity). The credit note is created as "Built" - review it in the
+                log, then Submit to BTS.
+            </p>
+            <div id="cnLines" style="display:grid;gap:6px"></div>
+            <label class="block"><span class="biz-label">Reason <span class="biz-muted" style="font-weight:400">(kept on the document, not sent to BTS)</span></span>
+                <textarea id="cnReason" class="biz-input" rows="2" maxlength="500" placeholder="e.g. Goods returned - damaged in transit"></textarea></label>
+            <div class="flex justify-between items-center">
+                <span class="biz-num" style="font-weight:700">Credit total: <span id="cnTotal">BZD 0.00</span></span>
+                <div class="flex gap-2">
+                    <button type="button" class="biz-btn biz-btn-ghost biz-btn-sm" onclick="closeCreditNote()">Cancel</button>
+                    <button type="button" id="cnCreateBtn" class="biz-btn biz-btn-primary biz-btn-sm" onclick="createCreditNote()">Create credit note</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 const CID = <?= $activeCompany ? (int)$activeCompany['id'] : 'null' ?>;
 const CAN_EDIT = <?= $isCompanyAdmin ? 'true' : 'false' ?>;
@@ -333,6 +360,7 @@ async function loadDocuments(){
     box.innerHTML = docs.map(doc => {
         const canSubmit = ['built', 'error', 'rejected'].includes(doc.status);
         const canCancel = doc.status === 'authorized' && doc.document_type !== 'cancellation';
+        const canCredit = doc.status === 'authorized' && ['invoice', 'tax_receipt', 'debit_note'].includes(doc.document_type);
         return `
         <div style="padding:10px 16px;border-bottom:1px solid var(--bz-line)">
             <div class="biz-row" style="padding:0">
@@ -346,10 +374,11 @@ async function loadDocuments(){
             </div>
             ${doc.etdui ? `<div class="biz-muted mt-1" style="font-size:10px;font-family:monospace">ETDUI ${esc(doc.etdui)}</div>` : ''}
             ${doc.error_message ? `<div class="mt-1" style="font-size:11px;color:#b91c1c">${esc(doc.error_message)}</div>` : ''}
-            ${canSubmit || canCancel ? `
+            ${(canSubmit || canCancel || canCredit) && CAN_EDIT ? `
             <div class="mt-1.5 flex gap-2">
-                ${canSubmit && CAN_EDIT ? `<button type="button" class="biz-btn biz-btn-primary biz-btn-sm" onclick="submitDoc(${doc.id})">Submit to BTS</button>` : ''}
-                ${canCancel && CAN_EDIT ? `<button type="button" class="biz-btn biz-btn-ghost biz-btn-sm" onclick="cancelDoc(${doc.id})">Cancel via BTS</button>` : ''}
+                ${canSubmit ? `<button type="button" class="biz-btn biz-btn-primary biz-btn-sm" onclick="submitDoc(${doc.id})">Submit to BTS</button>` : ''}
+                ${canCredit ? `<button type="button" class="biz-btn biz-btn-ghost biz-btn-sm" onclick="openCreditNote(${doc.id})">Credit note</button>` : ''}
+                ${canCancel ? `<button type="button" class="biz-btn biz-btn-ghost biz-btn-sm" onclick="cancelDoc(${doc.id})">Cancel via BTS</button>` : ''}
             </div>` : ''}
         </div>
     `; }).join('');
@@ -365,6 +394,65 @@ async function submitDoc(id){
     if (!d.success) { showAlert(d.message || 'Could not submit that document.'); loadDocuments(); return; }
     const status = d.document?.status;
     showAlert(status === 'authorized' ? `Authorized - ETDUI ${d.document.etdui}` : `Result: ${STATUS_LABEL[status] || status}`, status === 'authorized');
+    loadDocuments();
+}
+
+// ── Credit note ──────────────────────────────────────────────────────────
+let cnOriginalId = null;
+let cnOriginalLines = [];
+
+async function openCreditNote(id){
+    const res = await fetch(`api/fiscal/document_show.php?company_id=${CID}&id=${id}`);
+    const d = await res.json();
+    if (!d.success) { showAlert(d.message || 'Could not load that document.'); return; }
+    cnOriginalId = id;
+    cnOriginalLines = d.document.lines || [];
+    document.getElementById('cnOriginalNumber').textContent = d.document.our_number || ('Doc #' + id);
+    document.getElementById('cnReason').value = '';
+    document.getElementById('cnLines').innerHTML = cnOriginalLines.map((l, i) => `
+        <div class="flex items-center gap-2" style="font-size:12px">
+            <span class="min-w-0 flex-1 truncate">${esc(l.description)}
+                <span class="biz-muted">· ${bzd(l.unit_price)} × ${Number(l.quantity)}${Number(l.tax_rate) > 0 ? ' · ' + Number(l.tax_rate) + '% GST' : ''}</span>
+            </span>
+            <input type="number" class="biz-input cnQty" data-line="${l.line_number}" data-i="${i}"
+                   min="0" max="${Number(l.quantity)}" step="0.01" value="${Number(l.quantity)}"
+                   style="width:90px;text-align:right" oninput="cnRecalc()">
+        </div>`).join('');
+    cnRecalc();
+    document.getElementById('cnOverlay').classList.remove('hidden');
+}
+
+function closeCreditNote(){ document.getElementById('cnOverlay').classList.add('hidden'); cnOriginalId = null; }
+
+function cnRecalc(){
+    let total = 0;
+    document.querySelectorAll('#cnLines .cnQty').forEach(inp => {
+        const l = cnOriginalLines[Number(inp.dataset.i)];
+        let q = Math.max(0, Math.min(Number(inp.value) || 0, Number(l.quantity)));
+        const sub = q * Number(l.unit_price);
+        total += sub + sub * (Number(l.tax_rate) || 0) / 100;
+    });
+    document.getElementById('cnTotal').textContent = bzd(total);
+}
+
+async function createCreditNote(){
+    const lines = [];
+    document.querySelectorAll('#cnLines .cnQty').forEach(inp => {
+        const q = Number(inp.value) || 0;
+        if (q > 0) lines.push({ line_number: Number(inp.dataset.line), quantity: q });
+    });
+    if (!lines.length) { showAlert('Set a quantity on at least one line.'); return; }
+    const btn = document.getElementById('cnCreateBtn');
+    btn.disabled = true;
+    const res = await fetch('api/fiscal/credit_note.php', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ company_id: CID, id: cnOriginalId, reason: document.getElementById('cnReason').value, lines }),
+    });
+    const d = await res.json();
+    btn.disabled = false;
+    if (!d.success) { showAlert(d.message || 'Could not create the credit note.'); return; }
+    closeCreditNote();
+    showAlert('Credit note created (Built). Submit it to BTS from the log below.', true);
     loadDocuments();
 }
 
