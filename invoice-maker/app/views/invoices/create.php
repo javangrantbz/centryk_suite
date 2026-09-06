@@ -7,18 +7,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $descriptions = $_POST['description'] ?? [];
     $quantities = $_POST['quantity'] ?? [];
     $prices = $_POST['unit_price'] ?? [];
+    $taxCategories = $_POST['tax_category'] ?? [];
+
+    // The BTS standard GST rate. A per-line category of 'standard' is taxed
+    // at this; zero_rated / exempt lines carry no tax. The invoice's tax is
+    // the sum of the line tax, so it always reconciles with the fiscal
+    // document Centryk builds from it.
+    $STANDARD_RATE = 12.50;
 
     $subtotal = 0;
+    $tax = 0;
 
     foreach ($descriptions as $index => $description) {
         if (trim($description) === '') continue;
 
         $qty = (float)$quantities[$index];
         $price = (float)$prices[$index];
-        $subtotal += $qty * $price;
+        $lineSubtotal = $qty * $price;
+        $subtotal += $lineSubtotal;
+
+        $category = in_array($taxCategories[$index] ?? 'standard', ['standard', 'zero_rated', 'exempt'], true)
+            ? $taxCategories[$index] : 'standard';
+        if ($category === 'standard') {
+            $tax += round($lineSubtotal * $STANDARD_RATE / 100, 2);
+        }
     }
 
-    $tax = (float)($_POST['tax'] ?? 0);
     $discount = (float)($_POST['discount'] ?? 0);
     $total = $subtotal + $tax - $discount;
 
@@ -46,8 +60,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $itemStmt = $pdo->prepare("
         INSERT INTO invoice_items
-        (invoice_id, description, quantity, unit_price, total)
-        VALUES (?, ?, ?, ?, ?)
+        (invoice_id, description, quantity, unit_price, tax_category, tax_rate, total)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
     ");
 
     foreach ($descriptions as $index => $description) {
@@ -56,12 +70,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $qty = (float)$quantities[$index];
         $price = (float)$prices[$index];
         $lineTotal = $qty * $price;
+        $category = in_array($taxCategories[$index] ?? 'standard', ['standard', 'zero_rated', 'exempt'], true)
+            ? $taxCategories[$index] : 'standard';
+        $rate = $category === 'standard' ? $STANDARD_RATE : 0.00;
 
         $itemStmt->execute([
             $invoiceId,
             $description,
             $qty,
             $price,
+            $category,
+            $rate,
             $lineTotal
         ]);
     }
@@ -128,17 +147,25 @@ $invoiceNumber = 'INV-' . date('Ymd') . '-' . rand(100, 999);
                 </div>
                 <div class="biz-panel-body">
                     <div class="hidden md:grid grid-cols-12 gap-2 px-1 pb-1 biz-label" style="margin-bottom:0">
-                        <div class="col-span-6">Description</div>
-                        <div class="col-span-2 text-center">Qty</div>
+                        <div class="col-span-4">Description</div>
+                        <div class="col-span-1 text-center">Qty</div>
                         <div class="col-span-2 text-right">Price</div>
+                        <div class="col-span-3">GST</div>
                         <div class="col-span-2 text-right">Total</div>
                     </div>
                     <div id="items-container" class="space-y-2">
                         <div class="grid grid-cols-12 gap-2 item-row group">
-                            <div class="col-span-12 md:col-span-6"><input name="description[]" required placeholder="Item description" class="biz-input"></div>
-                            <div class="col-span-4 md:col-span-2"><input name="quantity[]" type="number" step="0.01" value="1" class="biz-input biz-num quantity" style="text-align:center"></div>
+                            <div class="col-span-12 md:col-span-4"><input name="description[]" required placeholder="Item description" class="biz-input"></div>
+                            <div class="col-span-3 md:col-span-1"><input name="quantity[]" type="number" step="0.01" value="1" class="biz-input biz-num quantity" style="text-align:center"></div>
                             <div class="col-span-4 md:col-span-2"><input name="unit_price[]" type="number" step="0.01" value="0.00" class="biz-input biz-num price" style="text-align:right"></div>
-                            <div class="col-span-4 md:col-span-2 flex items-center gap-1">
+                            <div class="col-span-5 md:col-span-3">
+                                <select name="tax_category[]" class="biz-select tax-category">
+                                    <option value="standard">12.5% GST</option>
+                                    <option value="zero_rated">Zero-rated</option>
+                                    <option value="exempt">Exempt</option>
+                                </select>
+                            </div>
+                            <div class="col-span-12 md:col-span-2 flex items-center gap-1">
                                 <input readonly value="0.00" class="biz-input biz-num line-total" style="text-align:right;background:var(--bz-head)">
                                 <button type="button" onclick="this.closest('.item-row').remove(); calculateGrandTotal();" class="biz-t-red shrink-0" style="font-size:12px">&times;</button>
                             </div>
@@ -169,8 +196,8 @@ $invoiceNumber = 'INV-' . date('Ymd') . '-' . rand(100, 999);
                     <span id="subtotal-display" class="biz-num font-bold">$0.00</span>
                 </div>
                 <div class="grid grid-cols-2 gap-2">
-                    <label class="block"><span class="biz-label">Tax</span>
-                        <input name="tax" id="tax-input" type="number" step="0.01" value="0.00" class="biz-input biz-num" style="text-align:right"></label>
+                    <label class="block"><span class="biz-label">GST (from lines)</span>
+                        <input id="tax-input" type="number" step="0.01" value="0.00" readonly class="biz-input biz-num" style="text-align:right;background:var(--bz-head)"></label>
                     <label class="block"><span class="biz-label">Discount</span>
                         <input name="discount" id="discount-input" type="number" step="0.01" value="0.00" class="biz-input biz-num" style="text-align:right"></label>
                 </div>
@@ -216,13 +243,22 @@ document.querySelectorAll('[data-customer-option]').forEach((button) => {
     });
 });
 
+const STANDARD_RATE = 12.5;
+
 function addItem() {
     const row = `
         <div class="grid grid-cols-12 gap-2 item-row group">
-            <div class="col-span-12 md:col-span-6"><input name="description[]" required placeholder="Item description" class="biz-input"></div>
-            <div class="col-span-4 md:col-span-2"><input name="quantity[]" type="number" step="0.01" value="1" class="biz-input biz-num quantity" style="text-align:center"></div>
+            <div class="col-span-12 md:col-span-4"><input name="description[]" required placeholder="Item description" class="biz-input"></div>
+            <div class="col-span-3 md:col-span-1"><input name="quantity[]" type="number" step="0.01" value="1" class="biz-input biz-num quantity" style="text-align:center"></div>
             <div class="col-span-4 md:col-span-2"><input name="unit_price[]" type="number" step="0.01" value="0.00" class="biz-input biz-num price" style="text-align:right"></div>
-            <div class="col-span-4 md:col-span-2 flex items-center gap-1">
+            <div class="col-span-5 md:col-span-3">
+                <select name="tax_category[]" class="biz-select tax-category">
+                    <option value="standard">12.5% GST</option>
+                    <option value="zero_rated">Zero-rated</option>
+                    <option value="exempt">Exempt</option>
+                </select>
+            </div>
+            <div class="col-span-12 md:col-span-2 flex items-center gap-1">
                 <input readonly value="0.00" class="biz-input biz-num line-total" style="text-align:right;background:var(--bz-head)">
                 <button type="button" onclick="this.closest('.item-row').remove(); calculateGrandTotal();" class="biz-t-red shrink-0" style="font-size:12px">&times;</button>
             </div>
@@ -234,15 +270,20 @@ function addItem() {
 
 function calculateGrandTotal() {
     let subtotal = 0;
+    let tax = 0;
     document.querySelectorAll('.item-row').forEach(row => {
         const qty = parseFloat(row.querySelector('.quantity').value || 0);
         const price = parseFloat(row.querySelector('.price').value || 0);
         const lineTotal = qty * price;
         row.querySelector('.line-total').value = lineTotal.toFixed(2);
         subtotal += lineTotal;
+        const category = row.querySelector('.tax-category')?.value || 'standard';
+        if (category === 'standard') {
+            tax += Math.round(lineTotal * STANDARD_RATE) / 100;
+        }
     });
 
-    const tax = parseFloat(document.getElementById('tax-input').value || 0);
+    document.getElementById('tax-input').value = tax.toFixed(2);
     const discount = parseFloat(document.getElementById('discount-input').value || 0);
     const total = subtotal + tax - discount;
 
@@ -251,7 +292,12 @@ function calculateGrandTotal() {
 }
 
 document.addEventListener('input', function(e) {
-    if (e.target.closest('.item-row') || e.target.id === 'tax-input' || e.target.id === 'discount-input') {
+    if (e.target.closest('.item-row') || e.target.id === 'discount-input') {
+        calculateGrandTotal();
+    }
+});
+document.addEventListener('change', function(e) {
+    if (e.target.classList && e.target.classList.contains('tax-category')) {
         calculateGrandTotal();
     }
 });
