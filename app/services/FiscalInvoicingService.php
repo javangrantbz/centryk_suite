@@ -965,6 +965,224 @@ class FiscalInvoicingService
         return self::getDocument($companyId, $documentId);
     }
 
+    /**
+     * Re-issue a document that couldn't reach BTS as a Contingency ETD
+     * (manual 3.3.6): a fresh identifier on the contingency series, operMode
+     * 2, a contingencyInfo block, signed now so the sale can proceed. Nothing
+     * is transmitted - call transmitContingencyBacklog() once BTS is back.
+     *
+     * A new document row is created; the original is kept and marked
+     * superseded. Manual 3.3.6.4: if that original had in fact reached BTS
+     * and was later authorized, it must be cancelled - use "Cancel via BTS"
+     * on it once its real status can be confirmed. Centryk does not query
+     * BTS's Document service to check that automatically yet.
+     */
+    public static function issueInContingency(int $companyId, int $originalDocumentId, string $reason, ?int $userId = null): array
+    {
+        $userId = $userId ?: null;
+        $reason = trim($reason) !== '' ? mb_substr(trim($reason), 0, 255) : 'BTS unreachable';
+
+        $profile = self::getProfile($companyId);
+        if (empty($profile['enabled'])) {
+            throw new InvalidArgumentException('E-invoicing is not enabled for this company yet.');
+        }
+        if (empty($profile['certificate_path']) || !is_file($profile['certificate_path'])) {
+            throw new InvalidArgumentException("No certificate on file - a contingency document still has to be signed.");
+        }
+
+        $original = self::getDocument($companyId, $originalDocumentId);
+        if (!$original) {
+            throw new InvalidArgumentException('Document not found.');
+        }
+        if ($original['document_type'] === 'cancellation') {
+            throw new InvalidArgumentException('A cancellation event is not issued in contingency mode.');
+        }
+        if (in_array($original['status'], ['authorized', 'cancelled'], true)) {
+            throw new InvalidArgumentException('This document is already ' . $original['status'] . ' - there is nothing to move to contingency.');
+        }
+        if (!empty($original['superseded_by_document_id'])) {
+            throw new InvalidArgumentException('This document was already re-issued in contingency (see document #' . $original['superseded_by_document_id'] . ').');
+        }
+
+        [$certPem, $privateKeyPem] = self::loadCertificate($profile);
+
+        // A fresh row with the same commercial content.
+        $newDoc = self::issue($companyId, [
+            'document_type'         => $original['document_type'],
+            'reference_document_id' => $original['reference_document_id'] ?: null,
+            'source_app'            => $original['source_app'],
+            'source_ref'            => $original['source_ref'],
+            'our_number'            => $original['our_number'],
+            'seller'                => json_decode((string)$original['seller_snapshot_json'], true) ?: [],
+            'buyer'                 => json_decode((string)$original['buyer_snapshot_json'], true) ?: [],
+            'lines'                 => array_map(static fn ($l) => [
+                'item_code'       => $l['item_code'],
+                'description'     => $l['description'],
+                'quantity'        => (float)$l['quantity'],
+                'unit_of_measure' => $l['unit_of_measure'],
+                'unit_price'      => (float)$l['unit_price'],
+                'tax_category'    => $l['tax_category'],
+                'tax_rate'        => (float)$l['tax_rate'],
+            ], $original['lines']),
+        ], $userId);
+        $newId = (int)$newDoc['id'];
+
+        $pdo = DB::pdo();
+        $pdo->beginTransaction();
+        try {
+            $lockStmt = $pdo->prepare('SELECT * FROM company_fiscal_profiles WHERE company_id = :c FOR UPDATE');
+            $lockStmt->execute(['c' => $companyId]);
+            $locked = $lockStmt->fetch(PDO::FETCH_ASSOC);
+
+            $etdType = self::ETD_TYPE_MAP[$original['document_type']];
+            $environment = $locked['environment'] === 'production' ? 'production' : 'test';
+            $receptionEnv = $environment === 'production' ? FiscalEtdui::ENV_PRODUCTION : FiscalEtdui::ENV_TEST;
+            $series = (string)($locked['contingency_series'] ?: '900');
+            $nextSerial = (int)$locked['last_contingency_serial'] + 1;
+            $issuerTin = self::normalizeTin((string)$locked['tin'], 'Your company TIN');
+
+            try { $issuedAt = new DateTime('now', new DateTimeZone('America/Belize')); }
+            catch (Throwable $e) { $issuedAt = new DateTime('now'); }
+
+            $etduiResult = FiscalEtdui::build($etdType, $issuerTin, $nextSerial, $series, $issuedAt, FiscalEtdui::OPER_MODE_CONTINGENCY, $receptionEnv);
+            $startedAt = $issuedAt->format('Y-m-d H:i:s');
+
+            $newDoc['etdui'] = $etduiResult['etdui'];
+            $newDoc['series'] = $series;
+            $newDoc['environment'] = $environment;
+            $newDoc['issue_date'] = $issuedAt->format('Y-m-d');
+            $newDoc['issue_time'] = $issuedAt->format('H:i:sP');
+            $newDoc['sequence_previous'] = $locked['last_sequence_hash'];
+            $newDoc['contingency_reason'] = $reason;
+            $newDoc['contingency_started_at'] = $startedAt;
+
+            $seller = ['name' => $locked['legal_name'], 'tin' => $locked['tin'], 'address' => $locked['address']];
+            $buyer  = json_decode((string)$newDoc['buyer_snapshot_json'], true) ?: [];
+            $built  = FiscalUblBuilder::build($newDoc, $newDoc['lines'], $newDoc['taxes'], $seller, $buyer);
+
+            $privateKey = openssl_pkey_get_private($privateKeyPem);
+            if ($privateKey === false) {
+                throw new RuntimeException('Could not load the private key from the certificate.');
+            }
+            $signedXml = FiscalXadesSigner::sign($built['xml'], $certPem, $privateKey);
+
+            $xmlPath = self::signedXmlPath($companyId, $newId);
+            self::ensureDir(dirname($xmlPath));
+            file_put_contents($xmlPath, $signedXml);
+
+            $pdo->prepare('
+                UPDATE fiscal_documents
+                SET etdui = :etdui, serial_number = :serial, series = :series, security_code = :sec,
+                    environment = :env, issue_date = :issue_date, issue_time = :issue_time,
+                    oper_mode = 2, contingency_reason = :reason, contingency_started_at = :started,
+                    status = \'signed\', signed_xml_path = :path
+                WHERE id = :id
+            ')->execute([
+                'etdui' => $etduiResult['etdui'], 'serial' => $nextSerial, 'series' => $series,
+                'sec' => $etduiResult['security_code'], 'env' => $environment,
+                'issue_date' => $issuedAt->format('Y-m-d'), 'issue_time' => $issuedAt->format('H:i:sP'),
+                'reason' => $reason, 'started' => $startedAt, 'path' => $xmlPath, 'id' => $newId,
+            ]);
+            // The contingency serial + the sequence chain both advance now -
+            // this ETD supports a real commercial operation.
+            $pdo->prepare('UPDATE company_fiscal_profiles SET last_contingency_serial = :s, last_sequence_hash = :h WHERE company_id = :c')
+                ->execute(['s' => $nextSerial, 'h' => $built['sequence_hash'], 'c' => $companyId]);
+
+            $pdo->prepare('UPDATE fiscal_documents SET superseded_by_document_id = :new WHERE id = :old')
+                ->execute(['new' => $newId, 'old' => $originalDocumentId]);
+
+            self::logEvent($pdo, $newId, 'contingency', 'Issued in contingency mode (replaces #' . $originalDocumentId . '): ' . $reason, $userId);
+            self::logEvent($pdo, $originalDocumentId, 'superseded', 'Re-issued in contingency as #' . $newId . '. If BTS did authorize this one, cancel it.', $userId);
+
+            $pdo->commit();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            // The fresh row was created outside this transaction; drop it so a
+            // failure doesn't leave an orphan 'built' document lying around.
+            try {
+                $pdo->prepare('DELETE FROM fiscal_document_lines WHERE fiscal_document_id = ?')->execute([$newId]);
+                $pdo->prepare('DELETE FROM fiscal_document_taxes WHERE fiscal_document_id = ?')->execute([$newId]);
+                $pdo->prepare('DELETE FROM fiscal_document_events WHERE fiscal_document_id = ?')->execute([$newId]);
+                $pdo->prepare('DELETE FROM fiscal_documents WHERE id = ? AND status = \'built\'')->execute([$newId]);
+            } catch (Throwable $ignored) {}
+            throw $e;
+        }
+
+        return self::getDocument($companyId, $newId);
+    }
+
+    /**
+     * Transmit every contingency ETD that has been signed but not yet sent
+     * (Subsequent Authorization). Call once BTS is reachable again.
+     *
+     * @return array{summary: array<string,int>, results: list<array<string,mixed>>}
+     */
+    public static function transmitContingencyBacklog(int $companyId, ?int $userId = null): array
+    {
+        $userId = $userId ?: null;
+        $profile = self::getProfile($companyId);
+        if (empty($profile['certificate_path']) || !is_file($profile['certificate_path'])) {
+            throw new InvalidArgumentException('No certificate on file.');
+        }
+        [$certPem, $privateKeyPem] = self::loadCertificate($profile);
+        $pdo = DB::pdo();
+
+        $rows = $pdo->prepare("
+            SELECT id, document_type, signed_xml_path, environment, etdui
+            FROM fiscal_documents
+            WHERE company_id = :c AND oper_mode = 2 AND status = 'signed'
+            ORDER BY serial_number ASC
+        ");
+        $rows->execute(['c' => $companyId]);
+        $pending = $rows->fetchAll(PDO::FETCH_ASSOC);
+
+        $summary = ['pending' => count($pending), 'authorized' => 0, 'rejected' => 0, 'still_failing' => 0];
+        $results = [];
+
+        foreach ($pending as $doc) {
+            $id = (int)$doc['id'];
+            if (empty($doc['signed_xml_path']) || !is_file($doc['signed_xml_path'])) {
+                $summary['still_failing']++;
+                $results[] = ['id' => $id, 'result' => 'error', 'detail' => 'signed XML missing on disk'];
+                continue;
+            }
+            $signedXml = (string)file_get_contents($doc['signed_xml_path']);
+            $response = FiscalBtsClient::submit($doc['document_type'], $doc['environment'] ?: 'test', $signedXml, $certPem, $privateKeyPem);
+            $newStatus = $response['authorized'] ? 'authorized' : ($response['http_status'] === 0 ? 'signed' : 'rejected');
+
+            $pdo->prepare('
+                UPDATE fiscal_documents
+                SET status = :s, authorization_code = :auth, authorized_at = :aa,
+                    bts_response_json = :resp, error_message = :err, submitted_at = NOW(),
+                    retry_count = retry_count + 1
+                WHERE id = :id
+            ')->execute([
+                's'    => $newStatus,
+                'auth' => $response['authorized'] ? $doc['etdui'] : null,
+                'aa'   => $response['authorized'] ? date('Y-m-d H:i:s') : null,
+                'resp' => json_encode($response, JSON_UNESCAPED_UNICODE),
+                'err'  => $response['error'],
+                'id'   => $id,
+            ]);
+            self::logEvent($pdo, $id, $newStatus, 'Contingency backlog transmission: ' . ($response['error'] ?? ('HTTP ' . $response['http_status'])), $userId);
+
+            if ($response['authorized']) {
+                $summary['authorized']++;
+                $results[] = ['id' => $id, 'result' => 'authorized'];
+            } elseif ($newStatus === 'rejected') {
+                $summary['rejected']++;
+                $results[] = ['id' => $id, 'result' => 'rejected', 'detail' => $response['description'] ?? $response['error']];
+            } else {
+                $summary['still_failing']++;
+                $results[] = ['id' => $id, 'result' => 'still unreachable'];
+            }
+        }
+
+        return ['summary' => $summary, 'results' => $results];
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     /**

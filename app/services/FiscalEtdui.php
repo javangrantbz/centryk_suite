@@ -25,8 +25,11 @@ class FiscalEtdui
     public const TYPE_CREDIT_NOTE  = '04';
     public const TYPE_APPLICATION_RESPONSE = '05';
 
-    /** operMode (manual Table 10-6). Only NORMAL is implemented - see class doc on FiscalBtsClient. */
-    public const OPER_MODE_NORMAL = '1';
+    /** operMode (manual Table 10-6): 1 = Normal (Previous Authorization),
+     *  2 = Contingency (Subsequent Authorization - ETD signed now, sent later,
+     *  and its EFDRExtensions must carry a contingencyInfo block). */
+    public const OPER_MODE_NORMAL      = '1';
+    public const OPER_MODE_CONTINGENCY = '2';
 
     /** receptionEnv (manual Ch.7). */
     public const ENV_PRODUCTION = '01';
