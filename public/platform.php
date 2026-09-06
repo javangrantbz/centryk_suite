@@ -8,7 +8,7 @@
  *
  * No auth — this is a pitch / reference page (like about.php).
  */
-$updated = '5 September 2026';
+$updated = '6 September 2026';
 
 /* Table of contents — [id, label]. Order = page order. */
 $toc = [
@@ -518,7 +518,7 @@ $toc = [
         <ul>
             <li><strong>Belize dollars</strong> throughout.</li>
             <li><strong>GST at 12.5%</strong> — the monthly output-tax summary, and GST-inclusive pricing handled correctly.</li>
-            <li><strong>Built for BTS Electronic Invoicing</strong> — Belize Tax Service's upcoming requirement that tax documents be submitted electronically and authorized in real time. Centryk maps a sale into the required signed XML, submits it to BTS and records the authorization: tax invoices, tax receipts (a till sale to a walk-in is typed as a receipt, not an invoice), credit notes and debit notes against an authorized document, and cancellations. It runs against BTS's test environment today. No company has completed a live production submission yet, since the mandate itself isn't in force yet — this is ready to test, not a certified production system.</li>
+            <li><strong>Built for BTS Electronic Invoicing</strong> — Belize Tax Service's upcoming requirement that tax documents be submitted electronically and authorized in real time. When e-invoicing is switched on, issuing an invoice clears it with BTS as part of the same step. Centryk maps the sale into the required signed XML, submits it and records the authorization — tax invoices, tax receipts (a till sale to a walk-in is typed as a receipt, not an invoice), credit and debit notes referencing the original, and cancellations — with per-line GST treatment (standard, zero-rated, exempt) carried through, and a contingency mode for issuing when BTS is unreachable and transmitting once it's back. It runs against BTS's test environment today. No company has completed a live production submission yet, since the mandate itself isn't in force yet — this is ready to test, not a certified production system.</li>
             <li><strong>Public &amp; bank holidays</strong> — the national list (Holidays Act) shows on the calendar and in MyPay, each day tagged with its Labour Act pay rate for hours worked: double time for Good Friday, Easter Monday and Christmas Day, time-and-a-half for the rest. MyPay's payroll-period view flags any holidays that fall inside the run, and everyone gets a heads-up notification a few days before.</li>
             <li><strong>The team&rsquo;s calendar</strong> — staff birthdays and work anniversaries surface on the calendar and prompt a notification to the rest of the company, so nothing gets missed.</li>
             <li><strong>A cash-and-cheque economy</strong> — route settlement and cash-in-transit tracking exist because a lot of money still moves by hand on delivery runs. <strong>Cheque tracking</strong> gives every cheque a lifecycle — uncleared, post-dated, cleared, or bounced — and a bounced cheque automatically reverses the receipt so the customer owes again.</li>
