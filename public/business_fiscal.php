@@ -229,6 +229,34 @@ $headerActionsHtml = ob_get_clean();
     </div>
 </div>
 
+<!-- ── Debit note dialog ──────────────────────────────────────────────── -->
+<div id="dnOverlay" class="hidden" style="position:fixed;inset:0;z-index:60;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;padding:16px">
+    <div class="biz" style="background:#fff;border-radius:12px;max-width:620px;width:100%;max-height:88vh;overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,.3)">
+        <div class="biz-panel-head" style="border-radius:12px 12px 0 0">
+            <span>Debit note</span>
+            <button type="button" onclick="closeDebitNote()" class="biz-muted" style="border:0;background:none;font-size:18px;cursor:pointer;line-height:1">&times;</button>
+        </div>
+        <div class="biz-panel-body" style="display:grid;gap:12px">
+            <p class="biz-muted" style="font-size:11px;margin:0">
+                Adding charges to <strong id="dnOriginalNumber"></strong> - a freight charge billed later, an
+                undercharge correction, a late fee. These are new lines, not the original's. Created as "Built" -
+                review it in the log, then Submit to BTS.
+            </p>
+            <div id="dnLines" style="display:grid;gap:6px"></div>
+            <button type="button" class="biz-btn biz-btn-ghost biz-btn-sm" onclick="dnAddLine()" style="justify-self:start">+ Add line</button>
+            <label class="block"><span class="biz-label">Reason <span class="biz-muted" style="font-weight:400">(kept on the document, not sent to BTS)</span></span>
+                <textarea id="dnReason" class="biz-input" rows="2" maxlength="500" placeholder="e.g. Freight not billed on the original invoice"></textarea></label>
+            <div class="flex justify-between items-center">
+                <span class="biz-num" style="font-weight:700">Debit total: <span id="dnTotal">BZD 0.00</span></span>
+                <div class="flex gap-2">
+                    <button type="button" class="biz-btn biz-btn-ghost biz-btn-sm" onclick="closeDebitNote()">Cancel</button>
+                    <button type="button" id="dnCreateBtn" class="biz-btn biz-btn-primary biz-btn-sm" onclick="createDebitNote()">Create debit note</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 const CID = <?= $activeCompany ? (int)$activeCompany['id'] : 'null' ?>;
 const CAN_EDIT = <?= $isCompanyAdmin ? 'true' : 'false' ?>;
@@ -361,6 +389,7 @@ async function loadDocuments(){
         const canSubmit = ['built', 'error', 'rejected'].includes(doc.status);
         const canCancel = doc.status === 'authorized' && doc.document_type !== 'cancellation';
         const canCredit = doc.status === 'authorized' && ['invoice', 'tax_receipt', 'debit_note'].includes(doc.document_type);
+        const canDebit = doc.status === 'authorized' && ['invoice', 'tax_receipt'].includes(doc.document_type);
         return `
         <div style="padding:10px 16px;border-bottom:1px solid var(--bz-line)">
             <div class="biz-row" style="padding:0">
@@ -374,10 +403,11 @@ async function loadDocuments(){
             </div>
             ${doc.etdui ? `<div class="biz-muted mt-1" style="font-size:10px;font-family:monospace">ETDUI ${esc(doc.etdui)}</div>` : ''}
             ${doc.error_message ? `<div class="mt-1" style="font-size:11px;color:#b91c1c">${esc(doc.error_message)}</div>` : ''}
-            ${(canSubmit || canCancel || canCredit) && CAN_EDIT ? `
+            ${(canSubmit || canCancel || canCredit || canDebit) && CAN_EDIT ? `
             <div class="mt-1.5 flex gap-2">
                 ${canSubmit ? `<button type="button" class="biz-btn biz-btn-primary biz-btn-sm" onclick="submitDoc(${doc.id})">Submit to BTS</button>` : ''}
                 ${canCredit ? `<button type="button" class="biz-btn biz-btn-ghost biz-btn-sm" onclick="openCreditNote(${doc.id})">Credit note</button>` : ''}
+                ${canDebit ? `<button type="button" class="biz-btn biz-btn-ghost biz-btn-sm" onclick="openDebitNote(${doc.id})">Debit note</button>` : ''}
                 ${canCancel ? `<button type="button" class="biz-btn biz-btn-ghost biz-btn-sm" onclick="cancelDoc(${doc.id})">Cancel via BTS</button>` : ''}
             </div>` : ''}
         </div>
@@ -453,6 +483,80 @@ async function createCreditNote(){
     if (!d.success) { showAlert(d.message || 'Could not create the credit note.'); return; }
     closeCreditNote();
     showAlert('Credit note created (Built). Submit it to BTS from the log below.', true);
+    loadDocuments();
+}
+
+// ── Debit note ───────────────────────────────────────────────────────────
+let dnOriginalId = null;
+
+function dnLineRow(){
+    return `
+    <div class="dnRow flex items-center gap-2" style="font-size:12px">
+        <input type="text" class="biz-input dnDesc" placeholder="Charge description" maxlength="200" style="flex:1;min-width:0" oninput="dnRecalc()">
+        <input type="number" class="biz-input dnQty" placeholder="Qty" min="0" step="0.01" value="1" style="width:70px;text-align:right" oninput="dnRecalc()">
+        <input type="number" class="biz-input dnPrice" placeholder="Unit price" min="0" step="0.01" style="width:100px;text-align:right" oninput="dnRecalc()">
+        <select class="biz-input dnTax" style="width:120px" onchange="dnRecalc()">
+            <option value="standard">12.5% GST</option>
+            <option value="zero_rated">Zero-rated</option>
+            <option value="exempt">Exempt</option>
+        </select>
+        <button type="button" class="biz-muted" style="border:0;background:none;cursor:pointer;font-size:16px;line-height:1" onclick="this.closest('.dnRow').remove();dnRecalc()">&times;</button>
+    </div>`;
+}
+
+function dnAddLine(){ document.getElementById('dnLines').insertAdjacentHTML('beforeend', dnLineRow()); }
+
+async function openDebitNote(id){
+    const res = await fetch(`api/fiscal/document_show.php?company_id=${CID}&id=${id}`);
+    const d = await res.json();
+    if (!d.success) { showAlert(d.message || 'Could not load that document.'); return; }
+    dnOriginalId = id;
+    document.getElementById('dnOriginalNumber').textContent = d.document.our_number || ('Doc #' + id);
+    document.getElementById('dnReason').value = '';
+    document.getElementById('dnLines').innerHTML = dnLineRow();
+    dnRecalc();
+    document.getElementById('dnOverlay').classList.remove('hidden');
+}
+
+function closeDebitNote(){ document.getElementById('dnOverlay').classList.add('hidden'); dnOriginalId = null; }
+
+function dnCollect(){
+    const lines = [];
+    document.querySelectorAll('#dnLines .dnRow').forEach(row => {
+        const description = row.querySelector('.dnDesc').value.trim();
+        const quantity = Number(row.querySelector('.dnQty').value) || 0;
+        const unit_price = Number(row.querySelector('.dnPrice').value) || 0;
+        const tax_category = row.querySelector('.dnTax').value;
+        if (description && quantity > 0 && unit_price > 0) {
+            lines.push({ description, quantity, unit_price, tax_category, tax_rate: tax_category === 'standard' ? 12.5 : 0 });
+        }
+    });
+    return lines;
+}
+
+function dnRecalc(){
+    let total = 0;
+    dnCollect().forEach(l => {
+        const sub = l.quantity * l.unit_price;
+        total += sub + sub * (l.tax_rate || 0) / 100;
+    });
+    document.getElementById('dnTotal').textContent = bzd(total);
+}
+
+async function createDebitNote(){
+    const lines = dnCollect();
+    if (!lines.length) { showAlert('Add at least one line with a description, quantity and unit price.'); return; }
+    const btn = document.getElementById('dnCreateBtn');
+    btn.disabled = true;
+    const res = await fetch('api/fiscal/debit_note.php', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ company_id: CID, id: dnOriginalId, reason: document.getElementById('dnReason').value, lines }),
+    });
+    const d = await res.json();
+    btn.disabled = false;
+    if (!d.success) { showAlert(d.message || 'Could not create the debit note.'); return; }
+    closeDebitNote();
+    showAlert('Debit note created (Built). Submit it to BTS from the log below.', true);
     loadDocuments();
 }
 
