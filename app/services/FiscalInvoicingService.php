@@ -635,16 +635,14 @@ class FiscalInvoicingService
      *
      * Returns a 'built' credit_note; call submitToBts() on it to sign and send.
      *
-     * v1 limitations:
-     *  - it does not track the running credited total across several credit
-     *    notes against the same invoice, so nothing here stops you crediting
-     *    the same line twice. The per-line cap is against the original
-     *    quantity only.
-     *  - the UBL carries no cac:BillingReference back to the original ETDUI.
-     *    BTS's own CreditNote/DebitNote samples don't either, so we match
-     *    that; the link to the original is kept in our own DB
-     *    (reference_document_id). If BTS's live validation turns out to
-     *    require an ETD reference, that's a targeted add to FiscalUblBuilder.
+     * v1 limitation: it does not track the running credited total across
+     * several credit notes against the same invoice, so nothing here stops
+     * you crediting the same line twice. The per-line cap is against the
+     * original quantity only.
+     *
+     * The UBL carries a cac:BillingReference back to the credited document's
+     * ETDUI once that document is authorized (added at submit time by
+     * withReferenceEtdui()).
      */
     public static function issueCreditNote(int $companyId, int $originalDocumentId, array $lineSelections = [], ?int $userId = null, string $reason = ''): array
     {
@@ -726,10 +724,8 @@ class FiscalInvoicingService
      * positive unit price is required.
      *
      * Returns a 'built' debit_note; call submitToBts() on it to sign and send.
-     *
-     * v1 limitation: like issueCreditNote(), the UBL carries no
-     * cac:BillingReference back to the original ETDUI - the link is kept in
-     * our own DB (reference_document_id).
+     * Like a credit note, the UBL carries a cac:BillingReference to the
+     * referenced document's ETDUI once it's authorized.
      */
     public static function issueDebitNote(int $companyId, int $originalDocumentId, array $lines, ?int $userId = null, string $reason = ''): array
     {
@@ -888,6 +884,7 @@ class FiscalInvoicingService
                     'address' => $lockedProfile['address'],
                 ];
                 $buyer = json_decode((string)$document['buyer_snapshot_json'], true) ?: [];
+                $document = self::withReferenceEtdui($companyId, $document);
                 $built = FiscalUblBuilder::build($document, $document['lines'], $document['taxes'], $seller, $buyer);
             }
 
@@ -1058,6 +1055,7 @@ class FiscalInvoicingService
 
             $seller = ['name' => $locked['legal_name'], 'tin' => $locked['tin'], 'address' => $locked['address']];
             $buyer  = json_decode((string)$newDoc['buyer_snapshot_json'], true) ?: [];
+            $newDoc = self::withReferenceEtdui($companyId, $newDoc);
             $built  = FiscalUblBuilder::build($newDoc, $newDoc['lines'], $newDoc['taxes'], $seller, $buyer);
 
             $privateKey = openssl_pkey_get_private($privateKeyPem);
@@ -1212,6 +1210,30 @@ class FiscalInvoicingService
     private static function signedXmlPath(int $companyId, int $documentId): string
     {
         return self::storageRoot() . '/documents/' . $companyId . '/' . $documentId . '.xml';
+    }
+
+    /**
+     * For a credit / debit note, add the referenced original's ETDUI, serial
+     * and issue date to the document array so FiscalUblBuilder can emit a
+     * cac:BillingReference. No-op for other document types, or if the
+     * original hasn't been authorized (no ETDUI yet).
+     */
+    private static function withReferenceEtdui(int $companyId, array $document): array
+    {
+        if (!in_array($document['document_type'] ?? '', ['credit_note', 'debit_note'], true)) {
+            return $document;
+        }
+        $refId = (int)($document['reference_document_id'] ?? 0);
+        if ($refId <= 0) {
+            return $document;
+        }
+        $original = self::getDocument($companyId, $refId);
+        if ($original && !empty($original['etdui'])) {
+            $document['reference_etdui']      = $original['etdui'];
+            $document['reference_serial']     = $original['serial_number'];
+            $document['reference_issue_date'] = $original['issue_date'];
+        }
+        return $document;
     }
 
     /** Where an uploaded certificate for a company should be written to. */
