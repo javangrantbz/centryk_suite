@@ -32,6 +32,10 @@ class FiscalUblBuilder
     private const NS_EXT = 'urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2';
     private const NS_EFDR = 'ciat:org:efdr:CommonComponentes-2-4';
 
+    /** ISO currency code for the document being built; set at the top of
+     *  build() / buildCancellation() and read by money(). Belize is BZD. */
+    private static string $currency = 'BZD';
+
     private const NS_ROOT = [
         'invoice'      => 'urn:oasis:names:specification:ubl:schema:xsd:Invoice-2',
         'tax_receipt'  => 'urn:oasis:names:specification:ubl:schema:xsd:Invoice-2',
@@ -97,6 +101,8 @@ class FiscalUblBuilder
             // is mandatory - BTS rejects a document with no buyer party at all.
             throw new InvalidArgumentException('A buyer name is required - BTS rejects a document with no Accounting Customer Party.');
         }
+
+        self::$currency = strtoupper((string)($document['currency'] ?? 'BZD')) ?: 'BZD';
 
         $doc = self::newDocument();
 
@@ -165,7 +171,7 @@ class FiscalUblBuilder
         $typeCodeEl->setAttribute('listID', 'UN/ECE 1001 Subset');
         $typeCodeEl->setAttribute('listAgencyID', 'UN/CEFACT');
 
-        $currencyEl = self::text($doc, $root, 'cbc', 'DocumentCurrencyCode', 'BZD');
+        $currencyEl = self::text($doc, $root, 'cbc', 'DocumentCurrencyCode', self::$currency);
         $currencyEl->setAttribute('listID', 'D_Curr');
 
         self::text($doc, $root, 'cbc', 'LineCountNumeric', (string)$lineCount);
@@ -395,7 +401,7 @@ class FiscalUblBuilder
     private static function money(DOMDocument $doc, DOMElement $parent, string $name, float $amount): DOMElement
     {
         $el = self::text($doc, $parent, 'cbc', $name, number_format($amount, 2, '.', ''));
-        $el->setAttribute('currencyID', 'BZD');
+        $el->setAttribute('currencyID', self::$currency);
         return $el;
     }
 
