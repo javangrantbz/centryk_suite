@@ -634,31 +634,6 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
         ];
         ?>
 
-        <!-- Centryk Business workspace — one panel replacing the per-module
-             cards, floated above the app grid. Hidden until selectCompany()
-             finds the chosen company holds ≥1 package. -->
-        <section id="bizWorkspace" class="mb-3 hidden overflow-hidden rounded-2xl border border-violet-200 bg-white shadow-sm">
-            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-violet-100 bg-violet-50/60 px-5 py-3">
-                <div class="flex items-center gap-2.5">
-                    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white">
-                        <i data-lucide="briefcase" class="h-4 w-4"></i>
-                    </span>
-                    <div>
-                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-violet-600/80">Centryk Business</div>
-                        <div class="text-base font-black tracking-tight text-slate-900">Workspace</div>
-                    </div>
-                    <span id="bizWsBadge" class="ml-1 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-violet-700"></span>
-                </div>
-                <a id="bizWsOpen" href="business.php" class="inline-flex items-center gap-1.5 rounded-xl border border-violet-200 bg-violet-50 px-3.5 py-2 text-xs font-black uppercase tracking-[0.12em] text-violet-700 transition hover:bg-violet-100 hover:text-violet-800">
-                    Open workspace <i data-lucide="arrow-right" class="h-3.5 w-3.5"></i>
-                </a>
-            </div>
-            <div class="space-y-3 p-5">
-                <div id="bizWsModules" class="flex flex-nowrap gap-1.5 overflow-x-auto pb-0.5"></div>
-                <div id="bizWsStats" class="grid grid-cols-2 gap-2 sm:grid-cols-3"></div>
-            </div>
-        </section>
-
         <section class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
 
         <?php
@@ -713,6 +688,32 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
             You're not in any apps yet<?= $hasCompany ? ' — request access to one below.' : '. A company admin adds you to apps once you join a company.' ?>
         </div>
         <?php endif; ?>
+
+        <!-- Centryk Business workspace — one panel replacing the per-module
+             cards. Sits directly under Your Apps so the free core stays the
+             first thing a viewer sees. Hidden until selectCompany() finds the
+             chosen company holds ≥1 package. -->
+        <section id="bizWorkspace" class="mb-8 hidden overflow-hidden rounded-2xl border border-violet-200 bg-white shadow-sm">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-violet-100 bg-violet-50/60 px-5 py-3">
+                <div class="flex items-center gap-2.5">
+                    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white">
+                        <i data-lucide="briefcase" class="h-4 w-4"></i>
+                    </span>
+                    <div>
+                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-violet-600/80">Centryk Business</div>
+                        <div class="text-base font-black tracking-tight text-slate-900">Workspace</div>
+                    </div>
+                    <span id="bizWsBadge" class="ml-1 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-violet-700"></span>
+                </div>
+                <a id="bizWsOpen" href="business.php" class="inline-flex items-center gap-1.5 rounded-xl border border-violet-200 bg-violet-50 px-3.5 py-2 text-xs font-black uppercase tracking-[0.12em] text-violet-700 transition hover:bg-violet-100 hover:text-violet-800">
+                    Open workspace <i data-lucide="arrow-right" class="h-3.5 w-3.5"></i>
+                </a>
+            </div>
+            <div class="space-y-3 p-5">
+                <div id="bizWsModules" class="flex flex-nowrap gap-1.5 overflow-x-auto pb-0.5"></div>
+                <div id="bizWsStats" class="grid grid-cols-2 gap-2 sm:grid-cols-3"></div>
+            </div>
+        </section>
 
         <!-- ── Available Through Your Organization ───────────────────────── -->
         <?php if ($hasCompany && $availableApps): ?>
