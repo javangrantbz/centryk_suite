@@ -32,6 +32,11 @@ $paymentReady = TvPaymentService::isPaymentConfigured((int)$event['organization_
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= e($event['title']) ?> | <?= e((string)tv_config('app_name')) ?></title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { theme: { extend: { colors: { brand: {
+            DEFAULT: '#0f766e', 50: '#f0fdfa', 100: '#ccfbf1', 500: '#14b8a6', 600: '#0d9488', 700: '#0f766e', 900: '#134e4a'
+        } } } } };
+    </script>
     <style>@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap'); body{font-family:'Plus Jakarta Sans',sans-serif;}</style>
 </head>
 <body class="bg-slate-50 text-slate-900">
