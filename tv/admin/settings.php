@@ -23,25 +23,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 tv_render_admin_header('Settings', 'settings');
 ?>
-<section class="rounded-[2rem] bg-white p-6 shadow-sm">
-    <h3 class="text-xl font-black">Organization Settings</h3>
+<section class="rounded-lg bg-white p-4 shadow-sm">
+    <h3 class="text-base font-black">Organization Settings</h3>
     <form method="post" enctype="multipart/form-data" class="mt-6 space-y-4">
         <?= tv_csrf_field() ?>
-        <div><label class="text-sm font-semibold">Organization Name</label><input name="name" value="<?= e((string)$organization['name']) ?>" required class="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm"></div>
-        <div><label class="text-sm font-semibold">Description</label><textarea name="description" rows="4" class="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm"><?= e((string)$organization['description']) ?></textarea></div>
+        <div><label class="text-sm font-semibold">Organization Name</label><input name="name" value="<?= e((string)$organization['name']) ?>" required class="mt-2 w-full rounded-md border border-slate-200 px-3 py-2 text-sm"></div>
+        <div><label class="text-sm font-semibold">Description</label><textarea name="description" rows="4" class="mt-2 w-full rounded-md border border-slate-200 px-3 py-2 text-sm"><?= e((string)$organization['description']) ?></textarea></div>
         <div class="grid gap-4 md:grid-cols-2">
-            <div><label class="text-sm font-semibold">Email</label><input name="email" value="<?= e((string)$organization['email']) ?>" class="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm"></div>
-            <div><label class="text-sm font-semibold">Phone</label><input name="phone" value="<?= e((string)$organization['phone']) ?>" class="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm"></div>
+            <div><label class="text-sm font-semibold">Email</label><input name="email" value="<?= e((string)$organization['email']) ?>" class="mt-2 w-full rounded-md border border-slate-200 px-3 py-2 text-sm"></div>
+            <div><label class="text-sm font-semibold">Phone</label><input name="phone" value="<?= e((string)$organization['phone']) ?>" class="mt-2 w-full rounded-md border border-slate-200 px-3 py-2 text-sm"></div>
         </div>
         <div class="grid gap-4 md:grid-cols-2">
-            <div><label class="text-sm font-semibold">Website</label><input name="website" value="<?= e((string)$organization['website']) ?>" class="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm"></div>
-            <div><label class="text-sm font-semibold">Timezone</label><input name="timezone" value="<?= e((string)$organization['timezone']) ?>" class="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm"></div>
+            <div><label class="text-sm font-semibold">Website</label><input name="website" value="<?= e((string)$organization['website']) ?>" class="mt-2 w-full rounded-md border border-slate-200 px-3 py-2 text-sm"></div>
+            <div><label class="text-sm font-semibold">Timezone</label><input name="timezone" value="<?= e((string)$organization['timezone']) ?>" class="mt-2 w-full rounded-md border border-slate-200 px-3 py-2 text-sm"></div>
         </div>
         <div class="grid gap-4 md:grid-cols-2">
-            <div><label class="text-sm font-semibold">Logo</label><input type="file" name="logo" accept="image/*" class="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm"></div>
-            <div><label class="text-sm font-semibold">Banner</label><input type="file" name="banner" accept="image/*" class="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm"></div>
+            <div><label class="text-sm font-semibold">Logo</label><input type="file" name="logo" accept="image/*" class="mt-2 w-full rounded-md border border-slate-200 px-3 py-2 text-sm"></div>
+            <div><label class="text-sm font-semibold">Banner</label><input type="file" name="banner" accept="image/*" class="mt-2 w-full rounded-md border border-slate-200 px-3 py-2 text-sm"></div>
         </div>
-        <button class="rounded-full bg-brand-700 px-5 py-3 text-sm font-bold text-white">Save Settings</button>
+        <button class="rounded-md bg-brand-700 px-4 py-2 text-sm font-bold text-white">Save Settings</button>
     </form>
 </section>
 <?php tv_render_admin_footer(); ?>

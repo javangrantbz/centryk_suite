@@ -5,7 +5,7 @@ require_once __DIR__ . '/includes/page-shell.php';
 tv_gate_coming_soon();
 
 $liveNow = db()->query(
-    'SELECT e.title, e.slug, e.start_at, o.name AS organization_name, o.slug AS organization_slug
+    'SELECT e.title, e.slug, e.start_at, e.price_amount, o.name AS organization_name, o.slug AS organization_slug
      FROM tv_events e
      JOIN tv_organizations o ON o.id = e.organization_id
      JOIN tv_stream_keys sk ON sk.id = e.stream_key_id
@@ -15,7 +15,7 @@ $liveNow = db()->query(
 )->fetchAll();
 
 $upcoming = db()->query(
-    'SELECT e.title, e.slug, e.start_at, e.event_type, o.name AS organization_name, o.slug AS organization_slug
+    'SELECT e.title, e.slug, e.start_at, e.event_type, e.price_amount, o.name AS organization_name, o.slug AS organization_slug
      FROM tv_events e
      JOIN tv_organizations o ON o.id = e.organization_id
      WHERE e.status = "scheduled" AND o.status = "active"
@@ -32,7 +32,7 @@ $organizations = db()->query(
 )->fetchAll();
 
 $replays = db()->query(
-    'SELECT e.title, e.slug, e.replay_status, o.name AS organization_name
+    'SELECT e.title, e.slug, e.replay_status, e.price_amount, o.name AS organization_name
      FROM tv_events e
      JOIN tv_organizations o ON o.id = e.organization_id
      WHERE e.replay_status = "available" AND o.status = "active"
@@ -98,7 +98,10 @@ if ($activeOrganization) {
             theme: {
                 extend: {
                     fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'] },
-                    colors: { brand: '#0f766e' }
+                    colors: { brand: {
+                        DEFAULT: '#0f766e', 50: '#f0fdfa', 100: '#ccfbf1', 200: '#99f6e4',
+                        500: '#14b8a6', 600: '#0d9488', 700: '#0f766e', 900: '#134e4a'
+                    } }
                 }
             }
         };
@@ -114,7 +117,7 @@ if ($activeOrganization) {
 
     <main class="mx-auto max-w-[1400px] space-y-3 px-4 py-3 lg:px-5">
         <section class="grid gap-3 xl:grid-cols-[minmax(0,1fr)_320px]">
-            <div class="rounded-xl border border-slate-200 bg-white">
+            <div class="rounded-lg border border-slate-200 bg-white">
                 <div class="flex flex-wrap items-center gap-1 border-b border-slate-100 px-2 pt-2">
                     <?php foreach ([
                         ['key' => 'live', 'label' => 'Live Now', 'count' => count($liveNow), 'dot' => 'bg-rose-500'],
@@ -135,7 +138,10 @@ if ($activeOrganization) {
                         <?php foreach ($liveNow as $event): ?>
                             <a href="<?= e(tv_url('watch/' . $event['slug'])) ?>" class="rounded-lg border border-slate-200 bg-slate-50 p-3 transition hover:bg-white">
                                 <div class="flex items-center justify-between">
-                                    <span class="rounded-md bg-rose-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-rose-700">Live</span>
+                                    <span class="flex items-center gap-1">
+                                        <span class="rounded-md bg-rose-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-rose-700">Live</span>
+                                        <?php if ((float)($event['price_amount'] ?? 0) > 0): ?><span class="rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">BZD <?= number_format((float)$event['price_amount'], 2) ?></span><?php endif; ?>
+                                    </span>
                                     <span class="text-[10px] font-semibold text-slate-400"><?= e(tv_format_datetime($event['start_at'], 'M j, g:i A')) ?></span>
                                 </div>
                                 <h3 class="mt-2 text-sm font-bold text-slate-900"><?= e($event['title']) ?></h3>
@@ -149,7 +155,7 @@ if ($activeOrganization) {
                         <?php foreach ($upcoming as $event): ?>
                             <a href="<?= e(tv_url('watch/' . $event['slug'])) ?>" class="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 transition hover:bg-white">
                                 <div class="min-w-0">
-                                    <p class="text-[10px] font-black uppercase tracking-[0.12em] text-brand"><?= e($event['event_type']) ?></p>
+                                    <p class="text-[10px] font-black uppercase tracking-[0.12em] text-brand"><?= e($event['event_type']) ?><?php if ((float)($event['price_amount'] ?? 0) > 0): ?> <span class="text-emerald-700">&middot; BZD <?= number_format((float)$event['price_amount'], 2) ?></span><?php endif; ?></p>
                                     <h3 class="truncate text-sm font-bold text-slate-900"><?= e($event['title']) ?></h3>
                                     <p class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400"><?= e($event['organization_name']) ?></p>
                                 </div>
@@ -163,6 +169,7 @@ if ($activeOrganization) {
                         <?php foreach ($replays as $replay): ?>
                             <a href="<?= e(tv_url('watch/' . $replay['slug'])) ?>" class="rounded-lg border border-slate-200 bg-slate-50 p-2.5 transition hover:bg-white">
                                 <span class="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600"><?= e($replay['replay_status']) ?></span>
+                                <?php if ((float)($replay['price_amount'] ?? 0) > 0): ?><span class="ml-1 rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">BZD <?= number_format((float)$replay['price_amount'], 2) ?></span><?php endif; ?>
                                 <h3 class="mt-2 text-sm font-bold text-slate-900"><?= e($replay['title']) ?></h3>
                                 <p class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400"><?= e($replay['organization_name']) ?></p>
                             </a>
@@ -182,7 +189,7 @@ if ($activeOrganization) {
                 </div>
             </div>
 
-            <aside class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <aside class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
                 <div class="flex items-center justify-between gap-3">
                     <div>
                         <p class="text-[10px] font-black uppercase tracking-[0.18em] text-brand">Studio</p>
@@ -195,14 +202,25 @@ if ($activeOrganization) {
 
                 <?php if ($activeOrganization): ?>
                     <div class="mt-3 grid grid-cols-3 gap-1.5">
-                        <div class="rounded-lg border border-slate-200 bg-slate-50 p-2.5"><div class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Live</div><div class="mt-1 text-xl font-black text-slate-900"><?= (int)$studioStats['live_now'] ?></div></div>
-                        <div class="rounded-lg border border-slate-200 bg-slate-50 p-2.5"><div class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Events</div><div class="mt-1 text-xl font-black text-slate-900"><?= (int)$studioStats['upcoming_events'] ?></div></div>
-                        <div class="rounded-lg border border-slate-200 bg-slate-50 p-2.5"><div class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Channels</div><div class="mt-1 text-xl font-black text-slate-900"><?= (int)$studioStats['total_channels'] ?></div></div>
+                        <div class="rounded-md border border-slate-200 bg-slate-50 p-2.5"><div class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Live</div><div class="mt-1 text-lg font-black text-slate-900"><?= (int)$studioStats['live_now'] ?></div></div>
+                        <div class="rounded-md border border-slate-200 bg-slate-50 p-2.5"><div class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Events</div><div class="mt-1 text-lg font-black text-slate-900"><?= (int)$studioStats['upcoming_events'] ?></div></div>
+                        <div class="rounded-md border border-slate-200 bg-slate-50 p-2.5"><div class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Channels</div><div class="mt-1 text-lg font-black text-slate-900"><?= (int)$studioStats['total_channels'] ?></div></div>
                     </div>
-                    <div class="mt-3 space-y-2">
-                        <a href="<?= e(tv_url('dashboard/events')) ?>" class="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 transition hover:bg-slate-100"><span class="text-sm font-black text-slate-900">Manage Events</span><span class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Open</span></a>
-                        <a href="<?= e(tv_url('dashboard/channels')) ?>" class="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 transition hover:bg-slate-100"><span class="text-sm font-black text-slate-900">Run Channels</span><span class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Open</span></a>
-                        <?php if ($canAdminister): ?><a href="<?= e(tv_url('dashboard/settings')) ?>" class="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 transition hover:bg-slate-100"><span class="text-sm font-black text-slate-900">Settings</span><span class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Open</span></a><?php endif; ?>
+                    <?php if ((int)$studioStats['total_channels'] === 0): ?>
+                        <div class="mt-3 rounded-md border border-brand-200 bg-brand-50 p-3">
+                            <p class="text-sm font-bold text-slate-900">Start here</p>
+                            <p class="mt-0.5 text-xs leading-5 text-slate-600">Create a channel first, then schedule events on it.</p>
+                            <a href="<?= e(tv_url('dashboard/channels')) ?>" class="mt-2 inline-flex rounded-md bg-brand-700 px-3 py-1.5 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-brand-600">Create a channel</a>
+                        </div>
+                    <?php endif; ?>
+                    <div class="mt-3 space-y-1.5">
+                        <?php if ($canBroadcast): ?>
+                            <a href="<?= e(tv_url('go-live.php')) ?>" class="flex items-center justify-between rounded-md bg-rose-600 px-3 py-2 text-white transition hover:bg-rose-500"><span class="text-sm font-black">Go Live</span><span class="text-[10px] font-black uppercase tracking-[0.12em] text-white/70">Stream now</span></a>
+                        <?php endif; ?>
+                        <a href="<?= e(tv_url('dashboard')) ?>" class="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2 transition hover:bg-slate-100"><span class="text-sm font-black text-slate-900">Studio dashboard</span><span class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Open</span></a>
+                        <a href="<?= e(tv_url('dashboard/channels')) ?>" class="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2 transition hover:bg-slate-100"><span class="text-sm font-black text-slate-900">Channels</span><span class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Open</span></a>
+                        <a href="<?= e(tv_url('dashboard/events')) ?>" class="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2 transition hover:bg-slate-100"><span class="text-sm font-black text-slate-900">Events</span><span class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Open</span></a>
+                        <?php if ($canAdminister): ?><a href="<?= e(tv_url('dashboard/settings')) ?>" class="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2 transition hover:bg-slate-100"><span class="text-sm font-black text-slate-900">Settings</span><span class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Open</span></a><?php endif; ?>
                     </div>
                 <?php elseif ($viewer && !$hasTvAccess): ?>
                     <div class="mt-3 space-y-2">

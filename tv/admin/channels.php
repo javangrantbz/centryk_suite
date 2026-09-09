@@ -54,50 +54,50 @@ $channels = $channels->fetchAll();
 tv_render_admin_header('Channels', 'channels');
 ?>
 <div class="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
-    <section class="rounded-[2rem] bg-white p-6 shadow-sm">
-        <h3 class="text-xl font-black">Create Channel</h3>
+    <section class="rounded-lg bg-white p-4 shadow-sm">
+        <h3 class="text-base font-black">Create Channel</h3>
         <p class="mt-2 text-sm text-slate-500">Build branded channels for sports, ceremonies, services, or internal broadcasts.</p>
-        <form method="post" enctype="multipart/form-data" class="mt-6 space-y-4">
+        <form method="post" enctype="multipart/form-data" class="mt-4 space-y-4">
             <?= tv_csrf_field() ?>
             <input type="hidden" name="create_channel" value="1">
-            <div><label class="text-sm font-semibold">Channel Name</label><input name="name" required class="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"></div>
-            <div><label class="text-sm font-semibold">Description</label><textarea name="description" rows="3" class="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"></textarea></div>
+            <div><label class="text-sm font-semibold">Channel Name</label><input name="name" required class="mt-2 w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none"></div>
+            <div><label class="text-sm font-semibold">Description</label><textarea name="description" rows="3" class="mt-2 w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none"></textarea></div>
             <div class="grid gap-4 md:grid-cols-2">
-                <div><label class="text-sm font-semibold">Visibility</label><select name="visibility" class="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"><option value="public">Public</option><option value="authenticated">Authenticated</option><option value="private">Private</option></select></div>
-                <div><label class="text-sm font-semibold">Status</label><select name="status" class="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
+                <div><label class="text-sm font-semibold">Visibility</label><select name="visibility" class="mt-2 w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none"><option value="public">Public</option><option value="authenticated">Authenticated</option><option value="private">Private</option></select></div>
+                <div><label class="text-sm font-semibold">Status</label><select name="status" class="mt-2 w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
             </div>
             <div class="grid gap-4 md:grid-cols-2">
-                <div><label class="text-sm font-semibold">Channel Logo</label><input type="file" name="logo" accept="image/*" class="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm"></div>
-                <div><label class="text-sm font-semibold">Cover Image</label><input type="file" name="cover_image" accept="image/*" class="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm"></div>
+                <div><label class="text-sm font-semibold">Channel Logo</label><input type="file" name="logo" accept="image/*" class="mt-2 w-full rounded-md border border-slate-200 px-3 py-2 text-sm"></div>
+                <div><label class="text-sm font-semibold">Cover Image</label><input type="file" name="cover_image" accept="image/*" class="mt-2 w-full rounded-md border border-slate-200 px-3 py-2 text-sm"></div>
             </div>
-            <button class="rounded-full bg-brand-700 px-5 py-3 text-sm font-bold text-white">Create Channel</button>
+            <button class="rounded-md bg-brand-700 px-4 py-2 text-sm font-bold text-white">Create Channel</button>
         </form>
     </section>
 
-    <section class="rounded-[2rem] bg-white p-6 shadow-sm">
+    <section class="rounded-lg bg-white p-4 shadow-sm">
         <div class="flex items-center justify-between gap-4">
-            <h3 class="text-xl font-black">Channel Directory</h3>
-            <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-slate-600"><?= count($channels) ?> total</span>
+            <h3 class="text-base font-black">Channel Directory</h3>
+            <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-slate-600"><?= count($channels) ?> total</span>
         </div>
-        <div class="mt-6 space-y-5">
+        <div class="mt-4 space-y-3">
             <?php foreach ($channels as $channel): ?>
                 <?php $rawKey = StreamingService::decryptStreamKey($channel['stream_key_encrypted']); ?>
-                <div class="rounded-[1.75rem] border border-slate-200 p-5">
+                <div class="rounded-lg border border-slate-200 p-4">
                     <div class="flex flex-wrap items-start justify-between gap-4">
                         <div>
-                            <p class="text-xs font-bold uppercase tracking-[0.2em] text-brand-700"><?= e($channel['visibility']) ?></p>
+                            <p class="text-xs font-bold uppercase tracking-[0.14em] text-brand-700"><?= e($channel['visibility']) ?></p>
                             <h4 class="mt-2 text-xl font-black"><?= e($channel['name']) ?></h4>
                             <p class="mt-2 text-sm leading-6 text-slate-500"><?= e((string)($channel['description'] ?: 'No description added yet.')) ?></p>
                         </div>
-                        <span class="rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] <?= e(tv_status_badge_class((string)$channel['status'])) ?>"><?= e($channel['status']) ?></span>
+                        <span class="rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] <?= e(tv_status_badge_class((string)$channel['status'])) ?>"><?= e($channel['status']) ?></span>
                     </div>
-                    <div class="mt-5 grid gap-4 md:grid-cols-2">
-                        <div class="rounded-2xl bg-slate-50 p-4">
-                            <p class="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">RTMP Server</p>
+                    <div class="mt-4 grid gap-3 md:grid-cols-2">
+                        <div class="rounded-md bg-slate-50 p-3">
+                            <p class="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">RTMP Server</p>
                             <p class="mt-2 text-sm font-semibold text-slate-800"><?= e(StreamingService::getIngestUrl()) ?></p>
                         </div>
-                        <div class="rounded-2xl bg-slate-50 p-4">
-                            <p class="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Stream Key</p>
+                        <div class="rounded-md bg-slate-50 p-3">
+                            <p class="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Stream Key</p>
                             <p class="mt-2 break-all text-sm font-semibold text-slate-800"><?= e((string)($rawKey ?: 'Not available')) ?></p>
                         </div>
                     </div>
@@ -106,12 +106,12 @@ tv_render_admin_header('Channels', 'channels');
                             <?= tv_csrf_field() ?>
                             <input type="hidden" name="regenerate_key" value="1">
                             <input type="hidden" name="channel_id" value="<?= (int)$channel['id'] ?>">
-                            <button class="rounded-full border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50">Regenerate Stream Key</button>
+                            <button class="rounded-md border border-slate-200 px-3.5 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50">Regenerate Stream Key</button>
                         </form>
                     <?php endif; ?>
                 </div>
             <?php endforeach; ?>
-            <?php if ($channels === []): ?><div class="rounded-2xl border border-dashed border-slate-300 px-4 py-6 text-sm text-slate-500">No channels created yet.</div><?php endif; ?>
+            <?php if ($channels === []): ?><div class="rounded-md border border-dashed border-slate-300 px-4 py-6 text-sm text-slate-500">No channels created yet.</div><?php endif; ?>
         </div>
     </section>
 </div>

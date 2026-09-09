@@ -336,14 +336,31 @@ storage for now): monitor `/var/recordings` and `/var/www/hls/replays` disk
 usage directly - nothing here expires old replays automatically, and video
 fills a disk fast. Revisit object storage if retention needs grow.
 
-## Pay-per-event access (built)
+## Pay-per-view access (built)
 
-`paid` channel visibility now means what it says: `tv_can_watch_event()`
-requires a real, confirmed payment (or org staff / private grant) before a
-`paid` channel's events play, closing a real gap where a `paid` channel's
-events were previously freely watchable by anyone (the event's own
-`visibility` column defaults to `public` and nothing checked the channel's
-`paid` flag at all).
+Pay-per-view is per-event: a broadcaster sets `tv_events.price_amount` from
+the Events page (`admin/events.php` - a "Pay-per-view" field on the create
+form and a price form on every event card). Any priced event makes
+`tv_can_watch_event()` require a real confirmed payment (or org staff /
+private grant / platform admin) before it plays - no dedicated "paid
+channel" needed. The legacy `paid`/`subscription` channel visibility still
+gates the same way; this closed a real gap where a `paid` channel's events
+were previously freely watchable by anyone (the event's own `visibility`
+column defaults to `public` and nothing checked the channel's `paid` flag).
+
+Authoring surface, all in `TvManagementService`:
+
+- `updateEventPricing()` sets or clears a price (blank/0 = free again).
+- `grantEventAccess()` / `revokeEventAccess()` comp a specific Centryk user
+  in by email (writes `tv_event_access` with `granted_by` set, so comps are
+  distinguishable from paid grants) and remove that comp. Revoke refuses to
+  touch anyone who actually paid.
+- `admin/events.php` shows per-event purchase count, gross collected, failed
+  attempts, and an "Access & purchasers" panel listing paid viewers (name,
+  amount, card brand + last4, date) and comped viewers.
+- Non-member viewers see a "BZD x.xx" pill on the event across `index.php`,
+  `organization.php`, and `watch.php`; the paywall shows the event time,
+  channel, and that access doesn't expire.
 
 Charges go straight to OneLink using Centryk's own `onelink_credentials`
 (company-level - see `database/add_tv_payments.sql`), the same endpoint and
@@ -355,11 +372,13 @@ not the source of truth, and a company doesn't need an OnePay store at all
 to have OneLink provisioned.
 
 - `TvPaymentService::chargeForEventAccess()` validates the event actually
-  requires payment and has a price, is idempotent (a user with an existing
-  successful payment is never charged twice), and grants
-  `tv_event_access` ONLY after OneLink's own response confirms success -
-  never from the client's say-so. `api/payments/charge_for_access.php` is
-  the sole caller.
+  has a price, is idempotent (a user with an existing successful payment is
+  never charged twice), holds a per viewer+event `GET_LOCK` around the
+  check + charge so a double submit can't slip two charges through, brakes
+  card-testing (6+ failed attempts from one user in 15 min stops forwarding
+  cards to OneLink), and grants `tv_event_access` ONLY after OneLink's own
+  response confirms success - never from the client's say-so.
+  `api/payments/charge_for_access.php` is the sole caller.
 - `paywall.php` is what `watch.php` redirects a signed-in viewer to instead
   of a flat 403 when the event is paid-gated; card details are POSTed
   straight through to OneLink and never stored, matching OnePay's existing
@@ -624,3 +643,12 @@ pair's type is `relay`, not `srflx`/`host`, when on cellular data.
 - **No automatic replay retention/expiry.** Once disk usage from local
   recordings becomes a real concern, revisit moving to object storage or
   adding a cleanup job for old replays.
+- **PPV currency is BZD only.** `tv_events.price_currency` exists but
+  `TvPaymentService::chargeOneLink()` hardcodes `BZD` (OneLink is a Belize
+  processor). The authoring UI only offers BZD to match.
+- **No refund flow.** A refund is a manual conversation with OneLink;
+  `revokeEventAccess()` deliberately refuses to pull access from anyone who
+  paid. Comped grants can be removed.
+- **PPV recurring billing (`subscription`) still unbuilt** - see above.
+- **OneLink success path still unverified end to end** - only the failure
+  path (fake credentials rejected) has been exercised live.

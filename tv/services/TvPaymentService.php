@@ -149,17 +149,57 @@ class TvPaymentService
             return ['success' => false, 'message' => 'Event not found.'];
         }
 
-        $channel = db()->prepare('SELECT visibility FROM tv_channels WHERE id = :id LIMIT 1');
-        $channel->execute(['id' => $event['channel_id']]);
-        $visibility = (string)$channel->fetchColumn();
-        if ($visibility !== 'paid') {
+        // Pay-per-view is driven by the event's own price now, not by the
+        // channel's visibility - see tv_can_watch_event() and the Events
+        // page pricing form.
+        $price = (float)($event['price_amount'] ?? 0);
+        if ($price <= 0) {
             return ['success' => false, 'message' => 'This event does not require payment.'];
         }
 
-        $price = (float)($event['price_amount'] ?? 0);
-        if ($price <= 0) {
-            return ['success' => false, 'message' => 'This event has no price configured.'];
+        // Cheap brake on card-testing: enough failed attempts from this user
+        // in a short window and we stop forwarding cards to OneLink at all.
+        $recentFails = db()->prepare(
+            "SELECT COUNT(*) FROM tv_payments
+              WHERE user_id = :uid AND status = 'failed'
+                AND created_at > (NOW() - INTERVAL 15 MINUTE)"
+        );
+        $recentFails->execute(['uid' => $userId]);
+        if ((int)$recentFails->fetchColumn() >= 6) {
+            return ['success' => false, 'message' => 'Too many failed attempts. Please wait a few minutes before trying again.'];
         }
+
+        // Serialize concurrent checkouts for the same viewer + event so a
+        // double form submit (or an impatient retry against a slow OneLink)
+        // can't slip two charges past the "already paid" check below.
+        $lockKey = 'tv_ppv_' . $eventId . '_' . $userId;
+        $lock = db()->prepare('SELECT GET_LOCK(:k, 10)');
+        $lock->execute(['k' => $lockKey]);
+        if ((string)$lock->fetchColumn() !== '1') {
+            return ['success' => false, 'message' => 'Another payment attempt is already in progress. Please wait a moment and refresh the page.'];
+        }
+
+        try {
+            return self::runCharge($event, $userId, $price, $card);
+        } finally {
+            try {
+                db()->prepare('SELECT RELEASE_LOCK(:k)')->execute(['k' => $lockKey]);
+            } catch (Throwable $e) {
+                // Lock auto-releases when the DB session ends; never let a
+                // release failure mask the real result or error.
+            }
+        }
+    }
+
+    /**
+     * The charge itself, always run while the caller holds the per
+     * viewer+event advisory lock from chargeForEventAccess().
+     *
+     * @return array{success:bool,message:string}
+     */
+    private static function runCharge(array $event, int $userId, float $price, array $card): array
+    {
+        $eventId = (int)$event['id'];
 
         $already = db()->prepare(
             "SELECT id FROM tv_payments WHERE event_id = :eid AND user_id = :uid AND status = 'succeeded' LIMIT 1"
@@ -167,7 +207,7 @@ class TvPaymentService
         $already->execute(['eid' => $eventId, 'uid' => $userId]);
         if ($already->fetchColumn()) {
             self::ensureAccessGrant($eventId, $userId);
-            return ['success' => true, 'message' => 'Already paid.'];
+            return ['success' => true, 'message' => 'You already have access to this event.'];
         }
 
         $creds = self::credentialsForOrganization((int)$event['organization_id']);

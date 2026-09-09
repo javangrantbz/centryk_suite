@@ -2,6 +2,44 @@
 
 class TvManagementService
 {
+    private const CHANNEL_VISIBILITIES = ['public', 'authenticated', 'private', 'paid', 'subscription'];
+    private const EVENT_VISIBILITIES = ['public', 'authenticated', 'private'];
+
+    /**
+     * Normalizes a pay-per-view price coming from an admin form. An empty
+     * value (or 0) means "free" and returns null; anything else must be a
+     * sane positive amount. Pay-per-view is driven entirely by
+     * tv_events.price_amount - a non-null price is what makes
+     * tv_can_watch_event() gate the event and what paywall.php charges.
+     */
+    private static function normalizePrice($raw): ?float
+    {
+        $value = trim((string)$raw);
+        if ($value === '') {
+            return null;
+        }
+
+        if (!is_numeric($value)) {
+            throw new InvalidArgumentException('Enter the price as a number, for example 15 or 15.00.');
+        }
+
+        $price = round((float)$value, 2);
+        if ($price < 0.0) {
+            throw new InvalidArgumentException('Price cannot be negative. Leave it blank for a free event.');
+        }
+        if ($price === 0.0) {
+            return null;
+        }
+        if ($price < 1.0) {
+            throw new InvalidArgumentException('The minimum pay-per-view price is BZD 1.00. Leave it blank for a free event.');
+        }
+        if ($price > 100000.0) {
+            throw new InvalidArgumentException('That price is too high - the maximum is BZD 100,000.00.');
+        }
+
+        return $price;
+    }
+
     public static function createChannel(int $organizationId, int $userId, array $data): array
     {
         $name = trim((string)($data['name'] ?? ''));
@@ -14,6 +52,9 @@ class TvManagementService
 
         $description = trim((string)($data['description'] ?? ''));
         $visibility = (string)($data['visibility'] ?? 'public');
+        if (!in_array($visibility, self::CHANNEL_VISIBILITIES, true)) {
+            $visibility = 'public';
+        }
         $status = (string)($data['status'] ?? 'active');
 
         $check = db()->prepare('SELECT id FROM tv_channels WHERE organization_id = :organization_id AND slug = :slug LIMIT 1');
@@ -105,16 +146,23 @@ class TvManagementService
             $thumbnail = tv_upload_image('thumbnail', 'events');
         }
 
+        $visibility = (string)($data['visibility'] ?? 'public');
+        if (!in_array($visibility, self::EVENT_VISIBILITIES, true)) {
+            $visibility = 'public';
+        }
+
+        $priceAmount = self::normalizePrice($data['price_amount'] ?? '');
+
         db()->prepare(
             'INSERT INTO tv_events (
                 organization_id, channel_id, title, slug, description, event_type,
-                thumbnail_path, start_at, end_at, status, visibility, viewer_limit,
-                replay_url, replay_status, duration_seconds, is_replay_enabled, created_by,
+                thumbnail_path, start_at, end_at, status, visibility, price_amount, price_currency,
+                viewer_limit, replay_url, replay_status, duration_seconds, is_replay_enabled, created_by,
                 created_at, updated_at
              ) VALUES (
                 :organization_id, :channel_id, :title, :slug, :description, :event_type,
-                :thumbnail_path, :start_at, :end_at, :status, :visibility, :viewer_limit,
-                :replay_url, :replay_status, :duration_seconds, :is_replay_enabled, :created_by,
+                :thumbnail_path, :start_at, :end_at, :status, :visibility, :price_amount, "BZD",
+                :viewer_limit, :replay_url, :replay_status, :duration_seconds, :is_replay_enabled, :created_by,
                 NOW(), NOW()
              )'
         )->execute([
@@ -128,7 +176,8 @@ class TvManagementService
             'start_at' => (string)($data['start_at'] ?? ''),
             'end_at' => trim((string)($data['end_at'] ?? '')) ?: null,
             'status' => (string)($data['status'] ?? 'scheduled'),
-            'visibility' => (string)($data['visibility'] ?? 'public'),
+            'visibility' => $visibility,
+            'price_amount' => $priceAmount,
             'viewer_limit' => (int)($data['viewer_limit'] ?? 0) ?: null,
             'replay_url' => trim((string)($data['replay_url'] ?? '')) ?: null,
             'replay_status' => trim((string)($data['replay_status'] ?? 'none')) ?: 'none',
@@ -202,6 +251,134 @@ class TvManagementService
         tv_record_audit($organizationId, $userId, 'update_event_status', 'event', $eventId, [
             'status' => $status,
         ]);
+    }
+
+    /**
+     * Sets (or clears) an event's pay-per-view price. A blank/zero price
+     * makes the event free again; a real price makes tv_can_watch_event()
+     * route non-member viewers through paywall.php. Never touches the
+     * channel - PPV is per-event.
+     */
+    public static function updateEventPricing(int $organizationId, int $eventId, $rawPrice, int $userId): ?float
+    {
+        $check = db()->prepare('SELECT id FROM tv_events WHERE id = :event_id AND organization_id = :organization_id LIMIT 1');
+        $check->execute([
+            'event_id' => $eventId,
+            'organization_id' => $organizationId,
+        ]);
+        if (!$check->fetch()) {
+            throw new InvalidArgumentException('Event was not found.');
+        }
+
+        $price = self::normalizePrice($rawPrice);
+
+        db()->prepare(
+            'UPDATE tv_events
+             SET price_amount = :price, price_currency = "BZD", updated_at = NOW()
+             WHERE id = :event_id AND organization_id = :organization_id'
+        )->execute([
+            'price' => $price,
+            'event_id' => $eventId,
+            'organization_id' => $organizationId,
+        ]);
+
+        tv_record_audit($organizationId, $userId, 'update_event_pricing', 'event', $eventId, [
+            'price_amount' => $price,
+        ]);
+
+        return $price;
+    }
+
+    /**
+     * Comps a specific Centryk user into a paid event without a charge -
+     * press, sponsors, staff on another company, etc. Writes the same
+     * tv_event_access row a successful payment would, but stamped with
+     * granted_by so it can be told apart (and revoked) later.
+     */
+    public static function grantEventAccess(int $organizationId, int $eventId, string $email, int $grantedByUserId): string
+    {
+        $email = trim($email);
+        if ($email === '') {
+            throw new InvalidArgumentException('Enter the email address of the person to grant access to.');
+        }
+
+        $event = db()->prepare('SELECT id FROM tv_events WHERE id = :event_id AND organization_id = :organization_id LIMIT 1');
+        $event->execute([
+            'event_id' => $eventId,
+            'organization_id' => $organizationId,
+        ]);
+        if (!$event->fetch()) {
+            throw new InvalidArgumentException('Event was not found.');
+        }
+
+        $target = db()->prepare('SELECT id, first_name, last_name FROM users WHERE email = :email AND status = "active" LIMIT 1');
+        $target->execute(['email' => $email]);
+        $row = $target->fetch();
+        if (!$row) {
+            throw new InvalidArgumentException('No active Centryk account uses that email address. They need to sign up for Centryk first.');
+        }
+
+        $insert = db()->prepare(
+            'INSERT IGNORE INTO tv_event_access (event_id, user_id, granted_by, created_at)
+             VALUES (:event_id, :user_id, :granted_by, NOW())'
+        );
+        $insert->execute([
+            'event_id' => $eventId,
+            'user_id' => (int)$row['id'],
+            'granted_by' => $grantedByUserId,
+        ]);
+
+        $name = trim(((string)($row['first_name'] ?? '')) . ' ' . ((string)($row['last_name'] ?? '')));
+        $name = $name !== '' ? $name : $email;
+
+        if ($insert->rowCount() === 0) {
+            throw new InvalidArgumentException($name . ' already has access to this event.');
+        }
+
+        tv_record_audit($organizationId, $grantedByUserId, 'grant_event_access', 'event', $eventId, [
+            'user_id' => (int)$row['id'],
+            'email' => $email,
+        ]);
+
+        return $name;
+    }
+
+    /**
+     * Removes a comped access grant. Deliberately refuses to touch anyone
+     * who actually paid - a refund is a separate, manual conversation.
+     */
+    public static function revokeEventAccess(int $organizationId, int $eventId, int $targetUserId, int $userId): void
+    {
+        $paid = db()->prepare(
+            "SELECT 1 FROM tv_payments WHERE event_id = :event_id AND user_id = :user_id AND status = 'succeeded' LIMIT 1"
+        );
+        $paid->execute([
+            'event_id' => $eventId,
+            'user_id' => $targetUserId,
+        ]);
+        if ($paid->fetchColumn()) {
+            throw new InvalidArgumentException('This viewer paid for access - it cannot be removed here.');
+        }
+
+        $delete = db()->prepare(
+            'DELETE a FROM tv_event_access a
+             JOIN tv_events e ON e.id = a.event_id
+             WHERE a.event_id = :event_id
+               AND a.user_id = :user_id
+               AND e.organization_id = :organization_id
+               AND a.granted_by IS NOT NULL'
+        );
+        $delete->execute([
+            'event_id' => $eventId,
+            'user_id' => $targetUserId,
+            'organization_id' => $organizationId,
+        ]);
+
+        if ($delete->rowCount() > 0) {
+            tv_record_audit($organizationId, $userId, 'revoke_event_access', 'event', $eventId, [
+                'user_id' => $targetUserId,
+            ]);
+        }
     }
 
     public static function updateSportsScore(int $organizationId, int $eventId, int $homeScore, int $awayScore, int $userId): void

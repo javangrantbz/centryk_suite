@@ -16,7 +16,7 @@ if (!tv_can_watch_event($event, $user)) {
     if (!$user) {
         tv_redirect(centryk_public_url() . '/login.php?redirect=' . urlencode(tv_current_path()));
     }
-    if ((string)($event['channel_visibility'] ?? '') === 'paid' && (float)($event['price_amount'] ?? 0) > 0) {
+    if ((float)($event['price_amount'] ?? 0) > 0) {
         tv_redirect(tv_url('paywall.php?event=' . $event['slug']));
     }
     http_response_code(403);
@@ -47,6 +47,11 @@ $related = $related->fetchAll();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= e($event['title']) ?> | <?= e((string)tv_config('app_name')) ?></title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { theme: { extend: { colors: { brand: {
+            DEFAULT: '#0f766e', 50: '#f0fdfa', 100: '#ccfbf1', 200: '#99f6e4', 500: '#14b8a6', 600: '#0d9488', 700: '#0f766e', 900: '#134e4a'
+        } } } } };
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap'); body{font-family:'Plus Jakarta Sans',sans-serif;}</style>
 </head>
@@ -63,11 +68,14 @@ $related = $related->fetchAll();
                     </div>
                     <div class="flex flex-wrap gap-2">
                         <span class="rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] <?= e(tv_status_badge_class($liveStatus)) ?>"><?= e($liveStatus) ?></span>
+                        <?php if ((float)($event['price_amount'] ?? 0) > 0): ?>
+                            <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-emerald-700">Pay-per-view &middot; <?= e($event['price_currency'] ?? 'BZD') ?> <?= number_format((float)$event['price_amount'], 2) ?></span>
+                        <?php endif; ?>
                         <span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-slate-600"><?= e($event['visibility']) ?></span>
                     </div>
                 </div>
 
-                <div class="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                <div class="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
                     <div id="playerArea" class="aspect-video bg-black">
                         <?php if ($playbackUrl): ?>
                             <video id="tvPlayer" controls playsinline class="h-full w-full bg-black"></video>
@@ -90,7 +98,7 @@ $related = $related->fetchAll();
                     </div>
                 </div>
 
-                <div class="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div class="mt-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
                     <h2 class="text-base font-black">Event Information</h2>
                     <p class="mt-3 text-sm leading-6 text-slate-600"><?= nl2br(e((string)($event['description'] ?: 'No description added yet.'))) ?></p>
                     <?php if (!empty($event['sport'])): ?>
@@ -103,12 +111,12 @@ $related = $related->fetchAll();
             </section>
 
             <aside class="space-y-4">
-                <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
                     <p class="text-[10px] font-black uppercase tracking-[0.18em] text-brand-700">Organization</p>
                     <h2 class="mt-2 text-lg font-black"><?= e($event['organization_name']) ?></h2>
                     <a href="<?= e(tv_url($event['organization_slug'])) ?>" class="mt-3 inline-flex rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700">Visit organization page</a>
                 </div>
-                <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
                     <p class="text-[10px] font-black uppercase tracking-[0.18em] text-brand-700">Related Events</p>
                     <div class="mt-3 space-y-2">
                         <?php foreach ($related as $item): ?>

@@ -512,8 +512,16 @@ function tv_can_watch_event(array $event, ?array $user = null): bool
     // considered. Defaults to 'public' if a future caller forgets this
     // join - keep joining it in any new caller, or a paid channel's content
     // reopens to everyone through that one code path.
+    // Two things can make an event cost money: a legacy 'paid'/'subscription'
+    // channel (whole-channel gate), or - the normal case now - a per-event
+    // price set from the Events page (tv_events.price_amount). Either one
+    // routes a non-member viewer through paywall.php. Every caller of this
+    // function selects e.* (so price_amount rides along) and joins
+    // c.visibility AS channel_visibility - keep both in any new caller or a
+    // paid event reopens to everyone through that path.
     $channelVisibility = (string)($event['channel_visibility'] ?? 'public');
-    $requiresPayment = in_array($channelVisibility, ['paid', 'subscription'], true);
+    $requiresPayment = in_array($channelVisibility, ['paid', 'subscription'], true)
+        || (float)($event['price_amount'] ?? 0) > 0;
 
     $visibility = (string)($event['visibility'] ?? 'public');
     if ($visibility === 'public' && !$requiresPayment) {
