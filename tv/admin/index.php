@@ -49,7 +49,7 @@ tv_render_admin_header('Dashboard', 'dashboard');
 ?>
 
 <section class="grid gap-3 xl:grid-cols-[minmax(0,1.55fr)_300px]">
-    <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
         <div class="flex flex-wrap items-start justify-between gap-3">
             <div class="min-w-0">
                 <p class="text-[10px] font-black uppercase tracking-[0.18em] text-brand-700">Studio Overview</p>
@@ -142,7 +142,7 @@ tv_render_admin_header('Dashboard', 'dashboard');
         </div>
     </div>
 
-    <aside class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <aside class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
         <p class="text-[10px] font-black uppercase tracking-[0.18em] text-brand-700">Quick Routes</p>
         <h2 class="mt-1 text-base font-black tracking-tight text-slate-900">Studio actions</h2>
         <div class="mt-3 space-y-2">
@@ -175,7 +175,7 @@ tv_render_admin_header('Dashboard', 'dashboard');
 </section>
 
 <section class="grid gap-3 xl:grid-cols-2">
-    <section class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <section class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
         <div class="flex items-center justify-between gap-3">
             <div>
                 <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Live Desk</p>
@@ -201,7 +201,7 @@ tv_render_admin_header('Dashboard', 'dashboard');
         </div>
     </section>
 
-    <section class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <section class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
         <div class="flex items-center justify-between gap-3">
             <div>
                 <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Programming</p>
@@ -225,7 +225,7 @@ tv_render_admin_header('Dashboard', 'dashboard');
         </div>
     </section>
 
-    <section class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <section class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
         <div class="flex items-center justify-between gap-3">
             <div>
                 <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Channels</p>
@@ -259,7 +259,7 @@ tv_render_admin_header('Dashboard', 'dashboard');
         </div>
     </section>
 
-    <section class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <section class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
         <div class="flex items-center justify-between gap-3">
             <div>
                 <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Audit Trail</p>

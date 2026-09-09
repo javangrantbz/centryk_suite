@@ -34,26 +34,26 @@ $paymentReady = TvPaymentService::isPaymentConfigured((int)$event['organization_
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = { theme: { extend: { colors: { brand: {
-            DEFAULT: '#0f766e', 50: '#f0fdfa', 100: '#ccfbf1', 500: '#14b8a6', 600: '#0d9488', 700: '#0f766e', 900: '#134e4a'
+            DEFAULT: '#0f766e', 50: '#f0fdfa', 100: '#ccfbf1', 200: '#99f6e4', 500: '#14b8a6', 600: '#0d9488', 700: '#0f766e', 900: '#134e4a'
         } } } } };
     </script>
     <style>@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap'); body{font-family:'Plus Jakarta Sans',sans-serif;}</style>
 </head>
 <body class="bg-slate-50 text-slate-900">
     <?php tv_render_page_header('Unlock Event', (string)$event['title'], [['href' => tv_url('watch/' . $event['slug']), 'label' => 'Back']]); ?>
-    <main class="mx-auto flex min-h-[calc(100vh-60px)] max-w-md flex-col justify-center px-4 py-6">
-        <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+    <main class="mx-auto flex min-h-[calc(100vh-56px)] max-w-md flex-col justify-center px-4 py-6">
+        <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <p class="text-[10px] font-black uppercase tracking-[0.18em] text-brand-700"><?= e($event['organization_name']) ?></p>
-            <h1 class="mt-1 text-xl font-black tracking-tight"><?= e($event['title']) ?></h1>
+            <h1 class="mt-1 text-lg font-black tracking-tight"><?= e($event['title']) ?></h1>
             <p class="mt-1 text-sm text-slate-500"><?= e(tv_format_datetime($event['start_at'])) ?> &middot; <?= e((string)$event['channel_name']) ?></p>
-            <p class="mt-4 text-3xl font-black text-slate-900"><?= e($event['price_currency'] ?? 'BZD') ?> <?= number_format($price, 2) ?></p>
+            <p class="mt-3 text-2xl font-black text-slate-900"><?= e($event['price_currency'] ?? 'BZD') ?> <?= number_format($price, 2) ?></p>
             <p class="mt-1 text-sm text-slate-500">One-time payment for this event<?= $hasReplay ? ', including the replay once it&rsquo;s ready' : '' ?>. Your access doesn&rsquo;t expire.</p>
 
             <?php if (!$paymentReady): ?>
-                <div class="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">This organization hasn't finished setting up payments yet. Please check back later.</div>
+                <div class="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">This organization hasn't finished setting up payments yet. Please check back later.</div>
             <?php else: ?>
-                <div id="payError" class="mt-5 hidden rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700"></div>
-                <form id="payForm" class="mt-5 space-y-4">
+                <div id="payError" class="mt-4 hidden rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700"></div>
+                <form id="payForm" class="mt-4 space-y-3">
                     <?= tv_csrf_field() ?>
                     <input type="hidden" name="event_id" value="<?= (int)$event['id'] ?>">
                     <div>

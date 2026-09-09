@@ -18,6 +18,13 @@ function tv_render_page_header(string $title, string $subtitle = '', array $acti
     // viewer's own org membership (if any) is irrelevant to what's on screen.
     $organizations = $showOrgSwitcher ? tv_user_organizations() : [];
     $activeOrganization = $showOrgSwitcher ? tv_active_organization() : null;
+    $hasStudio = $user && tv_has_app_access((int)$user['id']);
+    $navPath = strtok(tv_current_path(), '?');
+    $navItems = $hasStudio ? [
+        ['label' => 'Studio', 'href' => tv_url('dashboard'), 'match' => '/dashboard'],
+        ['label' => 'Channels', 'href' => tv_url('dashboard/channels'), 'match' => '/dashboard/channels'],
+        ['label' => 'Events', 'href' => tv_url('dashboard/events'), 'match' => '/dashboard/events'],
+    ] : [];
     ?>
     <div class="border-b border-slate-200 bg-white">
         <div class="mx-auto flex max-w-[1400px] items-center gap-3 px-4 py-2.5 lg:px-5">
@@ -26,11 +33,19 @@ function tv_render_page_header(string $title, string $subtitle = '', array $acti
             </a>
             <div class="h-5 w-px bg-slate-200"></div>
             <div class="min-w-0">
-                <p class="truncate text-sm font-bold text-slate-900"><?= e($title) ?></p>
+                <a href="<?= e(tv_url()) ?>" class="block truncate text-sm font-bold text-slate-900 transition hover:text-brand-700"><?= e($title) ?></a>
                 <?php if ($subtitle !== ''): ?>
                     <p class="truncate text-[11px] font-semibold text-slate-400"><?= e($subtitle) ?></p>
                 <?php endif; ?>
             </div>
+
+            <?php if ($navItems): ?>
+                <nav class="ml-2 hidden items-center gap-0.5 md:flex">
+                    <?php foreach ($navItems as $n): $on = str_ends_with(rtrim($navPath, '/'), $n['match']); ?>
+                        <a href="<?= e($n['href']) ?>" class="rounded-md px-2.5 py-1.5 text-xs font-bold transition <?= $on ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900' ?>"><?= e($n['label']) ?></a>
+                    <?php endforeach; ?>
+                </nav>
+            <?php endif; ?>
 
             <div class="ml-auto flex items-center gap-2">
                 <?php if (count($organizations) > 1): ?>
@@ -65,15 +80,18 @@ function tv_render_page_header(string $title, string $subtitle = '', array $acti
                                 <p class="text-[10px] leading-tight text-slate-400"><?= e((string)($user['email'] ?? '')) ?></p>
                             </div>
                         </button>
-                        <div id="tvPageUserMenu" class="absolute right-0 top-full z-50 mt-2 hidden w-56 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                        <div id="tvPageUserMenu" class="absolute right-0 top-full z-50 mt-2 hidden w-56 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg">
                             <div class="border-b border-slate-100 px-3.5 py-3">
                                 <p class="truncate text-sm font-bold text-slate-900"><?= e($displayName) ?></p>
                                 <p class="mt-0.5 truncate text-[11px] text-slate-400"><?= e((string)($user['email'] ?? '')) ?></p>
                             </div>
                             <div class="p-1.5">
                                 <a href="<?= e(centryk_public_url() . '/profile.php') ?>" class="flex items-center rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900">Account</a>
-                                <?php if (tv_has_app_access((int)$user['id'])): ?>
+                                <?php if ($hasStudio): ?>
+                                    <div class="my-1 border-t border-slate-100 md:hidden"></div>
                                     <a href="<?= e(tv_url('dashboard')) ?>" class="flex items-center rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900">Studio</a>
+                                    <a href="<?= e(tv_url('dashboard/channels')) ?>" class="flex items-center rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 md:hidden">Channels</a>
+                                    <a href="<?= e(tv_url('dashboard/events')) ?>" class="flex items-center rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 md:hidden">Events</a>
                                 <?php endif; ?>
                                 <button id="tvPageLogoutBtn" class="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-600 transition hover:bg-red-50 hover:text-red-600">Sign out</button>
                             </div>

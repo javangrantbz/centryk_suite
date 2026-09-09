@@ -55,7 +55,7 @@ $turnCredentials = StreamingService::generateTurnCredentials('user' . (int)$user
 <body class="bg-slate-50 text-slate-900">
     <?php tv_render_page_header('Go Live', (string)$organization['name'], [['href' => tv_url('dashboard/channels'), 'label' => 'Channels']], true); ?>
     <main class="mx-auto max-w-[920px] px-4 py-3 lg:px-5">
-        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
             <h1 class="text-lg font-black tracking-tight">Go Live</h1>
             <p class="mt-1 text-sm text-slate-500">Stream from this browser. Choose a channel, set a title if needed, and start the broadcast.</p>
 
@@ -75,7 +75,7 @@ $turnCredentials = StreamingService::generateTurnCredentials('user' . (int)$user
                 <?php if ($channel && $whipBase === ''): ?>
                     <div class="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">Browser streaming is not configured yet (missing `STREAM_WHIP_URL`).</div>
                 <?php elseif ($channel): ?>
-                    <div class="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-black">
+                    <div class="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-black">
                         <video id="preview" autoplay playsinline muted class="aspect-video w-full bg-black"></video>
                     </div>
 

@@ -27,8 +27,10 @@ function tv_render_admin_header(string $pageTitle, string $active): void
                     fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'] },
                     colors: {
                         brand: {
+                            DEFAULT: '#0f766e',
                             50: '#f0fdfa',
                             100: '#ccfbf1',
+                            200: '#99f6e4',
                             500: '#14b8a6',
                             600: '#0d9488',
                             700: '#0f766e',
@@ -87,7 +89,7 @@ function tv_render_admin_header(string $pageTitle, string $active): void
                             <p class="text-[10px] leading-tight text-slate-400"><?= e((string)($user['email'] ?? '')) ?></p>
                         </div>
                     </button>
-                    <div id="tvUserMenu" class="absolute right-0 top-full z-50 mt-2 hidden w-56 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                    <div id="tvUserMenu" class="absolute right-0 top-full z-50 mt-2 hidden w-56 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg">
                         <div class="border-b border-slate-100 px-3.5 py-3">
                             <p class="truncate text-sm font-bold text-slate-900"><?= e($displayName) ?></p>
                             <p class="mt-0.5 truncate text-[11px] text-slate-400"><?= e((string)($user['email'] ?? '')) ?></p>
@@ -138,7 +140,7 @@ function tv_render_admin_header(string $pageTitle, string $active): void
     <?php endif; ?>
 
     <div class="mx-auto grid max-w-[1400px] gap-3 px-4 py-3 lg:grid-cols-[220px_minmax(0,1fr)] lg:px-5">
-        <aside class="rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm">
+        <aside class="rounded-lg border border-slate-200 bg-white p-2.5 shadow-sm">
             <nav class="space-y-1">
                 <?php
                 $links = [

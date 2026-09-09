@@ -25,33 +25,33 @@ $organizations = db()->query(
 tv_render_admin_header('Platform Admin', 'platform');
 ?>
 <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-    <div class="rounded-[1.75rem] bg-white p-5 shadow-sm"><p class="text-xs font-bold uppercase tracking-[0.25em] text-slate-400">Organizations</p><p class="mt-3 text-4xl font-black"><?= $orgCount ?></p></div>
-    <div class="rounded-[1.75rem] bg-white p-5 shadow-sm"><p class="text-xs font-bold uppercase tracking-[0.25em] text-slate-400">Active Organizations</p><p class="mt-3 text-4xl font-black"><?= $activeOrgCount ?></p></div>
-    <div class="rounded-[1.75rem] bg-white p-5 shadow-sm"><p class="text-xs font-bold uppercase tracking-[0.25em] text-slate-400">Live Streams</p><p class="mt-3 text-4xl font-black"><?= $liveCount ?></p></div>
-    <div class="rounded-[1.75rem] bg-white p-5 shadow-sm"><p class="text-xs font-bold uppercase tracking-[0.25em] text-slate-400">Total Users</p><p class="mt-3 text-4xl font-black"><?= $userCount ?></p></div>
-    <div class="rounded-[1.75rem] bg-white p-5 shadow-sm"><p class="text-xs font-bold uppercase tracking-[0.25em] text-slate-400">Current Viewers</p><p class="mt-3 text-4xl font-black"><?= $currentViewers ?></p></div>
-    <div class="rounded-[1.75rem] bg-white p-5 shadow-sm"><p class="text-xs font-bold uppercase tracking-[0.25em] text-slate-400">Events Today</p><p class="mt-3 text-4xl font-black"><?= $todayCount ?></p></div>
+    <div class="rounded-lg bg-white p-5 shadow-sm"><p class="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Organizations</p><p class="mt-3 text-3xl font-black"><?= $orgCount ?></p></div>
+    <div class="rounded-lg bg-white p-5 shadow-sm"><p class="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Active Organizations</p><p class="mt-3 text-3xl font-black"><?= $activeOrgCount ?></p></div>
+    <div class="rounded-lg bg-white p-5 shadow-sm"><p class="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Live Streams</p><p class="mt-3 text-3xl font-black"><?= $liveCount ?></p></div>
+    <div class="rounded-lg bg-white p-5 shadow-sm"><p class="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Total Users</p><p class="mt-3 text-3xl font-black"><?= $userCount ?></p></div>
+    <div class="rounded-lg bg-white p-5 shadow-sm"><p class="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Current Viewers</p><p class="mt-3 text-3xl font-black"><?= $currentViewers ?></p></div>
+    <div class="rounded-lg bg-white p-5 shadow-sm"><p class="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Events Today</p><p class="mt-3 text-3xl font-black"><?= $todayCount ?></p></div>
 </div>
 
-<section class="mt-8 rounded-[2rem] bg-white p-6 shadow-sm">
-    <h3 class="text-xl font-black">Organizations</h3>
-    <div class="mt-6 overflow-x-auto">
+<section class="mt-4 rounded-lg bg-white p-4 shadow-sm">
+    <h3 class="text-base font-black">Organizations</h3>
+    <div class="mt-4 overflow-x-auto">
         <table class="min-w-full text-left text-sm">
             <thead class="text-slate-500">
                 <tr>
-                    <th class="pb-3 pr-4">Organization</th>
-                    <th class="pb-3 pr-4">Company</th>
-                    <th class="pb-3 pr-4">Status</th>
-                    <th class="pb-3 pr-4">Public URL</th>
+                    <th class="pb-2 pr-3">Organization</th>
+                    <th class="pb-2 pr-3">Company</th>
+                    <th class="pb-2 pr-3">Status</th>
+                    <th class="pb-2 pr-3">Public URL</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
                 <?php foreach ($organizations as $organization): ?>
                     <tr>
-                        <td class="py-3 pr-4 font-semibold text-slate-800"><?= e($organization['name']) ?></td>
-                        <td class="py-3 pr-4 text-slate-600"><?= e($organization['company_name']) ?></td>
-                        <td class="py-3 pr-4 text-slate-600"><?= e($organization['status']) ?></td>
-                        <td class="py-3 pr-4 text-brand-700"><a href="<?= e(tv_url($organization['slug'])) ?>"><?= e(tv_url($organization['slug'])) ?></a></td>
+                        <td class="py-2 pr-3 font-semibold text-slate-800"><?= e($organization['name']) ?></td>
+                        <td class="py-2 pr-3 text-slate-600"><?= e($organization['company_name']) ?></td>
+                        <td class="py-2 pr-3 text-slate-600"><?= e($organization['status']) ?></td>
+                        <td class="py-2 pr-3 text-brand-700"><a href="<?= e(tv_url($organization['slug'])) ?>"><?= e(tv_url($organization['slug'])) ?></a></td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>

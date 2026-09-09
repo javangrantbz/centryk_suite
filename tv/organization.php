@@ -45,7 +45,7 @@ $channels = $channels->fetchAll();
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = { theme: { extend: { colors: { brand: {
-            DEFAULT: '#0f766e', 50: '#f0fdfa', 100: '#ccfbf1', 500: '#14b8a6', 600: '#0d9488', 700: '#0f766e', 900: '#134e4a'
+            DEFAULT: '#0f766e', 50: '#f0fdfa', 100: '#ccfbf1', 200: '#99f6e4', 500: '#14b8a6', 600: '#0d9488', 700: '#0f766e', 900: '#134e4a'
         } } } } };
     </script>
     <style>@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap'); body{font-family:'Plus Jakarta Sans',sans-serif;}</style>
@@ -55,7 +55,7 @@ $channels = $channels->fetchAll();
 
     <main class="mx-auto max-w-[1400px] space-y-4 px-4 py-3 lg:px-5">
         <section class="grid gap-3 xl:grid-cols-[1.15fr_0.85fr]">
-            <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
                 <p class="text-[10px] font-black uppercase tracking-[0.18em] text-brand-700"><?= e((string)$organization['company_name']) ?></p>
                 <h1 class="mt-1 text-lg font-black tracking-tight text-slate-900"><?= e($organization['name']) ?></h1>
                 <p class="mt-2 text-sm leading-6 text-slate-500"><?= e((string)($organization['description'] ?: 'Organization-owned broadcasts, livestreams, and replay experiences.')) ?></p>
@@ -67,15 +67,15 @@ $channels = $channels->fetchAll();
                 </div>
             </div>
             <div class="grid gap-3 sm:grid-cols-2">
-                <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
                     <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Website</p>
                     <p class="mt-2 text-sm font-semibold text-slate-900 break-all"><?= e((string)($organization['website'] ?: 'Not set')) ?></p>
                 </div>
-                <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
                     <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Email</p>
                     <p class="mt-2 text-sm font-semibold text-slate-900 break-all"><?= e((string)($organization['email'] ?: 'Not set')) ?></p>
                 </div>
-                <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:col-span-2">
+                <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:col-span-2">
                     <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Access</p>
                     <p class="mt-2 text-sm leading-6 text-slate-600">Public events are open to anyone. Authenticated events are available to signed-in Centryk users. Private events require explicit viewer access.</p>
                 </div>

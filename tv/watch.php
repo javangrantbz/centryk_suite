@@ -49,7 +49,7 @@ $related = $related->fetchAll();
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = { theme: { extend: { colors: { brand: {
-            DEFAULT: '#0f766e', 50: '#f0fdfa', 100: '#ccfbf1', 500: '#14b8a6', 600: '#0d9488', 700: '#0f766e', 900: '#134e4a'
+            DEFAULT: '#0f766e', 50: '#f0fdfa', 100: '#ccfbf1', 200: '#99f6e4', 500: '#14b8a6', 600: '#0d9488', 700: '#0f766e', 900: '#134e4a'
         } } } } };
     </script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
@@ -75,7 +75,7 @@ $related = $related->fetchAll();
                     </div>
                 </div>
 
-                <div class="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                <div class="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
                     <div id="playerArea" class="aspect-video bg-black">
                         <?php if ($playbackUrl): ?>
                             <video id="tvPlayer" controls playsinline class="h-full w-full bg-black"></video>
@@ -98,7 +98,7 @@ $related = $related->fetchAll();
                     </div>
                 </div>
 
-                <div class="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div class="mt-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
                     <h2 class="text-base font-black">Event Information</h2>
                     <p class="mt-3 text-sm leading-6 text-slate-600"><?= nl2br(e((string)($event['description'] ?: 'No description added yet.'))) ?></p>
                     <?php if (!empty($event['sport'])): ?>
@@ -111,12 +111,12 @@ $related = $related->fetchAll();
             </section>
 
             <aside class="space-y-4">
-                <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
                     <p class="text-[10px] font-black uppercase tracking-[0.18em] text-brand-700">Organization</p>
                     <h2 class="mt-2 text-lg font-black"><?= e($event['organization_name']) ?></h2>
                     <a href="<?= e(tv_url($event['organization_slug'])) ?>" class="mt-3 inline-flex rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700">Visit organization page</a>
                 </div>
-                <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
                     <p class="text-[10px] font-black uppercase tracking-[0.18em] text-brand-700">Related Events</p>
                     <div class="mt-3 space-y-2">
                         <?php foreach ($related as $item): ?>
