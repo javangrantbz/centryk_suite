@@ -689,32 +689,6 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
         </div>
         <?php endif; ?>
 
-        <!-- Centryk Business workspace — one panel replacing the per-module
-             cards. Sits directly under Your Apps so the free core stays the
-             first thing a viewer sees. Hidden until selectCompany() finds the
-             chosen company holds ≥1 package. -->
-        <section id="bizWorkspace" class="mb-8 hidden overflow-hidden rounded-2xl border border-violet-200 bg-white shadow-sm">
-            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-violet-100 bg-violet-50/60 px-5 py-3">
-                <div class="flex items-center gap-2.5">
-                    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white">
-                        <i data-lucide="briefcase" class="h-4 w-4"></i>
-                    </span>
-                    <div>
-                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-violet-600/80">Centryk Business</div>
-                        <div class="text-base font-black tracking-tight text-slate-900">Workspace</div>
-                    </div>
-                    <span id="bizWsBadge" class="ml-1 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-violet-700"></span>
-                </div>
-                <a id="bizWsOpen" href="business.php" class="inline-flex items-center gap-1.5 rounded-xl border border-violet-200 bg-violet-50 px-3.5 py-2 text-xs font-black uppercase tracking-[0.12em] text-violet-700 transition hover:bg-violet-100 hover:text-violet-800">
-                    Open workspace <i data-lucide="arrow-right" class="h-3.5 w-3.5"></i>
-                </a>
-            </div>
-            <div class="space-y-3 p-5">
-                <div id="bizWsModules" class="flex flex-nowrap gap-1.5 overflow-x-auto pb-0.5"></div>
-                <div id="bizWsStats" class="grid grid-cols-2 gap-2 sm:grid-cols-3"></div>
-            </div>
-        </section>
-
         <!-- ── Available Through Your Organization ───────────────────────── -->
         <?php if ($hasCompany && $availableApps): ?>
         <div class="mb-8">
@@ -725,9 +699,9 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
         </div>
         <?php endif; ?>
 
-        <!-- ── Explore Centryk ──────────────────────────────────────────── -->
+        <!-- ── Explore Other Centryk Applications ────────────────────────── -->
         <div>
-            <?php $_secHead('Explore Centryk'); ?>
+            <?php $_secHead('Explore Other Centryk Applications'); ?>
             <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
 
             <!-- Centryk TV — compact -->
@@ -785,36 +759,64 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
             </div>
         </div>
 
-    <!-- Centryk Business strip — under the apps, set by selectCompany() for an
-         admin/manager of the selected company. Three states: an "active" status
-         line for a company that holds a package; a higher-tier upsell panel for
-         one that holds none; and a one-line "show" chip once that upsell has
-         been dismissed. -->
-    <div id="bizPromo" class="mt-5 hidden border-t border-slate-100 px-1 pt-4">
+    <!-- No-company notice (shown when no companies exist) -->
+    <div id="noCompanyNotice" class="hidden mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">
+        You're not part of any company yet. Contact your admin to be added.
+    </div>
+    </section>
 
-        <!-- Upsell panel — graphite treatment to read as a premium tier, not
-             just another app card. -->
-        <div id="bizPromoUpsell" class="hidden overflow-hidden rounded-2xl border border-slate-300 bg-slate-100 shadow-sm">
+    <!-- ── Centryk Business ─────────────────────────────────────────────────
+         Deliberately its own block, outside the free-apps card above: the
+         workspace panel for a company that holds a package, otherwise the
+         paid-tier upsell (or its collapsed "show" chip once dismissed). Set by
+         selectCompany() for an admin/manager of the selected company. -->
+    <section id="bizWorkspace" class="mt-4 hidden overflow-hidden rounded-2xl border border-violet-200 bg-white shadow-sm">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-violet-100 bg-violet-50/60 px-5 py-3">
+            <div class="flex items-center gap-2.5">
+                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white">
+                    <i data-lucide="briefcase" class="h-4 w-4"></i>
+                </span>
+                <div>
+                    <div class="text-[10px] font-black uppercase tracking-[0.16em] text-violet-600/80">Centryk Business</div>
+                    <div class="text-base font-black tracking-tight text-slate-900">Workspace</div>
+                </div>
+                <span id="bizWsBadge" class="ml-1 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-violet-700"></span>
+            </div>
+            <a id="bizWsOpen" href="business.php" class="inline-flex items-center gap-1.5 rounded-xl border border-violet-200 bg-violet-50 px-3.5 py-2 text-xs font-black uppercase tracking-[0.12em] text-violet-700 transition hover:bg-violet-100 hover:text-violet-800">
+                Open workspace <i data-lucide="arrow-right" class="h-3.5 w-3.5"></i>
+            </a>
+        </div>
+        <div class="space-y-3 p-5">
+            <div id="bizWsModules" class="flex flex-nowrap gap-1.5 overflow-x-auto pb-0.5"></div>
+            <div id="bizWsStats" class="grid grid-cols-2 gap-2 sm:grid-cols-3"></div>
+        </div>
+    </section>
+
+    <div id="bizPromo" class="mt-4 hidden">
+
+        <!-- Upsell panel — saturated violet so it clearly reads as a paid tier
+             that offers more, not another free app card. -->
+        <div id="bizPromoUpsell" class="hidden overflow-hidden rounded-2xl bg-[linear-gradient(120deg,#4c1d95_0%,#5b21b6_45%,#6d28d9_100%)] shadow-lg shadow-violet-900/25 ring-1 ring-violet-400/30">
             <div class="flex flex-wrap items-start gap-4 p-4 sm:p-5">
-                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-700 text-white">
+                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15 text-white ring-1 ring-white/25">
                     <i data-lucide="briefcase" class="h-5 w-5"></i>
                 </span>
                 <div class="min-w-0 flex-1">
                     <div class="flex flex-wrap items-center gap-2">
-                        <span class="text-sm font-black tracking-tight text-slate-900">Do more with Centryk Business</span>
-                        <span class="rounded-full bg-slate-700 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.12em] text-white">Paid tier</span>
+                        <span class="text-sm font-black tracking-tight text-white">Do more with Centryk Business</span>
+                        <span class="rounded-full bg-amber-300 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.12em] text-amber-950">Paid tier</span>
                     </div>
-                    <p class="mt-1 text-xs font-semibold leading-relaxed text-slate-600">
+                    <p class="mt-1 text-xs font-semibold leading-relaxed text-violet-100/90">
                         Manage your business on a different level — receivables and customer ledgers,
                         bank reconciliation, field sales &amp; delivery routes, double-entry accounting
                         and consolidated reporting across every company in your group. Built for
                         corporate and larger operations.
                     </p>
                     <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
-                        <a href="business.php" class="inline-flex items-center gap-1.5 rounded-xl bg-slate-800 px-3.5 py-2 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-slate-900">
+                        <a href="business.php" class="inline-flex items-center gap-1.5 rounded-xl bg-white px-3.5 py-2 text-xs font-black uppercase tracking-[0.12em] text-violet-800 shadow-sm transition hover:bg-violet-50">
                             See Centryk Business <i data-lucide="arrow-right" class="h-3.5 w-3.5"></i>
                         </a>
-                        <button type="button" id="bizPromoDismiss" class="text-[11px] font-bold text-slate-400 underline decoration-slate-300 underline-offset-2 transition hover:text-slate-600">
+                        <button type="button" id="bizPromoDismiss" class="text-[11px] font-bold text-violet-200/80 underline decoration-violet-300/40 underline-offset-2 transition hover:text-white">
                             Not interested for now
                         </button>
                     </div>
@@ -823,12 +825,12 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
         </div>
 
         <!-- "Show" chip — replaces the panel once dismissed; brings it back. -->
-        <button type="button" id="bizPromoReveal" class="hidden items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-bold text-slate-400 transition hover:border-slate-300 hover:text-slate-600">
+        <button type="button" id="bizPromoReveal" class="hidden items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.1em] text-violet-700 transition hover:bg-violet-100">
             <i data-lucide="briefcase" class="h-3.5 w-3.5 shrink-0"></i>
-            Centryk Business <span class="text-slate-300">·</span> show
+            Centryk Business <span class="text-violet-300">·</span> show
         </button>
 
-        <div id="bizPromoActive" class="hidden items-center gap-2 text-xs font-semibold text-slate-500">
+        <div id="bizPromoActive" class="hidden items-center gap-2 rounded-xl border border-violet-100 bg-white px-4 py-2.5 text-xs font-semibold text-slate-500 shadow-sm">
             <i data-lucide="briefcase" class="h-3.5 w-3.5 shrink-0 text-violet-600"></i>
             <span class="min-w-0 flex-1">
                 <span class="font-black text-violet-700">Centryk Business active</span><span id="bizPromoActiveList"></span> &middot;
@@ -836,12 +838,6 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
             </span>
         </div>
     </div>
-
-    <!-- No-company notice (shown when no companies exist) -->
-    <div id="noCompanyNotice" class="hidden mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">
-        You're not part of any company yet. Contact your admin to be added.
-    </div>
-    </section>
 
 
 </main>
