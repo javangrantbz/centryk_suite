@@ -92,20 +92,22 @@ streaming server itself, never by a logged-in browser session, so
 as an `Authorization: Bearer` header or a `key` request field, and fails
 closed (401) if the secret is unconfigured or wrong.
 
-## Payment flow (built, one-time `paid` access only)
+## Payment flow (built, one-time pay-per-view only)
 
-1. `watch.php` redirects a signed-in viewer to `paywall.php` instead of a
-   flat 403 when `tv_can_watch_event()` fails specifically because the
-   channel is `paid` and the event has a price.
-2. `paywall.php` posts card details to `api/payments/charge_for_access.php`,
+1. A broadcaster sets `tv_events.price_amount` on the Events page. Any
+   priced event is pay-per-view (the channel does not need to be `paid`).
+2. `watch.php` redirects a signed-in viewer to `paywall.php` instead of a
+   flat 403 when the event has a price and `tv_can_watch_event()` fails.
+3. `paywall.php` posts card details to `api/payments/charge_for_access.php`,
    which calls `TvPaymentService::chargeForEventAccess()`.
-3. That charges OneLink directly using the organization's company-level
-   `onelink_credentials` (see `streaming-server.md`'s "Pay-per-event access"
+4. That charges OneLink directly using the organization's company-level
+   `onelink_credentials` (see `streaming-server.md`'s "Pay-per-view access"
    section for why this doesn't go through OnePay).
-4. Only a confirmed OneLink success inserts a `tv_event_access` row -
+5. Only a confirmed OneLink success inserts a `tv_event_access` row -
    `tv_can_watch_event()` needs no changes for the paid case, since a
    successful payment is indistinguishable from any other private-grant
-   access it already checks.
+   access it already checks. Admins can also insert a comped
+   `tv_event_access` row by email from the Events page.
 
 `subscription` visibility is explicitly out of scope - see
 `streaming-server.md`.

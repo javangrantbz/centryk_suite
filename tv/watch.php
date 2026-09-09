@@ -16,7 +16,7 @@ if (!tv_can_watch_event($event, $user)) {
     if (!$user) {
         tv_redirect(centryk_public_url() . '/login.php?redirect=' . urlencode(tv_current_path()));
     }
-    if ((string)($event['channel_visibility'] ?? '') === 'paid' && (float)($event['price_amount'] ?? 0) > 0) {
+    if ((float)($event['price_amount'] ?? 0) > 0) {
         tv_redirect(tv_url('paywall.php?event=' . $event['slug']));
     }
     http_response_code(403);
@@ -63,6 +63,9 @@ $related = $related->fetchAll();
                     </div>
                     <div class="flex flex-wrap gap-2">
                         <span class="rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] <?= e(tv_status_badge_class($liveStatus)) ?>"><?= e($liveStatus) ?></span>
+                        <?php if ((float)($event['price_amount'] ?? 0) > 0): ?>
+                            <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-emerald-700">Pay-per-view &middot; <?= e($event['price_currency'] ?? 'BZD') ?> <?= number_format((float)$event['price_amount'], 2) ?></span>
+                        <?php endif; ?>
                         <span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-slate-600"><?= e($event['visibility']) ?></span>
                     </div>
                 </div>

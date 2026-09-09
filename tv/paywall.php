@@ -11,7 +11,8 @@ if (!$user) {
 
 $slug = trim((string)($_GET['event'] ?? ''));
 $event = $slug !== '' ? tv_find_event_by_slug($slug) : null;
-if (!$event || (string)($event['channel_visibility'] ?? '') !== 'paid') {
+$price = (float)($event['price_amount'] ?? 0);
+if (!$event || $price <= 0) {
     http_response_code(404);
     exit('Event not found.');
 }
@@ -20,11 +21,7 @@ if (tv_can_watch_event($event, $user)) {
     tv_redirect(tv_url('watch/' . $event['slug']));
 }
 
-$price = (float)($event['price_amount'] ?? 0);
-if ($price <= 0) {
-    http_response_code(404);
-    exit('This event is not available for purchase.');
-}
+$hasReplay = !empty($event['is_replay_enabled']);
 
 $paymentReady = TvPaymentService::isPaymentConfigured((int)$event['organization_id']);
 ?>
@@ -43,8 +40,9 @@ $paymentReady = TvPaymentService::isPaymentConfigured((int)$event['organization_
         <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
             <p class="text-[10px] font-black uppercase tracking-[0.18em] text-brand-700"><?= e($event['organization_name']) ?></p>
             <h1 class="mt-1 text-xl font-black tracking-tight"><?= e($event['title']) ?></h1>
+            <p class="mt-1 text-sm text-slate-500"><?= e(tv_format_datetime($event['start_at'])) ?> &middot; <?= e((string)$event['channel_name']) ?></p>
             <p class="mt-4 text-3xl font-black text-slate-900"><?= e($event['price_currency'] ?? 'BZD') ?> <?= number_format($price, 2) ?></p>
-            <p class="mt-1 text-sm text-slate-500">One-time payment for access to this event.</p>
+            <p class="mt-1 text-sm text-slate-500">One-time payment for this event<?= $hasReplay ? ', including the replay once it&rsquo;s ready' : '' ?>. Your access doesn&rsquo;t expire.</p>
 
             <?php if (!$paymentReady): ?>
                 <div class="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">This organization hasn't finished setting up payments yet. Please check back later.</div>

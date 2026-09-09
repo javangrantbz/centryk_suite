@@ -30,6 +30,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             tv_flash('success', 'Sports score updated.');
             tv_redirect(tv_url('dashboard/events'));
         }
+
+        if (isset($_POST['price_event'])) {
+            if (!tv_role_at_least('broadcaster')) {
+                throw new RuntimeException('Broadcaster access required to change pricing.');
+            }
+            $newPrice = TvManagementService::updateEventPricing((int)$organization['id'], (int)$_POST['event_id'], $_POST['price_amount'] ?? '', (int)$user['id']);
+            tv_flash('success', $newPrice === null
+                ? 'This event is now free to watch.'
+                : 'Pay-per-view price set to BZD ' . number_format($newPrice, 2) . '.');
+            tv_redirect(tv_url('dashboard/events'));
+        }
+
+        if (isset($_POST['grant_access'])) {
+            if (!tv_role_at_least('admin')) {
+                throw new RuntimeException('Admin access required to grant free access.');
+            }
+            $who = TvManagementService::grantEventAccess((int)$organization['id'], (int)$_POST['event_id'], (string)($_POST['email'] ?? ''), (int)$user['id']);
+            tv_flash('success', $who . ' can now watch this event for free.');
+            tv_redirect(tv_url('dashboard/events'));
+        }
+
+        if (isset($_POST['revoke_access'])) {
+            if (!tv_role_at_least('admin')) {
+                throw new RuntimeException('Admin access required to remove access.');
+            }
+            TvManagementService::revokeEventAccess((int)$organization['id'], (int)$_POST['event_id'], (int)$_POST['user_id'], (int)$user['id']);
+            tv_flash('success', 'Free access removed.');
+            tv_redirect(tv_url('dashboard/events'));
+        }
     } catch (Throwable $e) {
         tv_flash('error', $e->getMessage());
         tv_redirect(tv_url('dashboard/events'));
@@ -67,8 +96,70 @@ $events = db()->prepare($sql);
 $events->execute($params);
 $events = $events->fetchAll();
 
+// Pay-per-view supporting data: whether OneLink can actually take money for
+// this org, plus who has paid / been comped into each event.
+$paymentConfigured = TvPaymentService::isPaymentConfigured((int)$organization['id']);
+$hasPricedEvent = false;
+foreach ($events as $e) {
+    if ((float)($e['price_amount'] ?? 0) > 0) {
+        $hasPricedEvent = true;
+        break;
+    }
+}
+
+$purchasersByEvent = [];
+$failedCountByEvent = [];
+$compsByEvent = [];
+if ($hasPricedEvent) {
+    $paymentsStmt = db()->prepare(
+        'SELECT p.event_id, p.amount, p.currency, p.status, p.card_brand, p.card_last4, p.created_at,
+                u.first_name, u.last_name, u.email
+         FROM tv_payments p
+         JOIN users u ON u.id = p.user_id
+         WHERE p.organization_id = :organization_id
+         ORDER BY p.created_at DESC'
+    );
+    $paymentsStmt->execute(['organization_id' => (int)$organization['id']]);
+    foreach ($paymentsStmt->fetchAll() as $row) {
+        $eid = (int)$row['event_id'];
+        if ($row['status'] === 'succeeded') {
+            $purchasersByEvent[$eid][] = $row;
+        } elseif ($row['status'] === 'failed') {
+            $failedCountByEvent[$eid] = ($failedCountByEvent[$eid] ?? 0) + 1;
+        }
+    }
+
+    $compsStmt = db()->prepare(
+        'SELECT a.event_id, a.user_id, a.created_at,
+                u.first_name, u.last_name, u.email,
+                g.first_name AS granted_by_first, g.last_name AS granted_by_last
+         FROM tv_event_access a
+         JOIN tv_events e ON e.id = a.event_id
+         JOIN users u ON u.id = a.user_id
+         LEFT JOIN users g ON g.id = a.granted_by
+         WHERE e.organization_id = :organization_id AND a.granted_by IS NOT NULL
+         ORDER BY a.created_at DESC'
+    );
+    $compsStmt->execute(['organization_id' => (int)$organization['id']]);
+    foreach ($compsStmt->fetchAll() as $row) {
+        $compsByEvent[(int)$row['event_id']][] = $row;
+    }
+}
+
+$viewerName = static function (array $row): string {
+    $name = trim(((string)($row['first_name'] ?? '')) . ' ' . ((string)($row['last_name'] ?? '')));
+    return $name !== '' ? $name : (string)($row['email'] ?? 'Unknown');
+};
+
 tv_render_admin_header('Events', 'events');
 ?>
+
+<?php if ($hasPricedEvent && !$paymentConfigured): ?>
+    <div class="rounded-[1.5rem] border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+        <p class="font-bold">Pay-per-view isn't ready to take payments yet.</p>
+        <p class="mt-1 leading-6">You've set a price on at least one event, but OneLink card processing hasn't been set up for <?= e((string)($organization['company_name'] ?? $organization['name'])) ?> yet. Viewers will see a "check back later" message on the payment screen until Centryk finishes connecting OneLink for your company.</p>
+    </div>
+<?php endif; ?>
 <div class="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
     <section class="rounded-[2rem] bg-white p-6 shadow-sm">
         <h3 class="text-xl font-black">Create Event</h3>
@@ -107,6 +198,17 @@ tv_render_admin_header('Events', 'events');
                     </div>
                 </div>
                 <p class="mt-3 text-[11px] leading-5 text-slate-500">Your organization members can manage and watch their own events. Use visibility to control who outside the organization can access the event.</p>
+            </div>
+            <div class="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
+                <p class="text-xs font-bold uppercase tracking-[0.2em] text-brand-700">Pay-per-view</p>
+                <p class="mt-2 text-[11px] leading-5 text-slate-500">Charge viewers a one-time fee to watch. Leave the price blank (or 0) for a free event. Your own organization members always watch free; everyone else pays once and keeps access, including the replay.</p>
+                <div class="mt-3 flex items-center gap-2">
+                    <span class="text-sm font-semibold text-slate-500">BZD</span>
+                    <input name="price_amount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" class="w-40 rounded-2xl border border-slate-200 px-4 py-3 text-sm">
+                </div>
+                <?php if (!$paymentConfigured): ?>
+                    <p class="mt-2 text-[11px] font-semibold leading-5 text-amber-700">Heads up: OneLink card processing isn't connected for your company yet, so viewers won't be able to pay until Centryk sets it up.</p>
+                <?php endif; ?>
             </div>
             <div><label class="text-sm font-semibold">Thumbnail</label><input type="file" name="thumbnail" accept="image/*" class="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm"></div>
             <label class="flex items-start gap-3 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
@@ -158,6 +260,9 @@ tv_render_admin_header('Events', 'events');
                         </div>
                         <div class="flex flex-col items-end gap-1.5">
                             <span class="rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] <?= e(tv_status_badge_class((string)$event['status'])) ?>"><?= e($event['status']) ?></span>
+                            <?php if ((float)($event['price_amount'] ?? 0) > 0): ?>
+                                <span class="rounded-full bg-brand-100 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-brand-700">PPV &middot; BZD <?= number_format((float)$event['price_amount'], 2) ?></span>
+                            <?php endif; ?>
                             <?php if (!empty($event['is_replay_enabled'])): ?>
                                 <span class="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Replay: <?= e((string)($event['replay_status'] ?: 'none')) ?></span>
                             <?php endif; ?>
@@ -195,6 +300,103 @@ tv_render_admin_header('Events', 'events');
                             <button class="rounded-full border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700">Update Score</button>
                         </form>
                     <?php endif; ?>
+
+                    <?php
+                    $eid = (int)$event['id'];
+                    $priceAmount = (float)($event['price_amount'] ?? 0);
+                    $purchasers = $purchasersByEvent[$eid] ?? [];
+                    $comps = $compsByEvent[$eid] ?? [];
+                    $gross = 0.0;
+                    foreach ($purchasers as $p) { $gross += (float)$p['amount']; }
+                    $failed = $failedCountByEvent[$eid] ?? 0;
+                    ?>
+                    <div class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <p class="text-xs font-bold uppercase tracking-[0.2em] text-brand-700">Pay-per-view</p>
+                                <p class="mt-1 text-sm text-slate-600">
+                                    <?php if ($priceAmount > 0): ?>
+                                        <span class="font-bold text-slate-900"><?= count($purchasers) ?></span> purchase<?= count($purchasers) === 1 ? '' : 's' ?>
+                                        &middot; <span class="font-bold text-slate-900">BZD <?= number_format($gross, 2) ?></span> collected
+                                        <?php if (count($comps) > 0): ?> &middot; <?= count($comps) ?> free<?php endif; ?>
+                                        <?php if ($failed > 0): ?> &middot; <span class="text-rose-600"><?= (int)$failed ?> failed</span><?php endif; ?>
+                                    <?php else: ?>
+                                        Free event. Set a price to charge non-members for access.
+                                    <?php endif; ?>
+                                </p>
+                            </div>
+                            <form method="post" class="flex items-end gap-2">
+                                <?= tv_csrf_field() ?>
+                                <input type="hidden" name="price_event" value="1">
+                                <input type="hidden" name="event_id" value="<?= $eid ?>">
+                                <div>
+                                    <label class="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Price (BZD)</label>
+                                    <input name="price_amount" type="number" min="0" step="0.01" inputmode="decimal" value="<?= $priceAmount > 0 ? number_format($priceAmount, 2, '.', '') : '' ?>" placeholder="0.00" class="mt-1 w-28 rounded-full border border-slate-200 px-4 py-2 text-sm">
+                                </div>
+                                <button class="rounded-full bg-slate-900 px-4 py-2 text-sm font-bold text-white"><?= $priceAmount > 0 ? 'Update price' : 'Set price' ?></button>
+                            </form>
+                        </div>
+
+                        <?php if ($priceAmount > 0 && (count($purchasers) > 0 || count($comps) > 0 || tv_role_at_least('admin'))): ?>
+                            <details class="mt-3 border-t border-slate-200 pt-3">
+                                <summary class="cursor-pointer text-sm font-bold text-slate-700">Access &amp; purchasers</summary>
+                                <div class="mt-3 space-y-3">
+                                    <?php if (count($purchasers) > 0): ?>
+                                        <div class="overflow-x-auto">
+                                            <table class="w-full text-left text-sm">
+                                                <thead><tr class="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400"><th class="pb-1 pr-3">Viewer</th><th class="pb-1 pr-3">Paid</th><th class="pb-1 pr-3">Card</th><th class="pb-1">When</th></tr></thead>
+                                                <tbody>
+                                                <?php foreach ($purchasers as $p): ?>
+                                                    <tr class="border-t border-slate-100">
+                                                        <td class="py-1.5 pr-3"><?= e($viewerName($p)) ?><span class="block text-[11px] text-slate-400"><?= e((string)$p['email']) ?></span></td>
+                                                        <td class="py-1.5 pr-3 font-semibold">BZD <?= number_format((float)$p['amount'], 2) ?></td>
+                                                        <td class="py-1.5 pr-3 text-slate-500"><?= e(trim(((string)($p['card_brand'] ?? '')) . ' ' . ($p['card_last4'] ? '····' . $p['card_last4'] : ''))) ?: '—' ?></td>
+                                                        <td class="py-1.5 text-slate-500"><?= e(tv_format_datetime($p['created_at'], 'M j, Y g:i A')) ?></td>
+                                                    </tr>
+                                                <?php endforeach; ?>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <?php foreach ($comps as $c): ?>
+                                        <div class="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white px-3 py-2">
+                                            <div class="text-sm">
+                                                <span class="font-semibold text-slate-800"><?= e($viewerName($c)) ?></span>
+                                                <span class="text-slate-400">· <?= e((string)$c['email']) ?></span>
+                                                <span class="block text-[11px] text-slate-400">Free access
+                                                    <?php $gb = trim(((string)($c['granted_by_first'] ?? '')) . ' ' . ((string)($c['granted_by_last'] ?? ''))); ?>
+                                                    <?= $gb !== '' ? 'from ' . e($gb) : '' ?> · <?= e(tv_format_datetime($c['created_at'], 'M j, Y')) ?></span>
+                                            </div>
+                                            <?php if (tv_role_at_least('admin')): ?>
+                                                <form method="post" onsubmit="return confirm('Remove this person\'s free access?');">
+                                                    <?= tv_csrf_field() ?>
+                                                    <input type="hidden" name="revoke_access" value="1">
+                                                    <input type="hidden" name="event_id" value="<?= $eid ?>">
+                                                    <input type="hidden" name="user_id" value="<?= (int)$c['user_id'] ?>">
+                                                    <button class="rounded-full border border-slate-200 px-3 py-1 text-xs font-bold text-slate-600 hover:bg-slate-50">Remove</button>
+                                                </form>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php endforeach; ?>
+
+                                    <?php if (tv_role_at_least('admin')): ?>
+                                        <form method="post" class="flex flex-wrap items-end gap-2 border-t border-slate-200 pt-3">
+                                            <?= tv_csrf_field() ?>
+                                            <input type="hidden" name="grant_access" value="1">
+                                            <input type="hidden" name="event_id" value="<?= $eid ?>">
+                                            <div class="flex-1">
+                                                <label class="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Grant free access by email</label>
+                                                <input name="email" type="email" required placeholder="person@example.com" class="mt-1 w-full rounded-full border border-slate-200 px-4 py-2 text-sm">
+                                            </div>
+                                            <button class="rounded-full border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700">Grant access</button>
+                                        </form>
+                                        <p class="text-[11px] leading-5 text-slate-400">They need a Centryk account with that email. Members of your organization already watch free and don't need this.</p>
+                                    <?php endif; ?>
+                                </div>
+                            </details>
+                        <?php endif; ?>
+                    </div>
                 </div>
             <?php endforeach; ?>
             <?php if ($events === []): ?><div class="rounded-2xl border border-dashed border-slate-300 px-4 py-6 text-sm text-slate-500">No events match the current filters.</div><?php endif; ?>

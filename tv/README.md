@@ -18,12 +18,17 @@ Centryk TV is a Centryk suite app for organization-owned live streaming and digi
   with the same signed-URL scheme as live, once the streaming server's
   cron-driven recording job reports in (`api/stream/replay_status.php`,
   `should_record_replay.php`)
-- pay-per-event access for `paid` channels, charged directly through
-  OneLink using the organization's own `onelink_credentials`
-  (`paywall.php`, `api/payments/charge_for_access.php`) - and a fix to a
-  real pre-existing gap where a `paid` channel's events were previously
-  watchable by anyone, since nothing actually checked the channel's
-  payment requirement
+- pay-per-view: a broadcaster sets a one-time price on any event from the
+  Events page (no dedicated "paid channel" needed - PPV is driven by
+  `tv_events.price_amount`). Non-members pay once through OneLink using the
+  organization's own `onelink_credentials` and keep access (including the
+  replay); organization members always watch free. Admins see purchasers +
+  revenue per event and can comp specific people in by email. See
+  `paywall.php`, `api/payments/charge_for_access.php`,
+  `TvManagementService`, `TvPaymentService`. Legacy `paid`/`subscription`
+  channel visibility still gates the same way. Fixes a real pre-existing
+  gap where a `paid` channel's events were watchable by anyone because
+  nothing checked the channel's payment requirement.
 - watch page heartbeat and viewer counting
 - analytics, audit logging, seed data, and deployment docs
 - browser "Go Live" via WHIP (`go-live.php`), with a header shortcut for

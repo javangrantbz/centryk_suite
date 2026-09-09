@@ -12,7 +12,7 @@ if (!$organization) {
 }
 
 $liveEvents = db()->prepare(
-    'SELECT e.title, e.slug, e.start_at
+    'SELECT e.title, e.slug, e.start_at, e.price_amount
      FROM tv_events e
      JOIN tv_stream_keys sk ON sk.id = e.stream_key_id
      WHERE e.organization_id = :organization_id
@@ -24,11 +24,11 @@ $liveEvents = db()->prepare(
 $liveEvents->execute(['organization_id' => (int)$organization['id']]);
 $liveEvents = $liveEvents->fetchAll();
 
-$upcoming = db()->prepare('SELECT title, slug, start_at, visibility FROM tv_events WHERE organization_id = :organization_id AND status = "scheduled" ORDER BY start_at ASC LIMIT 6');
+$upcoming = db()->prepare('SELECT title, slug, start_at, visibility, price_amount FROM tv_events WHERE organization_id = :organization_id AND status = "scheduled" ORDER BY start_at ASC LIMIT 6');
 $upcoming->execute(['organization_id' => (int)$organization['id']]);
 $upcoming = $upcoming->fetchAll();
 
-$replays = db()->prepare('SELECT title, slug, replay_status FROM tv_events WHERE organization_id = :organization_id AND replay_status = "available" ORDER BY updated_at DESC LIMIT 6');
+$replays = db()->prepare('SELECT title, slug, replay_status, price_amount FROM tv_events WHERE organization_id = :organization_id AND replay_status = "available" ORDER BY updated_at DESC LIMIT 6');
 $replays->execute(['organization_id' => (int)$organization['id']]);
 $replays = $replays->fetchAll();
 
@@ -83,6 +83,7 @@ $channels = $channels->fetchAll();
                 <?php foreach ($liveEvents as $event): ?>
                     <a href="<?= e(tv_url('watch/' . $event['slug'])) ?>" class="rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition hover:bg-slate-50">
                         <span class="rounded-full bg-rose-100 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-rose-700">Live</span>
+                        <?php if ((float)($event['price_amount'] ?? 0) > 0): ?><span class="ml-1 rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">BZD <?= number_format((float)$event['price_amount'], 2) ?></span><?php endif; ?>
                         <h3 class="mt-3 text-base font-black text-slate-900"><?= e($event['title']) ?></h3>
                         <p class="mt-1 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500"><?= e(tv_format_datetime($event['start_at'])) ?></p>
                     </a>
@@ -97,7 +98,9 @@ $channels = $channels->fetchAll();
                 <div class="mt-3 space-y-2">
                     <?php foreach ($upcoming as $event): ?>
                         <a href="<?= e(tv_url('watch/' . $event['slug'])) ?>" class="block rounded-lg border border-slate-200 bg-white px-3 py-2.5 shadow-sm transition hover:bg-slate-50">
-                            <p class="text-[10px] font-black uppercase tracking-[0.12em] text-sky-700"><?= e($event['visibility']) ?></p>
+                            <p class="text-[10px] font-black uppercase tracking-[0.12em] text-sky-700">
+                                <?= e($event['visibility']) ?><?php if ((float)($event['price_amount'] ?? 0) > 0): ?> <span class="text-emerald-700">&middot; BZD <?= number_format((float)$event['price_amount'], 2) ?></span><?php endif; ?>
+                            </p>
                             <h3 class="mt-1 text-sm font-bold text-slate-900"><?= e($event['title']) ?></h3>
                             <p class="mt-1 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500"><?= e(tv_format_datetime($event['start_at'])) ?></p>
                         </a>
@@ -109,7 +112,9 @@ $channels = $channels->fetchAll();
                 <div class="mt-3 space-y-2">
                     <?php foreach ($replays as $replay): ?>
                         <a href="<?= e(tv_url('watch/' . $replay['slug'])) ?>" class="block rounded-lg border border-slate-200 bg-white px-3 py-2.5 shadow-sm transition hover:bg-slate-50">
-                            <p class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500"><?= e($replay['replay_status']) ?></p>
+                            <p class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
+                                <?= e($replay['replay_status']) ?><?php if ((float)($replay['price_amount'] ?? 0) > 0): ?> <span class="text-emerald-700">&middot; BZD <?= number_format((float)$replay['price_amount'], 2) ?></span><?php endif; ?>
+                            </p>
                             <h3 class="mt-1 text-sm font-bold text-slate-900"><?= e($replay['title']) ?></h3>
                         </a>
                     <?php endforeach; ?>

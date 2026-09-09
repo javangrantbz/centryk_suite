@@ -5,7 +5,7 @@ require_once __DIR__ . '/includes/page-shell.php';
 tv_gate_coming_soon();
 
 $liveNow = db()->query(
-    'SELECT e.title, e.slug, e.start_at, o.name AS organization_name, o.slug AS organization_slug
+    'SELECT e.title, e.slug, e.start_at, e.price_amount, o.name AS organization_name, o.slug AS organization_slug
      FROM tv_events e
      JOIN tv_organizations o ON o.id = e.organization_id
      JOIN tv_stream_keys sk ON sk.id = e.stream_key_id
@@ -15,7 +15,7 @@ $liveNow = db()->query(
 )->fetchAll();
 
 $upcoming = db()->query(
-    'SELECT e.title, e.slug, e.start_at, e.event_type, o.name AS organization_name, o.slug AS organization_slug
+    'SELECT e.title, e.slug, e.start_at, e.event_type, e.price_amount, o.name AS organization_name, o.slug AS organization_slug
      FROM tv_events e
      JOIN tv_organizations o ON o.id = e.organization_id
      WHERE e.status = "scheduled" AND o.status = "active"
@@ -32,7 +32,7 @@ $organizations = db()->query(
 )->fetchAll();
 
 $replays = db()->query(
-    'SELECT e.title, e.slug, e.replay_status, o.name AS organization_name
+    'SELECT e.title, e.slug, e.replay_status, e.price_amount, o.name AS organization_name
      FROM tv_events e
      JOIN tv_organizations o ON o.id = e.organization_id
      WHERE e.replay_status = "available" AND o.status = "active"
@@ -135,7 +135,10 @@ if ($activeOrganization) {
                         <?php foreach ($liveNow as $event): ?>
                             <a href="<?= e(tv_url('watch/' . $event['slug'])) ?>" class="rounded-lg border border-slate-200 bg-slate-50 p-3 transition hover:bg-white">
                                 <div class="flex items-center justify-between">
-                                    <span class="rounded-md bg-rose-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-rose-700">Live</span>
+                                    <span class="flex items-center gap-1">
+                                        <span class="rounded-md bg-rose-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-rose-700">Live</span>
+                                        <?php if ((float)($event['price_amount'] ?? 0) > 0): ?><span class="rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">BZD <?= number_format((float)$event['price_amount'], 2) ?></span><?php endif; ?>
+                                    </span>
                                     <span class="text-[10px] font-semibold text-slate-400"><?= e(tv_format_datetime($event['start_at'], 'M j, g:i A')) ?></span>
                                 </div>
                                 <h3 class="mt-2 text-sm font-bold text-slate-900"><?= e($event['title']) ?></h3>
@@ -149,7 +152,7 @@ if ($activeOrganization) {
                         <?php foreach ($upcoming as $event): ?>
                             <a href="<?= e(tv_url('watch/' . $event['slug'])) ?>" class="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 transition hover:bg-white">
                                 <div class="min-w-0">
-                                    <p class="text-[10px] font-black uppercase tracking-[0.12em] text-brand"><?= e($event['event_type']) ?></p>
+                                    <p class="text-[10px] font-black uppercase tracking-[0.12em] text-brand"><?= e($event['event_type']) ?><?php if ((float)($event['price_amount'] ?? 0) > 0): ?> <span class="text-emerald-700">&middot; BZD <?= number_format((float)$event['price_amount'], 2) ?></span><?php endif; ?></p>
                                     <h3 class="truncate text-sm font-bold text-slate-900"><?= e($event['title']) ?></h3>
                                     <p class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400"><?= e($event['organization_name']) ?></p>
                                 </div>
@@ -163,6 +166,7 @@ if ($activeOrganization) {
                         <?php foreach ($replays as $replay): ?>
                             <a href="<?= e(tv_url('watch/' . $replay['slug'])) ?>" class="rounded-lg border border-slate-200 bg-slate-50 p-2.5 transition hover:bg-white">
                                 <span class="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600"><?= e($replay['replay_status']) ?></span>
+                                <?php if ((float)($replay['price_amount'] ?? 0) > 0): ?><span class="ml-1 rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">BZD <?= number_format((float)$replay['price_amount'], 2) ?></span><?php endif; ?>
                                 <h3 class="mt-2 text-sm font-bold text-slate-900"><?= e($replay['title']) ?></h3>
                                 <p class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400"><?= e($replay['organization_name']) ?></p>
                             </a>
