@@ -252,6 +252,8 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
 <!-- Main -->
 <main class="mx-auto max-w-6xl px-6 pt-1 pb-5">
 
+    <?php $holidayStripStyle = 'card'; include __DIR__ . '/holiday_strip.php'; ?>
+
     <!-- Company profile card -->
     <div id="coProfileCard" style="--i:0" class="dash-fade mb-1 overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white shadow-sm">
 
