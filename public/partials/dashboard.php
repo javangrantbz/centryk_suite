@@ -782,21 +782,49 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
             </div>
         </div>
 
-    <!-- Centryk Business strip — a quiet line under the apps, set by
-         selectCompany() for an admin/manager of the selected company. Two
-         states: an "active" status line for a company that holds a package,
-         or a dismissible upsell for one that holds none. -->
+    <!-- Centryk Business strip — under the apps, set by selectCompany() for an
+         admin/manager of the selected company. Three states: an "active" status
+         line for a company that holds a package; a higher-tier upsell panel for
+         one that holds none; and a one-line "show" chip once that upsell has
+         been dismissed. -->
     <div id="bizPromo" class="mt-5 hidden border-t border-slate-100 px-1 pt-4">
-        <div id="bizPromoUpsell" class="hidden items-center gap-2 text-xs font-semibold text-slate-400">
-            <i data-lucide="briefcase" class="h-3.5 w-3.5 shrink-0"></i>
-            <span class="min-w-0 flex-1">
-                Need receivables, bank reconciliation, delivery routes or multi-company reporting?
-                <a href="business.php" class="font-bold text-slate-600 underline decoration-slate-300 underline-offset-2 hover:text-violet-700 hover:decoration-violet-400">See Centryk Business</a>.
-            </span>
-            <button type="button" id="bizPromoDismiss" title="Dismiss" class="shrink-0 rounded p-1 text-slate-300 transition hover:text-slate-500">
-                <i data-lucide="x" class="h-3.5 w-3.5"></i>
-            </button>
+
+        <!-- Upsell panel — graphite treatment to read as a premium tier, not
+             just another app card. -->
+        <div id="bizPromoUpsell" class="hidden overflow-hidden rounded-2xl border border-slate-300 bg-slate-100 shadow-sm">
+            <div class="flex flex-wrap items-start gap-4 p-4 sm:p-5">
+                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-700 text-white">
+                    <i data-lucide="briefcase" class="h-5 w-5"></i>
+                </span>
+                <div class="min-w-0 flex-1">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="text-sm font-black tracking-tight text-slate-900">Do more with Centryk Business</span>
+                        <span class="rounded-full bg-slate-700 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.12em] text-white">Paid tier</span>
+                    </div>
+                    <p class="mt-1 text-xs font-semibold leading-relaxed text-slate-600">
+                        Manage your business on a different level — receivables and customer ledgers,
+                        bank reconciliation, field sales &amp; delivery routes, double-entry accounting
+                        and consolidated reporting across every company in your group. Built for
+                        corporate and larger operations.
+                    </p>
+                    <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+                        <a href="business.php" class="inline-flex items-center gap-1.5 rounded-xl bg-slate-800 px-3.5 py-2 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-slate-900">
+                            See Centryk Business <i data-lucide="arrow-right" class="h-3.5 w-3.5"></i>
+                        </a>
+                        <button type="button" id="bizPromoDismiss" class="text-[11px] font-bold text-slate-400 underline decoration-slate-300 underline-offset-2 transition hover:text-slate-600">
+                            Not interested for now
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
+
+        <!-- "Show" chip — replaces the panel once dismissed; brings it back. -->
+        <button type="button" id="bizPromoReveal" class="hidden items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-bold text-slate-400 transition hover:border-slate-300 hover:text-slate-600">
+            <i data-lucide="briefcase" class="h-3.5 w-3.5 shrink-0"></i>
+            Centryk Business <span class="text-slate-300">·</span> show
+        </button>
+
         <div id="bizPromoActive" class="hidden items-center gap-2 text-xs font-semibold text-slate-500">
             <i data-lucide="briefcase" class="h-3.5 w-3.5 shrink-0 text-violet-600"></i>
             <span class="min-w-0 flex-1">
@@ -1403,11 +1431,14 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
             var bizPromo = document.getElementById('bizPromo');
             var bizPromoUpsell = document.getElementById('bizPromoUpsell');
             var bizPromoActive = document.getElementById('bizPromoActive');
-            if (bizPromo && bizPromoUpsell && bizPromoActive) {
+            var bizPromoReveal = document.getElementById('bizPromoReveal');
+            if (bizPromo && bizPromoUpsell && bizPromoActive && bizPromoReveal) {
                 var promoDismissed = false;
                 try { promoDismissed = localStorage.getItem('centryk_bizpromo_dismissed') === '1'; } catch (e) {}
                 var showActive = bizRole && bizKeys.length > 0;
-                var showUpsell = bizRole && bizKeys.length === 0 && !promoDismissed;
+                var wantUpsell = bizRole && bizKeys.length === 0;
+                var showUpsell = wantUpsell && !promoDismissed;
+                var showReveal = wantUpsell && promoDismissed;
                 if (showActive) {
                     var names = bizKeys.map(function (k) { return BIZ_LABELS[k] || k; });
                     document.getElementById('bizPromoActiveList').textContent =
@@ -1416,8 +1447,9 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
                 bizPromoActive.classList.toggle('hidden', !showActive);
                 bizPromoActive.classList.toggle('flex', showActive);
                 bizPromoUpsell.classList.toggle('hidden', !showUpsell);
-                bizPromoUpsell.classList.toggle('flex', showUpsell);
-                bizPromo.classList.toggle('hidden', !(showActive || showUpsell));
+                bizPromoReveal.classList.toggle('hidden', !showReveal);
+                bizPromoReveal.classList.toggle('inline-flex', showReveal);
+                bizPromo.classList.toggle('hidden', !(showActive || showUpsell || showReveal));
             }
             if (window.lucide) { lucide.createIcons(); }
 
@@ -1978,14 +2010,33 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
         });
     });
 
+    // Upsell panel ⇄ "show" chip. Dismissing collapses the panel to the chip
+    // (both live inside #bizPromo) rather than removing the strip entirely, so
+    // it can always be brought back.
+    function setBizPromoDismissed(dismissed) {
+        try { localStorage.setItem('centryk_bizpromo_dismissed', dismissed ? '1' : '0'); } catch (e2) {}
+        var up = document.getElementById('bizPromoUpsell');
+        var rv = document.getElementById('bizPromoReveal');
+        if (up) { up.classList.toggle('hidden', dismissed); }
+        if (rv) {
+            rv.classList.toggle('hidden', !dismissed);
+            rv.classList.toggle('inline-flex', dismissed);
+        }
+    }
     var bizPromoDismiss = document.getElementById('bizPromoDismiss');
     if (bizPromoDismiss) {
         bizPromoDismiss.addEventListener('click', function (e) {
             e.preventDefault();
             e.stopPropagation();
-            try { localStorage.setItem('centryk_bizpromo_dismissed', '1'); } catch (e2) {}
-            var p = document.getElementById('bizPromo');
-            if (p) { p.classList.add('hidden'); p.classList.remove('flex'); }
+            setBizPromoDismissed(true);
+        });
+    }
+    var bizPromoRevealBtn = document.getElementById('bizPromoReveal');
+    if (bizPromoRevealBtn) {
+        bizPromoRevealBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            setBizPromoDismissed(false);
         });
     }
 
