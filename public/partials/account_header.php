@@ -25,6 +25,7 @@ $_hdrName  = htmlspecialchars(trim(($_hdrUser['first_name'] ?? '') . ' ' . ($_hd
 $_hdrInit  = strtoupper(substr($_hdrUser['first_name'] ?? '?', 0, 1));
 $_hdrEmail = htmlspecialchars($_hdrUser['email'] ?? '');
 $_hdrAdmin = !empty($_hdrUser['is_admin']);
+$_hdrRole  = $_hdrAdmin ? 'Platform Admin' : 'Member';
 $_hdrMaxW  = $headerMaxW ?? 'max-w-6xl';
 $_hdrShowBell = !isset($headerShowBell) || $headerShowBell;
 $_hdrShowCalendar = !isset($headerShowCalendar) || $headerShowCalendar;
@@ -123,7 +124,7 @@ $awCurrent = $awCurrent ?? 'centryk';
                 <div class="js-hdr-initial flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[12px] font-black text-slate-700"><?= $_hdrInit ?></div>
                 <div class="text-left hidden sm:block">
                     <p class="js-hdr-name text-sm font-semibold text-slate-800 leading-tight"><?= $_hdrName ?></p>
-                    <p class="text-[10px] text-slate-400 leading-tight"><?= $_hdrEmail ?></p>
+                    <p class="js-hdr-role text-[10px] text-slate-400 leading-tight"><?= htmlspecialchars($_hdrRole) ?></p>
                 </div>
                 <i data-lucide="chevron-down" class="h-3.5 w-3.5 text-slate-400 shrink-0"></i>
             </button>
@@ -131,7 +132,7 @@ $awCurrent = $awCurrent ?? 'centryk';
                 <div class="px-4 py-3.5 border-b border-slate-100">
                     <div class="flex items-center justify-between gap-2">
                         <p class="js-hdr-name text-sm font-bold text-slate-900 leading-tight truncate"><?= $_hdrName ?></p>
-                        <span class="shrink-0 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] <?= $_hdrAdmin ? 'bg-violet-100 text-violet-600' : 'bg-slate-100 text-slate-500' ?>"><?= $_hdrAdmin ? 'Admin' : 'Member' ?></span>
+                        <span class="shrink-0 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] <?= $_hdrAdmin ? 'bg-violet-100 text-violet-600' : 'bg-slate-100 text-slate-500' ?>"><?= htmlspecialchars($_hdrRole) ?></span>
                     </div>
                     <p class="text-xs text-slate-400 mt-0.5 truncate"><?= $_hdrEmail ?></p>
                 </div>

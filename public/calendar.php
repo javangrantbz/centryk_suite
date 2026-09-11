@@ -24,6 +24,7 @@ if (!$me['authenticated']) {
     exit;
 }
 $user  = $me['user'];
+$_hdrRole = !empty($user['is_admin']) ? 'Platform Admin' : 'Member';
 $pdo   = DB::pdo();
 $embed = isset($_GET['embed']); // rendered inside the calendar_drawer.php iframe
 
@@ -410,7 +411,7 @@ function calLink(int $companyId, string $ym): string {
                 </div>
                 <div class="hidden text-left sm:block">
                     <p class="text-sm font-semibold text-slate-800 leading-tight"><?= htmlspecialchars($user['first_name'] . ' ' . $user['last_name']) ?></p>
-                    <p class="text-[10px] text-slate-400 leading-tight"><?= htmlspecialchars($user['email']) ?></p>
+                    <p class="text-[10px] text-slate-400 leading-tight"><?= htmlspecialchars($_hdrRole) ?></p>
                 </div>
                 <i data-lucide="chevron-down" class="h-3.5 w-3.5 text-slate-400 shrink-0"></i>
             </button>
@@ -419,7 +420,7 @@ function calLink(int $companyId, string $ym): string {
                     <div class="flex items-center justify-between gap-2">
                         <p class="text-sm font-bold text-slate-900 leading-tight truncate"><?= htmlspecialchars($user['first_name'] . ' ' . $user['last_name']) ?></p>
                         <span class="shrink-0 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] <?= !empty($user['is_admin']) ? 'bg-violet-100 text-violet-600' : 'bg-slate-100 text-slate-500' ?>">
-                            <?= !empty($user['is_admin']) ? 'Admin' : 'Member' ?>
+                            <?= htmlspecialchars($_hdrRole) ?>
                         </span>
                     </div>
                     <p class="text-xs text-slate-400 mt-0.5 truncate"><?= htmlspecialchars($user['email']) ?></p>

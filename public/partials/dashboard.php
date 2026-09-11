@@ -5,6 +5,7 @@ if (!isset($user) || !isset($apps)) { header('Location: ../index.php'); exit; }
 require_once __DIR__ . '/../../app/core/Env.php';
 Env::load(__DIR__ . '/../../.env');
 $canUseOnelink = !empty($user['is_admin']) || !empty($isCompanyAdmin);
+$_hdrRole      = !empty($user['is_admin']) ? 'Platform Admin' : 'Member';
 // Same early-access allowlist as tv/includes/functions.php's
 // tv_gate_coming_soon() - kept as a small duplicate here rather than a
 // cross-module include, since this dashboard and the tv/ app are
@@ -179,7 +180,7 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
                 </div>
                 <div class="hidden text-left sm:block">
                     <p class="text-sm font-semibold text-slate-800 leading-tight"><?= htmlspecialchars($user['first_name'] . ' ' . $user['last_name']) ?></p>
-                    <p class="text-[10px] text-slate-400 leading-tight"><?= htmlspecialchars($user['email']) ?></p>
+                    <p class="text-[10px] text-slate-400 leading-tight"><?= htmlspecialchars($_hdrRole) ?></p>
                 </div>
                 <i data-lucide="chevron-down" class="h-3.5 w-3.5 text-slate-400 shrink-0"></i>
             </button>
@@ -189,7 +190,7 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
                     <div class="flex items-center justify-between gap-2">
                         <p class="text-sm font-bold text-slate-900 leading-tight truncate"><?= htmlspecialchars($user['first_name'] . ' ' . $user['last_name']) ?></p>
                         <span class="shrink-0 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] <?= !empty($user['is_admin']) ? 'bg-violet-100 text-violet-600' : 'bg-slate-100 text-slate-500' ?>">
-                            <?= !empty($user['is_admin']) ? 'Admin' : 'Member' ?>
+                            <?= htmlspecialchars($_hdrRole) ?>
                         </span>
                     </div>
                     <p class="text-xs text-slate-400 mt-0.5 truncate"><?= htmlspecialchars($user['email']) ?></p>
