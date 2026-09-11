@@ -495,14 +495,16 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
             <div class="flex flex-1 flex-col p-3">
                 <div class="flex items-center gap-3">
                     <?php if ($app['key'] === 'onepay'): ?>
-                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-50 p-1.5 shadow-sm ring-1 ring-purple-100">
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-50 p-1.5 shadow-sm ring-1 ring-purple-200">
                         <img src="assets/onepay_logo.png" alt="OnePay" class="h-full w-full object-contain">
                     </span>
                     <?php elseif ($app['key'] === 'mypay'): ?>
-                    <img src="assets/myPay.png" alt="MyPay" class="h-10 w-10 rounded-xl object-contain shadow-sm">
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-50 p-1 shadow-sm ring-1 ring-orange-200">
+                        <img src="assets/myPay.png" alt="MyPay" class="h-full w-full rounded-lg object-contain">
+                    </span>
                     <?php elseif ($app['key'] === 'invoice'): ?>
-                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100">
-                        <svg class="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 shadow-sm">
+                        <svg class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2Z"/>
                         </svg>
                     </span>
@@ -513,26 +515,26 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
                         </svg>
                     </span>
                     <?php elseif ($app['key'] === 'visionboard'): ?>
-                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-600">
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-600 shadow-sm text-white">
                         <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
                             <rect x="2" y="3" width="20" height="14" rx="2"/><path d="m10 8 5 3-5 3V8Z"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
                         </svg>
                     </span>
                     <?php elseif ($app['key'] === 'tv'): ?>
-                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-100 text-cyan-700 shadow-sm ring-1 ring-cyan-200">
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-600 shadow-sm text-white">
                         <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
                             <rect x="2" y="5" width="20" height="14" rx="2"/><path d="m10 9 5 3-5 3V9Z"/><path d="M8 21h8"/>
                         </svg>
                     </span>
                     <?php elseif ($app['key'] === 'forms'): ?>
-                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 shadow-sm text-white">
                         <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
                             <rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>
                         </svg>
                     </span>
                     <?php else: ?>
-                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xl"
-                          style="background:<?= htmlspecialchars($app['color']) ?>18">
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xl shadow-sm text-white"
+                          style="background:<?= htmlspecialchars($app['color']) ?>">
                         <?= htmlspecialchars($app['icon'] ?? '') ?>
                     </span>
                     <?php endif; ?>
@@ -551,7 +553,7 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
                         <div class="text-base font-black tracking-tight text-slate-900"><?= htmlspecialchars($app['label']) ?></div>
                     </div>
                 </div>
-                <p class="mt-2 text-xs font-semibold leading-relaxed text-slate-500">
+                <p class="mt-2 text-xs font-semibold leading-relaxed text-slate-500 line-clamp-3">
                     <?= htmlspecialchars($app['description']) ?>
                 </p>
                 <?php
@@ -642,16 +644,18 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
         // Available Through Your Organization (not enrolled — Add / Request
         // access) · Explore Centryk (discovery). DB-backed cards flow through
         // $renderAppCard; TV / Store / Case Management are hand-built.
-        $_gridClass = 'grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4';
-        $_secHead   = static function (string $t) {
-            echo '<h3 class="mb-3 text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">' . htmlspecialchars($t) . '</h3>';
+        $_gridClass = 'grid gap-2.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5';
+        $_secHead   = static function (string $t, string $barColor = '#0f172a') {
+            echo '<h3 class="mb-3 flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">'
+               . '<span class="h-2.5 w-1 shrink-0 rounded-full" style="background:' . htmlspecialchars($barColor) . '"></span>'
+               . htmlspecialchars($t) . '</h3>';
         };
         ?>
 
         <!-- ── Your Apps ─────────────────────────────────────────────────── -->
         <?php if ($enrolledApps || $canUseOnelink): ?>
         <div id="yourAppsSection" class="mb-8">
-            <?php $_secHead('Your Apps'); ?>
+            <?php $_secHead('Your Apps', '#2563eb'); ?>
             <div id="yourAppsGrid" class="<?= $_gridClass ?>">
                 <?php foreach ($enrolledApps as $_a) { $renderAppCard($_a, 'enrolled'); } ?>
                 <?php if ($canUseOnelink): ?>
@@ -660,7 +664,7 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
                     <div class="h-1.5 w-full rounded-t-2xl bg-cyan-500"></div>
                     <div class="flex flex-1 flex-col p-3">
                         <div class="flex items-center gap-3">
-                            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-100 text-cyan-700">
+                            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-600 text-white shadow-sm">
                                 <i data-lucide="credit-card" class="h-5 w-5"></i>
                             </span>
                             <div>
@@ -668,7 +672,7 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
                                 <div class="text-base font-black tracking-tight text-slate-900">OneLink Payments</div>
                             </div>
                         </div>
-                        <p class="mt-2 text-xs font-semibold leading-relaxed text-slate-500">
+                        <p class="mt-2 text-xs font-semibold leading-relaxed text-slate-500 line-clamp-3">
                             View POS, invoice, and payment-form collections for the selected company.
                         </p>
                         <div class="mt-2.5 flex items-center gap-1.5">
@@ -693,7 +697,7 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
         <!-- ── Available Through Your Organization ───────────────────────── -->
         <?php if ($hasCompany && $availableApps): ?>
         <div class="mb-8">
-            <?php $_secHead('Available Through Your Organization'); ?>
+            <?php $_secHead('Available Through Your Organization', '#d97706'); ?>
             <div class="<?= $_gridClass ?>">
                 <?php foreach ($availableApps as $_a) { $renderAppCard($_a, 'available'); } ?>
             </div>
@@ -702,24 +706,25 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
 
         <!-- ── Explore Other Centryk Applications ────────────────────────── -->
         <div>
-            <?php $_secHead('Explore Other Centryk Applications'); ?>
+            <?php $_secHead('Explore Other Centryk Applications For Free', '#059669'); ?>
             <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
 
             <!-- Centryk TV — compact -->
             <?php $_tvSoon = Env::isProduction() && !$canUseTv; ?>
             <a href="<?= $_tvSoon ? 'tv.php' : (htmlspecialchars($tvBaseUrl) . '/') ?>" style="--i:<?= ++$_gridIdx ?>"
-               class="dash-fade group flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 transition hover:border-slate-300 hover:bg-white">
-                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal-100 text-teal-700">
+               class="dash-fade group flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-teal-300 hover:shadow-md hover:-translate-y-0.5">
+                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal-600 text-white shadow-sm">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="m10 9 5 3-5 3V9Z"/><path d="M8 21h8"/></svg>
                 </span>
                 <span class="min-w-0 flex-1">
                     <span class="flex items-center gap-1.5">
                         <span class="text-sm font-black tracking-tight text-slate-800">Centryk TV</span>
-                        <?php if ($_tvSoon): ?><span class="rounded bg-slate-200 px-1 py-0.5 text-[8px] font-black uppercase tracking-wide text-slate-500">Soon</span><?php endif; ?>
+                        <?php if ($_tvSoon): ?><span class="rounded bg-slate-200 px-1 py-0.5 text-[8px] font-black uppercase tracking-wide text-slate-500">Soon</span>
+                        <?php else: ?><span class="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-emerald-600">Free</span><?php endif; ?>
                     </span>
                     <span class="mt-0.5 block text-[11px] font-semibold leading-snug text-slate-500 line-clamp-2">Live broadcasts and replays from participating organizations.</span>
                     <span role="link" tabindex="0"
-                          class="tv-watch-link mt-1.5 inline-flex cursor-pointer items-center gap-1 rounded-full border border-teal-200 bg-white px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-teal-700 transition hover:bg-teal-50"
+                          class="tv-watch-link mt-1.5 inline-flex cursor-pointer items-center gap-1 rounded-full border border-teal-200 bg-teal-50 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-teal-700 transition hover:bg-teal-100"
                           data-watch-url="<?= htmlspecialchars($tvWatchUrl) ?>">
                         <i data-lucide="play-circle" class="h-3 w-3"></i> Watch
                     </span>
@@ -728,15 +733,18 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
 
             <!-- Store — compact -->
             <button type="button" id="storeCard" style="--i:<?= ++$_gridIdx ?>"
-                    class="dash-fade group flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-slate-300 hover:bg-white">
-                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-700">
+                    class="dash-fade group flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:border-violet-300 hover:shadow-md hover:-translate-y-0.5">
+                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-600 text-white shadow-sm">
                     <i data-lucide="store" class="h-4 w-4"></i>
                 </span>
                 <span class="min-w-0 flex-1">
-                    <span class="block text-sm font-black tracking-tight text-slate-800">Store</span>
+                    <span class="flex items-center gap-1.5">
+                        <span class="text-sm font-black tracking-tight text-slate-800">Store</span>
+                        <span class="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-emerald-600">Free</span>
+                    </span>
                     <span class="mt-0.5 block text-[11px] font-semibold leading-snug text-slate-500 line-clamp-2">Employee offers and Centryk Market listings from participating companies.</span>
                     <span role="link" tabindex="0"
-                          class="store-feed-link mt-1.5 inline-flex cursor-pointer items-center gap-1 rounded-full border border-violet-200 bg-white px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-violet-700 transition hover:bg-violet-50"
+                          class="store-feed-link mt-1.5 inline-flex cursor-pointer items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-violet-700 transition hover:bg-violet-100"
                           data-store-feed-url="store.php">
                         <i data-lucide="layout-grid" class="h-3 w-3"></i> Browse all
                     </span>
@@ -745,12 +753,15 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
 
             <!-- Case Management — free hub feature, open to any company member -->
             <a href="cases.php" id="casesCard" style="--i:<?= ++$_gridIdx ?>"
-               class="dash-fade group flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 transition hover:border-slate-300 hover:bg-white">
-                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
+               class="dash-fade group flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-blue-300 hover:shadow-md hover:-translate-y-0.5">
+                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 14.15v4.073a2.25 2.25 0 01-2.25 2.25H5.904a2.25 2.25 0 01-2.25-2.25V14.15M16.5 6.75V5.625a2.25 2.25 0 00-2.25-2.25h-2.25a2.25 2.25 0 00-2.25 2.25V6.75M3.375 6.75h17.25a1.125 1.125 0 011.125 1.125v3.026a48.34 48.34 0 01-10.5 1.299 48.34 48.34 0 01-10.5-1.299V7.875A1.125 1.125 0 013.375 6.75z"/></svg>
                 </span>
                 <span class="min-w-0 flex-1">
-                    <span class="block text-sm font-black tracking-tight text-slate-800">Case Management</span>
+                    <span class="flex items-center gap-1.5">
+                        <span class="text-sm font-black tracking-tight text-slate-800">Case Management</span>
+                        <span class="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-emerald-600">Free</span>
+                    </span>
                     <span class="mt-0.5 block text-[11px] font-semibold leading-snug text-slate-500 line-clamp-2">Track and resolve cases across your team — from intake to outcome.</span>
                 </span>
             </a>
