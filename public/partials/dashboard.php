@@ -743,19 +743,17 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
                 </span>
             </button>
 
-            <!-- Case Management — coming soon (static) -->
-            <div style="--i:<?= ++$_gridIdx ?>" class="dash-fade flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 opacity-80 select-none">
+            <!-- Case Management — free hub feature, open to any company member -->
+            <a href="cases.php" id="casesCard" style="--i:<?= ++$_gridIdx ?>"
+               class="dash-fade group flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 transition hover:border-slate-300 hover:bg-white">
                 <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 14.15v4.073a2.25 2.25 0 01-2.25 2.25H5.904a2.25 2.25 0 01-2.25-2.25V14.15M16.5 6.75V5.625a2.25 2.25 0 00-2.25-2.25h-2.25a2.25 2.25 0 00-2.25 2.25V6.75M3.375 6.75h17.25a1.125 1.125 0 011.125 1.125v3.026a48.34 48.34 0 01-10.5 1.299 48.34 48.34 0 01-10.5-1.299V7.875A1.125 1.125 0 013.375 6.75z"/></svg>
                 </span>
                 <span class="min-w-0 flex-1">
                     <span class="block text-sm font-black tracking-tight text-slate-800">Case Management</span>
                     <span class="mt-0.5 block text-[11px] font-semibold leading-snug text-slate-500 line-clamp-2">Track and resolve cases across your team — from intake to outcome.</span>
-                    <span class="mt-1.5 inline-flex items-center gap-1 rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-slate-500">
-                        <i data-lucide="clock" class="h-3 w-3"></i> Coming Soon
-                    </span>
                 </span>
-            </div>
+            </a>
 
             </div>
         </div>
@@ -1460,6 +1458,11 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
                 coAdvertiseBtn.href = advertiseUrl;
                 coAdvertiseBtn.classList.toggle('hidden', !canAdvertise);
                 coAdvertiseBtn.classList.toggle('flex', canAdvertise);
+            }
+
+            var casesCard = document.getElementById('casesCard');
+            if (casesCard) {
+                casesCard.href = 'cases.php' + (selectedUuid ? ('?company_uuid=' + encodeURIComponent(selectedUuid)) : '');
             }
 
             // "Finish company profile" — shown to admins/owners while phone,
