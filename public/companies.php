@@ -559,6 +559,22 @@ if ($embed) {
     </div>
 </div>
 
+<!-- ─── Alert Modal ─── -->
+<div id="alertModal" class="modal-backdrop fixed inset-0 z-[70] hidden items-center justify-center p-4">
+    <div class="w-full max-w-sm rounded-[20px] border border-white/10 bg-[#111827] p-6 shadow-2xl">
+        <div class="mb-4 flex items-center justify-between">
+            <h3 id="alertModalTitle" class="text-lg font-black text-white">Notice</h3>
+            <button class="modal-close text-white/30 transition hover:text-white/70">
+                <i data-lucide="x" class="h-5 w-5"></i>
+            </button>
+        </div>
+        <p id="alertModalMessage" class="mb-5 text-sm font-semibold text-white/60"></p>
+        <div class="flex justify-end">
+            <button class="modal-close rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-black text-white transition hover:bg-blue-500">OK</button>
+        </div>
+    </div>
+</div>
+
 <script src="https://unpkg.com/lucide@latest"></script>
 <script>
 (function () {
@@ -930,6 +946,12 @@ if ($embed) {
         var m = document.getElementById(id);
         m.classList.add('hidden');
         m.classList.remove('flex');
+    }
+
+    function showAlertModal(message, title) {
+        document.getElementById('alertModalTitle').textContent = title || 'Notice';
+        document.getElementById('alertModalMessage').textContent = message;
+        openModal('alertModal');
     }
 
     document.querySelectorAll('.modal-close').forEach(function (btn) {
@@ -1356,7 +1378,7 @@ if ($embed) {
             btn.textContent = 'Remove';
             btn.disabled = false;
             closeModal('removeMemberModal');
-            if (!data.success) { alert(data.message); return; }
+            if (!data.success) { showAlertModal(data.message); return; }
             loadMembers(cid);
         });
     });

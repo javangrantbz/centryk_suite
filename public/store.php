@@ -960,11 +960,45 @@ $headerActionsHtml = ob_get_clean();
     </div>
 </aside>
 
+<div id="storeAlertBackdrop" class="fixed inset-0 z-[60] hidden items-center justify-center bg-slate-950/25 p-4"></div>
+<div id="storeAlertModal" class="fixed inset-0 z-[60] hidden items-center justify-center p-4">
+    <div class="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+        <div class="mb-3 flex items-center justify-between">
+            <h3 id="storeAlertTitle" class="text-base font-black text-slate-950">Notice</h3>
+            <button id="storeAlertCloseBtn" type="button" class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700" aria-label="Close">
+                <i data-lucide="x" class="h-4.5 w-4.5"></i>
+            </button>
+        </div>
+        <p id="storeAlertMessage" class="mb-5 text-sm font-semibold text-slate-600"></p>
+        <div class="flex justify-end">
+            <button id="storeAlertOkBtn" type="button" class="rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-black text-white transition hover:bg-slate-800">OK</button>
+        </div>
+    </div>
+</div>
+
 <?php include __DIR__ . '/partials/business_directory.php'; ?>
 
 <script src="https://unpkg.com/lucide@latest"></script>
 <script>
 if (window.lucide) { lucide.createIcons(); }
+
+function showStoreAlert(message, title) {
+    document.getElementById('storeAlertTitle').textContent = title || 'Notice';
+    document.getElementById('storeAlertMessage').textContent = message;
+    document.getElementById('storeAlertBackdrop').classList.remove('hidden');
+    document.getElementById('storeAlertBackdrop').classList.add('flex');
+    document.getElementById('storeAlertModal').classList.remove('hidden');
+    document.getElementById('storeAlertModal').classList.add('flex');
+}
+function closeStoreAlert() {
+    document.getElementById('storeAlertBackdrop').classList.add('hidden');
+    document.getElementById('storeAlertBackdrop').classList.remove('flex');
+    document.getElementById('storeAlertModal').classList.add('hidden');
+    document.getElementById('storeAlertModal').classList.remove('flex');
+}
+document.getElementById('storeAlertOkBtn').addEventListener('click', closeStoreAlert);
+document.getElementById('storeAlertCloseBtn').addEventListener('click', closeStoreAlert);
+document.getElementById('storeAlertBackdrop').addEventListener('click', closeStoreAlert);
 
 document.getElementById('connectBtn')?.addEventListener('click', function () {
     var btn = this;
@@ -983,10 +1017,10 @@ document.getElementById('connectBtn')?.addEventListener('click', function () {
             if (window.lucide) { lucide.createIcons(); }
         } else {
             btn.disabled = false;
-            alert(data.message || 'Failed to send request.');
+            showStoreAlert(data.message || 'Failed to send request.');
         }
     })
-    .catch(function () { btn.disabled = false; alert('Network error.'); });
+    .catch(function () { btn.disabled = false; showStoreAlert('Network error.'); });
 });
 
 (function () {

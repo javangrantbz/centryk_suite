@@ -32,6 +32,16 @@
   </div>
 </div>
 
+<!-- Alert modal -->
+<div id="hrAlertBackdrop" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/50 p-4"></div>
+<div id="hrAlertModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+  <div class="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl">
+    <h3 id="hrAlertTitle" class="mb-2 text-sm font-black text-slate-900">Notice</h3>
+    <p id="hrAlertMessage" class="mb-4 text-sm font-semibold text-slate-600"></p>
+    <button id="btnHrAlertOk" type="button" class="flex w-full items-center justify-center rounded-xl bg-slate-900 py-2.5 text-sm font-black text-white">OK</button>
+  </div>
+</div>
+
 <script>
 (function () {
   const APP_COLOR = <?= json_encode($appColor) ?>;
@@ -120,6 +130,23 @@
   document.getElementById('btnCloseHrNote').addEventListener('click', closeNoteSheet);
   document.getElementById('hrNoteOverlay').addEventListener('click', closeNoteSheet);
 
+  function showHrAlert(message, title) {
+    document.getElementById('hrAlertTitle').textContent = title || 'Notice';
+    document.getElementById('hrAlertMessage').textContent = message;
+    document.getElementById('hrAlertBackdrop').classList.remove('hidden');
+    document.getElementById('hrAlertBackdrop').classList.add('flex');
+    document.getElementById('hrAlertModal').classList.remove('hidden');
+    document.getElementById('hrAlertModal').classList.add('flex');
+  }
+  function closeHrAlert() {
+    document.getElementById('hrAlertBackdrop').classList.add('hidden');
+    document.getElementById('hrAlertBackdrop').classList.remove('flex');
+    document.getElementById('hrAlertModal').classList.add('hidden');
+    document.getElementById('hrAlertModal').classList.remove('flex');
+  }
+  document.getElementById('btnHrAlertOk').addEventListener('click', closeHrAlert);
+  document.getElementById('hrAlertBackdrop').addEventListener('click', closeHrAlert);
+
   document.getElementById('btnConfirmHrAction').addEventListener('click', async () => {
     if (!actionTarget) return;
     const btn = document.getElementById('btnConfirmHrAction');
@@ -136,14 +163,14 @@
       });
       const data = await res.json();
       if (!data.success) {
-        alert(data.message || 'Could not update the request.');
+        showHrAlert(data.message || 'Could not update the request.');
         btn.disabled = false;
         return;
       }
       closeNoteSheet();
       loadRequests();
     } catch (e) {
-      alert('Network error.');
+      showHrAlert('Network error.');
       btn.disabled = false;
     }
   });
