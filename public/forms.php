@@ -37,6 +37,17 @@ $host   = $_SERVER['HTTP_HOST'] ?? 'localhost';
 $dir    = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/'));
 $publicBase = $scheme . '://' . $host . rtrim($dir, '/');
 
+// Copy link gives the short link (<site>/r/<code>), same as the builder. Forms that
+// predate short codes get theirs generated here the first time the list is opened.
+$siteRoot = preg_replace('#/public$#', '', $publicBase);
+foreach ($forms as &$fRow) {
+    if (trim((string)($fRow['short_code'] ?? '')) === '') {
+        $fRow['short_code'] = FormsService::ensureShortCode((int)$fRow['id'], (int)$activeCompany['id']);
+    }
+    $fRow['short_url'] = $siteRoot . '/r/' . $fRow['short_code'];
+}
+unset($fRow);
+
 ob_start();
 include __DIR__ . '/partials/admin_tools_dropdown.php';
 $headerActionsHtml = ob_get_clean();
@@ -146,7 +157,7 @@ include __DIR__ . '/partials/account_header.php';
                         <a href="form-responses.php?id=<?= (int)$f['id'] ?>&company_id=<?= (int)$activeCompany['id'] ?>" class="biz-btn biz-btn-ghost biz-btn-sm">Responses</a>
                         <?php endif; ?>
                         <?php if ($f['status'] === 'open'): ?>
-                        <button onclick="copyLink('<?= htmlspecialchars($publicBase) ?>/f.php?t=<?= htmlspecialchars($f['share_token']) ?>')" class="biz-btn biz-btn-ghost biz-btn-sm">Copy link</button>
+                        <button onclick="copyLink(<?= htmlspecialchars(json_encode($f['short_url']), ENT_QUOTES) ?>)" class="biz-btn biz-btn-ghost biz-btn-sm">Copy link</button>
                         <?php endif; ?>
                         <a href="form-edit.php?id=<?= (int)$f['id'] ?>&company_id=<?= (int)$activeCompany['id'] ?>" class="biz-btn biz-btn-ghost biz-btn-sm">Edit</a>
                         <button onclick="dupForm(<?= (int)$f['id'] ?>)" class="biz-btn biz-btn-ghost biz-btn-sm" title="Duplicate"><i data-lucide="copy" class="w-3 h-3"></i></button>
