@@ -201,6 +201,12 @@ include __DIR__ . '/partials/account_header.php';
                     <label class="flex items-center gap-2"><input type="radio" name="qrStyle" value="plain" onchange="qrOptionsChanged()"> Without logo (most reliable)</label>
                 </div>
                 <?php endif; ?>
+                <label class="block"><span class="biz-label">Message on the card</span>
+                    <textarea id="qrMessage" rows="3" maxlength="200" class="biz-input" placeholder="Scan to tell us what you think"><?= htmlspecialchars((string)$form['qr_message']) ?></textarea></label>
+                <div class="flex items-center justify-between gap-2">
+                    <span class="biz-muted" style="font-size:10px">Blank uses "Scan to tell us what you think". Keep it short for 8 per page.</span>
+                    <button onclick="saveQrMessage()" class="biz-btn biz-btn-ghost biz-btn-sm">Save message</button>
+                </div>
                 <label class="block"><span class="biz-label">Print layout</span>
                     <select id="printLayout" class="biz-select" onchange="qrOptionsChanged()">
                         <option value="1">1 per page (large)</option>
@@ -548,6 +554,13 @@ async function move(i, dir) {
     } catch (e) { showAlert(e.message, 'error'); }
 }
 
+async function saveQrMessage() {
+    try {
+        await api('save.php', { id: FORM_ID, qr_message: document.getElementById('qrMessage').value });
+        showAlert('Card message saved.');
+    } catch (e) { showAlert(e.message, 'error'); }
+}
+
 async function saveCode() {
     try {
         await api('save.php', { id: FORM_ID, short_code: document.getElementById('fCode').value });
@@ -689,7 +702,7 @@ function printQrCard() {
         '<div class="pc">' +
         '<p class="pc-co">' + esc(COMPANY_NAME) + '</p>' +
         '<h1 class="pc-title">' + esc(FORM_TITLE) + '</h1>' +
-        '<p class="pc-cta">Scan to tell us what you think</p>' +
+        '<p class="pc-cta">' + esc(((document.getElementById('qrMessage').value || '').trim().replace(/\s+/g, ' ')) || 'Scan to tell us what you think') + '</p>' +
         '<img class="pc-qr" alt="QR code" src="' + url + '">' +
         '<p class="pc-url">' + esc(SHARE_URL) + '</p>' +
         '</div>';
