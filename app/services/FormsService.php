@@ -20,9 +20,55 @@ class FormsService
     /** Types whose answers are a pick from a fixed option list. */
     public const CHOICE_TYPES = ['single_choice', 'multiple_choice', 'dropdown'];
 
+    /**
+     * Fill-page theme presets a company can pick per form (seasonal
+     * celebrations, brand moods). Colours drive the public page; post_tag is
+     * appended to Facebook posts. 'default' is the original indigo look.
+     */
+    public const THEMES = [
+        'default' => [
+            'label' => 'Classic', 'accent' => '#4f46e5', 'accent_dark' => '#4338ca', 'tint' => '#eef2ff',
+            'bg' => '#f1f5f9', 'banner' => '', 'emoji' => '', 'post_tag' => '',
+        ],
+        'carnival' => [
+            'label' => 'Carnival', 'accent' => '#c026d3', 'accent_dark' => '#a21caf', 'tint' => '#fdf4ff',
+            'bg' => 'linear-gradient(135deg,#fef3c7 0%,#fce7f3 45%,#ede9fe 100%)',
+            'banner' => 'linear-gradient(90deg,#f59e0b,#ec4899,#8b5cf6,#10b981)',
+            'emoji' => "\u{1F3AD}\u{1F941}\u{1F389}", 'post_tag' => "\u{1F389} Carnival vibes!",
+        ],
+        'independence' => [
+            'label' => 'Independence', 'accent' => '#1d4ed8', 'accent_dark' => '#1e40af', 'tint' => '#eff6ff',
+            'bg' => 'linear-gradient(135deg,#dbeafe 0%,#fee2e2 100%)',
+            'banner' => 'linear-gradient(90deg,#1d4ed8,#ffffff,#dc2626)',
+            'emoji' => "\u{1F1E7}\u{1F1FF}", 'post_tag' => "\u{1F1E7}\u{1F1FF} Celebrating Belize!",
+        ],
+        'festive' => [
+            'label' => 'Festive', 'accent' => '#dc2626', 'accent_dark' => '#b91c1c', 'tint' => '#fef2f2',
+            'bg' => 'linear-gradient(135deg,#fef2f2 0%,#ecfdf5 100%)',
+            'banner' => 'linear-gradient(90deg,#dc2626,#16a34a)',
+            'emoji' => "\u{1F384}\u{2728}", 'post_tag' => "\u{2728} Happy holidays!",
+        ],
+    ];
+
+    /**
+     * Words that flag a review for the moderator's attention. A nudge, not the
+     * gate: a person still approves or rejects every review.
+     */
+    private const FLAG_WORDS = [
+        'fuck', 'shit', 'bitch', 'bastard', 'asshole', 'dick', 'pussy', 'cunt', 'whore', 'slut',
+        'nigger', 'nigga', 'retard', 'idiot', 'stupid', 'scam', 'thief', 'stole', 'rat', 'roach',
+        'poison', 'sick', 'lawsuit', 'sue', 'kill', 'hate',
+    ];
+
     private static function pdo(): PDO
     {
         return DB::pdo();
+    }
+
+    /** A theme preset by key (unknown keys fall back to 'default'). */
+    public static function theme(string $key): array
+    {
+        return self::THEMES[$key] ?? self::THEMES['default'];
     }
 
     // ── Company access ────────────────────────────────────────────────────
@@ -79,8 +125,11 @@ class FormsService
         return $row ?: null;
     }
 
-    public static function createForm(int $companyId, int $userId, string $title): int
+    public static function createForm(int $companyId, int $userId, string $title, string $template = ''): int
     {
+        if ($template === 'review' && trim($title) === '') {
+            $title = 'Customer reviews';
+        }
         $title = trim($title) !== '' ? mb_substr(trim($title), 0, 200) : 'Untitled form';
         $st = self::pdo()->prepare("
             INSERT INTO form_forms (company_id, created_by, title, share_token)
@@ -92,7 +141,45 @@ class FormsService
             'title' => $title,
             'tok'   => bin2hex(random_bytes(16)),
         ]);
-        return (int)self::pdo()->lastInsertId();
+        $id = (int)self::pdo()->lastInsertId();
+        if ($template === 'review') {
+            self::applyReviewTemplate($id);
+        }
+        return $id;
+    }
+
+    /**
+     * Ready-made customer review form: an overall rating, a "what did you
+     * enjoy" pick and a comment. Turns review sharing on so the moderation
+     * queue and Facebook posting are available straight away.
+     */
+    private static function applyReviewTemplate(int $formId): void
+    {
+        $pdo = self::pdo();
+        $pdo->prepare("
+            UPDATE form_forms
+            SET reviews_enabled = 1,
+                description = 'We would love to hear how we did. It takes less than a minute.',
+                confirmation_message = 'Thank you for your feedback!'
+            WHERE id = :id
+        ")->execute(['id' => $formId]);
+
+        $rows = [
+            ['rating', 'How would you rate your experience?', '', 1, null, json_encode(['max' => 5])],
+            ['single_choice', 'What did you enjoy most?', '', 0,
+                json_encode(['Food / product', 'Service', 'Value for money', 'Atmosphere', 'Something else']), null],
+            ['long_text', 'Tell us more (optional)', 'What stood out, good or bad?', 0, null, null],
+        ];
+        $ins = $pdo->prepare("
+            INSERT INTO form_questions (form_id, sort_order, type, label, help_text, required, options, config)
+            VALUES (:fid, :ord, :type, :label, :help, :req, :opts, :cfg)
+        ");
+        foreach ($rows as $i => [$type, $label, $help, $req, $opts, $cfg]) {
+            $ins->execute([
+                'fid' => $formId, 'ord' => $i + 1, 'type' => $type, 'label' => $label,
+                'help' => $help, 'req' => $req, 'opts' => $opts, 'cfg' => $cfg,
+            ]);
+        }
     }
 
     /**
@@ -121,6 +208,22 @@ class FormsService
         if (array_key_exists('confirmation_message', $fields)) {
             $set[] = 'confirmation_message = :cm';
             $params['cm'] = mb_substr((string)$fields['confirmation_message'], 0, 500);
+        }
+        if (array_key_exists('theme', $fields)) {
+            $set[] = 'theme = :theme';
+            $params['theme'] = array_key_exists((string)$fields['theme'], self::THEMES) ? (string)$fields['theme'] : 'default';
+        }
+        if (array_key_exists('reviews_enabled', $fields)) {
+            $set[] = 'reviews_enabled = :re';
+            $params['re'] = !empty($fields['reviews_enabled']) ? 1 : 0;
+        }
+        if (array_key_exists('fb_recommend_url', $fields)) {
+            $url = trim((string)$fields['fb_recommend_url']);
+            if ($url !== '' && !preg_match('#^https://#i', $url)) {
+                throw new RuntimeException('The Facebook link must start with https://');
+            }
+            $set[] = 'fb_recommend_url = :fbu';
+            $params['fbu'] = mb_substr($url, 0, 500);
         }
         if (array_key_exists('access', $fields)) {
             $access = in_array($fields['access'], ['public', 'login_required'], true) ? $fields['access'] : 'public';
@@ -174,8 +277,9 @@ class FormsService
             $ins = $pdo->prepare("
                 INSERT INTO form_forms
                     (company_id, created_by, title, description, status, access,
-                     one_response_per_person, confirmation_message, share_token)
-                VALUES (:cid, :uid, :title, :descr, 'draft', :access, :orp, :cm, :tok)
+                     one_response_per_person, confirmation_message, theme, reviews_enabled,
+                     fb_recommend_url, share_token)
+                VALUES (:cid, :uid, :title, :descr, 'draft', :access, :orp, :cm, :theme, :re, :fbu, :tok)
             ");
             $ins->execute([
                 'cid'    => $companyId,
@@ -185,6 +289,9 @@ class FormsService
                 'access' => $src['access'],
                 'orp'    => (int)$src['one_response_per_person'],
                 'cm'     => $src['confirmation_message'],
+                'theme'  => $src['theme'],
+                're'     => (int)$src['reviews_enabled'],
+                'fbu'    => $src['fb_recommend_url'],
                 'tok'    => bin2hex(random_bytes(16)),
             ]);
             $newId = (int)$pdo->lastInsertId();
@@ -354,9 +461,12 @@ class FormsService
      *
      * @param array<int,mixed> $answers  question_id => value
      *        (value is a string, or an array for multiple_choice)
+     * @param array{consent?:bool,name?:string} $share  the respondent's optional
+     *        "you may share my review on Facebook" consent and first name; only
+     *        acted on when the form has reviews_enabled
      * @throws RuntimeException on a validation problem the respondent can fix
      */
-    public static function recordResponse(array $form, array $answers, ?int $userId, ?string $respondentKey): int
+    public static function recordResponse(array $form, array $answers, ?int $userId, ?string $respondentKey, array $share = []): int
     {
         if (($form['status'] ?? '') !== 'open') {
             throw new RuntimeException('This form is not accepting responses.');
@@ -444,16 +554,37 @@ class FormsService
             throw new RuntimeException('Please answer at least one question.');
         }
 
+        // Review sharing: only responses whose author consented enter the queue.
+        $consent = !empty($form['reviews_enabled']) && !empty($share['consent']);
+        $displayName = $consent ? self::cleanFirstName((string)($share['name'] ?? '')) : '';
+        $status = 'none';
+        $flagged = 0;
+        $postText = null;
+        if ($consent) {
+            $postText = self::buildPostText($form, $questions, $clean, $displayName);
+            if ($postText !== null) {
+                $status = 'pending';
+                $flagged = self::looksFlaggable($postText) ? 1 : 0;
+            }
+        }
+
         $pdo = self::pdo();
         $pdo->beginTransaction();
         try {
             $pdo->prepare("
-                INSERT INTO form_responses (form_id, respondent_user_id, respondent_key)
-                VALUES (:fid, :uid, :k)
+                INSERT INTO form_responses
+                    (form_id, respondent_user_id, respondent_key, share_consent, display_name,
+                     moderation_status, flagged, post_text)
+                VALUES (:fid, :uid, :k, :sc, :dn, :ms, :fl, :pt)
             ")->execute([
                 'fid' => $form['id'],
                 'uid' => $userId,
                 'k'   => $respondentKey,
+                'sc'  => $consent ? 1 : 0,
+                'dn'  => $displayName,
+                'ms'  => $status,
+                'fl'  => $flagged,
+                'pt'  => $postText,
             ]);
             $rid = (int)$pdo->lastInsertId();
 
@@ -671,5 +802,161 @@ class FormsService
             $out[] = $line;
         }
         return $out;
+    }
+
+    // ── Reviews: consent, post text, moderation ──────────────────────────
+
+    /** First name only (letters, hyphen, apostrophe), so a nickname can't smuggle in links or contact details. */
+    private static function cleanFirstName(string $name): string
+    {
+        $name = trim(preg_replace('/[^\p{L}\p{M}\s\'-]/u', '', $name) ?? '');
+        $name = preg_split('/\s+/u', $name)[0] ?? '';
+        return mb_substr($name, 0, 30);
+    }
+
+    /** Case-insensitive whole-word match against FLAG_WORDS. */
+    public static function looksFlaggable(string $text): bool
+    {
+        foreach (self::FLAG_WORDS as $w) {
+            if (preg_match('/\b' . preg_quote($w, '/') . '\b/iu', $text)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Draft the Facebook post from a response: star rating + the first
+     * free-text comment + first name. Null when there's nothing worth posting
+     * (no rating and no comment). The moderator can edit it before approving.
+     *
+     * @param array<int,array{0:int,1:?string,2:?string}> $clean [qid, text, json]
+     */
+    private static function buildPostText(array $form, array $questions, array $clean, string $name): ?string
+    {
+        $byQ = [];
+        foreach ($clean as [$qid, $text]) {
+            $byQ[$qid] = (string)$text;
+        }
+        $stars = null;
+        $comment = '';
+        foreach ($questions as $q) {
+            $qid = (int)$q['id'];
+            if ($q['type'] === 'rating' && $stars === null && isset($byQ[$qid])) {
+                $max = (int)($q['config']['max'] ?? 5);
+                $n = (int)$byQ[$qid];
+                $stars = $max === 5 ? str_repeat("\u{2B50}", $n) : $n . '/' . $max . " \u{2B50}";
+            } elseif ($q['type'] === 'long_text' && $comment === '' && !empty($byQ[$qid])) {
+                $comment = trim($byQ[$qid]);
+            }
+        }
+        if ($stars === null && $comment === '') {
+            return null;
+        }
+
+        $line = trim(($stars ?? '') . ($comment !== '' ? ' "' . mb_substr($comment, 0, 400) . '"' : ''));
+        $line .= ' - ' . ($name !== '' ? $name : 'A guest');
+        $tag = self::theme((string)($form['theme'] ?? 'default'))['post_tag'];
+        return $tag !== '' ? $line . "\n\n" . $tag : $line;
+    }
+
+    /** Counts per moderation state for a form (tabs/badges). */
+    public static function moderationCounts(int $formId): array
+    {
+        $st = self::pdo()->prepare("
+            SELECT moderation_status, COUNT(*) FROM form_responses
+            WHERE form_id = :fid AND moderation_status <> 'none' GROUP BY moderation_status
+        ");
+        $st->execute(['fid' => $formId]);
+        $out = ['pending' => 0, 'approved' => 0, 'rejected' => 0];
+        foreach ($st->fetchAll(PDO::FETCH_NUM) as [$k, $n]) {
+            $out[$k] = (int)$n;
+        }
+        return $out;
+    }
+
+    /** Reviews in one moderation state: flagged first, then newest first. */
+    public static function moderationQueue(int $formId, string $status): array
+    {
+        if (!in_array($status, ['pending', 'approved', 'rejected'], true)) {
+            $status = 'pending';
+        }
+        $st = self::pdo()->prepare("
+            SELECT id, submitted_at, display_name, flagged, post_text,
+                   fb_post_id, fb_posted_at, fb_error, moderated_at
+            FROM form_responses
+            WHERE form_id = :fid AND moderation_status = :s
+            ORDER BY flagged DESC, submitted_at DESC, id DESC
+            LIMIT 200
+        ");
+        $st->execute(['fid' => $formId, 's' => $status]);
+        return $st->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Moderate one review. $action: approve | reject | save_text (edit only).
+     * $text, when given, replaces the drafted post text. Ownership is enforced
+     * through the form's company.
+     */
+    public static function moderate(int $responseId, int $companyId, int $userId, string $action, ?string $text): array
+    {
+        $st = self::pdo()->prepare("
+            SELECT r.id, r.form_id, r.fb_post_id
+            FROM form_responses r
+            JOIN form_forms f ON f.id = r.form_id
+            WHERE r.id = :id AND f.company_id = :cid AND r.moderation_status <> 'none'
+        ");
+        $st->execute(['id' => $responseId, 'cid' => $companyId]);
+        $row = $st->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            throw new RuntimeException('Review not found.');
+        }
+        if (!in_array($action, ['approve', 'reject', 'save_text'], true)) {
+            throw new RuntimeException('Unknown action.');
+        }
+        if (!empty($row['fb_post_id'])) {
+            throw new RuntimeException('This review is already on Facebook and can no longer be changed here.');
+        }
+
+        $set = ['moderated_by = :uid', 'moderated_at = NOW()'];
+        $params = ['id' => $responseId, 'uid' => $userId];
+
+        if ($text !== null) {
+            $text = trim($text);
+            if ($text === '') {
+                throw new RuntimeException('The post text cannot be empty.');
+            }
+            $set[] = 'post_text = :pt';
+            $params['pt'] = mb_substr($text, 0, 1500);
+            $set[] = 'flagged = :fl';
+            $params['fl'] = self::looksFlaggable($text) ? 1 : 0;
+        }
+        if ($action === 'approve') {
+            $set[] = "moderation_status = 'approved'";
+            $set[] = 'fb_error = NULL';
+        } elseif ($action === 'reject') {
+            $set[] = "moderation_status = 'rejected'";
+        }
+
+        self::pdo()->prepare('UPDATE form_responses SET ' . implode(', ', $set) . ' WHERE id = :id')
+            ->execute($params);
+
+        $out = self::pdo()->prepare("SELECT id, form_id, moderation_status, post_text FROM form_responses WHERE id = :id");
+        $out->execute(['id' => $responseId]);
+        return $out->fetch(PDO::FETCH_ASSOC);
+    }
+
+    /** Record the outcome of a Facebook post attempt on a response. */
+    public static function recordFacebookResult(int $responseId, ?string $fbPostId, ?string $error): void
+    {
+        self::pdo()->prepare("
+            UPDATE form_responses
+            SET fb_post_id = :pid, fb_posted_at = " . ($fbPostId ? 'NOW()' : 'NULL') . ", fb_error = :err
+            WHERE id = :id
+        ")->execute([
+            'pid' => $fbPostId,
+            'err' => $error !== null ? mb_substr($error, 0, 250) : null,
+            'id'  => $responseId,
+        ]);
     }
 }

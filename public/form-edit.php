@@ -7,6 +7,7 @@ require_once __DIR__ . '/../app/core/Auth.php';
 require_once __DIR__ . '/../app/core/DB.php';
 require_once __DIR__ . '/../app/services/AuthService.php';
 require_once __DIR__ . '/../app/services/FormsService.php';
+require_once __DIR__ . '/../app/services/FacebookPagePoster.php';
 
 Auth::start();
 $me = AuthService::me();
@@ -35,6 +36,9 @@ if (!$form) {
     exit;
 }
 $questions = FormsService::questions($formId);
+$fbConn = FacebookPagePoster::connection($companyId);
+$isCompanyAdmin = ($activeCompany['role'] ?? '') === 'admin';
+$modCounts = FormsService::moderationCounts($formId);
 
 $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
 $host   = $_SERVER['HTTP_HOST'] ?? 'localhost';
@@ -78,6 +82,9 @@ include __DIR__ . '/partials/account_header.php';
             <a href="f.php?t=<?= htmlspecialchars($form['share_token']) ?>&preview=1" target="_blank" rel="noopener" class="biz-btn biz-btn-ghost biz-btn-sm">Preview</a>
             <?php if ((int)$form['response_count'] > 0): ?>
             <a href="form-responses.php?id=<?= $formId ?>&company_id=<?= $companyId ?>" class="biz-btn biz-btn-ghost biz-btn-sm">Responses (<?= (int)$form['response_count'] ?>)</a>
+            <?php endif; ?>
+            <?php if (!empty($form['reviews_enabled'])): ?>
+            <a href="form-responses.php?id=<?= $formId ?>&company_id=<?= $companyId ?>&view=moderation" class="biz-btn biz-btn-ghost biz-btn-sm">Review queue<?= $modCounts['pending'] ? ' (' . $modCounts['pending'] . ' pending)' : '' ?></a>
             <?php endif; ?>
             <button id="statusBtn" class="biz-btn biz-btn-primary biz-btn-sm"></button>
         </div>
@@ -135,10 +142,76 @@ include __DIR__ . '/partials/account_header.php';
                 <input id="shareUrl" class="biz-input biz-num" style="font-size:11px" readonly value="<?= htmlspecialchars($shareUrl) ?>">
                 <button onclick="copyShare()" class="biz-btn biz-btn-ghost biz-btn-sm" style="width:100%">Copy link</button>
             </div>
+
+            <div class="biz-panel biz-panel-body space-y-2">
+                <p class="biz-label" style="margin:0">QR code</p>
+                <p class="biz-muted" style="font-size:11px;margin:0">Print it for tables, counters or receipts. Scanning opens this form.</p>
+                <div id="qrBox" class="flex justify-center rounded bg-white p-2" style="border:1px solid var(--bz-line-soft)"></div>
+                <div class="flex gap-1.5">
+                    <button onclick="downloadQr()" class="biz-btn biz-btn-ghost biz-btn-sm" style="flex:1">Download PNG</button>
+                    <button onclick="printQrCard()" class="biz-btn biz-btn-primary biz-btn-sm" style="flex:1">Print card</button>
+                </div>
+            </div>
+
+            <div class="biz-panel biz-panel-body space-y-2">
+                <p class="biz-label" style="margin:0">Look &amp; reviews</p>
+                <label class="block"><span class="biz-label">Theme</span>
+                    <select id="fTheme" class="biz-select">
+                        <?php foreach (FormsService::THEMES as $k => $t): ?>
+                        <option value="<?= htmlspecialchars($k) ?>" <?= $form['theme'] === $k ? 'selected' : '' ?>><?= htmlspecialchars($t['label']) ?></option>
+                        <?php endforeach; ?>
+                    </select></label>
+                <label class="flex items-start gap-2 pt-1" style="font-size:12px">
+                    <input type="checkbox" id="fReviews" class="mt-0.5" <?= !empty($form['reviews_enabled']) ? 'checked' : '' ?>>
+                    <span>Let customers agree to share their review. Reviews they agree to share wait in a queue for you to approve.</span>
+                </label>
+                <label class="block"><span class="biz-label">Facebook recommend link <span class="biz-muted">(optional)</span></span>
+                    <input id="fRecommend" class="biz-input" placeholder="https://facebook.com/yourpage/reviews" value="<?= htmlspecialchars($form['fb_recommend_url']) ?>"></label>
+                <button onclick="saveReviewSettings()" class="biz-btn biz-btn-ghost biz-btn-sm" style="width:100%">Save</button>
+            </div>
+
+            <div class="biz-panel biz-panel-body space-y-2">
+                <p class="biz-label" style="margin:0">Facebook Page</p>
+                <div id="fbState" style="font-size:12px">
+                <?php if ($fbConn): ?>
+                    <span class="font-bold"><?= htmlspecialchars($fbConn['page_name'] ?: $fbConn['page_id']) ?></span>
+                    <span class="biz-muted"> · connected. Approved reviews post here.</span>
+                <?php else: ?>
+                    <span class="biz-muted">Not connected. Approved reviews can be copied and posted by hand.</span>
+                <?php endif; ?>
+                </div>
+                <?php if ($isCompanyAdmin): ?>
+                <div id="fbConnectForm" class="space-y-1.5 <?= $fbConn ? 'hidden' : '' ?>">
+                    <input id="fbPageId" class="biz-input biz-num" placeholder="Page ID" autocomplete="off">
+                    <input id="fbToken" class="biz-input" type="password" placeholder="Page access token" autocomplete="off">
+                    <button onclick="connectFacebook()" class="biz-btn biz-btn-primary biz-btn-sm" style="width:100%">Connect Page</button>
+                </div>
+                <?php if ($fbConn): ?>
+                <button onclick="disconnectFacebook()" class="biz-btn biz-btn-danger biz-btn-sm" style="width:100%">Disconnect</button>
+                <?php endif; ?>
+                <?php else: ?>
+                <p class="biz-muted" style="font-size:11px;margin:0">Only a company admin can connect the Page.</p>
+                <?php endif; ?>
+            </div>
         </div>
     </div>
 </div>
 
+<div id="printCard">
+    <p style="font-size:14px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:#555;margin:0"><?= htmlspecialchars($activeCompany['name']) ?></p>
+    <h1 style="font-size:34px;font-weight:800;margin:.3em 0 .1em"><?= htmlspecialchars($form['title']) ?></h1>
+    <p style="font-size:20px;margin:0 0 18px">Scan to tell us what you think</p>
+    <img id="printQrImg" alt="QR code" style="width:320px;height:320px">
+    <p style="font-size:12px;color:#777;margin-top:14px;word-break:break-all"><?= htmlspecialchars($shareUrl) ?></p>
+</div>
+<style>
+    #printCard { display: none; }
+    @media print {
+        body > *:not(#printCard) { display: none !important; }
+        #printCard { display: block !important; text-align: center; padding: 48px 24px; font-family: system-ui, sans-serif; }
+    }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 const COMPANY_ID = <?= $companyId ?>;
 const FORM_ID = <?= $formId ?>;
@@ -382,8 +455,73 @@ async function move(i, dir) {
     } catch (e) { showAlert(e.message, 'error'); }
 }
 
+// ── Look, reviews & Facebook ─────────────────────────────────────────────
+async function saveReviewSettings() {
+    try {
+        await api('save.php', {
+            id: FORM_ID,
+            theme: document.getElementById('fTheme').value,
+            reviews_enabled: document.getElementById('fReviews').checked ? 1 : 0,
+            fb_recommend_url: document.getElementById('fRecommend').value.trim(),
+        });
+        showAlert('Saved.');
+    } catch (e) { showAlert(e.message, 'error'); }
+}
+
+async function connectFacebook() {
+    try {
+        const { connection } = await api('facebook_connect.php', {
+            action: 'connect',
+            page_id: document.getElementById('fbPageId').value,
+            access_token: document.getElementById('fbToken').value,
+        });
+        document.getElementById('fbToken').value = '';
+        showAlert('Connected to ' + connection.page_name + '. Reloading…');
+        setTimeout(() => location.reload(), 900);
+    } catch (e) { showAlert(e.message, 'error'); }
+}
+
+async function disconnectFacebook() {
+    try {
+        await api('facebook_connect.php', { action: 'disconnect' });
+        location.reload();
+    } catch (e) { showAlert(e.message, 'error'); }
+}
+
+// ── QR code ──────────────────────────────────────────────────────────────
+let qrReady = false;
+function renderQr() {
+    const box = document.getElementById('qrBox');
+    if (!window.QRCode) { box.textContent = 'QR code unavailable offline.'; return; }
+    new QRCode(box, { text: SHARE_URL, width: 200, height: 200, correctLevel: QRCode.CorrectLevel.M });
+    qrReady = true;
+}
+function qrDataUrl() {
+    const c = document.querySelector('#qrBox canvas');
+    if (c) return c.toDataURL('image/png');
+    const img = document.querySelector('#qrBox img');
+    return img ? img.src : '';
+}
+function downloadQr() {
+    const url = qrDataUrl();
+    if (!qrReady || !url) { showAlert('QR code is not ready yet.', 'error'); return; }
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'form-qr-' + FORM_ID + '.png';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+}
+function printQrCard() {
+    const url = qrDataUrl();
+    if (!qrReady || !url) { showAlert('QR code is not ready yet.', 'error'); return; }
+    document.getElementById('printQrImg').src = url;
+    window.print();
+}
+
 renderStatus();
 renderQuestions();
+renderQr();
 </script>
 <?php include __DIR__ . '/partials/footer_app.php'; ?>
 </body>

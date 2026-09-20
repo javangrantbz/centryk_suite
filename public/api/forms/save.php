@@ -1,9 +1,11 @@
 <?php
 /**
  * Create or update a form.
- * Body: { company_id, id?, title?, description?, status?, access?,
- *         one_response_per_person?, confirmation_message? }
- * Returns: { id }
+ * Body: { company_id, id?, template?, title?, description?, status?, access?,
+ *         one_response_per_person?, confirmation_message?, theme?,
+ *         reviews_enabled?, fb_recommend_url? }
+ * template: 'review' (only when creating) starts from the customer review &
+ * ratings form. Returns: { id, form }
  */
 require_once __DIR__ . '/../../../app/core/forms_guard.php';
 require_once __DIR__ . '/../../../app/services/FormsService.php';
@@ -11,15 +13,19 @@ require_once __DIR__ . '/../../../app/services/FormsService.php';
 [$userId, $companyId, $in] = forms_guard();
 
 $id = (int)($in['id'] ?? 0);
+$allowed = [
+    'title', 'description', 'status', 'access', 'one_response_per_person',
+    'confirmation_message', 'theme', 'reviews_enabled', 'fb_recommend_url',
+];
 
 try {
     if ($id <= 0) {
-        $id = FormsService::createForm($companyId, $userId, (string)($in['title'] ?? ''));
+        $template = ($in['template'] ?? '') === 'review' ? 'review' : '';
+        $id = FormsService::createForm($companyId, $userId, (string)($in['title'] ?? ''), $template);
+        // The title was applied on create; don't let a blank one overwrite the template's default.
+        $allowed = array_values(array_diff($allowed, ['title']));
     }
-    $fields = array_intersect_key($in, array_flip([
-        'title', 'description', 'status', 'access',
-        'one_response_per_person', 'confirmation_message',
-    ]));
+    $fields = array_intersect_key($in, array_flip($allowed));
     if ($fields) {
         FormsService::updateForm($id, $companyId, $fields);
     }
