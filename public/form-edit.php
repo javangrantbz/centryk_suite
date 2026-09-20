@@ -148,6 +148,11 @@ include __DIR__ . '/partials/account_header.php';
                 <label class="flex items-center gap-2 pt-1" style="font-size:12px">
                     <input type="checkbox" id="fOneResponse" <?= $form['one_response_per_person'] ? 'checked' : '' ?>> One response per person
                 </label>
+                <p class="biz-muted" style="font-size:10px;margin:0 0 0 22px">Goes by device and network, so people on shared event Wi-Fi with similar phones can be wrongly blocked. Use with care at events.</p>
+                <label class="flex items-start gap-2 pt-1" style="font-size:12px">
+                    <input type="checkbox" id="fUniqueContacts" class="mt-0.5" <?= !empty($form['unique_contacts']) ? 'checked' : '' ?>>
+                    <span>One entry per phone number or email <span class="biz-muted">(rejects a repeat of the same number or address; needs a Phone or Email question)</span></span>
+                </label>
                 <button onclick="saveAccess()" class="biz-btn biz-btn-ghost biz-btn-sm" style="width:100%">Save</button>
             </div>
 
@@ -332,6 +337,7 @@ async function saveAccess() {
             id: FORM_ID,
             access: document.querySelector('input[name=access]:checked').value,
             one_response_per_person: document.getElementById('fOneResponse').checked ? 1 : 0,
+            unique_contacts: document.getElementById('fUniqueContacts').checked ? 1 : 0,
         });
         showAlert('Saved.');
     } catch (e) { showAlert(e.message, 'error'); }
