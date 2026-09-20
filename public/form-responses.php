@@ -77,7 +77,8 @@ include __DIR__ . '/partials/account_header.php';
 
     <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
-            <p class="biz-kicker"><a href="forms.php?company_id=<?= $companyId ?>" class="biz-t-green">Forms</a> · results</p>
+            <a href="forms.php?company_id=<?= $companyId ?>" class="biz-btn biz-btn-ghost biz-btn-sm">&larr; All forms</a>
+            <p class="biz-kicker" style="margin-top:8px">Results</p>
             <h1 class="mt-0.5"><?= htmlspecialchars($form['title']) ?></h1>
         </div>
         <div class="flex items-center gap-1.5">
