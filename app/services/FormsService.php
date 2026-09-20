@@ -405,6 +405,10 @@ class FormsService
             $set[] = 'access = :access';
             $params['access'] = $access;
         }
+        if (array_key_exists('unique_contacts', $fields)) {
+            $set[] = 'unique_contacts = :uc';
+            $params['uc'] = !empty($fields['unique_contacts']) ? 1 : 0;
+        }
         if (array_key_exists('one_response_per_person', $fields)) {
             $set[] = 'one_response_per_person = :orp';
             $params['orp'] = !empty($fields['one_response_per_person']) ? 1 : 0;
@@ -452,9 +456,9 @@ class FormsService
             $ins = $pdo->prepare("
                 INSERT INTO form_forms
                     (company_id, created_by, title, description, status, access,
-                     one_response_per_person, confirmation_message, theme, reviews_enabled,
+                     one_response_per_person, unique_contacts, confirmation_message, theme, reviews_enabled,
                      fb_recommend_url, fb_auto_redirect, share_token)
-                VALUES (:cid, :uid, :title, :descr, 'draft', :access, :orp, :cm, :theme, :re, :fbu, :far, :tok)
+                VALUES (:cid, :uid, :title, :descr, 'draft', :access, :orp, :uc, :cm, :theme, :re, :fbu, :far, :tok)
             ");
             $ins->execute([
                 'cid'    => $companyId,
@@ -463,6 +467,7 @@ class FormsService
                 'descr'  => $src['description'],
                 'access' => $src['access'],
                 'orp'    => (int)$src['one_response_per_person'],
+                'uc'     => (int)$src['unique_contacts'],
                 'cm'     => $src['confirmation_message'],
                 'theme'  => $src['theme'],
                 're'     => (int)$src['reviews_enabled'],
@@ -669,6 +674,7 @@ class FormsService
 
         $questions = self::questions((int)$form['id']);
         $clean = [];
+        $contacts = [];   // [question id, 'phone'|'email', normalised value]
 
         foreach ($questions as $q) {
             if ($q['type'] === 'section') {
@@ -737,10 +743,34 @@ class FormsService
             }
 
             $clean[] = [$qid, mb_substr($val, 0, 5000), null];
+            if ($q['type'] === 'email' || $q['type'] === 'phone') {
+                $contacts[] = [$qid, $q['type'], $val];
+            }
         }
 
         if (!$clean) {
             throw new RuntimeException('Please answer at least one question.');
+        }
+
+        // Giveaway-style forms: one entry per phone number / email address. Values are
+        // already normalised above (phone as 600-2423, email lower-case), so an exact match works.
+        if (!empty($form['unique_contacts']) && $contacts) {
+            $seen = self::pdo()->prepare("
+                SELECT 1 FROM form_answers a
+                JOIN form_responses r ON r.id = a.response_id
+                WHERE r.form_id = :fid AND a.question_id = :qid AND a.answer_text = :v
+                LIMIT 1
+            ");
+            foreach ($contacts as [$cqid, $ctype, $cval]) {
+                $seen->execute(['fid' => $form['id'], 'qid' => $cqid, 'v' => $cval]);
+                if ($seen->fetchColumn()) {
+                    throw new RuntimeException(
+                        $ctype === 'phone'
+                            ? 'This phone number has already been entered. Only one entry per phone number is allowed.'
+                            : 'This email address has already been entered. Only one entry per email address is allowed.'
+                    );
+                }
+            }
         }
 
         // Review sharing: only responses whose author consented enter the queue.
