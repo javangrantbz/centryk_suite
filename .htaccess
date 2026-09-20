@@ -24,6 +24,9 @@ RewriteRule ^s/([a-zA-Z0-9-]+)/?$ public/store-link.php?slug=$1 [L,QSA]
 # Short links for public forms (centryk.bz/f/<share-token> → the fill page)
 RewriteRule ^f/([a-zA-Z0-9]+)/?$ public/f.php?t=$1 [L,QSA]
 
+# Short links for review/feedback forms (/review/<company-slug>/<form-slug> → the fill page)
+RewriteRule ^review/([a-zA-Z0-9-]+)/([a-zA-Z0-9-]+)/?$ public/review-link.php?c=$1&s=$2 [L,QSA]
+
 # Memorable public entry points
 RewriteRule ^store/?$     public/store.php     [L,QSA]
 RewriteRule ^jobs/?$      public/jobs.php      [L,QSA]

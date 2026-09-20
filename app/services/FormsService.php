@@ -71,6 +71,71 @@ class FormsService
         return self::THEMES[$key] ?? self::THEMES['default'];
     }
 
+    // ── Short links ───────────────────────────────────────────────────────
+
+    /** URL-safe name: lowercase, apostrophes dropped, other runs of non-alphanumerics become one hyphen. */
+    public static function slugify(string $value): string
+    {
+        $value = strtolower(trim($value));
+        $value = str_replace(["'", "\u{2019}", "\u{2018}", '`'], '', $value);
+        $slug = trim(preg_replace('/[^a-z0-9]+/', '-', $value) ?? '', '-');
+        return $slug === '' ? 'review' : substr($slug, 0, 60);
+    }
+
+    /** True when $slug is not already used by another form in the company. */
+    private static function slugFree(int $companyId, string $slug, int $exceptFormId): bool
+    {
+        $st = self::pdo()->prepare(
+            "SELECT COUNT(*) FROM form_forms WHERE company_id = :cid AND slug = :s AND id <> :id"
+        );
+        $st->execute(['cid' => $companyId, 's' => $slug, 'id' => $exceptFormId]);
+        return (int)$st->fetchColumn() === 0;
+    }
+
+    /**
+     * The form's short-link name, generated from its title (suffixed -2, -3, ...
+     * on a clash) and saved the first time it's needed.
+     */
+    public static function ensureSlug(int $formId, int $companyId): string
+    {
+        $form = self::getForm($formId, $companyId);
+        if (!$form) {
+            throw new RuntimeException('Form not found.');
+        }
+        $existing = trim((string)($form['slug'] ?? ''));
+        if ($existing !== '') {
+            return $existing;
+        }
+
+        $base = self::slugify((string)$form['title']);
+        $slug = $base;
+        for ($n = 2; !self::slugFree($companyId, $slug, $formId); $n++) {
+            $slug = $base . '-' . $n;
+        }
+        self::pdo()->prepare("UPDATE form_forms SET slug = :s WHERE id = :id AND company_id = :cid AND slug IS NULL")
+            ->execute(['s' => $slug, 'id' => $formId, 'cid' => $companyId]);
+        return (string)(self::getForm($formId, $companyId)['slug'] ?? $slug);
+    }
+
+    /** Resolve /review/<company-slug>/<form-slug> to the form's share token, or null. */
+    public static function tokenForShortLink(string $companySlug, string $formSlug): ?string
+    {
+        $companySlug = strtolower(trim($companySlug));
+        $formSlug = strtolower(trim($formSlug));
+        if (!preg_match('/^[a-z0-9-]{1,64}$/', $companySlug) || !preg_match('/^[a-z0-9-]{1,80}$/', $formSlug)) {
+            return null;
+        }
+        $st = self::pdo()->prepare("
+            SELECT f.share_token
+            FROM form_forms f JOIN companies c ON c.id = f.company_id
+            WHERE c.store_slug = :cs AND f.slug = :fs AND c.status = 'active'
+            LIMIT 1
+        ");
+        $st->execute(['cs' => $companySlug, 'fs' => $formSlug]);
+        $tok = $st->fetchColumn();
+        return $tok !== false ? (string)$tok : null;
+    }
+
     // ── Company access ────────────────────────────────────────────────────
 
     /** Active companies where the user is admin or manager. */
@@ -208,6 +273,14 @@ class FormsService
         if (array_key_exists('confirmation_message', $fields)) {
             $set[] = 'confirmation_message = :cm';
             $params['cm'] = mb_substr((string)$fields['confirmation_message'], 0, 500);
+        }
+        if (array_key_exists('slug', $fields)) {
+            $slug = self::slugify((string)$fields['slug']);
+            if (!self::slugFree($companyId, $slug, $id)) {
+                throw new RuntimeException('Another form in your company already uses the short link name "' . $slug . '".');
+            }
+            $set[] = 'slug = :slug';
+            $params['slug'] = $slug;
         }
         if (array_key_exists('theme', $fields)) {
             $set[] = 'theme = :theme';
