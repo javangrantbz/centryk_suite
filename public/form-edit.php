@@ -97,7 +97,8 @@ include __DIR__ . '/partials/account_header.php';
         </div>
     </div>
 
-    <div id="alert" class="biz-notice mb-3 hidden"></div>
+    <!-- Fixed so results are visible wherever the user has scrolled (e.g. the Facebook panel far down the sidebar). -->
+    <div id="alert" class="biz-notice mb-3 hidden" style="position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:60;width:max-content;max-width:92vw;box-shadow:0 4px 16px rgba(0,0,0,.18)"></div>
 
     <div class="grid gap-3 lg:grid-cols-[minmax(0,1fr)_300px] items-start">
 
@@ -235,12 +236,15 @@ const CHOICE_TYPES = ['single_choice', 'multiple_choice', 'dropdown'];
 let questions = <?= json_encode($questions) ?>;
 let formStatus = <?= json_encode($form['status']) ?>;
 
+let alertTimer = null;
 function showAlert(msg, kind) {
     const el = document.getElementById('alert');
     el.textContent = msg;
     el.className = 'biz-notice mb-3' + (kind === 'error' ? ' biz-notice-red' : ' biz-notice-green');
     el.classList.remove('hidden');
-    setTimeout(() => el.classList.add('hidden'), 4000);
+    clearTimeout(alertTimer);
+    // Errors stay longer: they usually explain what to fix.
+    alertTimer = setTimeout(() => el.classList.add('hidden'), kind === 'error' ? 10000 : 4000);
 }
 
 async function api(path, body) {
