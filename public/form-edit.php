@@ -459,10 +459,12 @@ function renderQuestions() {
 function card(q, i) {
     const isSection = q.type === 'section';
     const opts = (q.options || []).map(esc).join(' · ');
+    // Question numbers (sections don't count): they're what {1}, {2}... in a suggested comment refer to.
+    const num = isSection ? 0 : questions.slice(0, i + 1).filter(x => x.type !== 'section').length;
     return `
     <div class="rounded" style="border:1px solid var(--bz-line)">
         <div class="flex items-center justify-between gap-2 px-2.5 py-1.5" style="background:var(--bz-head)">
-            <span class="biz-kicker" style="margin:0">${esc(TYPE_LABELS[q.type] || q.type)}${q.required ? ' · required' : ''}</span>
+            <span class="biz-kicker" style="margin:0">${num ? 'Q' + num + ' · ' : ''}${esc(TYPE_LABELS[q.type] || q.type)}${q.required ? ' · required' : ''}</span>
             <span class="flex items-center gap-1">
                 <button onclick="move(${i}, -1)" class="biz-btn biz-btn-ghost biz-btn-sm" ${i === 0 ? 'disabled' : ''}><i data-lucide="chevron-up" class="w-3 h-3"></i></button>
                 <button onclick="move(${i}, 1)" class="biz-btn biz-btn-ghost biz-btn-sm" ${i === questions.length - 1 ? 'disabled' : ''}><i data-lucide="chevron-down" class="w-3 h-3"></i></button>
@@ -475,6 +477,7 @@ function card(q, i) {
             ${q.help_text ? `<div class="biz-muted" style="font-size:11px">${esc(q.help_text)}</div>` : ''}
             ${opts ? `<div class="biz-muted mt-1" style="font-size:11px">${opts}</div>` : ''}
             ${q.type === 'rating' ? `<div class="biz-muted mt-1" style="font-size:11px">1 to ${(q.config && q.config.max) || 5}</div>` : ''}
+            ${q.type === 'long_text' && q.config && q.config.prefill ? `<div class="biz-muted mt-1" style="font-size:11px">Suggests a comment from the diner's answers: ${esc(q.config.prefill)}</div>` : ''}
         </div>
         <div id="editor-${q.id}" class="hidden px-2.5 pb-2.5"></div>
     </div>`;
@@ -498,6 +501,15 @@ function editorHtml(q) {
         ${q.type === 'rating' ? `
         <label class="block"><span class="biz-label">Scale max (2–10)</span>
             <input class="biz-input biz-num" type="number" min="2" max="10" data-f="rating_max" value="${(q.config && q.config.max) || 5}"></label>` : ''}
+        ${q.type === 'long_text' ? `
+        <label class="block"><span class="biz-label">Suggested comment (optional)</span>
+            <textarea class="biz-input" data-f="prefill" rows="4" maxlength="600" placeholder="I tried {1}. The flavor was {2:lower}.">${esc((q.config && q.config.prefill) || '')}</textarea></label>
+        <div class="biz-muted" style="font-size:10px">
+            Pre-fills this box from the diner's answers, so they have a starting point they can edit.
+            <b>{2}</b> = the answer to question 2 (see the Q numbers above). <b>{2:lower}</b> makes it lower case.
+            <b>{1:without=Other|I haven't tried one yet}</b> leaves those answers out (separate them with |; use ; to combine with lower, like {1:lower;without=Other}). A sentence is skipped when
+            an answer it needs is missing. Sentences end with a full stop.
+        </div>` : ''}
         <div class="flex gap-2 pt-0.5">
             <button onclick="saveQ(this, ${q.id || 0}, '${q.type}')" class="biz-btn biz-btn-primary biz-btn-sm">Save</button>
             <button onclick="${isNew ? 'cancelNew(this)' : `closeEditor(${q.id})`}" class="biz-btn biz-btn-ghost biz-btn-sm">Cancel</button>
@@ -543,6 +555,7 @@ function collect(scope) {
     if (g('required')) q.required = g('required').checked ? 1 : 0;
     if (g('options')) q.options = g('options').value.split('\n').map(s => s.trim()).filter(Boolean);
     if (g('rating_max')) q.config = { max: parseInt(g('rating_max').value, 10) || 5 };
+    if (g('prefill')) q.config = { prefill: g('prefill').value };
     return q;
 }
 
