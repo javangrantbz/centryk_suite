@@ -51,7 +51,9 @@ $longUrl = $publicBase . '/f.php?t=' . $form['share_token'];
 $companySlug = StoreLink::ensure(DB::pdo(), $companyId, (string)$activeCompany['name']);
 $formSlug = FormsService::ensureSlug($formId, $companyId);
 $siteRoot = preg_replace('#/public$#', '', $publicBase);
-$shareUrl = $siteRoot . '/review/' . $companySlug . '/' . $formSlug;
+$namedUrl = $siteRoot . '/review/' . $companySlug . '/' . $formSlug;   // descriptive link, still works
+$shortCode = FormsService::ensureShortCode($formId, $companyId);
+$shareUrl = $siteRoot . '/r/' . $shortCode;                            // shortest; used for the QR and Copy link
 
 ob_start();
 include __DIR__ . '/partials/admin_tools_dropdown.php';
@@ -149,13 +151,25 @@ include __DIR__ . '/partials/account_header.php';
                 <div class="biz-muted" id="shareState" style="font-size:11px"></div>
                 <input id="shareUrl" class="biz-input biz-num" style="font-size:11px" readonly value="<?= htmlspecialchars($shareUrl) ?>">
                 <button onclick="copyShare()" class="biz-btn biz-btn-ghost biz-btn-sm" style="width:100%">Copy link</button>
-                <label class="block pt-1"><span class="biz-label">Short link name</span>
+                <label class="block pt-1"><span class="biz-label">Short code <span class="biz-muted">(the /r/ link)</span></span>
                     <div class="flex gap-1.5">
-                        <input id="fSlug" class="biz-input" maxlength="60" value="<?= htmlspecialchars($formSlug) ?>">
-                        <button onclick="saveSlug()" class="biz-btn biz-btn-ghost biz-btn-sm">Save</button>
+                        <input id="fCode" class="biz-input" maxlength="30" value="<?= htmlspecialchars($shortCode) ?>">
+                        <button onclick="saveCode()" class="biz-btn biz-btn-ghost biz-btn-sm">Save</button>
                     </div></label>
-                <p class="biz-muted" style="font-size:10px;margin:0">Changing it changes the link and the QR code, so reprint any cards already made. The long link
-                    <span class="biz-num" style="word-break:break-all"><?= htmlspecialchars($longUrl) ?></span> keeps working.</p>
+                <p class="biz-muted" style="font-size:10px;margin:0">3 to 30 letters, numbers or hyphens, unique across Centryk. Changing it changes the QR code, so reprint any cards already made.</p>
+
+                <details class="pt-1" style="font-size:11px">
+                    <summary class="biz-muted" style="cursor:pointer">Other links that also open this form</summary>
+                    <div class="space-y-1.5 pt-1.5">
+                        <div class="biz-num" style="word-break:break-all"><?= htmlspecialchars($namedUrl) ?></div>
+                        <label class="block"><span class="biz-label">Link name (the last part of the link above)</span>
+                            <div class="flex gap-1.5">
+                                <input id="fSlug" class="biz-input" maxlength="60" value="<?= htmlspecialchars($formSlug) ?>">
+                                <button onclick="saveSlug()" class="biz-btn biz-btn-ghost biz-btn-sm">Save</button>
+                            </div></label>
+                        <div class="biz-num" style="word-break:break-all"><?= htmlspecialchars($longUrl) ?></div>
+                    </div>
+                </details>
             </div>
 
             <div class="biz-panel biz-panel-body space-y-2">
@@ -474,6 +488,14 @@ async function move(i, dir) {
     renderQuestions();
     try {
         await api('reorder.php', { order: questions.map(q => q.id) });
+    } catch (e) { showAlert(e.message, 'error'); }
+}
+
+async function saveCode() {
+    try {
+        await api('save.php', { id: FORM_ID, short_code: document.getElementById('fCode').value });
+        showAlert('Short code updated. Reloading…');
+        setTimeout(() => location.reload(), 800);
     } catch (e) { showAlert(e.message, 'error'); }
 }
 
