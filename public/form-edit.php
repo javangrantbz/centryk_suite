@@ -51,6 +51,14 @@ $longUrl = $publicBase . '/f.php?t=' . $form['share_token'];
 $companySlug = StoreLink::ensure(DB::pdo(), $companyId, (string)$activeCompany['name']);
 $formSlug = FormsService::ensureSlug($formId, $companyId);
 $siteRoot = preg_replace('#/public$#', '', $publicBase);
+// Company logo for the middle of the QR code: only a real uploaded file.
+$qrLogo = '';
+$lg = DB::pdo()->prepare('SELECT logo FROM companies WHERE id = :id');
+$lg->execute(['id' => $companyId]);
+$lgPath = trim((string)$lg->fetchColumn());
+if (preg_match('#^uploads/companies/[A-Za-z0-9._-]+\.(png|jpe?g|webp|gif)$#i', $lgPath) && is_file(__DIR__ . '/' . $lgPath)) {
+    $qrLogo = $lgPath;
+}
 $namedUrl = $siteRoot . '/review/' . $companySlug . '/' . $formSlug;   // descriptive link, still works
 $shortCode = FormsService::ensureShortCode($formId, $companyId);
 $shareUrl = $siteRoot . '/r/' . $shortCode;                            // shortest; used for the QR and Copy link
@@ -186,6 +194,12 @@ include __DIR__ . '/partials/account_header.php';
                 <p class="biz-label" style="margin:0">QR code</p>
                 <p class="biz-muted" style="font-size:11px;margin:0">Print it for tables, counters or receipts. Scanning opens this form.</p>
                 <div id="qrBox" class="flex justify-center rounded bg-white p-2" style="border:1px solid var(--bz-line-soft)"></div>
+                <?php if ($qrLogo !== ''): ?>
+                <label class="flex items-center gap-2" style="font-size:12px">
+                    <input type="checkbox" id="qrLogoToggle" checked onchange="renderQr()"> Show the company logo in the middle
+                </label>
+                <p class="biz-muted" style="font-size:10px;margin:0">Always scan-test a printed card with a phone. If it is slow to scan, untick this.</p>
+                <?php endif; ?>
                 <div class="flex gap-1.5">
                     <button onclick="downloadQr()" class="biz-btn biz-btn-ghost biz-btn-sm" style="flex:1">Download PNG</button>
                     <button onclick="printQrCard()" class="biz-btn biz-btn-primary biz-btn-sm" style="flex:1">Print card</button>
@@ -248,6 +262,7 @@ include __DIR__ . '/partials/account_header.php';
     <p style="font-size:12px;color:#777;margin-top:14px;word-break:break-all"><?= htmlspecialchars($shareUrl) ?></p>
 </div>
 <style>
+    #qrBox canvas, #qrBox img { width: 200px !important; height: 200px !important; }
     #printCard { display: none; }
     @media print {
         body > *:not(#printCard) { display: none !important; }
@@ -554,11 +569,38 @@ async function disconnectFacebook() {
 
 // ── QR code ──────────────────────────────────────────────────────────────
 let qrReady = false;
+const QR_LOGO = <?= json_encode($qrLogo) ?>;   // '' when the company has no usable logo
+const QR_SIZE = 400;                            // drawn large, shown at 200px, so it prints sharply
 function renderQr() {
     const box = document.getElementById('qrBox');
+    qrReady = false;
+    box.innerHTML = '';
     if (!window.QRCode) { box.textContent = 'QR code unavailable offline.'; return; }
-    new QRCode(box, { text: SHARE_URL, width: 200, height: 200, correctLevel: QRCode.CorrectLevel.M });
-    qrReady = true;
+    // Level H can lose ~30% of the code and still scan, which is what makes a logo in the middle safe.
+    new QRCode(box, { text: SHARE_URL, width: QR_SIZE, height: QR_SIZE, correctLevel: QRCode.CorrectLevel.H });
+
+    const toggle = document.getElementById('qrLogoToggle');
+    const canvas = box.querySelector('canvas');
+    if (!QR_LOGO || (toggle && !toggle.checked) || !canvas) { qrReady = true; return; }
+
+    const logo = new Image();
+    logo.onload = () => {
+        const ctx = canvas.getContext('2d');
+        const size = canvas.width;
+        const inner = Math.round(size * 0.20);          // logo area: 20% of the width (about 4% of the code)
+        const pad = Math.round(inner * 0.14);           // white border so the logo doesn't blur into the modules
+        const start = Math.round((size - inner) / 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(start - pad, start - pad, inner + pad * 2, inner + pad * 2);
+        const ratio = Math.min(inner / logo.width, inner / logo.height);
+        const w = logo.width * ratio, h = logo.height * ratio;
+        ctx.drawImage(logo, (size - w) / 2, (size - h) / 2, w, h);
+        const shown = box.querySelector('img');
+        if (shown) shown.src = canvas.toDataURL('image/png');
+        qrReady = true;
+    };
+    logo.onerror = () => { qrReady = true; };           // logo missing: plain QR code still works
+    logo.src = QR_LOGO;
 }
 function qrDataUrl() {
     const c = document.querySelector('#qrBox canvas');
