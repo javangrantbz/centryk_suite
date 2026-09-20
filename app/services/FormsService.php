@@ -598,8 +598,9 @@ class FormsService
             'fid' => $formId, 'ord' => $nextOrder, 'type' => $type, 'label' => $label,
             'help' => $help, 'req' => $required, 'options' => $options, 'config' => $config,
         ]);
+        $newId = (int)$pdo->lastInsertId();   // read before touch(): the UPDATE resets it to 0
         self::touch($formId);
-        return (int)$pdo->lastInsertId();
+        return $newId;
     }
 
     public static function deleteQuestion(int $questionId, int $formId, int $companyId): void
