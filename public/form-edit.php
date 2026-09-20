@@ -88,7 +88,10 @@ include __DIR__ . '/partials/account_header.php';
 <div class="biz mx-auto max-w-5xl px-4 py-4">
 
     <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <p class="biz-kicker"><a href="forms.php?company_id=<?= $companyId ?>" class="biz-t-green">Forms</a> · editing</p>
+        <div class="flex items-center gap-2">
+            <a href="forms.php?company_id=<?= $companyId ?>" class="biz-btn biz-btn-ghost biz-btn-sm">&larr; All forms</a>
+            <p class="biz-kicker" style="margin:0">Editing</p>
+        </div>
         <div class="flex items-center gap-1.5">
             <a href="f.php?t=<?= htmlspecialchars($form['share_token']) ?>&preview=1" target="_blank" rel="noopener" class="biz-btn biz-btn-ghost biz-btn-sm">Preview</a>
             <?php if ((int)$form['response_count'] > 0): ?>
