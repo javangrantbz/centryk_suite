@@ -15,7 +15,7 @@ require_once __DIR__ . '/../../../app/services/FormsService.php';
 $id = (int)($in['id'] ?? 0);
 $allowed = [
     'title', 'description', 'status', 'access', 'one_response_per_person',
-    'confirmation_message', 'slug', 'theme', 'reviews_enabled', 'fb_recommend_url', 'fb_auto_redirect',
+    'confirmation_message', 'short_code', 'slug', 'theme', 'reviews_enabled', 'fb_recommend_url', 'fb_auto_redirect',
 ];
 
 try {

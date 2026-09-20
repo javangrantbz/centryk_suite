@@ -117,6 +117,68 @@ class FormsService
         return (string)(self::getForm($formId, $companyId)['slug'] ?? $slug);
     }
 
+    /** Characters for generated short codes: no 0/o/1/l/i, which look alike on a printed card. */
+    private const CODE_ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789';
+
+    /** Lowercase letters, digits and hyphens; 3 to 30 characters. Throws when it can't be made valid. */
+    private static function cleanCode(string $value): string
+    {
+        $code = trim(preg_replace('/[^a-z0-9]+/', '-', strtolower(trim($value))) ?? '', '-');
+        if (strlen($code) < 3 || strlen($code) > 30) {
+            throw new RuntimeException('The short code must be 3 to 30 characters (letters, numbers and hyphens).');
+        }
+        return $code;
+    }
+
+    /** Short codes are unique across every company. */
+    private static function codeFree(string $code, int $exceptFormId): bool
+    {
+        $st = self::pdo()->prepare("SELECT COUNT(*) FROM form_forms WHERE short_code = :c AND id <> :id");
+        $st->execute(['c' => $code, 'id' => $exceptFormId]);
+        return (int)$st->fetchColumn() === 0;
+    }
+
+    /** The form's short code (the /r/<code> link), generated and saved the first time it's needed. */
+    public static function ensureShortCode(int $formId, int $companyId): string
+    {
+        $form = self::getForm($formId, $companyId);
+        if (!$form) {
+            throw new RuntimeException('Form not found.');
+        }
+        $existing = trim((string)($form['short_code'] ?? ''));
+        if ($existing !== '') {
+            return $existing;
+        }
+
+        $n = strlen(self::CODE_ALPHABET);
+        do {
+            $code = '';
+            for ($i = 0; $i < 6; $i++) {
+                $code .= self::CODE_ALPHABET[random_int(0, $n - 1)];
+            }
+        } while (!self::codeFree($code, $formId));
+
+        self::pdo()->prepare("UPDATE form_forms SET short_code = :c WHERE id = :id AND company_id = :cid AND short_code IS NULL")
+            ->execute(['c' => $code, 'id' => $formId, 'cid' => $companyId]);
+        return (string)(self::getForm($formId, $companyId)['short_code'] ?? $code);
+    }
+
+    /** Resolve /r/<short_code> to the form's share token, or null. */
+    public static function tokenForCode(string $code): ?string
+    {
+        $code = strtolower(trim($code));
+        if (!preg_match('/^[a-z0-9-]{3,30}$/', $code)) {
+            return null;
+        }
+        $st = self::pdo()->prepare("
+            SELECT f.share_token FROM form_forms f JOIN companies c ON c.id = f.company_id
+            WHERE f.short_code = :c AND c.status = 'active' LIMIT 1
+        ");
+        $st->execute(['c' => $code]);
+        $tok = $st->fetchColumn();
+        return $tok !== false ? (string)$tok : null;
+    }
+
     /** Resolve /review/<company-slug>/<form-slug> to the form's share token, or null. */
     public static function tokenForShortLink(string $companySlug, string $formSlug): ?string
     {
@@ -273,6 +335,14 @@ class FormsService
         if (array_key_exists('confirmation_message', $fields)) {
             $set[] = 'confirmation_message = :cm';
             $params['cm'] = mb_substr((string)$fields['confirmation_message'], 0, 500);
+        }
+        if (array_key_exists('short_code', $fields)) {
+            $code = self::cleanCode((string)$fields['short_code']);
+            if (!self::codeFree($code, $id)) {
+                throw new RuntimeException('The short code "' . $code . '" is already taken by another form. Try a different one.');
+            }
+            $set[] = 'short_code = :sc';
+            $params['sc'] = $code;
         }
         if (array_key_exists('slug', $fields)) {
             $slug = self::slugify((string)$fields['slug']);
