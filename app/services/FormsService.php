@@ -242,7 +242,7 @@ class FormsService
     public static function getFormByToken(string $token): ?array
     {
         $st = self::pdo()->prepare("
-            SELECT f.*, c.name AS company_name
+            SELECT f.*, c.name AS company_name, c.logo AS company_logo
             FROM form_forms f
             JOIN companies c ON c.id = f.company_id
             WHERE f.share_token = :t

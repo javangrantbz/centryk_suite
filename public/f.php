@@ -49,6 +49,16 @@ $fbRedirect = $form && !empty($form['fb_auto_redirect']) && !empty($form['fb_rec
 $pageScheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
 $pageDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/'));
 $pageBase = $pageScheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . rtrim($pageDir, '/') . '/';
+
+// Company logo for the header: only a real uploaded file under uploads/companies/.
+$headerLogo = '';
+if ($form) {
+    $lp = trim((string)($form['company_logo'] ?? ''));
+    if (preg_match('#^uploads/companies/[A-Za-z0-9._-]+\.(png|jpe?g|webp|gif)$#i', $lp) && is_file(__DIR__ . '/' . $lp)) {
+        $headerLogo = $lp;
+    }
+}
+$answerableCount = count(array_filter($questions, static fn ($q) => $q['type'] !== 'section'));
 ?>
 <!doctype html>
 <html lang="en">
@@ -71,7 +81,27 @@ $pageBase = $pageScheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . rtrim
     </style>
 </head>
 <body class="font-sans text-slate-800 antialiased">
-<div class="mx-auto max-w-xl px-4 py-8 sm:py-14">
+<?php if ($state === 'ok'): ?>
+<!-- Fixed header: who is asking + how long the survey is, visible without scrolling. -->
+<header id="topBar" class="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
+    <div class="mx-auto flex max-w-xl items-center gap-3 px-4 py-2.5">
+        <?php if ($headerLogo !== ''): ?>
+        <img src="<?= htmlspecialchars($headerLogo) ?>" alt="" class="h-9 w-9 shrink-0 rounded-lg object-cover ring-1 ring-slate-200">
+        <?php endif; ?>
+        <span class="min-w-0 flex-1 truncate text-sm font-bold text-slate-900"><?= htmlspecialchars($form['company_name']) ?></span>
+        <?php if ($answerableCount > 0): ?>
+        <span id="progressWrap" class="shrink-0 text-right leading-tight">
+            <span id="progressText" class="block text-sm font-extrabold text-brand-600">0/<?= (int)$answerableCount ?></span>
+            <span class="block text-[10px] font-semibold uppercase tracking-wide text-slate-400">questions</span>
+        </span>
+        <?php endif; ?>
+    </div>
+    <?php if ($answerableCount > 0): ?>
+    <div class="h-1 w-full bg-slate-100"><div id="progressBar" class="h-1 bg-brand-600 transition-all duration-300" style="width:0%"></div></div>
+    <?php endif; ?>
+</header>
+<?php endif; ?>
+<div class="mx-auto max-w-xl px-4 py-6 sm:py-10">
 
 <?php if ($state === 'notfound'): ?>
     <div class="rounded-2xl bg-white p-8 text-center shadow-sm ring-1 ring-slate-200">
@@ -108,8 +138,7 @@ $pageBase = $pageScheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . rtrim
     <?php if ($theme['banner']): ?><div class="theme-banner"></div><?php endif; ?>
     <div id="formCard" class="<?= $theme['banner'] ? 'rounded-b-2xl' : 'rounded-2xl' ?> bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
         <div class="border-b border-slate-100 pb-4">
-            <p class="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-600"><?= htmlspecialchars($form['company_name']) ?></p>
-            <h1 class="mt-1 text-xl font-extrabold text-slate-900 sm:text-2xl"><?= $theme['emoji'] !== '' ? htmlspecialchars($theme['emoji']) . ' ' : '' ?><?= htmlspecialchars($form['title']) ?></h1>
+            <h1 class="text-xl font-extrabold text-slate-900 sm:text-2xl"><?= $theme['emoji'] !== '' ? htmlspecialchars($theme['emoji']) . ' ' : '' ?><?= htmlspecialchars($form['title']) ?></h1>
             <?php if (!empty($form['description'])): ?>
             <p class="mt-2 whitespace-pre-line text-sm leading-6 text-slate-600"><?= htmlspecialchars($form['description']) ?></p>
             <?php endif; ?>
@@ -259,6 +288,27 @@ $pageBase = $pageScheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . rtrim
         document.getElementById('nameWrap').classList.toggle('hidden', !e.target.checked);
     });
 
+    // Header progress: how many of the questions have an answer so far.
+    const progressText = document.getElementById('progressText');
+    const progressBar = document.getElementById('progressBar');
+    function questionAnswered(q) {
+        const type = q.dataset.type;
+        if (type === 'multiple_choice' || type === 'single_choice' || type === 'yes_no' || type === 'rating') {
+            return !!q.querySelector('input:checked');
+        }
+        const el = q.querySelector('input, textarea, select');
+        return !!(el && el.value.trim() !== '');
+    }
+    function updateProgress() {
+        const qs = document.querySelectorAll('.q');
+        if (!progressText || !qs.length) return;
+        const done = [...qs].filter(questionAnswered).length;
+        progressText.textContent = done + '/' + qs.length;
+        if (progressBar) progressBar.style.width = Math.round(done / qs.length * 100) + '%';
+    }
+    form.addEventListener('input', updateProgress);
+    form.addEventListener('change', updateProgress);
+
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         errBox.classList.add('hidden');
@@ -310,6 +360,8 @@ $pageBase = $pageScheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . rtrim
             const data = await res.json().catch(() => ({}));
             if (!res.ok || !data.success) throw new Error(data.message || 'Could not submit your response.');
             document.getElementById('formCard').classList.add('hidden');
+            document.getElementById('progressWrap')?.classList.add('hidden');
+            document.getElementById('progressBar')?.parentElement.classList.add('hidden');
             document.getElementById('doneMsg').textContent = data.confirmation_message;
             document.getElementById('doneCard').classList.remove('hidden');
             window.scrollTo({ top: 0, behavior: 'smooth' });
