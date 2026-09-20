@@ -51,6 +51,14 @@ $longUrl = $publicBase . '/f.php?t=' . $form['share_token'];
 $companySlug = StoreLink::ensure(DB::pdo(), $companyId, (string)$activeCompany['name']);
 $formSlug = FormsService::ensureSlug($formId, $companyId);
 $siteRoot = preg_replace('#/public$#', '', $publicBase);
+// Company logo for the middle of the QR code: only a real uploaded file.
+$qrLogo = '';
+$lg = DB::pdo()->prepare('SELECT logo FROM companies WHERE id = :id');
+$lg->execute(['id' => $companyId]);
+$lgPath = trim((string)$lg->fetchColumn());
+if (preg_match('#^uploads/companies/[A-Za-z0-9._-]+\.(png|jpe?g|webp|gif)$#i', $lgPath) && is_file(__DIR__ . '/' . $lgPath)) {
+    $qrLogo = $lgPath;
+}
 $namedUrl = $siteRoot . '/review/' . $companySlug . '/' . $formSlug;   // descriptive link, still works
 $shortCode = FormsService::ensureShortCode($formId, $companyId);
 $shareUrl = $siteRoot . '/r/' . $shortCode;                            // shortest; used for the QR and Copy link
@@ -186,9 +194,24 @@ include __DIR__ . '/partials/account_header.php';
                 <p class="biz-label" style="margin:0">QR code</p>
                 <p class="biz-muted" style="font-size:11px;margin:0">Print it for tables, counters or receipts. Scanning opens this form.</p>
                 <div id="qrBox" class="flex justify-center rounded bg-white p-2" style="border:1px solid var(--bz-line-soft)"></div>
+                <?php if ($qrLogo !== ''): ?>
+                <div style="font-size:12px">
+                    <span class="biz-label">QR style</span>
+                    <label class="flex items-center gap-2"><input type="radio" name="qrStyle" value="logo" checked onchange="qrOptionsChanged()"> With company logo</label>
+                    <label class="flex items-center gap-2"><input type="radio" name="qrStyle" value="plain" onchange="qrOptionsChanged()"> Without logo (most reliable)</label>
+                </div>
+                <?php endif; ?>
+                <label class="block"><span class="biz-label">Print layout</span>
+                    <select id="printLayout" class="biz-select" onchange="qrOptionsChanged()">
+                        <option value="1">1 per page (large)</option>
+                        <option value="4">4 per page (cut out)</option>
+                        <option value="8">8 per page (cut out, small)</option>
+                    </select></label>
+                <p id="printHint" class="biz-muted hidden" style="font-size:10px;margin:0"></p>
+                <p class="biz-muted" style="font-size:10px;margin:0">Always scan-test a printed card with a phone, in the lighting where it will be used.</p>
                 <div class="flex gap-1.5">
                     <button onclick="downloadQr()" class="biz-btn biz-btn-ghost biz-btn-sm" style="flex:1">Download PNG</button>
-                    <button onclick="printQrCard()" class="biz-btn biz-btn-primary biz-btn-sm" style="flex:1">Print card</button>
+                    <button onclick="printQrCard()" class="biz-btn biz-btn-primary biz-btn-sm" style="flex:1">Print</button>
                 </div>
             </div>
 
@@ -240,18 +263,39 @@ include __DIR__ . '/partials/account_header.php';
     </div>
 </div>
 
-<div id="printCard">
-    <p style="font-size:14px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:#555;margin:0"><?= htmlspecialchars($activeCompany['name']) ?></p>
-    <h1 style="font-size:34px;font-weight:800;margin:.3em 0 .1em"><?= htmlspecialchars($form['title']) ?></h1>
-    <p style="font-size:20px;margin:0 0 18px">Scan to tell us what you think</p>
-    <img id="printQrImg" alt="QR code" style="width:320px;height:320px">
-    <p style="font-size:12px;color:#777;margin-top:14px;word-break:break-all"><?= htmlspecialchars($shareUrl) ?></p>
-</div>
+<!-- Filled in by printQrCard(): 1, 4 or 8 identical cards, laid out for one page. -->
+<div id="printSheet"></div>
 <style>
-    #printCard { display: none; }
+    #qrBox canvas, #qrBox img { width: 200px !important; height: 200px !important; }
+    #printSheet { display: none; }
+    @page { margin: 10mm; }
     @media print {
-        body > *:not(#printCard) { display: none !important; }
-        #printCard { display: block !important; text-align: center; padding: 48px 24px; font-family: system-ui, sans-serif; }
+        body > *:not(#printSheet) { display: none !important; }
+        #printSheet { display: grid !important; font-family: system-ui, sans-serif; color: #111; }
+        #printSheet.sheet-1 { grid-template-columns: 1fr; }
+        #printSheet.sheet-4, #printSheet.sheet-8 { grid-template-columns: repeat(2, 1fr); }
+        .pc { box-sizing: border-box; text-align: center; display: flex; flex-direction: column; align-items: center;
+              justify-content: center; break-inside: avoid; page-break-inside: avoid; overflow: hidden; }
+        .pc-co { margin: 0; text-transform: uppercase; letter-spacing: .14em; font-weight: 800; color: #555; }
+        .pc-title { margin: .25em 0 .1em; font-weight: 800; line-height: 1.15; }
+        .pc-cta { margin: 0 0 .6em; }
+        .pc-qr { display: block; }
+        .pc-url { margin: .6em 0 0; color: #777; word-break: break-all; }
+
+        /* 1 per page */
+        .sheet-1 .pc { min-height: 250mm; padding: 10mm; }
+        .sheet-1 .pc-co { font-size: 14pt; } .sheet-1 .pc-title { font-size: 32pt; } .sheet-1 .pc-cta { font-size: 20pt; }
+        .sheet-1 .pc-qr { width: 100mm; height: 100mm; } .sheet-1 .pc-url { font-size: 10pt; }
+
+        /* 4 per page (2 x 2), dashed cut lines */
+        .sheet-4 .pc { height: 128mm; padding: 6mm; border: 1px dashed #aaa; }
+        .sheet-4 .pc-co { font-size: 9pt; } .sheet-4 .pc-title { font-size: 17pt; } .sheet-4 .pc-cta { font-size: 12pt; }
+        .sheet-4 .pc-qr { width: 66mm; height: 66mm; } .sheet-4 .pc-url { font-size: 7pt; }
+
+        /* 8 per page (2 x 4), dashed cut lines; link text left off to fit */
+        .sheet-8 .pc { height: 63mm; padding: 3mm; border: 1px dashed #aaa; }
+        .sheet-8 .pc-co { font-size: 6.5pt; } .sheet-8 .pc-title { font-size: 10pt; } .sheet-8 .pc-cta { font-size: 8pt; margin-bottom: .3em; }
+        .sheet-8 .pc-qr { width: 32mm; height: 32mm; } .sheet-8 .pc-url { display: none; }
     }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -259,6 +303,8 @@ include __DIR__ . '/partials/account_header.php';
 const COMPANY_ID = <?= $companyId ?>;
 const FORM_ID = <?= $formId ?>;
 const SHARE_URL = <?= json_encode($shareUrl) ?>;
+const COMPANY_NAME = <?= json_encode((string)$activeCompany['name']) ?>;
+const FORM_TITLE = <?= json_encode((string)$form['title']) ?>;
 const TYPE_LABELS = <?= json_encode($TYPE_LABELS) ?>;
 const CHOICE_TYPES = ['single_choice', 'multiple_choice', 'dropdown'];
 let questions = <?= json_encode($questions) ?>;
@@ -554,11 +600,38 @@ async function disconnectFacebook() {
 
 // ── QR code ──────────────────────────────────────────────────────────────
 let qrReady = false;
+const QR_LOGO = <?= json_encode($qrLogo) ?>;   // '' when the company has no usable logo
+const QR_SIZE = 400;                            // drawn large, shown at 200px, so it prints sharply
 function renderQr() {
     const box = document.getElementById('qrBox');
+    qrReady = false;
+    box.innerHTML = '';
     if (!window.QRCode) { box.textContent = 'QR code unavailable offline.'; return; }
-    new QRCode(box, { text: SHARE_URL, width: 200, height: 200, correctLevel: QRCode.CorrectLevel.M });
-    qrReady = true;
+    // Level H can lose ~30% of the code and still scan, which is what makes a logo in the middle safe.
+    new QRCode(box, { text: SHARE_URL, width: QR_SIZE, height: QR_SIZE, correctLevel: QRCode.CorrectLevel.H });
+
+    const style = document.querySelector('input[name="qrStyle"]:checked');
+    const canvas = box.querySelector('canvas');
+    if (!QR_LOGO || (style && style.value === 'plain') || !canvas) { qrReady = true; return; }
+
+    const logo = new Image();
+    logo.onload = () => {
+        const ctx = canvas.getContext('2d');
+        const size = canvas.width;
+        const inner = Math.round(size * 0.20);          // logo area: 20% of the width (about 4% of the code)
+        const pad = Math.round(inner * 0.14);           // white border so the logo doesn't blur into the modules
+        const start = Math.round((size - inner) / 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(start - pad, start - pad, inner + pad * 2, inner + pad * 2);
+        const ratio = Math.min(inner / logo.width, inner / logo.height);
+        const w = logo.width * ratio, h = logo.height * ratio;
+        ctx.drawImage(logo, (size - w) / 2, (size - h) / 2, w, h);
+        const shown = box.querySelector('img');
+        if (shown) shown.src = canvas.toDataURL('image/png');
+        qrReady = true;
+    };
+    logo.onerror = () => { qrReady = true; };           // logo missing: plain QR code still works
+    logo.src = QR_LOGO;
 }
 function qrDataUrl() {
     const c = document.querySelector('#qrBox canvas');
@@ -576,10 +649,37 @@ function downloadQr() {
     a.click();
     a.remove();
 }
+// A QR style or print layout was changed: redraw the code and update the small-cards hint.
+function qrOptionsChanged() {
+    renderQr();
+    const style = document.querySelector('input[name="qrStyle"]:checked');
+    const layout = document.getElementById('printLayout').value;
+    const hint = document.getElementById('printHint');
+    if (style && style.value === 'logo' && layout === '8') {
+        hint.textContent = 'Small cards scan less reliably with a logo in the middle. "Without logo" is safer for 8 per page.';
+        hint.classList.remove('hidden');
+    } else {
+        hint.classList.add('hidden');
+    }
+}
+
+// Print 1, 4 or 8 identical cards on one page (the layout is CSS in the print styles above).
 function printQrCard() {
     const url = qrDataUrl();
     if (!qrReady || !url) { showAlert('QR code is not ready yet.', 'error'); return; }
-    document.getElementById('printQrImg').src = url;
+    const n = parseInt(document.getElementById('printLayout').value, 10);
+    const count = [1, 4, 8].includes(n) ? n : 1;
+    const card =
+        '<div class="pc">' +
+        '<p class="pc-co">' + esc(COMPANY_NAME) + '</p>' +
+        '<h1 class="pc-title">' + esc(FORM_TITLE) + '</h1>' +
+        '<p class="pc-cta">Scan to tell us what you think</p>' +
+        '<img class="pc-qr" alt="QR code" src="' + url + '">' +
+        '<p class="pc-url">' + esc(SHARE_URL) + '</p>' +
+        '</div>';
+    const sheet = document.getElementById('printSheet');
+    sheet.className = 'sheet-' + count;
+    sheet.innerHTML = card.repeat(count);
     window.print();
 }
 
