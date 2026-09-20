@@ -42,12 +42,20 @@ $pageTitle = $form ? $form['title'] : 'Form';
 $theme = FormsService::theme($form ? (string)$form['theme'] : 'default');
 $reviewsOn = $form && !empty($form['reviews_enabled']);
 $fbRedirect = $form && !empty($form['fb_auto_redirect']) && !empty($form['fb_recommend_url']);
+
+// This page is also served in place at short links (/r/<code>, /review/...), where
+// relative URLs like api/forms/submit.php would resolve against the wrong folder.
+// A <base> pointing at this script's own folder keeps them working everywhere.
+$pageScheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+$pageDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/'));
+$pageBase = $pageScheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . rtrim($pageDir, '/') . '/';
 ?>
 <!doctype html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <base href="<?= htmlspecialchars($pageBase) ?>">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <title><?= htmlspecialchars($pageTitle) ?></title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
