@@ -29,12 +29,14 @@ class FormResultsShare
         if (!FormsService::getForm($formId, $companyId)) {
             throw new RuntimeException('Form not found.');
         }
-        $st = self::pdo()->prepare("SELECT token, enabled FROM form_results_shares WHERE form_id = :id");
+        $st = self::pdo()->prepare("SELECT token, enabled, show_responses, pin_length FROM form_results_shares WHERE form_id = :id");
         $st->execute(['id' => $formId]);
         $row = $st->fetch(PDO::FETCH_ASSOC);
         return [
-            'enabled' => $row ? (bool)$row['enabled'] : false,
-            'token'   => $row ? (string)$row['token'] : null,
+            'enabled'        => $row ? (bool)$row['enabled'] : false,
+            'token'          => $row ? (string)$row['token'] : null,
+            'show_responses' => $row ? (bool)$row['show_responses'] : false,
+            'pin_length'     => $row ? (int)$row['pin_length'] : 0,
         ];
     }
 
@@ -48,22 +50,52 @@ class FormResultsShare
         return $pin;
     }
 
-    /** Turn sharing on (or change the code). Keeps the same link when one already exists. */
-    public static function enable(int $formId, int $companyId, int $userId, string $pin): array
+    /** Showing individual responses (names, phones, emails) needs at least this many digits. */
+    public const MIN_PIN_WITH_RESPONSES = 6;
+
+    /**
+     * Turn sharing on (or change the code). Keeps the same link when one already exists.
+     * $showResponses: true/false to set it, null to leave it as it is. It can only be on
+     * with a code of MIN_PIN_WITH_RESPONSES digits or more.
+     */
+    public static function enable(int $formId, int $companyId, int $userId, string $pin, ?bool $showResponses = null): array
     {
         $pin = self::cleanPin($pin);
-        if (!FormsService::getForm($formId, $companyId)) {
-            throw new RuntimeException('Form not found.');
+        $current = self::status($formId, $companyId);   // also checks the form belongs to the company
+        $show = $showResponses ?? $current['show_responses'];
+        if ($show && strlen($pin) < self::MIN_PIN_WITH_RESPONSES) {
+            throw new RuntimeException('Sharing the list of responses (names, phone numbers, emails) needs a code of at least '
+                . self::MIN_PIN_WITH_RESPONSES . ' digits.');
         }
         $hash = password_hash($pin, PASSWORD_DEFAULT);
         self::pdo()->prepare("
-            INSERT INTO form_results_shares (form_id, token, pin_hash, enabled, created_by)
-            VALUES (:id, :tok, :hash, 1, :uid)
-            ON DUPLICATE KEY UPDATE pin_hash = VALUES(pin_hash), enabled = 1
-        ")->execute(['id' => $formId, 'tok' => bin2hex(random_bytes(16)), 'hash' => $hash, 'uid' => $userId]);
+            INSERT INTO form_results_shares (form_id, token, pin_hash, pin_length, enabled, show_responses, created_by)
+            VALUES (:id, :tok, :hash, :len, 1, :show, :uid)
+            ON DUPLICATE KEY UPDATE pin_hash = VALUES(pin_hash), pin_length = VALUES(pin_length),
+                                    enabled = 1, show_responses = VALUES(show_responses)
+        ")->execute([
+            'id' => $formId, 'tok' => bin2hex(random_bytes(16)), 'hash' => $hash,
+            'len' => strlen($pin), 'show' => $show ? 1 : 0, 'uid' => $userId,
+        ]);
 
         // A new code starts with a clean slate.
         self::pdo()->prepare("DELETE FROM form_results_attempts WHERE form_id = :id")->execute(['id' => $formId]);
+        return self::status($formId, $companyId);
+    }
+
+    /** Switch the responses list on/off without changing the code. On needs a long-enough code already set. */
+    public static function setShowResponses(int $formId, int $companyId, bool $on): array
+    {
+        $current = self::status($formId, $companyId);
+        if (!$current['enabled']) {
+            throw new RuntimeException('Turn on sharing first.');
+        }
+        if ($on && $current['pin_length'] < self::MIN_PIN_WITH_RESPONSES) {
+            throw new RuntimeException('Set a new code of at least ' . self::MIN_PIN_WITH_RESPONSES
+                . ' digits first, then turn on the list of responses.');
+        }
+        self::pdo()->prepare("UPDATE form_results_shares SET show_responses = :on WHERE form_id = :id")
+            ->execute(['on' => $on ? 1 : 0, 'id' => $formId]);
         return self::status($formId, $companyId);
     }
 
@@ -83,7 +115,7 @@ class FormResultsShare
             return null;
         }
         $st = self::pdo()->prepare("
-            SELECT s.form_id, s.pin_hash, f.title, f.theme, f.company_id, f.status AS form_status,
+            SELECT s.form_id, s.pin_hash, s.show_responses, f.title, f.theme, f.company_id, f.status AS form_status,
                    c.name AS company_name, c.logo AS company_logo
             FROM form_results_shares s
             JOIN form_forms f ON f.id = s.form_id

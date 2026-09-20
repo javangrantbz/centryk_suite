@@ -226,24 +226,31 @@ include __DIR__ . '/partials/account_header.php';
 
             <div class="biz-panel biz-panel-body space-y-2">
                 <p class="biz-label" style="margin:0">Share results</p>
-                <p class="biz-muted" style="font-size:11px;margin:0">A public page with the totals and charts, protected by a 4 to 6 digit code. It never shows names, phone numbers, emails or written answers.</p>
+                <p class="biz-muted" style="font-size:11px;margin:0">A public page with the totals and charts, protected by a code. By default it never shows names, phone numbers, emails or written answers.</p>
                 <?php if ($resultsUrl !== ''): ?>
                 <div class="biz-muted" style="font-size:11px;color:var(--bz-accent-d)">Sharing is on.</div>
+                <?php if (!empty($resShare['show_responses'])): ?>
+                <div class="biz-notice biz-notice-red" style="font-size:11px">The list of responses, with names, phone numbers and emails, is being shared.</div>
+                <?php endif; ?>
                 <input id="resultsUrl" class="biz-input biz-num" style="font-size:11px" readonly value="<?= htmlspecialchars($resultsUrl) ?>">
                 <button onclick="copyResultsLink()" class="biz-btn biz-btn-ghost biz-btn-sm" style="width:100%">Copy results link</button>
-                <label class="block pt-1"><span class="biz-label">Change the code</span>
-                    <div class="flex gap-1.5">
-                        <input id="resultsPin" class="biz-input biz-num" inputmode="numeric" maxlength="6" placeholder="4 to 6 digits" autocomplete="off">
-                        <button onclick="setResultsShare('enable')" class="biz-btn biz-btn-ghost biz-btn-sm">Save</button>
-                    </div></label>
+                <label class="block pt-1"><span class="biz-label">Change the code <span class="biz-muted">(leave blank to keep it)</span></span>
+                    <input id="resultsPin" class="biz-input biz-num" inputmode="numeric" maxlength="6" placeholder="4 to 6 digits" autocomplete="off"></label>
+                <label class="flex items-start gap-2" style="font-size:12px">
+                    <input type="checkbox" id="resultsShowResponses" class="mt-0.5" <?= !empty($resShare['show_responses']) ? 'checked' : '' ?>>
+                    <span>Also show every response, with names, phone numbers and emails (for a raffle). <span class="biz-muted">Needs a code of 6 digits.</span></span>
+                </label>
+                <button onclick="saveResultsOptions()" class="biz-btn biz-btn-primary biz-btn-sm" style="width:100%">Save changes</button>
                 <button onclick="setResultsShare('disable')" class="biz-btn biz-btn-danger biz-btn-sm" style="width:100%">Turn off sharing</button>
                 <p class="biz-muted" style="font-size:10px;margin:0">The code can't be viewed again once saved, only replaced. Five wrong tries lock the page for 15 minutes.</p>
                 <?php else: ?>
                 <label class="block"><span class="biz-label">Choose a code</span>
-                    <div class="flex gap-1.5">
-                        <input id="resultsPin" class="biz-input biz-num" inputmode="numeric" maxlength="6" placeholder="4 to 6 digits" autocomplete="off">
-                        <button onclick="setResultsShare('enable')" class="biz-btn biz-btn-primary biz-btn-sm">Turn on</button>
-                    </div></label>
+                    <input id="resultsPin" class="biz-input biz-num" inputmode="numeric" maxlength="6" placeholder="4 to 6 digits" autocomplete="off"></label>
+                <label class="flex items-start gap-2" style="font-size:12px">
+                    <input type="checkbox" id="resultsShowResponses" class="mt-0.5">
+                    <span>Also show every response, with names, phone numbers and emails (for a raffle). <span class="biz-muted">Needs a code of 6 digits.</span></span>
+                </label>
+                <button onclick="saveResultsOptions()" class="biz-btn biz-btn-primary biz-btn-sm" style="width:100%">Turn on sharing</button>
                 <?php endif; ?>
             </div>
 
@@ -604,6 +611,22 @@ async function setResultsShare(action) {
     try {
         await api('results_share.php', { action, pin: document.getElementById('resultsPin')?.value || '' });
         showAlert(action === 'enable' ? 'Saved. Reloading…' : 'Sharing turned off. Reloading…');
+        setTimeout(() => location.reload(), 800);
+    } catch (e) { showAlert(e.message, 'error'); }
+}
+
+// One button for "turn on" and "save changes": a new code (if typed) and the responses choice.
+// With no new code typed it only changes the responses choice and keeps the current code.
+async function saveResultsOptions() {
+    const pin = (document.getElementById('resultsPin')?.value || '').trim();
+    const showResponses = document.getElementById('resultsShowResponses').checked ? 1 : 0;
+    try {
+        if (pin !== '' || !document.getElementById('resultsUrl')) {
+            await api('results_share.php', { action: 'enable', pin, show_responses: showResponses });
+        } else {
+            await api('results_share.php', { action: 'options', show_responses: showResponses });
+        }
+        showAlert('Saved. Reloading…');
         setTimeout(() => location.reload(), 800);
     } catch (e) { showAlert(e.message, 'error'); }
 }

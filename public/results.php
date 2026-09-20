@@ -2,9 +2,10 @@
 /**
  * Public, passcode-protected results page: /results/<token> (see the root .htaccess).
  *
- * Shows a form's totals and charts only. Names, phone numbers, emails and other
- * free-text answers are never rendered here. A 4 to 6 digit code (set by the
- * company in the form builder) unlocks it; wrong guesses are throttled.
+ * Shows a form's totals and charts. Names, phone numbers, emails and other free-text
+ * answers are left out, UNLESS the company switched on "show every response" for this
+ * share, which needs a code of 6+ digits and then lists each entry (for a raffle). A code
+ * set by the company in the form builder unlocks it; wrong guesses are throttled.
  */
 require_once __DIR__ . '/../app/core/Env.php';
 require_once __DIR__ . '/../app/core/Auth.php';
@@ -83,6 +84,40 @@ if ($share && $state === 'ok') {
     }
 }
 
+// Individual responses, only when the company chose to share them (with a 6+ digit code).
+$showResponses = $share && $state === 'ok' && !empty($share['show_responses']);
+$entries = [];
+if ($showResponses) {
+    $qs = array_values(array_filter(
+        FormsService::questions((int)$share['form_id']),
+        static fn ($q) => $q['type'] !== 'section'
+    ));
+    $nameQ = $phoneQ = $emailQ = null;
+    foreach ($qs as $q) {
+        if ($nameQ === null && $q['type'] === 'short_text') { $nameQ = (int)$q['id']; }
+        if ($phoneQ === null && $q['type'] === 'phone') { $phoneQ = (int)$q['id']; }
+        if ($emailQ === null && $q['type'] === 'email') { $emailQ = (int)$q['id']; }
+    }
+    foreach (FormsService::allResponses((int)$share['form_id']) as $i => $r) {
+        $a = $r['answers'];
+        $entry = [
+            'number' => $total - $i,                       // entry number, oldest = 1 (handy for a raffle)
+            'time'   => date('j M, g:i a', strtotime($r['submitted_at'])),
+            'name'   => trim((string)($a[$nameQ] ?? '')),
+            'phone'  => trim((string)($a[$phoneQ] ?? '')),
+            'email'  => trim((string)($a[$emailQ] ?? '')),
+            'other'  => [],
+        ];
+        foreach ($qs as $q) {
+            $qid = (int)$q['id'];
+            if (in_array($qid, [$nameQ, $phoneQ, $emailQ], true)) { continue; }
+            $v = trim((string)($a[$qid] ?? ''));
+            if ($v !== '') { $entry['other'][] = [$q['label'], $v]; }
+        }
+        $entries[] = $entry;
+    }
+}
+
 function rs_bar(int $count, int $answered, string $color): string
 {
     $pct = $answered > 0 ? round($count / $answered * 100) : 0;
@@ -101,7 +136,7 @@ function rs_bar(int $count, int $answered, string $color): string
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] } } } }</script>
-    <?php if ($state === 'ok'): ?><meta http-equiv="refresh" content="60"><?php endif; ?>
+    <?php if ($state === 'ok' && !$showResponses): ?><meta http-equiv="refresh" content="60"><?php endif; ?>
     <style>body { background: <?= $theme['bg'] ?>; min-height: 100vh; }</style>
 </head>
 <body class="font-sans text-slate-800 antialiased">
@@ -148,11 +183,69 @@ function rs_bar(int $count, int $answered, string $color): string
     <div class="mt-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
         <div class="text-4xl font-extrabold" style="color:<?= $theme['accent'] ?>"><?= $total ?></div>
         <div class="text-sm font-semibold text-slate-500"><?= $total === 1 ? 'response so far' : 'responses so far' ?></div>
-        <div class="mt-1 text-[11px] text-slate-400">Updates every minute · last checked <?= htmlspecialchars(date('g:i a')) ?></div>
+        <div class="mt-1 text-[11px] text-slate-400"><?= $showResponses
+            ? 'Last checked ' . htmlspecialchars(date('g:i a')) . ' · <a href="" class="font-semibold underline" style="color:' . $theme['accent'] . '">Refresh</a>'
+            : 'Updates every minute · last checked ' . htmlspecialchars(date('g:i a')) ?></div>
     </div>
 
     <?php if ($total === 0): ?>
     <div class="mt-4 rounded-2xl bg-white p-6 text-center text-sm text-slate-500 shadow-sm ring-1 ring-slate-200">No responses yet.</div>
+    <?php endif; ?>
+
+    <?php if ($showResponses && $entries): ?>
+    <section class="mt-4">
+        <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+            <h2 class="text-sm font-bold text-slate-900">Entries</h2>
+            <input id="entrySearch" type="search" placeholder="Search name, phone or email" autocomplete="off"
+                   class="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-indigo-300">
+            <div class="mt-2 flex flex-wrap gap-2">
+                <button type="button" id="copyNames" class="rounded-xl px-3 py-2 text-xs font-bold text-white" style="background:<?= $theme['accent'] ?>">Copy names &amp; phones</button>
+                <button type="button" id="copyEmails" class="rounded-xl border border-slate-300 px-3 py-2 text-xs font-bold text-slate-600">Copy emails</button>
+                <span id="entryCount" class="ml-auto self-center text-[11px] text-slate-400"><?= count($entries) ?> shown</span>
+            </div>
+        </div>
+
+        <div id="entryList" class="mt-3 space-y-3">
+            <?php foreach ($entries as $e): ?>
+            <article class="entry rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200"
+                     data-name="<?= htmlspecialchars($e['name'], ENT_QUOTES) ?>"
+                     data-phone="<?= htmlspecialchars($e['phone'], ENT_QUOTES) ?>"
+                     data-email="<?= htmlspecialchars($e['email'], ENT_QUOTES) ?>"
+                     data-search="<?= htmlspecialchars(mb_strtolower($e['name'] . ' ' . $e['phone'] . ' ' . preg_replace('/\D+/', '', $e['phone']) . ' ' . $e['email'] . ' #' . $e['number']), ENT_QUOTES) ?>">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="truncate text-base font-extrabold text-slate-900"><?= $e['name'] !== '' ? htmlspecialchars($e['name']) : 'No name given' ?></div>
+                        <div class="text-[11px] text-slate-400">Entry #<?= (int)$e['number'] ?> · <?= htmlspecialchars($e['time']) ?></div>
+                    </div>
+                </div>
+                <?php if ($e['phone'] !== ''): ?>
+                <div class="mt-2 flex items-center justify-between gap-2">
+                    <a href="tel:<?= htmlspecialchars(preg_replace('/[^\d+]/', '', $e['phone'])) ?>" class="text-lg font-bold tabular-nums" style="color:<?= $theme['accent'] ?>"><?= htmlspecialchars($e['phone']) ?></a>
+                    <button type="button" data-copy="<?= htmlspecialchars($e['phone'], ENT_QUOTES) ?>" class="shrink-0 rounded-lg border border-slate-300 px-2.5 py-1 text-[11px] font-bold text-slate-600">Copy</button>
+                </div>
+                <?php endif; ?>
+                <?php if ($e['email'] !== ''): ?>
+                <div class="mt-1.5 flex items-center justify-between gap-2">
+                    <a href="mailto:<?= htmlspecialchars($e['email']) ?>" class="min-w-0 truncate text-sm font-semibold text-slate-700 underline"><?= htmlspecialchars($e['email']) ?></a>
+                    <button type="button" data-copy="<?= htmlspecialchars($e['email'], ENT_QUOTES) ?>" class="shrink-0 rounded-lg border border-slate-300 px-2.5 py-1 text-[11px] font-bold text-slate-600">Copy</button>
+                </div>
+                <?php endif; ?>
+                <?php if ($e['other']): ?>
+                <dl class="mt-3 space-y-1 border-t border-slate-100 pt-2.5">
+                    <?php foreach ($e['other'] as [$label, $value]): ?>
+                    <div class="text-xs"><dt class="inline text-slate-400"><?= htmlspecialchars($label) ?>:</dt> <dd class="inline font-semibold text-slate-700"><?= htmlspecialchars($value) ?></dd></div>
+                    <?php endforeach; ?>
+                </dl>
+                <?php endif; ?>
+            </article>
+            <?php endforeach; ?>
+            <p id="noMatch" class="hidden rounded-2xl bg-white p-6 text-center text-sm text-slate-500 shadow-sm ring-1 ring-slate-200">No entries match your search.</p>
+        </div>
+    </section>
+    <?php endif; ?>
+
+    <?php if ($showResponses && $shown): ?>
+    <details class="mt-4"><summary class="cursor-pointer rounded-2xl bg-white px-5 py-3 text-sm font-bold text-slate-700 shadow-sm ring-1 ring-slate-200">Summary charts</summary>
     <?php endif; ?>
 
     <?php foreach ($shown as $q): ?>
@@ -179,11 +272,79 @@ function rs_bar(int $count, int $answered, string $color): string
     </section>
     <?php endforeach; ?>
 
-    <?php if ($hiddenCount > 0): ?>
+    <?php if ($showResponses && $shown): ?></details><?php endif; ?>
+
+    <?php if ($hiddenCount > 0 && !$showResponses): ?>
     <p class="mt-4 text-center text-[11px] text-slate-400">Names, contact details and written answers are not shown on this page.</p>
     <?php endif; ?>
 <?php endif; ?>
 
 </main>
+
+<?php if ($showResponses && $entries): ?>
+<div id="copyToast" class="pointer-events-none fixed bottom-5 left-1/2 hidden -translate-x-1/2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-lg"></div>
+<script>
+(function () {
+    const list = document.getElementById('entryList');
+    const search = document.getElementById('entrySearch');
+    const toast = document.getElementById('copyToast');
+    let toastTimer = null;
+
+    function say(msg) {
+        toast.textContent = msg;
+        toast.classList.remove('hidden');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toast.classList.add('hidden'), 2200);
+    }
+    function legacyCopy(text) {
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        let ok = false;
+        try { ok = document.execCommand('copy'); } catch (e) {}
+        document.body.removeChild(ta);
+        return ok;
+    }
+    function copy(text, doneMsg) {
+        const done = () => say(doneMsg);
+        const fail = () => say('Could not copy. Press and hold the text to copy it.');
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(done, () => legacyCopy(text) ? done() : fail());
+        } else {
+            legacyCopy(text) ? done() : fail();
+        }
+    }
+    const visible = () => [...list.querySelectorAll('.entry')].filter(e => !e.classList.contains('hidden'));
+
+    search.addEventListener('input', () => {
+        const q = search.value.trim().toLowerCase();
+        const qDigits = q.replace(/[\s()-]+/g, '');      // "600 2423" and "600-2423" both find 600-2423
+        let n = 0;
+        list.querySelectorAll('.entry').forEach(e => {
+            const match = !q || e.dataset.search.includes(q) || (qDigits.length >= 3 && e.dataset.search.includes(qDigits));
+            e.classList.toggle('hidden', !match);
+            if (match) n++;
+        });
+        document.getElementById('entryCount').textContent = n + ' shown';
+        document.getElementById('noMatch').classList.toggle('hidden', n !== 0);
+    });
+
+    list.addEventListener('click', (ev) => {
+        const b = ev.target.closest('[data-copy]');
+        if (b) copy(b.dataset.copy, 'Copied ' + b.dataset.copy);
+    });
+
+    document.getElementById('copyNames').addEventListener('click', () => {
+        const lines = visible().map(e => [e.dataset.name, e.dataset.phone].filter(Boolean).join(' - ')).filter(Boolean);
+        lines.length ? copy(lines.join('\n'), 'Copied ' + lines.length + ' names & phones') : say('Nothing to copy.');
+    });
+    document.getElementById('copyEmails').addEventListener('click', () => {
+        const lines = visible().map(e => e.dataset.email).filter(Boolean);
+        lines.length ? copy(lines.join('\n'), 'Copied ' + lines.length + ' emails') : say('No emails to copy.');
+    });
+})();
+</script>
+<?php endif; ?>
 </body>
 </html>
