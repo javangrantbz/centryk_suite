@@ -44,9 +44,22 @@ class FacebookPagePoster
             throw new RuntimeException('A Page access token is required.');
         }
 
-        $res = self::graph('GET', '/' . $pageId, ['fields' => 'name', 'access_token' => $token]);
+        // Ask "who does this token belong to?" rather than reading the Page by ID:
+        // /me works for any valid token, while reading /<page-id> needs extra
+        // permissions (pages_read_engagement) that posting itself doesn't.
+        $res = self::graph('GET', '/me', ['fields' => 'id,name', 'access_token' => $token]);
+        if (empty($res['id'])) {
+            throw new RuntimeException('Facebook did not accept that token: ' . ($res['error'] ?? 'no details returned') . '.');
+        }
+        if ((string)$res['id'] !== $pageId) {
+            throw new RuntimeException(
+                'That token belongs to "' . ($res['name'] ?? 'someone else') . '" (ID ' . $res['id'] . '), not the Page ID you entered. '
+                . 'You probably pasted your personal user token. Run GET /me/accounts in the Graph API Explorer and use the access_token '
+                . 'listed for your Page (its id is the Page ID).'
+            );
+        }
         if (empty($res['name'])) {
-            throw new RuntimeException('Facebook did not recognise that Page ID and token: ' . ($res['error'] ?? 'no name returned') . '.');
+            $res['name'] = $pageId;
         }
 
         DB::pdo()->prepare("
