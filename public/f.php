@@ -163,7 +163,11 @@ $answerableCount = count(array_filter($questions, static fn ($q) => $q['type'] !
                         $name = 'q' . (int)$q['id'];
                         switch ($q['type']):
                             case 'long_text': ?>
-                                <textarea name="<?= $name ?>" rows="4" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"></textarea>
+                                <?php $prefill = (string)($q['config']['prefill'] ?? ''); ?>
+                                <textarea name="<?= $name ?>" rows="<?= $prefill !== '' ? 5 : 4 ?>" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"<?= $prefill !== '' ? ' data-prefill="' . htmlspecialchars($prefill, ENT_QUOTES) . '"' : '' ?>></textarea>
+                                <?php if ($prefill !== ''): ?>
+                                <p class="mt-1 text-[11px] text-slate-400">We fill this in from your answers above. Change it however you like.</p>
+                                <?php endif; ?>
                             <?php break; case 'number': ?>
                                 <input type="number" step="any" name="<?= $name ?>" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm">
                             <?php break; case 'email': ?>
@@ -310,6 +314,64 @@ $answerableCount = count(array_filter($questions, static fn ($q) => $q['type'] !
         return null;
     }
 
+    // ── Suggested comment ────────────────────────────────────────────────
+    // A comment box can carry a template like "I tried {1}. The flavor was {2:lower}." where {n} is
+    // the diner's answer to question n. We keep it filled in until they type in the box themselves.
+    function joinList(a) { return a.length <= 1 ? (a[0] || '') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]; }
+    const normQuote = s => String(s).replace(/[‘’]/g, "'").trim().toLowerCase();
+
+    // values[n] = array of the diner's chosen/typed answers for question n (1-based).
+    function buildSuggestion(template, values) {
+        const parts = String(template).trim().split(/\.\s+/);
+        const out = [];
+        for (let part of parts) {
+            part = part.trim();
+            if (!part) continue;
+            if (!part.endsWith('.')) part += '.';
+            let missing = false;
+            const text = part.replace(/\{(\d+)((?::[^{}]*)?)\}/g, (m, n, mods) => {
+                let vals = (values[parseInt(n, 10)] || []).slice();
+                const flags = mods ? mods.slice(1).split(';') : [];
+                for (const f of flags) {
+                    if (f.startsWith('without=')) {
+                        const drop = f.slice(8).split('|').map(normQuote);
+                        vals = vals.filter(v => !drop.includes(normQuote(v)));
+                    }
+                }
+                if (!vals.length) { missing = true; return ''; }
+                if (flags.includes('lower')) vals = vals.map(v => v.toLowerCase());
+                return joinList(vals);
+            });
+            if (!missing) out.push(text.replace(/\s+/g, ' ').trim());
+        }
+        return out.join(' ');
+    }
+
+    function collectValues() {
+        const values = {};
+        document.querySelectorAll('.q').forEach((q, i) => {
+            const type = q.dataset.type;
+            if (type === 'multiple_choice' || type === 'single_choice' || type === 'yes_no' || type === 'rating') {
+                values[i + 1] = [...q.querySelectorAll('input:checked')].map(x => x.value);
+            } else {
+                const el = q.querySelector('input, textarea, select');
+                const v = el ? el.value.trim() : '';
+                values[i + 1] = v ? [v] : [];
+            }
+        });
+        return values;
+    }
+
+    const suggestBox = document.querySelector('textarea[data-prefill]');
+    function updateSuggestion() {
+        if (!suggestBox || suggestBox.dataset.dirty === '1') return;
+        suggestBox.value = buildSuggestion(suggestBox.dataset.prefill, collectValues());
+    }
+    // Any typing in the box is the diner's own: stop overwriting it from then on.
+    suggestBox?.addEventListener('input', () => { suggestBox.dataset.dirty = '1'; });
+    // A suggestion the diner never touched isn't an answer they wrote: don't count it as progress.
+    const isUntouchedSuggestion = el => el === suggestBox && suggestBox.dataset.dirty !== '1';
+
     // Header progress: how many of the questions have an answer so far.
     const progressText = document.getElementById('progressText');
     const progressBar = document.getElementById('progressBar');
@@ -319,6 +381,7 @@ $answerableCount = count(array_filter($questions, static fn ($q) => $q['type'] !
             return !!q.querySelector('input:checked');
         }
         const el = q.querySelector('input, textarea, select');
+        if (isUntouchedSuggestion(el)) return false;
         return !!(el && el.value.trim() !== '');
     }
     function updateProgress() {
@@ -328,8 +391,8 @@ $answerableCount = count(array_filter($questions, static fn ($q) => $q['type'] !
         progressText.textContent = done + '/' + qs.length;
         if (progressBar) progressBar.style.width = Math.round(done / qs.length * 100) + '%';
     }
-    form.addEventListener('input', updateProgress);
-    form.addEventListener('change', updateProgress);
+    form.addEventListener('input', () => { updateSuggestion(); updateProgress(); });
+    form.addEventListener('change', () => { updateSuggestion(); updateProgress(); });
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -358,6 +421,13 @@ $answerableCount = count(array_filter($questions, static fn ($q) => $q['type'] !
                 if (val) answers[qid] = val;
             }
         });
+
+        // A suggested comment the diner never edited is only kept if they agreed to share it;
+        // otherwise it would just repeat their answers as an extra "written" comment.
+        if (suggestBox && suggestBox.dataset.dirty !== '1' && !document.getElementById('shareConsent')?.checked) {
+            const sq = suggestBox.closest('.q');
+            if (sq && sq.dataset.required !== '1') delete answers[sq.dataset.qid];
+        }
 
         // Email / phone: check the format now so the diner can fix it on the spot
         // (the server checks again). Empty optional fields are fine.

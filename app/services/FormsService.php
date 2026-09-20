@@ -563,6 +563,10 @@ class FormsService
                 $cfg['max'] = (float)$data['config']['max'];
             }
             $config = $cfg ? json_encode($cfg) : null;
+        } elseif ($type === 'long_text') {
+            // Optional "suggested comment" template; the fill page builds it from the diner's answers.
+            $prefill = trim((string)($data['config']['prefill'] ?? ''));
+            $config = $prefill !== '' ? json_encode(['prefill' => mb_substr($prefill, 0, 600)], JSON_UNESCAPED_UNICODE) : null;
         }
 
         $pdo = self::pdo();
