@@ -9,6 +9,7 @@ require_once __DIR__ . '/../app/services/AuthService.php';
 require_once __DIR__ . '/../app/services/FormsService.php';
 require_once __DIR__ . '/../app/services/FacebookPagePoster.php';
 require_once __DIR__ . '/../app/services/StoreLink.php';
+require_once __DIR__ . '/../app/services/FormResultsShare.php';
 
 Auth::start();
 $me = AuthService::me();
@@ -59,6 +60,8 @@ $lgPath = trim((string)$lg->fetchColumn());
 if (preg_match('#^uploads/companies/[A-Za-z0-9._-]+\.(png|jpe?g|webp|gif)$#i', $lgPath) && is_file(__DIR__ . '/' . $lgPath)) {
     $qrLogo = $lgPath;
 }
+$resShare = FormResultsShare::status($formId, $companyId);
+$resultsUrl = $resShare['enabled'] && $resShare['token'] ? $siteRoot . '/results/' . $resShare['token'] : '';
 $namedUrl = $siteRoot . '/review/' . $companySlug . '/' . $formSlug;   // descriptive link, still works
 $shortCode = FormsService::ensureShortCode($formId, $companyId);
 $shareUrl = $siteRoot . '/r/' . $shortCode;                            // shortest; used for the QR and Copy link
@@ -213,6 +216,29 @@ include __DIR__ . '/partials/account_header.php';
                     <button onclick="downloadQr()" class="biz-btn biz-btn-ghost biz-btn-sm" style="flex:1">Download PNG</button>
                     <button onclick="printQrCard()" class="biz-btn biz-btn-primary biz-btn-sm" style="flex:1">Print</button>
                 </div>
+            </div>
+
+            <div class="biz-panel biz-panel-body space-y-2">
+                <p class="biz-label" style="margin:0">Share results</p>
+                <p class="biz-muted" style="font-size:11px;margin:0">A public page with the totals and charts, protected by a 4 to 6 digit code. It never shows names, phone numbers, emails or written answers.</p>
+                <?php if ($resultsUrl !== ''): ?>
+                <div class="biz-muted" style="font-size:11px;color:var(--bz-accent-d)">Sharing is on.</div>
+                <input id="resultsUrl" class="biz-input biz-num" style="font-size:11px" readonly value="<?= htmlspecialchars($resultsUrl) ?>">
+                <button onclick="copyResultsLink()" class="biz-btn biz-btn-ghost biz-btn-sm" style="width:100%">Copy results link</button>
+                <label class="block pt-1"><span class="biz-label">Change the code</span>
+                    <div class="flex gap-1.5">
+                        <input id="resultsPin" class="biz-input biz-num" inputmode="numeric" maxlength="6" placeholder="4 to 6 digits" autocomplete="off">
+                        <button onclick="setResultsShare('enable')" class="biz-btn biz-btn-ghost biz-btn-sm">Save</button>
+                    </div></label>
+                <button onclick="setResultsShare('disable')" class="biz-btn biz-btn-danger biz-btn-sm" style="width:100%">Turn off sharing</button>
+                <p class="biz-muted" style="font-size:10px;margin:0">The code can't be viewed again once saved, only replaced. Five wrong tries lock the page for 15 minutes.</p>
+                <?php else: ?>
+                <label class="block"><span class="biz-label">Choose a code</span>
+                    <div class="flex gap-1.5">
+                        <input id="resultsPin" class="biz-input biz-num" inputmode="numeric" maxlength="6" placeholder="4 to 6 digits" autocomplete="off">
+                        <button onclick="setResultsShare('enable')" class="biz-btn biz-btn-primary biz-btn-sm">Turn on</button>
+                    </div></label>
+                <?php endif; ?>
             </div>
 
             <div class="biz-panel biz-panel-body space-y-2">
@@ -546,6 +572,25 @@ async function move(i, dir) {
     try {
         await api('reorder.php', { order: questions.map(q => q.id) });
     } catch (e) { showAlert(e.message, 'error'); }
+}
+
+async function setResultsShare(action) {
+    try {
+        await api('results_share.php', { action, pin: document.getElementById('resultsPin')?.value || '' });
+        showAlert(action === 'enable' ? 'Saved. Reloading…' : 'Sharing turned off. Reloading…');
+        setTimeout(() => location.reload(), 800);
+    } catch (e) { showAlert(e.message, 'error'); }
+}
+
+function copyResultsLink() {
+    const url = document.getElementById('resultsUrl').value;
+    const ok = () => showAlert('Results link copied. Share the code with them separately.');
+    const manual = () => showAlert('Copy this link: ' + url, 'error');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(ok, () => legacyCopy(url) ? ok() : manual());
+    } else {
+        legacyCopy(url) ? ok() : manual();
+    }
 }
 
 async function saveCode() {

@@ -26,6 +26,9 @@ RewriteRule ^f/([a-zA-Z0-9]+)/?$ public/f.php?t=$1 [L,QSA]
 
 # Short links for review/feedback forms (/review/<company-slug>/<form-slug> → the fill page)
 RewriteRule ^review/([a-zA-Z0-9-]+)/([a-zA-Z0-9-]+)/?$ public/review-link.php?c=$1&s=$2 [L,QSA]
+# Passcode-protected public results page: /results/<token>
+RewriteRule ^results/([a-f0-9]{32})/?$ public/results.php?t=$1 [L,QSA]
+
 # Shortest form: /r/<code>
 RewriteRule ^r/([a-zA-Z0-9-]+)/?$ public/review-link.php?code=$1 [L,QSA]
 
