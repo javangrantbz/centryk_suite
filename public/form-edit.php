@@ -8,6 +8,7 @@ require_once __DIR__ . '/../app/core/DB.php';
 require_once __DIR__ . '/../app/services/AuthService.php';
 require_once __DIR__ . '/../app/services/FormsService.php';
 require_once __DIR__ . '/../app/services/FacebookPagePoster.php';
+require_once __DIR__ . '/../app/services/StoreLink.php';
 
 Auth::start();
 $me = AuthService::me();
@@ -44,7 +45,13 @@ $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' :
 $host   = $_SERVER['HTTP_HOST'] ?? 'localhost';
 $dir    = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/'));
 $publicBase = $scheme . '://' . $host . rtrim($dir, '/');
-$shareUrl = $publicBase . '/f.php?t=' . $form['share_token'];
+$longUrl = $publicBase . '/f.php?t=' . $form['share_token'];
+
+// Short link: <site>/review/<company-slug>/<form-slug>. The long link keeps working.
+$companySlug = StoreLink::ensure(DB::pdo(), $companyId, (string)$activeCompany['name']);
+$formSlug = FormsService::ensureSlug($formId, $companyId);
+$siteRoot = preg_replace('#/public$#', '', $publicBase);
+$shareUrl = $siteRoot . '/review/' . $companySlug . '/' . $formSlug;
 
 ob_start();
 include __DIR__ . '/partials/admin_tools_dropdown.php';
@@ -141,6 +148,13 @@ include __DIR__ . '/partials/account_header.php';
                 <div class="biz-muted" id="shareState" style="font-size:11px"></div>
                 <input id="shareUrl" class="biz-input biz-num" style="font-size:11px" readonly value="<?= htmlspecialchars($shareUrl) ?>">
                 <button onclick="copyShare()" class="biz-btn biz-btn-ghost biz-btn-sm" style="width:100%">Copy link</button>
+                <label class="block pt-1"><span class="biz-label">Short link name</span>
+                    <div class="flex gap-1.5">
+                        <input id="fSlug" class="biz-input" maxlength="60" value="<?= htmlspecialchars($formSlug) ?>">
+                        <button onclick="saveSlug()" class="biz-btn biz-btn-ghost biz-btn-sm">Save</button>
+                    </div></label>
+                <p class="biz-muted" style="font-size:10px;margin:0">Changing it changes the link and the QR code, so reprint any cards already made. The long link
+                    <span class="biz-num" style="word-break:break-all"><?= htmlspecialchars($longUrl) ?></span> keeps working.</p>
             </div>
 
             <div class="biz-panel biz-panel-body space-y-2">
@@ -452,6 +466,14 @@ async function move(i, dir) {
     renderQuestions();
     try {
         await api('reorder.php', { order: questions.map(q => q.id) });
+    } catch (e) { showAlert(e.message, 'error'); }
+}
+
+async function saveSlug() {
+    try {
+        await api('save.php', { id: FORM_ID, slug: document.getElementById('fSlug').value });
+        showAlert('Short link updated. Reloading…');
+        setTimeout(() => location.reload(), 800);
     } catch (e) { showAlert(e.message, 'error'); }
 }
 

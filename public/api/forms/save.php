@@ -2,7 +2,7 @@
 /**
  * Create or update a form.
  * Body: { company_id, id?, template?, title?, description?, status?, access?,
- *         one_response_per_person?, confirmation_message?, theme?,
+ *         one_response_per_person?, confirmation_message?, slug?, theme?,
  *         reviews_enabled?, fb_recommend_url? }
  * template: 'review' (only when creating) starts from the customer review &
  * ratings form. Returns: { id, form }
@@ -15,7 +15,7 @@ require_once __DIR__ . '/../../../app/services/FormsService.php';
 $id = (int)($in['id'] ?? 0);
 $allowed = [
     'title', 'description', 'status', 'access', 'one_response_per_person',
-    'confirmation_message', 'theme', 'reviews_enabled', 'fb_recommend_url',
+    'confirmation_message', 'slug', 'theme', 'reviews_enabled', 'fb_recommend_url',
 ];
 
 try {
