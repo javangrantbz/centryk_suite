@@ -1123,7 +1123,11 @@ if ($embed) {
                         '</div></div>' +
                         '<div class="flex flex-wrap items-center gap-2">' +
                         appsHtml +
-                        '<span class="rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] ' + roleClass + '">' + escHtml(m.role) + '</span>' +
+                        (isAdmin && !isMe
+                            ? '<select class="member-role rounded-full border border-white/10 bg-[#111827] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-white outline-none cursor-pointer hover:border-white/30" data-uid="' + m.id + '" data-prev="' + escHtml(m.role) + '" data-name="' + escHtml(m.first_name + ' ' + m.last_name) + '" title="Change this person\'s role">'
+                                + ['employee', 'manager', 'admin'].map(function (r) { return '<option value="' + r + '"' + (m.role === r ? ' selected' : '') + '>' + r.charAt(0).toUpperCase() + r.slice(1) + '</option>'; }).join('')
+                                + '</select>'
+                            : '<span class="rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] ' + roleClass + '">' + escHtml(m.role) + '</span>') +
                         (isAdmin && m.email ? '<a href="switch.php?app=mypay&redirect=' + encodeURIComponent('/views/employees/by-email.php?email=' + encodeURIComponent(m.email)) + '" target="_blank" rel="noopener" class="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.08em] text-white/50 transition hover:border-orange-500/40 hover:bg-orange-500/10 hover:text-orange-300" title="View this person\'s HR profile in MyPay"><i data-lucide="briefcase" class="h-2.5 w-2.5 shrink-0"></i> HR Profile</a>' : '') +
                         (isAdmin && !isMe ? '<button class="remove-member text-white/20 transition hover:text-red-400" data-uid="' + m.id + '" data-name="' + escHtml(m.first_name + ' ' + m.last_name) + '" title="Remove member"><i data-lucide="user-minus" class="h-4 w-4"></i></button>' : '') +
                         '</div>';
@@ -1158,6 +1162,37 @@ if ($embed) {
                         .catch(function () {
                             pill.style.opacity = '';
                             showToast('Network error.', 'error');
+                        });
+                    });
+                });
+
+                // Change role (admins only; not on yourself)
+                list.querySelectorAll('.member-role').forEach(function (sel) {
+                    sel.addEventListener('change', function () {
+                        var uid  = parseInt(sel.dataset.uid, 10);
+                        var prev = sel.dataset.prev;
+                        var next = sel.value;
+                        var name = sel.dataset.name || 'this person';
+                        sel.disabled = true;
+                        fetch('api/companies/change-role.php', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ company_id: currentCompany.id, user_id: uid, role: next })
+                        }).then(function (r) { return r.json(); })
+                        .then(function (data) {
+                            sel.disabled = false;
+                            if (!data.success) {
+                                sel.value = prev;                       // put it back: nothing changed
+                                showAlertModal(data.message || 'Could not change the role.');
+                                return;
+                            }
+                            sel.dataset.prev = next;
+                            showToast(name + ' is now ' + next + '.', 'success');
+                            loadMembers(currentCompany.id);
+                        }).catch(function () {
+                            sel.disabled = false;
+                            sel.value = prev;
+                            showToast('Network error. Role not changed.', 'error');
                         });
                     });
                 });
