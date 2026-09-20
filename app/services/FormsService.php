@@ -877,6 +877,26 @@ class FormsService
         return $rows;
     }
 
+    /**
+     * Every response for a form, newest first, up to $cap (the builder's list is capped at
+     * 500 per call, so this pages through). Used by the shared results page.
+     */
+    public static function allResponses(int $formId, int $cap = 2000): array
+    {
+        $all = [];
+        for ($offset = 0; $offset < $cap; $offset += 500) {
+            $page = self::responses($formId, min(500, $cap - $offset), $offset);
+            if (!$page) {
+                break;
+            }
+            array_push($all, ...$page);
+            if (count($page) < 500) {
+                break;
+            }
+        }
+        return $all;
+    }
+
     public static function responseCount(int $formId): int
     {
         $st = self::pdo()->prepare("SELECT COUNT(*) FROM form_responses WHERE form_id = :fid");
