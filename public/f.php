@@ -166,6 +166,10 @@ $answerableCount = count(array_filter($questions, static fn ($q) => $q['type'] !
                                 <textarea name="<?= $name ?>" rows="4" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"></textarea>
                             <?php break; case 'number': ?>
                                 <input type="number" step="any" name="<?= $name ?>" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm">
+                            <?php break; case 'email': ?>
+                                <input type="email" name="<?= $name ?>" inputmode="email" autocomplete="email" autocapitalize="off" placeholder="name@example.com" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm">
+                            <?php break; case 'phone': ?>
+                                <input type="tel" name="<?= $name ?>" inputmode="tel" autocomplete="tel" placeholder="600-2423" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm">
                             <?php break; case 'date': ?>
                                 <input type="date" name="<?= $name ?>" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm">
                             <?php break; case 'dropdown': ?>
@@ -288,6 +292,20 @@ $answerableCount = count(array_filter($questions, static fn ($q) => $q['type'] !
         document.getElementById('nameWrap').classList.toggle('hidden', !e.target.checked);
     });
 
+    // Same rules as the server (FormsService::normalizePhone): Belize 7 digits (600-2423,
+    // optional 501/+501 prefix) or an international number starting with "+".
+    function validEmail(v) { return v.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v); }
+    function normalizePhone(raw) {
+        const s = raw.trim();
+        let intl = s.startsWith('+');
+        let d = s.replace(/\D+/g, '');
+        if (intl && d.startsWith('501')) { intl = false; d = d.slice(3); }
+        else if (!intl && d.length === 10 && d.startsWith('501')) { d = d.slice(3); }
+        if (!intl && /^[2-9]\d{6}$/.test(d)) return d.slice(0, 3) + '-' + d.slice(3);
+        if (intl && /^\d{8,15}$/.test(d) && d[0] !== '0') return '+' + d;
+        return null;
+    }
+
     // Header progress: how many of the questions have an answer so far.
     const progressText = document.getElementById('progressText');
     const progressBar = document.getElementById('progressBar');
@@ -336,6 +354,30 @@ $answerableCount = count(array_filter($questions, static fn ($q) => $q['type'] !
                 if (val) answers[qid] = val;
             }
         });
+
+        // Email / phone: check the format now so the diner can fix it on the spot
+        // (the server checks again). Empty optional fields are fine.
+        let badField = null, badMsg = '';
+        document.querySelectorAll('.q[data-type="email"], .q[data-type="phone"]').forEach(q => {
+            if (badField) return;
+            const el = q.querySelector('input');
+            const v = el ? el.value.trim() : '';
+            if (!v) return;
+            if (q.dataset.type === 'email' && !validEmail(v)) {
+                badField = q; badMsg = 'Please enter a valid email address, like name@example.com.';
+            } else if (q.dataset.type === 'phone') {
+                const p = normalizePhone(v);
+                if (p === null) { badField = q; badMsg = 'Please enter a valid phone number, like 600-2423.'; }
+                else { el.value = p; answers[q.dataset.qid] = p; }
+            }
+        });
+        if (badField) {
+            errBox.textContent = badMsg;
+            errBox.classList.remove('hidden');
+            badField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            badField.querySelector('input')?.focus({ preventScroll: true });
+            return;
+        }
 
         if (firstMissing) {
             errBox.textContent = 'Please answer all required questions.';
