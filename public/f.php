@@ -39,6 +39,8 @@ $questions = $state === 'ok' ? FormsService::questions((int)$form['id']) : [];
 
 $loginUrl = 'login.php?redirect=' . rawurlencode('f.php?t=' . $token);
 $pageTitle = $form ? $form['title'] : 'Form';
+$theme = FormsService::theme($form ? (string)$form['theme'] : 'default');
+$reviewsOn = $form && !empty($form['reviews_enabled']);
 ?>
 <!doctype html>
 <html lang="en">
@@ -51,11 +53,12 @@ $pageTitle = $form ? $form['title'] : 'Form';
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
-        colors: { brand: { 600: '#4f46e5', 700: '#4338ca' } } } } }</script>
+        colors: { brand: { 600: <?= json_encode($theme['accent']) ?>, 700: <?= json_encode($theme['accent_dark']) ?> } } } } }</script>
     <style>
-        body { background: #f1f5f9; }
-        .q-choice:has(input:checked) { border-color: #4f46e5; background: #eef2ff; }
-        input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px #c7d2fe; border-color: #4f46e5; }
+        body { background: <?= $theme['bg'] ?>; min-height: 100vh; }
+        .q-choice:has(input:checked) { border-color: <?= $theme['accent'] ?>; background: <?= $theme['tint'] ?>; }
+        input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 2px <?= $theme['accent'] ?>55; border-color: <?= $theme['accent'] ?>; }
+        .theme-banner { height: 8px; border-radius: 16px 16px 0 0; background: <?= $theme['banner'] ?: 'transparent' ?>; }
     </style>
 </head>
 <body class="font-sans text-slate-800 antialiased">
@@ -93,10 +96,11 @@ $pageTitle = $form ? $form['title'] : 'Form';
     </div>
     <?php endif; ?>
 
-    <div id="formCard" class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
+    <?php if ($theme['banner']): ?><div class="theme-banner"></div><?php endif; ?>
+    <div id="formCard" class="<?= $theme['banner'] ? 'rounded-b-2xl' : 'rounded-2xl' ?> bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
         <div class="border-b border-slate-100 pb-4">
             <p class="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-600"><?= htmlspecialchars($form['company_name']) ?></p>
-            <h1 class="mt-1 text-xl font-extrabold text-slate-900 sm:text-2xl"><?= htmlspecialchars($form['title']) ?></h1>
+            <h1 class="mt-1 text-xl font-extrabold text-slate-900 sm:text-2xl"><?= $theme['emoji'] !== '' ? htmlspecialchars($theme['emoji']) . ' ' : '' ?><?= htmlspecialchars($form['title']) ?></h1>
             <?php if (!empty($form['description'])): ?>
             <p class="mt-2 whitespace-pre-line text-sm leading-6 text-slate-600"><?= htmlspecialchars($form['description']) ?></p>
             <?php endif; ?>
@@ -172,6 +176,20 @@ $pageTitle = $form ? $form['title'] : 'Form';
                 </div>
             <?php endforeach; ?>
 
+            <?php if ($reviewsOn): ?>
+            <div class="rounded-xl p-4" style="background: <?= $theme['tint'] ?>">
+                <label class="flex cursor-pointer items-start gap-3 text-sm text-slate-700">
+                    <input type="checkbox" id="shareConsent" class="mt-0.5 h-4 w-4">
+                    <span>You may share my review on <?= htmlspecialchars($form['company_name']) ?>'s Facebook page.</span>
+                </label>
+                <div id="nameWrap" class="mt-3 hidden">
+                    <label class="block text-xs font-bold text-slate-600">Your first name (optional)</label>
+                    <input type="text" id="displayName" maxlength="30" autocomplete="given-name" placeholder="Shown as &ldquo;A guest&rdquo; if left blank" class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm">
+                    <p class="mt-1.5 text-[11px] text-slate-500">Only your rating, comment and first name are shared, and only after our team has approved them.</p>
+                </div>
+            </div>
+            <?php endif; ?>
+
             <div id="formErr" class="hidden rounded-xl bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700"></div>
 
             <button type="submit" id="submitBtn" class="w-full rounded-xl bg-brand-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-brand-700 disabled:opacity-50" <?= $isPreview ? 'disabled' : '' ?>>
@@ -185,6 +203,12 @@ $pageTitle = $form ? $form['title'] : 'Form';
             <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m5 13 4 4L19 7"/></svg>
         </div>
         <p id="doneMsg" class="mt-4 text-base font-semibold text-slate-800"></p>
+        <?php if (!empty($form['fb_recommend_url'])): ?>
+        <a href="<?= htmlspecialchars($form['fb_recommend_url']) ?>" target="_blank" rel="noopener"
+           class="mt-5 inline-block rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-brand-700">
+            Enjoyed it? Recommend us on Facebook
+        </a>
+        <?php endif; ?>
     </div>
 
     <p class="mt-6 text-center text-[11px] text-slate-400">Powered by Centryk Forms</p>
@@ -193,6 +217,9 @@ $pageTitle = $form ? $form['title'] : 'Form';
     const TOKEN = <?= json_encode($token) ?>;
     const form = document.getElementById('fillForm');
     const errBox = document.getElementById('formErr');
+    document.getElementById('shareConsent')?.addEventListener('change', (e) => {
+        document.getElementById('nameWrap').classList.toggle('hidden', !e.target.checked);
+    });
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -236,7 +263,11 @@ $pageTitle = $form ? $form['title'] : 'Form';
             const res = await fetch('api/forms/submit.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: TOKEN, answers }),
+                body: JSON.stringify({
+                    token: TOKEN, answers,
+                    share_consent: document.getElementById('shareConsent')?.checked ? 1 : 0,
+                    display_name: document.getElementById('displayName')?.value.trim() || '',
+                }),
             });
             const data = await res.json().catch(() => ({}));
             if (!res.ok || !data.success) throw new Error(data.message || 'Could not submit your response.');

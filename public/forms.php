@@ -89,6 +89,10 @@ include __DIR__ . '/partials/account_header.php';
     <div id="createBox" class="biz-panel mb-3 hidden" style="padding:10px 12px">
         <form onsubmit="submitCreateForm(event)" class="flex items-center gap-2">
             <input id="newFormTitle" class="biz-input" style="flex:1" type="text" placeholder="Form title" maxlength="200" autocomplete="off">
+            <select id="newFormTemplate" class="biz-select" style="width:auto" title="Start from">
+                <option value="">Blank form</option>
+                <option value="review">Customer review &amp; ratings</option>
+            </select>
             <button type="submit" class="biz-btn biz-btn-primary biz-btn-sm">Create</button>
             <button type="button" class="biz-btn biz-btn-ghost biz-btn-sm" onclick="hideCreateForm()">Cancel</button>
         </form>
@@ -106,8 +110,9 @@ include __DIR__ . '/partials/account_header.php';
             </div>
             <h2 style="margin-top:10px;font-size:15px">No forms yet</h2>
             <p class="biz-muted" style="margin:4px auto 0;max-width:26rem;font-size:12px">
-                Build a survey, poll or feedback form, open it, and share the link.
-                Responses collect here with a summary and CSV export.
+                Build a survey, poll or feedback form, or start from the customer review &amp; ratings
+                template, then open it and share the link or a QR code. Responses collect here with a
+                summary and CSV export.
             </p>
             <button onclick="createForm()" class="biz-btn biz-btn-primary" style="margin-top:12px">Create your first form</button>
         </div>
@@ -194,11 +199,11 @@ function hideCreateForm() {
 async function submitCreateForm(e) {
     e.preventDefault();
     const input = document.getElementById('newFormTitle');
-    const title = input.value.trim() || 'Untitled form';
     const btn = e.target.querySelector('button[type="submit"]');
     btn.disabled = true;
     try {
-        const { id } = await api('save.php', { title });
+        const template = document.getElementById('newFormTemplate').value;
+        const { id } = await api('save.php', { title: input.value.trim() || (template === 'review' ? '' : 'Untitled form'), template });
         location.href = 'form-edit.php?id=' + id + '&company_id=' + COMPANY_ID;
     } catch (err) {
         showAlert(err.message, 'error');

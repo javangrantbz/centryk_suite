@@ -39,7 +39,17 @@ $questions = array_values(array_filter(FormsService::questions($formId), static 
 $summary = FormsService::summary($formId);
 $responses = FormsService::responses($formId, 200);
 
-$view = ($_GET['view'] ?? 'summary') === 'responses' ? 'responses' : 'summary';
+require_once __DIR__ . '/../app/services/FacebookPagePoster.php';
+$reviewsOn = !empty($form['reviews_enabled']);
+$view = $_GET['view'] ?? 'summary';
+$view = in_array($view, ['responses', 'moderation'], true) ? $view : 'summary';
+if ($view === 'moderation' && !$reviewsOn) {
+    $view = 'summary';
+}
+$modCounts = FormsService::moderationCounts($formId);
+$modStatus = in_array($_GET['status'] ?? '', ['approved', 'rejected'], true) ? $_GET['status'] : 'pending';
+$modQueue = $view === 'moderation' ? FormsService::moderationQueue($formId, $modStatus) : [];
+$fbConn = $view === 'moderation' ? FacebookPagePoster::connection($companyId) : null;
 
 ob_start();
 include __DIR__ . '/partials/admin_tools_dropdown.php';
@@ -81,11 +91,66 @@ include __DIR__ . '/partials/account_header.php';
             <span class="biz-seg">
                 <a href="?id=<?= $formId ?>&company_id=<?= $companyId ?>&view=summary" class="<?= $view === 'summary' ? 'is-active' : '' ?>">Summary</a>
                 <a href="?id=<?= $formId ?>&company_id=<?= $companyId ?>&view=responses" class="<?= $view === 'responses' ? 'is-active' : '' ?>">Responses</a>
+                <?php if ($reviewsOn): ?>
+                <a href="?id=<?= $formId ?>&company_id=<?= $companyId ?>&view=moderation" class="<?= $view === 'moderation' ? 'is-active' : '' ?>">Reviews<?= $modCounts['pending'] ? ' (' . $modCounts['pending'] . ')' : '' ?></a>
+                <?php endif; ?>
             </span>
             <span class="biz-muted" style="font-size:11px"><?= (int)$summary['total'] ?> response<?= (int)$summary['total'] === 1 ? '' : 's' ?></span>
         </div>
 
-        <?php if ((int)$summary['total'] === 0): ?>
+        <?php if ($view === 'moderation'): ?>
+            <div class="biz-panel-body" style="border-bottom:1px solid var(--bz-line-soft)">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <span class="biz-seg">
+                        <?php foreach (['pending' => 'Pending', 'approved' => 'Approved', 'rejected' => 'Rejected'] as $k => $lbl): ?>
+                        <a href="?id=<?= $formId ?>&company_id=<?= $companyId ?>&view=moderation&status=<?= $k ?>" class="<?= $modStatus === $k ? 'is-active' : '' ?>"><?= $lbl ?> (<?= (int)$modCounts[$k] ?>)</a>
+                        <?php endforeach; ?>
+                    </span>
+                    <span class="biz-muted" style="font-size:11px">
+                        <?= $fbConn ? 'Posting to ' . htmlspecialchars($fbConn['page_name'] ?: $fbConn['page_id']) : 'No Facebook Page connected: copy approved text to post by hand.' ?>
+                    </span>
+                </div>
+            </div>
+            <?php if (!$modQueue): ?>
+                <div class="biz-panel-empty">
+                    <?= $modStatus === 'pending' ? 'Nothing waiting. Reviews customers agree to share will appear here.' : 'No ' . $modStatus . ' reviews yet.' ?>
+                </div>
+            <?php else: ?>
+            <div class="biz-list">
+                <?php foreach ($modQueue as $r): ?>
+                <div class="biz-row" style="align-items:flex-start" data-review-id="<?= (int)$r['id'] ?>">
+                    <div class="min-w-0 flex-1 space-y-1.5">
+                        <div class="flex flex-wrap items-center gap-1.5" style="font-size:11px">
+                            <span class="biz-muted"><?= htmlspecialchars(date('j M Y H:i', strtotime($r['submitted_at']))) ?></span>
+                            <?php if ($r['flagged']): ?><span class="biz-chip biz-c-red">Check wording</span><?php endif; ?>
+                            <?php if ($r['fb_post_id']): ?><span class="biz-chip biz-c-green">On Facebook</span><?php endif; ?>
+                            <?php if ($r['fb_error']): ?><span class="biz-chip biz-c-amber"><?= htmlspecialchars($r['fb_error']) ?></span><?php endif; ?>
+                        </div>
+                        <?php if ($modStatus === 'pending'): ?>
+                        <textarea class="biz-input review-text" rows="3" style="font-size:13px"><?= htmlspecialchars((string)$r['post_text']) ?></textarea>
+                        <div class="flex gap-1.5">
+                            <button onclick="moderate(<?= (int)$r['id'] ?>, 'approve')" class="biz-btn biz-btn-primary biz-btn-sm">Approve<?= $fbConn ? ' &amp; post' : '' ?></button>
+                            <button onclick="moderate(<?= (int)$r['id'] ?>, 'reject')" class="biz-btn biz-btn-danger biz-btn-sm">Reject</button>
+                        </div>
+                        <?php else: ?>
+                        <div class="whitespace-pre-line rounded px-2 py-1.5" style="font-size:13px;background:var(--bz-head);border:1px solid var(--bz-line-soft)"><?= htmlspecialchars((string)$r['post_text']) ?></div>
+                        <div class="flex gap-1.5">
+                            <?php if ($modStatus === 'approved' && !$r['fb_post_id']): ?>
+                            <?php if ($fbConn): ?><button onclick="moderate(<?= (int)$r['id'] ?>, 'post')" class="biz-btn biz-btn-primary biz-btn-sm">Post now</button><?php endif; ?>
+                            <button onclick="copyReview(this)" class="biz-btn biz-btn-ghost biz-btn-sm">Copy text</button>
+                            <?php endif; ?>
+                            <?php if (!$r['fb_post_id']): ?>
+                            <button onclick="moderate(<?= (int)$r['id'] ?>, '<?= $modStatus === 'approved' ? 'reject' : 'approve' ?>')" class="biz-btn biz-btn-ghost biz-btn-sm"><?= $modStatus === 'approved' ? 'Reject' : 'Approve' ?></button>
+                            <?php endif; ?>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+
+        <?php elseif ((int)$summary['total'] === 0): ?>
             <div class="biz-panel-empty">No responses yet. Share the form link to start collecting.</div>
 
         <?php elseif ($view === 'summary'): ?>
@@ -157,7 +222,52 @@ include __DIR__ . '/partials/account_header.php';
     </div>
 </div>
 
-<script>if (window.lucide) lucide.createIcons();</script>
+<div id="modAlert" class="biz-notice hidden" style="position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:50;max-width:90vw"></div>
+<script>
+const COMPANY_ID = <?= $companyId ?>;
+
+function modNotice(msg, kind) {
+    const el = document.getElementById('modAlert');
+    el.textContent = msg;
+    el.className = 'biz-notice ' + (kind === 'error' ? 'biz-notice-red' : 'biz-notice-green');
+    el.classList.remove('hidden');
+    setTimeout(() => el.classList.add('hidden'), 4500);
+}
+
+async function moderate(id, action) {
+    const row = document.querySelector('[data-review-id="' + id + '"]');
+    const ta = row ? row.querySelector('.review-text') : null;
+    const body = { company_id: COMPANY_ID, response_id: id, action };
+    if (ta && (action === 'approve' || action === 'reject')) body.text = ta.value;
+    row?.querySelectorAll('button').forEach(b => b.disabled = true);
+    try {
+        const res = await fetch('api/forms/moderate.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) throw new Error(data.message || 'Something went wrong.');
+        modNotice(data.facebook ? data.facebook.message : (action === 'reject' ? 'Rejected.' : 'Saved.'),
+                  data.facebook && !data.facebook.posted ? 'error' : 'ok');
+        setTimeout(() => location.reload(), 1100);
+    } catch (e) {
+        modNotice(e.message, 'error');
+        row?.querySelectorAll('button').forEach(b => b.disabled = false);
+    }
+}
+
+function copyReview(btn) {
+    const text = btn.closest('.biz-row').querySelector('.whitespace-pre-line').textContent;
+    const done = () => modNotice('Copied. Paste it into a Facebook post.');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, () => modNotice('Could not copy. Select the text and copy it by hand.', 'error'));
+    } else {
+        modNotice('Select the text and copy it by hand.', 'error');
+    }
+}
+if (window.lucide) lucide.createIcons();
+</script>
 <?php include __DIR__ . '/partials/footer_app.php'; ?>
 </body>
 </html>

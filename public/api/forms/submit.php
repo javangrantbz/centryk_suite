@@ -60,7 +60,10 @@ foreach ($answers as $k => $v) {
 }
 
 try {
-    FormsService::recordResponse($form, $byId, $userId, $respondentKey);
+    FormsService::recordResponse($form, $byId, $userId, $respondentKey, [
+        'consent' => !empty($in['share_consent']),
+        'name'    => (string)($in['display_name'] ?? ''),
+    ]);
 } catch (RuntimeException $e) {
     Response::error($e->getMessage(), 422);
 }
