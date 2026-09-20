@@ -68,6 +68,8 @@ $TYPE_LABELS = [
     'rating'          => 'Rating scale',
     'yes_no'          => 'Yes / No',
     'number'          => 'Number',
+    'email'           => 'Email address',
+    'phone'           => 'Phone number',
     'date'            => 'Date',
     'section'         => 'Section heading',
 ];

@@ -14,8 +14,36 @@ class FormsService
     /** Question types the builder offers. 'section' is a non-answerable divider. */
     public const TYPES = [
         'short_text', 'long_text', 'single_choice', 'multiple_choice',
-        'dropdown', 'rating', 'yes_no', 'number', 'date', 'section',
+        'dropdown', 'rating', 'yes_no', 'number', 'date', 'section', 'email', 'phone',
     ];
+
+    /**
+     * Normalise a phone number, or null when it isn't valid.
+     *   - Belize: 7 digits (600-2423), also with a 501 / +501 prefix -> "600-2423"
+     *   - International: must start with "+", 8 to 15 digits -> "+<digits>"
+     * Spaces, dashes, dots and brackets are ignored.
+     */
+    public static function normalizePhone(string $raw): ?string
+    {
+        $s = trim($raw);
+        $international = str_starts_with($s, '+');
+        $digits = preg_replace('/\D+/', '', $s) ?? '';
+
+        if ($international && str_starts_with($digits, '501')) {
+            $international = false;
+            $digits = substr($digits, 3);
+        } elseif (!$international && strlen($digits) === 10 && str_starts_with($digits, '501')) {
+            $digits = substr($digits, 3);
+        }
+
+        if (!$international && preg_match('/^[2-9]\d{6}$/', $digits)) {
+            return substr($digits, 0, 3) . '-' . substr($digits, 3);
+        }
+        if ($international && preg_match('/^\d{8,15}$/', $digits) && $digits[0] !== '0') {
+            return '+' . $digits;
+        }
+        return null;
+    }
 
     /** Types whose answers are a pick from a fixed option list. */
     public const CHOICE_TYPES = ['single_choice', 'multiple_choice', 'dropdown'];
@@ -690,6 +718,19 @@ class FormsService
             }
             if ($q['type'] === 'number' && !is_numeric($val)) {
                 throw new RuntimeException('Please enter a number for: ' . $q['label']);
+            }
+            if ($q['type'] === 'email') {
+                $val = strtolower($val);
+                if (strlen($val) > 254 || !filter_var($val, FILTER_VALIDATE_EMAIL)) {
+                    throw new RuntimeException('Please enter a valid email address for: ' . $q['label']);
+                }
+            }
+            if ($q['type'] === 'phone') {
+                $norm = self::normalizePhone($val);
+                if ($norm === null) {
+                    throw new RuntimeException('Please enter a valid phone number for: ' . $q['label'] . ' (for example 600-2423)');
+                }
+                $val = $norm;
             }
             if ($q['type'] === 'date' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $val)) {
                 throw new RuntimeException('Please enter a valid date for: ' . $q['label']);
