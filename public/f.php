@@ -253,7 +253,7 @@ $answerableCount = count(array_filter($questions, static fn ($q) => $q['type'] !
            class="mt-4 inline-block rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-brand-700">
             Go to Facebook now
         </a>
-        <div><button type="button" id="fbStay" class="mt-2 text-xs text-slate-400 underline">Stay on this page</button></div>
+        <div><button type="button" id="fbStay" class="mt-3 rounded-xl border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50">Stay on this page</button></div>
         <?php else: ?>
         <a href="<?= htmlspecialchars($form['fb_recommend_url']) ?>" target="_blank" rel="noopener"
            class="mt-5 inline-block rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-brand-700">
@@ -273,8 +273,12 @@ $answerableCount = count(array_filter($questions, static fn ($q) => $q['type'] !
     // Facebook page. They can go now or stay. Only ever runs after their response is saved.
     function startFacebookRedirect() {
         if (!FB_REDIRECT_URL) return;
-        let secs = 5;
+        // Give people time to actually read the thank-you message: about 3 words a second
+        // plus a 5 second buffer, never less than 8 or more than 25 seconds.
+        const words = (document.getElementById('doneMsg').textContent || '').trim().split(/\s+/).filter(Boolean).length;
+        let secs = Math.min(25, Math.max(8, Math.ceil(words / 3) + 5));
         const label = document.getElementById('fbSecs');
+        label.textContent = secs;
         const timer = setInterval(() => {
             secs -= 1;
             if (secs <= 0) { clearInterval(timer); window.location.href = FB_REDIRECT_URL; return; }
