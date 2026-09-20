@@ -180,8 +180,12 @@ include __DIR__ . '/partials/account_header.php';
                     <input type="checkbox" id="fReviews" class="mt-0.5" <?= !empty($form['reviews_enabled']) ? 'checked' : '' ?>>
                     <span>Let customers agree to share their review. Reviews they agree to share wait in a queue for you to approve.</span>
                 </label>
-                <label class="block"><span class="biz-label">Facebook recommend link <span class="biz-muted">(optional)</span></span>
+                <label class="block"><span class="biz-label">Facebook page / reviews link <span class="biz-muted">(optional)</span></span>
                     <input id="fRecommend" class="biz-input" placeholder="https://facebook.com/yourpage/reviews" value="<?= htmlspecialchars($form['fb_recommend_url']) ?>"></label>
+                <label class="flex items-start gap-2" style="font-size:12px">
+                    <input type="checkbox" id="fAutoRedirect" class="mt-0.5" <?= !empty($form['fb_auto_redirect']) ? 'checked' : '' ?>>
+                    <span>Send diners to that link automatically, a few seconds after they submit, so they can like the page and leave a review. Otherwise they only see a button.</span>
+                </label>
                 <button onclick="saveReviewSettings()" class="biz-btn biz-btn-ghost biz-btn-sm" style="width:100%">Save</button>
             </div>
 
@@ -489,6 +493,7 @@ async function saveReviewSettings() {
             theme: document.getElementById('fTheme').value,
             reviews_enabled: document.getElementById('fReviews').checked ? 1 : 0,
             fb_recommend_url: document.getElementById('fRecommend').value.trim(),
+            fb_auto_redirect: document.getElementById('fAutoRedirect').checked ? 1 : 0,
         });
         showAlert('Saved.');
     } catch (e) { showAlert(e.message, 'error'); }

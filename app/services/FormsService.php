@@ -290,6 +290,10 @@ class FormsService
             $set[] = 'reviews_enabled = :re';
             $params['re'] = !empty($fields['reviews_enabled']) ? 1 : 0;
         }
+        if (array_key_exists('fb_auto_redirect', $fields)) {
+            $set[] = 'fb_auto_redirect = :far';
+            $params['far'] = !empty($fields['fb_auto_redirect']) ? 1 : 0;
+        }
         if (array_key_exists('fb_recommend_url', $fields)) {
             $url = trim((string)$fields['fb_recommend_url']);
             if ($url !== '' && !preg_match('#^https://#i', $url)) {
@@ -351,8 +355,8 @@ class FormsService
                 INSERT INTO form_forms
                     (company_id, created_by, title, description, status, access,
                      one_response_per_person, confirmation_message, theme, reviews_enabled,
-                     fb_recommend_url, share_token)
-                VALUES (:cid, :uid, :title, :descr, 'draft', :access, :orp, :cm, :theme, :re, :fbu, :tok)
+                     fb_recommend_url, fb_auto_redirect, share_token)
+                VALUES (:cid, :uid, :title, :descr, 'draft', :access, :orp, :cm, :theme, :re, :fbu, :far, :tok)
             ");
             $ins->execute([
                 'cid'    => $companyId,
@@ -365,6 +369,7 @@ class FormsService
                 'theme'  => $src['theme'],
                 're'     => (int)$src['reviews_enabled'],
                 'fbu'    => $src['fb_recommend_url'],
+                'far'    => (int)$src['fb_auto_redirect'],
                 'tok'    => bin2hex(random_bytes(16)),
             ]);
             $newId = (int)$pdo->lastInsertId();

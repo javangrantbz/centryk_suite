@@ -41,6 +41,7 @@ $loginUrl = 'login.php?redirect=' . rawurlencode('f.php?t=' . $token);
 $pageTitle = $form ? $form['title'] : 'Form';
 $theme = FormsService::theme($form ? (string)$form['theme'] : 'default');
 $reviewsOn = $form && !empty($form['reviews_enabled']);
+$fbRedirect = $form && !empty($form['fb_auto_redirect']) && !empty($form['fb_recommend_url']);
 ?>
 <!doctype html>
 <html lang="en">
@@ -204,10 +205,20 @@ $reviewsOn = $form && !empty($form['reviews_enabled']);
         </div>
         <p id="doneMsg" class="mt-4 text-base font-semibold text-slate-800"></p>
         <?php if (!empty($form['fb_recommend_url'])): ?>
+        <?php if ($fbRedirect): ?>
+        <p class="mt-4 text-sm text-slate-600">Like our page and leave a review on Facebook.</p>
+        <p id="fbCountdown" class="mt-1 text-xs text-slate-500">Taking you there in <span id="fbSecs">5</span>…</p>
+        <a href="<?= htmlspecialchars($form['fb_recommend_url']) ?>"
+           class="mt-4 inline-block rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-brand-700">
+            Go to Facebook now
+        </a>
+        <div><button type="button" id="fbStay" class="mt-2 text-xs text-slate-400 underline">Stay on this page</button></div>
+        <?php else: ?>
         <a href="<?= htmlspecialchars($form['fb_recommend_url']) ?>" target="_blank" rel="noopener"
            class="mt-5 inline-block rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-brand-700">
             Enjoyed it? Recommend us on Facebook
         </a>
+        <?php endif; ?>
         <?php endif; ?>
     </div>
 
@@ -215,6 +226,25 @@ $reviewsOn = $form && !empty($form['reviews_enabled']);
 
     <script>
     const TOKEN = <?= json_encode($token) ?>;
+    const FB_REDIRECT_URL = <?= json_encode($fbRedirect ? $form['fb_recommend_url'] : '') ?>;
+
+    // After a successful submit, count down and send the diner to the company's
+    // Facebook page. They can go now or stay. Only ever runs after their response is saved.
+    function startFacebookRedirect() {
+        if (!FB_REDIRECT_URL) return;
+        let secs = 5;
+        const label = document.getElementById('fbSecs');
+        const timer = setInterval(() => {
+            secs -= 1;
+            if (secs <= 0) { clearInterval(timer); window.location.href = FB_REDIRECT_URL; return; }
+            label.textContent = secs;
+        }, 1000);
+        document.getElementById('fbStay')?.addEventListener('click', () => {
+            clearInterval(timer);
+            document.getElementById('fbCountdown').classList.add('hidden');
+            document.getElementById('fbStay').classList.add('hidden');
+        });
+    }
     const form = document.getElementById('fillForm');
     const errBox = document.getElementById('formErr');
     document.getElementById('shareConsent')?.addEventListener('change', (e) => {
@@ -275,6 +305,7 @@ $reviewsOn = $form && !empty($form['reviews_enabled']);
             document.getElementById('doneMsg').textContent = data.confirmation_message;
             document.getElementById('doneCard').classList.remove('hidden');
             window.scrollTo({ top: 0, behavior: 'smooth' });
+            startFacebookRedirect();
         } catch (err) {
             errBox.textContent = err.message;
             errBox.classList.remove('hidden');
