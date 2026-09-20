@@ -600,6 +600,7 @@ async function disconnectFacebook() {
 
 // ── QR code ──────────────────────────────────────────────────────────────
 let qrReady = false;
+let qrInstance = null;
 const QR_LOGO = <?= json_encode($qrLogo) ?>;   // '' when the company has no usable logo
 const QR_SIZE = 400;                            // drawn large, shown at 200px, so it prints sharply
 function renderQr() {
@@ -608,7 +609,7 @@ function renderQr() {
     box.innerHTML = '';
     if (!window.QRCode) { box.textContent = 'QR code unavailable offline.'; return; }
     // Level H can lose ~30% of the code and still scan, which is what makes a logo in the middle safe.
-    new QRCode(box, { text: SHARE_URL, width: QR_SIZE, height: QR_SIZE, correctLevel: QRCode.CorrectLevel.H });
+    qrInstance = new QRCode(box, { text: SHARE_URL, width: QR_SIZE, height: QR_SIZE, correctLevel: QRCode.CorrectLevel.H });
 
     const style = document.querySelector('input[name="qrStyle"]:checked');
     const canvas = box.querySelector('canvas');
@@ -633,14 +634,29 @@ function renderQr() {
     logo.onerror = () => { qrReady = true; };           // logo missing: plain QR code still works
     logo.src = QR_LOGO;
 }
-function qrDataUrl() {
+// The QR image as a PNG data URL. withBorder adds the white "quiet zone" (4 modules on every
+// side) that scanners need; the download has it so it can be dropped into a flyer safely,
+// while the printed cards already have white space around the code and use it without.
+function qrDataUrl(withBorder) {
     const c = document.querySelector('#qrBox canvas');
-    if (c) return c.toDataURL('image/png');
-    const img = document.querySelector('#qrBox img');
-    return img ? img.src : '';
+    if (!c) {
+        const img = document.querySelector('#qrBox img');
+        return img ? img.src : '';
+    }
+    if (!withBorder) return c.toDataURL('image/png');
+    let modules = 37;
+    try { modules = qrInstance._oQRCode.getModuleCount() || 37; } catch (e) {}
+    const border = Math.ceil(c.width / modules * 4);
+    const out = document.createElement('canvas');
+    out.width = out.height = c.width + border * 2;
+    const ctx = out.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, out.width, out.height);
+    ctx.drawImage(c, border, border);
+    return out.toDataURL('image/png');
 }
 function downloadQr() {
-    const url = qrDataUrl();
+    const url = qrDataUrl(true);
     if (!qrReady || !url) { showAlert('QR code is not ready yet.', 'error'); return; }
     const a = document.createElement('a');
     a.href = url;
