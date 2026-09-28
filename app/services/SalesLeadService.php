@@ -225,6 +225,52 @@ class SalesLeadService
         return $id;
     }
 
+    /**
+     * Turn a lead into an invoice-maker client (the `customers` table) so
+     * admin/manager can quote/invoice them without retyping anything.
+     * Idempotent: converting an already-converted lead just returns the
+     * existing customer id instead of creating a duplicate.
+     */
+    public static function convertToClient(int $leadId, int $companyId, int $actorId): int
+    {
+        $cur = self::pdo()->prepare("SELECT * FROM sales_leads WHERE id = :id AND company_id = :cid");
+        $cur->execute(['id' => $leadId, 'cid' => $companyId]);
+        $lead = $cur->fetch();
+        if (!$lead) {
+            throw new InvalidArgumentException('Lead not found.');
+        }
+        if (!empty($lead['converted_customer_id'])) {
+            return (int)$lead['converted_customer_id'];
+        }
+
+        // invoice-maker's `customers.name` is a required "full name"; fall
+        // back to the business name when no contact person was recorded.
+        $name = $lead['contact_name'] !== '' ? $lead['contact_name'] : $lead['business_name'];
+
+        self::pdo()->prepare("
+            INSERT INTO customers (company_id, name, company, email, phone, address, created_by)
+            VALUES (:cid, :name, :company, :email, :phone, :address, :creator)
+        ")->execute([
+            'cid' => $companyId, 'name' => $name, 'company' => $lead['business_name'],
+            'email' => $lead['email'], 'phone' => $lead['phone'], 'address' => $lead['address'],
+            'creator' => $actorId,
+        ]);
+        $customerId = (int)self::pdo()->lastInsertId();
+
+        self::pdo()->prepare("UPDATE sales_leads SET converted_customer_id = :cust WHERE id = :id")
+            ->execute(['cust' => $customerId, 'id' => $leadId]);
+
+        Audit::log([
+            'actor_user_id' => $actorId,
+            'company_id'    => $companyId,
+            'event_type'    => 'sales_lead.converted',
+            'summary'       => 'Converted lead "' . $lead['business_name'] . '" to an invoice-maker client',
+            'metadata'      => ['lead_id' => $leadId, 'customer_id' => $customerId],
+        ]);
+
+        return $customerId;
+    }
+
     /** The follow-up timeline for a lead, oldest first. */
     public static function followUps(int $leadId): array
     {
