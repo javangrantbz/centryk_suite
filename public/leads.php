@@ -257,6 +257,12 @@ function renderDetail(l, followUps) {
             <div class="biz-muted" style="margin-top:4px">Added by ${esc(agent)} on ${esc(l.created_at)}</div>
         </div>
 
+        <div class="mt-2" style="border-top:1px solid var(--bz-line);padding-top:10px">
+            ${l.converted_customer_id
+                ? `<a href="invoice-maker/index.php?page=quotes-create&customer_id=${l.converted_customer_id}&company_id=${COMPANY_ID}" class="biz-btn biz-btn-ghost biz-btn-sm">Open in Invoice Maker — new quote</a>`
+                : `<button type="button" class="biz-btn biz-btn-ghost biz-btn-sm" onclick="convertLead(${l.id})">Convert to Invoice Maker client</button>`}
+        </div>
+
         <form onsubmit="submitFollowUp(event, ${l.id})" class="mt-3 grid gap-2" style="border-top:1px solid var(--bz-line);padding-top:10px">
             <div class="biz-label">Log a follow-up</div>
             <textarea id="fuNote" class="biz-input" placeholder="Called — reordering next week, etc."></textarea>
@@ -275,6 +281,16 @@ function renderDetail(l, followUps) {
             ${timeline}
         </div>
     `;
+}
+
+async function convertLead(id) {
+    try {
+        const { customer_id } = await api('convert.php', { id });
+        showAlert('Converted — opening a new quote in Invoice Maker…', 'success');
+        location.href = 'invoice-maker/index.php?page=quotes-create&customer_id=' + customer_id + '&company_id=' + COMPANY_ID;
+    } catch (err) {
+        showAlert(err.message, 'error');
+    }
 }
 
 async function submitFollowUp(e, id) {

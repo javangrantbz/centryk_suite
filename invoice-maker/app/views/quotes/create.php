@@ -215,6 +215,13 @@ document.querySelectorAll('[data-customer-option]').forEach((button) => {
     });
 });
 
+// Deep-linked from elsewhere in Centryk (e.g. Sales Leads' "Convert" action)
+// with the client already known — preselect it the same way a click would.
+const preselectCustomerId = <?= (int)($_GET['customer_id'] ?? 0) ?>;
+if (preselectCustomerId) {
+    document.querySelector(`[data-customer-id="${preselectCustomerId}"]`)?.click();
+}
+
 function addItem() {
     const row = `
         <div class="grid grid-cols-12 gap-2 item-row group">
