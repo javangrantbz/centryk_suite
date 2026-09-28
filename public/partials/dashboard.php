@@ -766,6 +766,23 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
                 </span>
             </a>
 
+            <!-- Sales Leads — free hub feature, open to any company member. Named
+                 "Sales Leads" (not "Customers") to stay distinct from invoice-
+                 maker/receivables' Customers (billing records) elsewhere in the hub. -->
+            <a href="leads.php" id="salesLeadsCard" style="--i:<?= ++$_gridIdx ?>"
+               class="dash-fade group flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-blue-300 hover:shadow-md hover:-translate-y-0.5">
+                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"/></svg>
+                </span>
+                <span class="min-w-0 flex-1">
+                    <span class="flex items-center gap-1.5">
+                        <span class="text-sm font-black tracking-tight text-slate-800">Sales Leads</span>
+                        <span class="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-emerald-600">Free</span>
+                    </span>
+                    <span class="mt-0.5 block text-[11px] font-semibold leading-snug text-slate-500 line-clamp-2">Record customers in the field and keep a roster for follow-ups.</span>
+                </span>
+            </a>
+
             </div>
         </div>
 
@@ -1474,6 +1491,11 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
             var casesCard = document.getElementById('casesCard');
             if (casesCard) {
                 casesCard.href = 'cases.php' + (selectedUuid ? ('?company_uuid=' + encodeURIComponent(selectedUuid)) : '');
+            }
+
+            var salesLeadsCard = document.getElementById('salesLeadsCard');
+            if (salesLeadsCard) {
+                salesLeadsCard.href = 'leads.php' + (selectedUuid ? ('?company_uuid=' + encodeURIComponent(selectedUuid)) : '');
             }
 
             // "Finish company profile" — shown to admins/owners while phone,
