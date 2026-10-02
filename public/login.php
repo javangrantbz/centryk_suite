@@ -61,15 +61,12 @@ if (AuthService::me()['authenticated']) {
         }
         .animate-shake { animation: shake 0.2s ease-in-out 0s 2; }
 
-        /* Faint ledger grid + soft teal glow: reads more finance/business than flat grey. */
+        /* Soft teal/slate glow for depth (no grid). */
         .fin-grid {
             background-color: #f8fafc;
             background-image:
                 radial-gradient(60% 55% at 85% 0%, rgba(20,184,166,0.13), transparent 70%),
-                radial-gradient(50% 45% at 0% 100%, rgba(15,23,42,0.06), transparent 70%),
-                linear-gradient(rgba(15,23,42,0.055) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(15,23,42,0.055) 1px, transparent 1px);
-            background-size: auto, auto, 32px 32px, 32px 32px;
+                radial-gradient(50% 45% at 0% 100%, rgba(15,23,42,0.06), transparent 70%);
         }
 
         @keyframes lf-card {
