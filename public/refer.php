@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
-    <title>Refer a Business — Centryk</title>
+    <title>Refer a Business - Centryk</title>
     <meta name="description" content="Know a business in Belize that could benefit from Centryk? Refer them and help your network run smarter.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

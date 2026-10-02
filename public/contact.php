@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
-    <title>Contact — Centryk</title>
+    <title>Contact - Centryk</title>
     <meta name="description" content="Get in touch with the Centryk team. We're here to help Belizean businesses get set up and running.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

@@ -132,7 +132,7 @@ function rs_bar(int $count, int $answered, string $color): string
     <meta name="robots" content="noindex, nofollow">
     <base href="<?= htmlspecialchars($base) ?>">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
-    <title><?= $share ? htmlspecialchars($share['title']) . ' — results' : 'Results' ?></title>
+    <title><?= $share ? htmlspecialchars($share['title']) . ' - results' : 'Results' ?></title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] } } } }</script>

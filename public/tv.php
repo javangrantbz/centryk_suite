@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
-    <title>Centryk TV — Keep the ticket money. Keep the viewer data.</title>
+    <title>Centryk TV - Keep the ticket money. Keep the viewer data.</title>
     <meta name="description" content="Centryk TV is coming soon: browser-based live broadcasting with pay-per-event ticketing through OneLink, built into the Centryk platform you already use.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

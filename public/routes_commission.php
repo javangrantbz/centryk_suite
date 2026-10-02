@@ -43,7 +43,7 @@ $n  = static fn ($v) => number_format((float)$v, 2);
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
-    <title>Route Commission — <?= htmlspecialchars($company['name']) ?></title>
+    <title>Route Commission - <?= htmlspecialchars($company['name']) ?></title>
     <style>
         * { box-sizing: border-box; }
         body { margin: 0; background: #eceef1; color: #1a1a1a;
