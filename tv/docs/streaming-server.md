@@ -187,7 +187,7 @@ http {
 
         location = /_authorize_playback {
             internal;
-            proxy_pass https://centryk.example/tv/api/stream/authorize_playback.php?key=STREAM_API_KEY_VALUE&$forwarded_qs;
+            proxy_pass https://centryk.example/tv/api/stream/authorize_playback.php?key=STREAM_API_KEY_VALUE&$forwarded_qs&cip=$remote_addr;
             proxy_ssl_server_name on;
             proxy_set_header Host centryk.example;
             proxy_pass_request_body off;
@@ -199,6 +199,14 @@ http {
             auth_request /_authorize_playback;
             alias /var/www/hls/;
             add_header Cache-Control no-cache;
+
+            # nginx-rtmp writes bare segment names into the .m3u8; carry the
+            # manifest's own query string onto each one so segments pass
+            # auth_request too (this is what the live server runs).
+            types { application/vnd.apple.mpegurl m3u8; }
+            sub_filter_types application/vnd.apple.mpegurl;
+            sub_filter '.ts' '.ts?$args';
+            sub_filter_once off;
         }
     }
 }
@@ -224,6 +232,25 @@ deployment: an expired/bad token now correctly 403s (previously a 500
 `authorize_playback.php`'s own "missing credentials" check), and a
 genuinely valid signed token passes through to file serving (404 only
 because no HLS segment exists yet - not an auth failure).
+
+### Binding tokens to the viewer's IP (`STREAM_BIND_IP`)
+
+A signed URL is otherwise valid for anyone who has it until `expires`. With
+`STREAM_BIND_IP=1` in the app's `.env`, `getPlaybackUrl()`/`getReplayUrl()`
+fold the viewer's IP into the HMAC (IPv6 reduced to its /64), and
+`authorize_playback.php` re-derives it from the `cip` param nginx appends from
+`$remote_addr` (appended last, so a client-supplied `cip` can't override it).
+
+**Rollout order matters** - the flag fails closed when `cip` is missing:
+1. Add `&cip=$remote_addr` to the `/_authorize_playback` `proxy_pass` above
+   and `nginx -t && systemctl reload nginx`. (Harmless while the flag is off.)
+2. Deploy the app, then set `STREAM_BIND_IP=1`.
+
+`watch.php` re-signs the URL every 3 minutes (hls.js `xhrSetup` swaps in the
+current token on every request; native-HLS Safari reloads its `src` every
+4) and on any 403, so the 5-minute token never cuts a long stream off and a
+viewer who changes IP (wifi to cellular) recovers on its own. Remaining gap:
+viewers sharing a NAT can still share a URL.
 
 ## Recommended initial rollout
 
@@ -635,7 +662,7 @@ pair's type is `relay`, not `srflx`/`host`, when on cellular data.
 
 ## Known gaps not yet covered here
 
-- **Token/session binding.** Playback tokens are valid for anyone who has
+- **Token/session binding.** Now optional - see `STREAM_BIND_IP` above. Unbound, playback tokens are valid for anyone who has
   them until `expires` (5 minutes for live, 6 hours for replay), not bound
   to a session or IP. This is a standard signed-URL tradeoff, not a bug, but
   keep these ttls short rather than lengthening them for convenience,

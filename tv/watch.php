@@ -194,13 +194,51 @@ $related = $related->fetchAll();
                 player.src = playbackUrl;
             } else if (player.canPlayType('application/vnd.apple.mpegurl')) {
                 player.src = playbackUrl;
+                // Native HLS can't rewrite request URLs, so swap in a fresh
+                // signed URL before the 5-minute token lapses (live is
+                // resumable, so the brief reload is the least-bad option).
+                setInterval(async () => {
+                    const fresh = await fetchFreshPlaybackUrl();
+                    if (fresh) { player.src = fresh; player.play().catch(() => {}); }
+                }, 240000);
             } else if (window.Hls && window.Hls.isSupported()) {
-                hlsInstance = new Hls();
+                // The signed token expires after 5 minutes but hls.js keeps
+                // re-requesting the playlist (and each segment, via nginx's
+                // sub_filter) with whatever query it first saw. Rewrite every
+                // request to the *current* token and refresh it regularly.
+                let currentQuery = new URL(playbackUrl).search;
+                hlsInstance = new Hls({
+                    xhrSetup: (xhr, url) => {
+                        const u = new URL(url);
+                        u.search = currentQuery;
+                        xhr.open('GET', u.toString(), true);
+                    }
+                });
                 hlsInstance.loadSource(playbackUrl);
                 hlsInstance.attachMedia(player);
+                const refreshToken = async () => {
+                    const fresh = await fetchFreshPlaybackUrl();
+                    if (fresh) { currentQuery = new URL(fresh).search; }
+                    return !!fresh;
+                };
+                setInterval(refreshToken, 180000);
+                // A 403 means the token expired or the viewer's IP changed
+                // (wifi <-> cellular): re-sign and resume.
+                hlsInstance.on(Hls.Events.ERROR, async (_e, data) => {
+                    if (data.response && data.response.code === 403 && await refreshToken()) {
+                        hlsInstance.startLoad();
+                    }
+                });
             }
         }
 
+        async function fetchFreshPlaybackUrl() {
+            try {
+                const r = await fetch('<?= e(tv_url('api/stream/playback.php')) ?>?event_id=' + encodeURIComponent(eventId), { credentials: 'same-origin' });
+                const p = await r.json();
+                return p.success && p.data && p.data.playback_url ? p.data.playback_url : null;
+            } catch (e) { return null; }
+        }
         if (!isReplay && initialStatus === 'ended') { showBroadcastEnded(); }
 
         sendHeartbeat().catch(console.error);
