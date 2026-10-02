@@ -61,6 +61,17 @@ if (AuthService::me()['authenticated']) {
         }
         .animate-shake { animation: shake 0.2s ease-in-out 0s 2; }
 
+        /* Faint ledger grid + soft teal glow: reads more finance/business than flat grey. */
+        .fin-grid {
+            background-color: #f8fafc;
+            background-image:
+                radial-gradient(60% 55% at 85% 0%, rgba(20,184,166,0.13), transparent 70%),
+                radial-gradient(50% 45% at 0% 100%, rgba(15,23,42,0.06), transparent 70%),
+                linear-gradient(rgba(15,23,42,0.055) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(15,23,42,0.055) 1px, transparent 1px);
+            background-size: auto, auto, 32px 32px, 32px 32px;
+        }
+
         @keyframes lf-card {
             from { opacity: 0; transform: perspective(700px) rotateX(8deg) translateY(24px) scale(0.97); }
             to   { opacity: 1; transform: perspective(700px) rotateX(0deg) translateY(0) scale(1); }
@@ -170,7 +181,7 @@ if (AuthService::me()['authenticated']) {
 </nav>
 
 <!-- ── Forms ── -->
-<section class="bg-slate-50 px-6 py-4 lg:py-5">
+<section class="fin-grid px-6 py-4 lg:py-5">
     <div class="mx-auto max-w-5xl">
         <div class="grid items-start gap-4 lg:grid-cols-[1.1fr_0.9fr]">
 
@@ -306,9 +317,13 @@ if (AuthService::me()['authenticated']) {
                     <p class="text-xs font-semibold text-slate-500">Encrypted sessions &amp; role-based access control.</p>
                 </div>
 
-                <div class="mt-3.5 border-t border-slate-100 pt-3 text-center">
-                    <button id="showRequestBtn" class="group text-sm font-semibold text-slate-400 transition hover:text-slate-700">
-                        New to Centryk? <span class="font-black text-slate-600 group-hover:text-slate-900">Request access →</span>
+                <div class="mt-3.5 border-t border-slate-100 pt-3.5">
+                    <button id="showRequestBtn" type="button" class="group flex w-full items-center justify-between gap-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-3 text-left text-white shadow-lg shadow-emerald-500/30 ring-1 ring-emerald-400/40 transition hover:-translate-y-0.5 hover:from-emerald-400 hover:to-teal-400 hover:shadow-emerald-500/40">
+                        <span>
+                            <span class="block text-[10px] font-black uppercase tracking-[0.18em] text-emerald-50/90">Not on Centryk yet?</span>
+                            <span class="block text-base font-black tracking-tight">Sign Up Free &mdash; Start Now</span>
+                        </span>
+                        <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/20 text-lg font-black transition group-hover:translate-x-0.5">&rarr;</span>
                     </button>
                 </div>
             </div>
@@ -318,7 +333,7 @@ if (AuthService::me()['authenticated']) {
                 <div class="mb-3.5 flex items-start justify-between gap-2">
                     <div>
                         <p class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">New to Centryk</p>
-                        <h2 class="mt-1.5 text-2xl font-black tracking-tight text-slate-950">Request Access</h2>
+                        <h2 class="mt-1.5 text-2xl font-black tracking-tight text-slate-950">Sign Up Free</h2>
                     </div>
                     <span class="mt-1 shrink-0 rounded-full bg-emerald-500 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-white">Free</span>
                 </div>
