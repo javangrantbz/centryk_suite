@@ -48,6 +48,7 @@ function tv_render_page_header(string $title, string $subtitle = '', array $acti
             <?php endif; ?>
 
             <div class="ml-auto flex items-center gap-2">
+                <?php if ($user) { $conferencePillApi = centryk_public_url() . '/api/conferences/mine.php'; include __DIR__ . '/../../public/partials/conference_pill.php'; } ?>
                 <?php if (count($organizations) > 1): ?>
                     <select onchange="if (this.value) { window.location.href = this.value; }" class="hidden rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold text-slate-600 outline-none focus:border-brand-500 sm:block">
                         <?php foreach ($organizations as $item): ?>

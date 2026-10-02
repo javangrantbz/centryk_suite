@@ -1,13 +1,15 @@
 <?php
 /**
  * Update a calendar event.
- * POST { id, title, description, event_date, event_type, color, attendee_ids? }
+ * POST { id, title, description, event_date, event_type, color, attendee_ids?,
+ *        conference?: { enabled, start_time: 'HH:MM', duration_minutes } }
  * Caller must be the event creator.
  */
 require_once __DIR__ . '/../../../app/core/Auth.php';
 require_once __DIR__ . '/../../../app/core/DB.php';
 require_once __DIR__ . '/../../../app/core/Response.php';
 require_once __DIR__ . '/../../../app/services/NotificationService.php';
+require_once __DIR__ . '/../../../app/services/ConferenceService.php';
 
 Auth::start();
 $user = Auth::user();
@@ -40,7 +42,12 @@ $allowedColors = ['slate', 'blue', 'teal', 'green', 'amber', 'red', 'purple'];
 if (!in_array($eventType, $allowedTypes, true)) $eventType = 'other';
 if (!in_array($color,     $allowedColors, true)) $color     = 'slate';
 
+$confIn = is_array($body['conference'] ?? null) ? $body['conference'] : null;
+$confWanted = !empty($confIn['enabled']);
+
 $pdo = DB::pdo();
+// DDL implicitly commits, so make sure the tables exist before the transaction.
+ConferenceService::ensureSchema();
 
 $evt = $pdo->prepare('SELECT id, company_id, created_by FROM events WHERE id = :id LIMIT 1');
 $evt->execute(['id' => $id]);
@@ -54,11 +61,19 @@ if (!$canEdit) {
     Response::error('Only the creator can edit this event.', 403);
 }
 
+$oldConf = ConferenceService::row($id);
+$oldParticipants = $oldConf ? ConferenceService::participantIds($id) : [];
+$confResult = ['enabled' => false, 'created' => false, 'rescheduled' => false, 'removed' => false];
+$newlyAddedIds = [];
+
 $pdo->beginTransaction();
 try {
     $prevStmt = $pdo->prepare('SELECT user_id FROM event_attendees WHERE event_id = :id');
     $prevStmt->execute(['id' => $id]);
     $previousAttendeeIds = array_map('intval', $prevStmt->fetchAll(PDO::FETCH_COLUMN));
+
+    // Before the events UPDATE so a moved date reads as a reschedule.
+    $confResult = ConferenceService::saveForEvent($id, $confIn, $eventDate);
 
     $upd = $pdo->prepare('
         UPDATE events
@@ -115,6 +130,9 @@ try {
                 'ym' => substr($eventDate, 0, 7),
             ]);
             foreach ($newlyAddedIds as $uid) {
+                if ($confWanted) {
+                    continue; // conference invitees are notified below
+                }
                 NotificationService::create([
                     'user_id' => $uid,
                     'company_id' => (int)$existing['company_id'],
@@ -142,6 +160,29 @@ try {
     Response::error('Could not save event.');
 }
 
+$actorId = (int)$user['id'];
+$actorLabel = trim(((string)($user['first_name'] ?? '')) . ' ' . ((string)($user['last_name'] ?? '')));
+$actorLabel = $actorLabel !== '' ? $actorLabel : 'Someone';
+if ($confResult['removed'] && $oldConf) {
+    ConferenceService::notify(
+        $oldConf, 'conference.cancelled',
+        $actorLabel . ' cancelled the online conference',
+        $title . ' is no longer an online conference.',
+        [$actorId], $oldParticipants
+    );
+}
+if ($confWanted) {
+    $conf = ConferenceService::row($id);
+    $when = ConferenceService::whenLabel($conf);
+    if ($confResult['created']) {
+        ConferenceService::notify($conf, 'conference.invited', $actorLabel . ' invited you to an online conference', $title . ' - ' . $when . '. Join from Centryk TV.', [$actorId]);
+    } elseif ($confResult['rescheduled']) {
+        ConferenceService::notify($conf, 'conference.rescheduled', 'Conference rescheduled: ' . $title, 'Now ' . $when . '.', [$actorId]);
+    } elseif ($newlyAddedIds) {
+        ConferenceService::notify($conf, 'conference.invited', $actorLabel . ' invited you to an online conference', $title . ' - ' . $when . '. Join from Centryk TV.', [$actorId], $newlyAddedIds);
+    }
+}
+
 $out = $pdo->prepare('
     SELECT e.id, e.company_id, e.title, e.description, e.event_date, e.event_type, e.color, e.created_by, e.created_at, e.updated_at,
            COALESCE(GROUP_CONCAT(ea.user_id ORDER BY u.first_name ASC, u.last_name ASC SEPARATOR ","), "") AS attendee_ids
@@ -156,5 +197,7 @@ $out->execute(['id' => $id]);
 
 $event = $out->fetch(PDO::FETCH_ASSOC);
 $event['attendee_ids'] = $event['attendee_ids'] !== '' ? array_map('intval', explode(',', $event['attendee_ids'])) : [];
+
+$event['conference'] = ConferenceService::summary(ConferenceService::row($id));
 
 Response::ok(['event' => $event]);

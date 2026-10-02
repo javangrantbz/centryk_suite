@@ -5,6 +5,7 @@ require_once __DIR__ . '/../app/services/AuthService.php';
 require_once __DIR__ . '/../app/services/MyPayCalendarFeed.php';
 require_once __DIR__ . '/../app/services/PublicHolidays.php';
 require_once __DIR__ . '/../app/services/PeopleMilestones.php';
+require_once __DIR__ . '/../app/services/ConferenceService.php';
 
 Auth::start();
 
@@ -132,8 +133,15 @@ if ($activeCompanyId) {
         'uid_creator' => (int)$user['id'],
         'uid_attendee' => (int)$user['id'],
     ]);
-    foreach ($eStmt->fetchAll(PDO::FETCH_ASSOC) as $ev) {
+    $eventRows = $eStmt->fetchAll(PDO::FETCH_ASSOC);
+    $confByEvent = ConferenceService::forEvents(array_column($eventRows, 'id'));
+    foreach ($eventRows as $ev) {
         $ev['attendee_ids'] = $ev['attendee_ids'] !== '' ? array_map('intval', explode(',', $ev['attendee_ids'])) : [];
+        $ev['conference'] = ConferenceService::summary($confByEvent[(int)$ev['id']] ?? null);
+        // The join link is for invited people only; others just see that it is online.
+        if ($ev['conference'] && (int)$ev['created_by'] !== (int)$user['id'] && !in_array((int)$user['id'], $ev['attendee_ids'], true)) {
+            $ev['conference']['join_url'] = '';
+        }
         $day = (int)date('j', strtotime($ev['event_date']));
         $eventsByDay[$day][] = $ev;
     }
@@ -557,7 +565,7 @@ function calLink(int $companyId, string $ym): string {
                     <?php else: ?>
                     <button type="button" class="event-pill block w-full truncate rounded-md px-2 py-1 text-left text-[11px] font-bold text-white shadow-sm transition <?= $bg ?>"
                             data-event='<?= htmlspecialchars(json_encode($ev), ENT_QUOTES, "UTF-8") ?>'>
-                        <?= htmlspecialchars($ev['title']) ?>
+                        <?php if (!empty($ev['conference'])): ?><span title="Online conference on Centryk TV" aria-hidden="true">&#127909;</span> <?php endif; ?><?= htmlspecialchars($ev['title']) ?>
                     </button>
                     <?php endif; ?>
                     <?php endforeach; ?>
@@ -675,6 +683,30 @@ function calLink(int $companyId, string $ym): string {
                         </label>
                         <?php endforeach; ?>
                     </div>
+                </div>
+
+                <div class="rounded-xl border border-rose-100 bg-rose-50/40 p-3">
+                    <label class="flex cursor-pointer items-start gap-2">
+                        <input id="evtConfOn" type="checkbox" class="mt-0.5 h-4 w-4 rounded border-slate-300 text-rose-600 focus:ring-rose-500">
+                        <span>
+                            <span class="block text-xs font-black text-slate-800">Online &mdash; host on Centryk TV as a conference</span>
+                            <span class="block text-[11px] font-semibold text-slate-500">Employees you add above are invited, notified, and get a join link. It shows in the header while it is upcoming or live.</span>
+                        </span>
+                    </label>
+                    <div id="evtConfFields" class="mt-3 hidden grid-cols-2 gap-3">
+                        <div>
+                            <label class="mb-1 block text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Start time</label>
+                            <input id="evtConfStart" type="time" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100">
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Length</label>
+                            <select id="evtConfDuration" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100">
+                                <option value="15">15 min</option><option value="30">30 min</option><option value="45">45 min</option>
+                                <option value="60" selected>1 hour</option><option value="90">1.5 hours</option><option value="120">2 hours</option><option value="180">3 hours</option>
+                            </select>
+                        </div>
+                    </div>
+                    <a id="evtConfJoin" href="#" class="mt-3 hidden items-center justify-center gap-1.5 rounded-xl bg-rose-600 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-rose-500">Join conference</a>
                 </div>
 
                 <div class="flex items-center justify-between gap-2 pt-2">
@@ -850,6 +882,11 @@ function calLink(int $companyId, string $ym): string {
     var descField   = document.getElementById('evtDescription');
     var dateField   = document.getElementById('evtDate');
     var typeField   = document.getElementById('evtType');
+    var confOn      = document.getElementById('evtConfOn');
+    var confFields  = document.getElementById('evtConfFields');
+    var confStart   = document.getElementById('evtConfStart');
+    var confDur     = document.getElementById('evtConfDuration');
+    var confJoin    = document.getElementById('evtConfJoin');
     var deleteBtn   = document.getElementById('evtDeleteBtn');
     var cancelBtn   = document.getElementById('evtCancelBtn');
     var closeBtn    = document.getElementById('evtCloseBtn');
@@ -876,7 +913,7 @@ function calLink(int $companyId, string $ym): string {
     }
 
     function setReadOnly(readOnly) {
-        [titleField, descField, dateField, typeField].forEach(function (field) {
+        [titleField, descField, dateField, typeField, confOn, confStart, confDur].forEach(function (field) {
             field.disabled = readOnly;
             field.classList.toggle('bg-slate-50', readOnly);
             field.classList.toggle('text-slate-500', readOnly);
@@ -905,6 +942,19 @@ function calLink(int $companyId, string $ym): string {
         attendeeChecks.forEach(function (check) {
             check.checked = attendeeIds.indexOf(Number(check.value)) !== -1;
         });
+        var conf = prefill.conference || null;
+        confOn.checked = !!conf;
+        confStart.value = conf ? conf.start_time : '';
+        confDur.value = conf ? String(conf.duration_minutes) : '60';
+        syncConfUI();
+        if (conf && conf.join_url && conf.state !== 'ended') {
+            confJoin.href = conf.join_url;
+            confJoin.classList.remove('hidden');
+            confJoin.classList.add('flex');
+        } else {
+            confJoin.classList.add('hidden');
+            confJoin.classList.remove('flex');
+        }
         setReadOnly(!currentCanEdit);
         deleteBtn.classList.toggle('hidden', !(mode === 'edit' && currentCanEdit));
         saveBtn.textContent = mode === 'edit' ? 'Save Changes' : 'Save Event';
@@ -913,6 +963,15 @@ function calLink(int $companyId, string $ym): string {
         if (window.lucide) lucide.createIcons();
         setTimeout(function () { titleField.focus(); }, 30);
     }
+    function syncConfUI() {
+        var on = confOn.checked;
+        confFields.classList.toggle('hidden', !on);
+        confFields.classList.toggle('grid', on);
+    }
+    confOn.addEventListener('change', function () {
+        syncConfUI();
+        if (confOn.checked && !confStart.value) { confStart.value = '09:00'; }
+    });
     function closeModal() {
         modal.classList.add('hidden');
     }
@@ -973,6 +1032,12 @@ function calLink(int $companyId, string $ym): string {
             color:       selectedColor,
             attendee_ids: attendeeChecks.filter(function (check) { return check.checked; }).map(function (check) { return Number(check.value); }),
         };
+        if (confOn.checked) {
+            if (!confStart.value) { showAlert('Pick a start time for the online conference.'); return; }
+            payload.conference = { enabled: true, start_time: confStart.value, duration_minutes: Number(confDur.value) };
+        } else {
+            payload.conference = { enabled: false };
+        }
         if (id) payload.id = Number(id);
 
         if (!payload.title)      { showAlert('Title is required.'); return; }

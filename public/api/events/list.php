@@ -7,6 +7,7 @@
 require_once __DIR__ . '/../../../app/core/Auth.php';
 require_once __DIR__ . '/../../../app/core/DB.php';
 require_once __DIR__ . '/../../../app/core/Response.php';
+require_once __DIR__ . '/../../../app/services/ConferenceService.php';
 
 Auth::start();
 $user = Auth::user();
@@ -65,8 +66,13 @@ $stmt->execute([
     'uid_attendee' => (int)$user['id'],
 ]);
 $events = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$confByEvent = ConferenceService::forEvents(array_column($events, 'id'));
 foreach ($events as &$event) {
     $event['attendee_ids'] = $event['attendee_ids'] !== '' ? array_map('intval', explode(',', $event['attendee_ids'])) : [];
+    $event['conference'] = ConferenceService::summary($confByEvent[(int)$event['id']] ?? null);
+    if ($event['conference'] && (int)$event['created_by'] !== (int)$user['id'] && !in_array((int)$user['id'], $event['attendee_ids'], true)) {
+        $event['conference']['join_url'] = '';
+    }
 }
 unset($event);
 
