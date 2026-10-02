@@ -66,6 +66,21 @@ $namedUrl = $siteRoot . '/review/' . $companySlug . '/' . $formSlug;   // descri
 $shortCode = FormsService::ensureShortCode($formId, $companyId);
 $shareUrl = $siteRoot . '/r/' . $shortCode;                            // shortest; used for the QR and Copy link
 
+// One-line summaries shown on the collapsed section headers.
+$qCount = count(array_filter($questions, static fn ($q) => $q['type'] !== 'section'));
+$accStatus = [
+    'basics'    => mb_strimwidth((string)$form['title'], 0, 34, '…'),
+    'questions' => $qCount . ' question' . ($qCount === 1 ? '' : 's'),
+    'who'       => ($form['access'] === 'public' ? 'Anyone with the link' : 'Signed-in only')
+                   . (!empty($form['one_response_per_person']) ? ' · 1 per person' : '')
+                   . (!empty($form['unique_contacts']) ? ' · 1 per contact' : ''),
+    'link'      => '/r/' . $shortCode,
+    'qr'        => 'Download or print',
+    'results'   => !$resShare['enabled'] ? 'Off' : ($resShare['show_responses'] ? 'On · responses shared' : 'On · charts only'),
+    'looks'     => (FormsService::THEMES[$form['theme']]['label'] ?? 'Classic') . (!empty($form['reviews_enabled']) ? ' · reviews on' : ''),
+    'fb'        => $fbConn ? (string)($fbConn['page_name'] ?: 'Connected') : 'Not connected',
+];
+
 ob_start();
 include __DIR__ . '/partials/admin_tools_dropdown.php';
 $headerActionsHtml = ob_get_clean();
@@ -103,7 +118,7 @@ include __DIR__ . '/partials/account_header.php';
             <a href="forms.php?company_id=<?= $companyId ?>" class="biz-btn biz-btn-ghost biz-btn-sm">&larr; All forms</a>
             <p class="biz-kicker" style="margin:0">Editing</p>
         </div>
-        <div class="flex items-center gap-1.5">
+        <div class="flex flex-wrap items-center gap-1.5">
             <a href="f.php?t=<?= htmlspecialchars($form['share_token']) ?>&preview=1" target="_blank" rel="noopener" class="biz-btn biz-btn-ghost biz-btn-sm">Preview</a>
             <?php if ((int)$form['response_count'] > 0): ?>
             <a href="form-responses.php?id=<?= $formId ?>&company_id=<?= $companyId ?>" class="biz-btn biz-btn-ghost biz-btn-sm">Responses (<?= (int)$form['response_count'] ?>)</a>
@@ -121,24 +136,26 @@ include __DIR__ . '/partials/account_header.php';
     <div class="grid gap-3 lg:grid-cols-[minmax(0,1fr)_300px] items-start">
 
         <!-- Questions -->
-        <div class="biz-panel">
-            <div class="biz-panel-head">
-                <span>Questions</span>
-                <div class="flex items-center gap-1.5">
+        <details class="acc biz-panel" data-acc="questions">
+            <summary class="acc-sum"><span class="acc-title">Questions</span><span class="acc-status"><?= htmlspecialchars($accStatus["questions"]) ?></span></summary>
+            <div class="acc-body">
+            <div class="flex items-center gap-1.5 px-2.5 pt-2.5">
                     <select id="newType" class="biz-select" style="width:auto;font-size:11px">
                         <?php foreach ($TYPE_LABELS as $k => $v): ?>
                         <option value="<?= $k ?>"><?= htmlspecialchars($v) ?></option>
                         <?php endforeach; ?>
                     </select>
                     <button onclick="addQuestion()" class="biz-btn biz-btn-ghost biz-btn-sm">+ Add</button>
-                </div>
             </div>
             <div id="questionList" class="biz-panel-body space-y-2"></div>
-        </div>
+            </div>
+        </details>
 
         <!-- Settings -->
         <div class="space-y-3">
-            <div class="biz-panel biz-panel-body space-y-2">
+            <details class="acc biz-panel" data-acc="basics">
+                <summary class="acc-sum"><span class="acc-title">Basics</span><span class="acc-status"><?= htmlspecialchars($accStatus["basics"]) ?></span></summary>
+                <div class="biz-panel-body space-y-2 acc-body">
                 <label class="block"><span class="biz-label">Form title</span>
                     <input id="fTitle" class="biz-input" value="<?= htmlspecialchars($form['title']) ?>"></label>
                 <label class="block"><span class="biz-label">Description <span class="biz-muted">(optional)</span></span>
@@ -147,9 +164,11 @@ include __DIR__ . '/partials/account_header.php';
                     <input id="fConfirm" class="biz-input" placeholder="Thanks — your response has been recorded." value="<?= htmlspecialchars($form['confirmation_message']) ?>"></label>
                 <button onclick="saveSettings()" class="biz-btn biz-btn-primary biz-btn-sm" style="width:100%">Save settings</button>
             </div>
+            </details>
 
-            <div class="biz-panel biz-panel-body space-y-2">
-                <p class="biz-label" style="margin:0">Who can respond</p>
+            <details class="acc biz-panel" data-acc="who">
+                <summary class="acc-sum"><span class="acc-title">Who can respond</span><span class="acc-status"><?= htmlspecialchars($accStatus["who"]) ?></span></summary>
+                <div class="biz-panel-body space-y-2 acc-body">
                 <label class="flex items-center gap-2" style="font-size:12px">
                     <input type="radio" name="access" value="public" <?= $form['access'] === 'public' ? 'checked' : '' ?>> Anyone with the link
                 </label>
@@ -166,9 +185,11 @@ include __DIR__ . '/partials/account_header.php';
                 </label>
                 <button onclick="saveAccess()" class="biz-btn biz-btn-ghost biz-btn-sm" style="width:100%">Save</button>
             </div>
+            </details>
 
-            <div class="biz-panel biz-panel-body space-y-1.5">
-                <p class="biz-label" style="margin:0">Share link</p>
+            <details class="acc biz-panel" data-acc="link">
+                <summary class="acc-sum"><span class="acc-title">Share link</span><span class="acc-status"><?= htmlspecialchars($accStatus["link"]) ?></span></summary>
+                <div class="biz-panel-body space-y-1.5 acc-body">
                 <div class="biz-muted" id="shareState" style="font-size:11px"></div>
                 <input id="shareUrl" class="biz-input biz-num" style="font-size:11px" readonly value="<?= htmlspecialchars($shareUrl) ?>">
                 <button onclick="copyShare()" class="biz-btn biz-btn-ghost biz-btn-sm" style="width:100%">Copy link</button>
@@ -192,9 +213,11 @@ include __DIR__ . '/partials/account_header.php';
                     </div>
                 </details>
             </div>
+            </details>
 
-            <div class="biz-panel biz-panel-body space-y-2">
-                <p class="biz-label" style="margin:0">QR code</p>
+            <details class="acc biz-panel" data-acc="qr">
+                <summary class="acc-sum"><span class="acc-title">QR code &amp; print</span><span class="acc-status"><?= htmlspecialchars($accStatus["qr"]) ?></span></summary>
+                <div class="biz-panel-body space-y-2 acc-body">
                 <p class="biz-muted" style="font-size:11px;margin:0">Print it for tables, counters or receipts. Scanning opens this form.</p>
                 <div id="qrBox" class="flex justify-center rounded bg-white p-2" style="border:1px solid var(--bz-line-soft)"></div>
                 <?php if ($qrLogo !== ''): ?>
@@ -223,9 +246,11 @@ include __DIR__ . '/partials/account_header.php';
                     <button onclick="printQrCard()" class="biz-btn biz-btn-primary biz-btn-sm" style="flex:1">Print</button>
                 </div>
             </div>
+            </details>
 
-            <div class="biz-panel biz-panel-body space-y-2">
-                <p class="biz-label" style="margin:0">Share results</p>
+            <details class="acc biz-panel" data-acc="results">
+                <summary class="acc-sum"><span class="acc-title">Share results</span><span class="acc-status"><?= htmlspecialchars($accStatus["results"]) ?></span></summary>
+                <div class="biz-panel-body space-y-2 acc-body">
                 <p class="biz-muted" style="font-size:11px;margin:0">A public page with the totals and charts, protected by a code. By default it never shows names, phone numbers, emails or written answers.</p>
                 <?php if ($resultsUrl !== ''): ?>
                 <div class="biz-muted" style="font-size:11px;color:var(--bz-accent-d)">Sharing is on.</div>
@@ -253,9 +278,11 @@ include __DIR__ . '/partials/account_header.php';
                 <button onclick="saveResultsOptions()" class="biz-btn biz-btn-primary biz-btn-sm" style="width:100%">Turn on sharing</button>
                 <?php endif; ?>
             </div>
+            </details>
 
-            <div class="biz-panel biz-panel-body space-y-2">
-                <p class="biz-label" style="margin:0">Look &amp; reviews</p>
+            <details class="acc biz-panel" data-acc="looks">
+                <summary class="acc-sum"><span class="acc-title">Look &amp; reviews</span><span class="acc-status"><?= htmlspecialchars($accStatus["looks"]) ?></span></summary>
+                <div class="biz-panel-body space-y-2 acc-body">
                 <label class="block"><span class="biz-label">Theme</span>
                     <select id="fTheme" class="biz-select">
                         <?php foreach (FormsService::THEMES as $k => $t): ?>
@@ -274,9 +301,11 @@ include __DIR__ . '/partials/account_header.php';
                 </label>
                 <button onclick="saveReviewSettings()" class="biz-btn biz-btn-ghost biz-btn-sm" style="width:100%">Save</button>
             </div>
+            </details>
 
-            <div class="biz-panel biz-panel-body space-y-2">
-                <p class="biz-label" style="margin:0">Facebook Page</p>
+            <details class="acc biz-panel" data-acc="fb">
+                <summary class="acc-sum"><span class="acc-title">Facebook Page</span><span class="acc-status"><?= htmlspecialchars($accStatus["fb"]) ?></span></summary>
+                <div class="biz-panel-body space-y-2 acc-body">
                 <div id="fbState" style="font-size:12px">
                 <?php if ($fbConn): ?>
                     <span class="font-bold"><?= htmlspecialchars($fbConn['page_name'] ?: $fbConn['page_id']) ?></span>
@@ -298,6 +327,7 @@ include __DIR__ . '/partials/account_header.php';
                 <p class="biz-muted" style="font-size:11px;margin:0">Only a company admin can connect the Page.</p>
                 <?php endif; ?>
             </div>
+            </details>
         </div>
     </div>
 </div>
@@ -305,6 +335,21 @@ include __DIR__ . '/partials/account_header.php';
 <!-- Filled in by printQrCard(): 1, 4 or 8 identical cards, laid out for one page. -->
 <div id="printSheet"></div>
 <style>
+    /* Collapsible settings sections (native <details>): tap a header to open or close it. */
+    .acc > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px;
+                     min-height: 46px; padding: 8px 12px; -webkit-tap-highlight-color: transparent; user-select: none; }
+    .acc > summary::-webkit-details-marker { display: none; }
+    .acc > summary::after { content: ''; flex: none; width: 8px; height: 8px; margin-left: 2px; margin-top: -3px;
+                            border-right: 2px solid var(--bz-faint, #94a3b8); border-bottom: 2px solid var(--bz-faint, #94a3b8);
+                            transform: rotate(45deg); transition: transform .15s; }
+    .acc[open] > summary::after { transform: rotate(-135deg); margin-top: 3px; }
+    .acc[open] > summary { border-bottom: 1px solid var(--bz-line-soft, #e2e8f0); }
+    .acc-title { font-size: 12px; font-weight: 700; flex: none; }
+    .acc-status { flex: 1; min-width: 0; text-align: right; font-size: 11px; font-weight: 500;
+                  color: var(--bz-faint, #94a3b8); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .acc > summary:hover { background: var(--bz-head, #f8fafc); }
+    .acc-body .biz-input, .acc-body .biz-select { font-size: 16px; }              /* no zoom-on-focus on phones */
+    @media (min-width: 1024px) { .acc-body .biz-input, .acc-body .biz-select { font-size: inherit; } }
     #qrBox canvas, #qrBox img { width: 200px !important; height: 200px !important; }
     #printSheet { display: none; }
     @page { margin: 10mm; }
@@ -796,6 +841,36 @@ function printQrCard() {
 renderStatus();
 renderQuestions();
 renderQr();
+
+// ── Collapsible sections ─────────────────────────────────────────────────
+// Wide screens: everything open, like before. Phones: everything collapsed; opening one closes the
+// others. Which sections were open is remembered across the page reloads some saves trigger.
+(function () {
+    const sections = [...document.querySelectorAll('details.acc')];
+    const wide = window.matchMedia('(min-width: 1024px)');
+    const KEY = 'formEditOpen:' + FORM_ID;
+    const read = () => { try { return JSON.parse(sessionStorage.getItem(KEY) || 'null'); } catch (e) { return null; } };
+    const write = (v) => { try { sessionStorage.setItem(KEY, JSON.stringify(v)); } catch (e) {} };
+
+    const saved = read();
+    sections.forEach(d => {
+        d.open = wide.matches ? true : !!(saved && saved.includes(d.dataset.acc));
+    });
+
+    sections.forEach(d => d.addEventListener('toggle', () => {
+        if (!wide.matches && d.open) {
+            sections.forEach(o => { if (o !== d && o.open) o.open = false; });     // one at a time on a phone
+        }
+        if (!wide.matches) write(sections.filter(o => o.open).map(o => o.dataset.acc));
+    }));
+
+    // Rotating a tablet or resizing across the breakpoint: open all when wide.
+    wide.addEventListener('change', () => { if (wide.matches) sections.forEach(d => { d.open = true; }); });
+
+    // Adding a question opens the Questions section so the new editor is visible.
+    const addBtn = document.querySelector('[onclick="addQuestion()"]');
+    if (addBtn) addBtn.addEventListener('click', () => { const q = document.querySelector('details.acc[data-acc="questions"]'); if (q) q.open = true; });
+})();
 </script>
 <?php include __DIR__ . '/partials/footer_app.php'; ?>
 </body>
