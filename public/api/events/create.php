@@ -1,13 +1,17 @@
 <?php
 /**
  * Create a calendar event for a company.
- * POST { company_id, title, description, event_date, event_type, color, attendee_ids? }
+ * POST { company_id, title, description, event_date, event_type, color, attendee_ids?,
+ *        conference?: { enabled, start_time: 'HH:MM', duration_minutes } }
+ * With conference.enabled the event is also hosted as an online conference on
+ * Centryk TV and every added employee is invited by notification.
  * Caller must be an active member of the company.
  */
 require_once __DIR__ . '/../../../app/core/Auth.php';
 require_once __DIR__ . '/../../../app/core/DB.php';
 require_once __DIR__ . '/../../../app/core/Response.php';
 require_once __DIR__ . '/../../../app/services/NotificationService.php';
+require_once __DIR__ . '/../../../app/services/ConferenceService.php';
 
 Auth::start();
 $user = Auth::user();
@@ -40,7 +44,14 @@ $allowedColors = ['slate', 'blue', 'teal', 'green', 'amber', 'red', 'purple'];
 if (!in_array($eventType, $allowedTypes, true)) $eventType = 'other';
 if (!in_array($color,     $allowedColors, true)) $color     = 'slate';
 
+$confIn = is_array($body['conference'] ?? null) ? $body['conference'] : null;
+$confWanted = !empty($confIn['enabled']);
+
 $pdo = DB::pdo();
+// DDL implicitly commits, so make sure the tables exist before the transaction.
+if ($confWanted) {
+    ConferenceService::ensureSchema();
+}
 
 $mStmt = $pdo->prepare('SELECT role FROM company_members WHERE user_id = :uid AND company_id = :cid AND status = "active" LIMIT 1');
 $mStmt->execute(['uid' => (int)$user['id'], 'cid' => $companyId]);
@@ -65,6 +76,10 @@ try {
     ]);
 
     $id = (int)$pdo->lastInsertId();
+
+    if ($confWanted) {
+        ConferenceService::saveForEvent($id, $confIn, $eventDate);
+    }
 
     if (!empty($attendeeIds)) {
         $attendeeIds[] = (int)$user['id'];
@@ -102,8 +117,8 @@ try {
             'ym' => substr($eventDate, 0, 7),
         ]);
         foreach ($validIds as $uid) {
-            if ($uid === (int)$user['id']) {
-                continue;
+            if ($uid === (int)$user['id'] || $confWanted) {
+                continue; // conference invitees get the richer invite below
             }
             NotificationService::create([
                 'user_id' => $uid,
@@ -131,6 +146,17 @@ try {
     Response::error('Could not save event.');
 }
 
+if ($confWanted) {
+    $conf = ConferenceService::row($id);
+    $actorName = trim(((string)($user['first_name'] ?? '')) . ' ' . ((string)($user['last_name'] ?? '')));
+    ConferenceService::notify(
+        $conf, 'conference.invited',
+        ($actorName !== '' ? $actorName : 'Someone') . ' invited you to an online conference',
+        $title . ' - ' . ConferenceService::whenLabel($conf) . '. Join from Centryk TV.',
+        [(int)$user['id']]
+    );
+}
+
 $out = $pdo->prepare('
     SELECT e.id, e.company_id, e.title, e.description, e.event_date, e.event_type, e.color, e.created_by, e.created_at, e.updated_at,
            COALESCE(GROUP_CONCAT(ea.user_id ORDER BY u.first_name ASC, u.last_name ASC SEPARATOR ","), "") AS attendee_ids
@@ -145,5 +171,7 @@ $out->execute(['id' => $id]);
 
 $event = $out->fetch(PDO::FETCH_ASSOC);
 $event['attendee_ids'] = $event['attendee_ids'] !== '' ? array_map('intval', explode(',', $event['attendee_ids'])) : [];
+
+$event['conference'] = ConferenceService::summary(ConferenceService::row($id));
 
 Response::ok(['event' => $event]);

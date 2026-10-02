@@ -11,6 +11,7 @@
  * different API base / "view all" page. Defaults suit the hub public root:
  *   window.__NOTIF_CFG = { apiBase: 'api/notifications', pageUrl: 'notifications.php' };
  */
+include __DIR__ . '/conference_pill.php';
 ?>
 <!-- Notifications -->
 <div class="relative shrink-0" id="notifWrap">

@@ -35,6 +35,19 @@ if (!$canDelete) {
     Response::error('Only the creator can delete this event.', 403);
 }
 
+// Tell invited people before the cascade removes the conference row.
+require_once __DIR__ . '/../../../app/services/ConferenceService.php';
+$conf = ConferenceService::row($id);
+if ($conf && $conf['state'] !== 'ended') {
+    $actor = trim(((string)($user['first_name'] ?? '')) . ' ' . ((string)($user['last_name'] ?? '')));
+    ConferenceService::notify(
+        $conf, 'conference.cancelled',
+        ($actor !== '' ? $actor : 'Someone') . ' cancelled a conference',
+        $conf['title'] . ' (' . ConferenceService::whenLabel($conf) . ') was cancelled.',
+        [(int)$user['id']]
+    );
+}
+
 $pdo->prepare('DELETE FROM events WHERE id = :id')->execute(['id' => $id]);
 
 Response::ok(['deleted' => true]);
