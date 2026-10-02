@@ -21,6 +21,10 @@ return [
     'turn_host' => (string)($_ENV['TURN_HOST'] ?? ''),
     'turn_shared_secret' => (string)($_ENV['TURN_SHARED_SECRET'] ?? ''),
     'stream_signing_secret' => (string)($_ENV['STREAM_SIGNING_SECRET'] ?? ''),
+    // When on, playback tokens are bound to the viewer's IP (nginx must pass
+    // &cip=$remote_addr to authorize_playback.php - see docs/streaming-server.md).
+    // Leave off until the VPS nginx config has been updated.
+    'stream_bind_ip' => in_array(strtolower((string)($_ENV['STREAM_BIND_IP'] ?? '')), ['1', 'true', 'on', 'yes'], true),
     'stream_cipher_key' => (string)($_ENV['TV_STREAM_CIPHER_KEY'] ?? ''),
     'viewer_active_window_seconds' => 90,
     // Comma-separated emails let through the production "coming soon" gate

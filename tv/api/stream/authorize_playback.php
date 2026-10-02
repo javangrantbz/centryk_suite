@@ -30,12 +30,15 @@ tv_require_stream_origin_secret();
 $eventId = (int)($_GET['event'] ?? 0);
 $expires = (int)($_GET['expires'] ?? 0);
 $token = (string)($_GET['token'] ?? '');
+// Set by nginx from $remote_addr, appended last so it wins over any `cip` a
+// client puts in its own query string (PHP keeps the last duplicate).
+$clientIp = (string)($_GET['cip'] ?? '');
 
 if ($eventId <= 0 || $expires <= 0 || $token === '') {
     Response::error('Missing playback credentials.', 400);
 }
 
-if (!StreamingService::verifyPlaybackToken((string)$eventId, $expires, $token)) {
+if (!StreamingService::verifyPlaybackToken((string)$eventId, $expires, $token, $clientIp)) {
     Response::error('Invalid or expired token.', 403);
 }
 

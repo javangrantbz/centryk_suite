@@ -98,14 +98,54 @@ class StreamingService
         return $url !== '' ? $url : 'rtmp://stream.example.com/live';
     }
 
-    public static function generatePlaybackToken(string $resourceId, int $expires): string
+    /**
+     * $clientIp, when non-empty, is folded into the HMAC so the token only
+     * validates for requests arriving from that address (see
+     * normalizeClientIp()). Empty = legacy unbound token.
+     */
+    public static function generatePlaybackToken(string $resourceId, int $expires, string $clientIp = ''): string
     {
         $secret = (string)tv_config('stream_signing_secret');
         if ($secret === '') {
             return '';
         }
 
-        return hash_hmac('sha256', $resourceId . '|' . $expires, $secret);
+        $message = $resourceId . '|' . $expires;
+        if ($clientIp !== '') {
+            $message .= '|' . $clientIp;
+        }
+        return hash_hmac('sha256', $message, $secret);
+    }
+
+    /**
+     * Canonical form of a client address for token binding: IPv4 as-is,
+     * IPv6 reduced to its /64 (a device's privacy-extension addresses rotate
+     * inside the /64, so binding to the full address would 403 a viewer
+     * mid-stream). Returns '' for anything unparseable.
+     */
+    public static function normalizeClientIp(string $ip): string
+    {
+        $packed = @inet_pton(trim($ip));
+        if ($packed === false) {
+            return '';
+        }
+        if (strlen($packed) === 16) {
+            // IPv4-mapped (::ffff:a.b.c.d) is really IPv4.
+            if (substr($packed, 0, 12) === str_repeat("\0", 10) . "\xff\xff") {
+                return (string)inet_ntop(substr($packed, 12));
+            }
+            return (string)inet_ntop(substr($packed, 0, 8) . str_repeat("\0", 8)) . '/64';
+        }
+        return (string)inet_ntop($packed);
+    }
+
+    /** The viewer address playback tokens bind to, or '' when binding is off. */
+    private static function boundIp(): string
+    {
+        if (!tv_config('stream_bind_ip')) {
+            return '';
+        }
+        return self::normalizeClientIp((string)($_SERVER['REMOTE_ADDR'] ?? ''));
     }
 
     /**
@@ -166,7 +206,7 @@ class StreamingService
 
         $resource = $rawKey . '.m3u8';
         $expires = time() + $ttl;
-        $token = self::generatePlaybackToken((string)$event['id'], $expires);
+        $token = self::generatePlaybackToken((string)$event['id'], $expires, self::boundIp());
         return $base . '/' . rawurlencode($resource) . '?expires=' . $expires . '&token=' . urlencode($token) . '&event=' . (int)$event['id'];
     }
 
@@ -228,12 +268,25 @@ class StreamingService
      * request) and any future origin-side port of this logic share one
      * source of truth for what a valid token actually is.
      */
-    public static function verifyPlaybackToken(string $resourceId, int $expires, string $token): bool
+    /**
+     * $clientIp is the address nginx saw on the real request (passed as
+     * `cip`). When binding is enabled it is mandatory: a missing or
+     * unparseable one fails closed rather than falling back to an unbound
+     * check.
+     */
+    public static function verifyPlaybackToken(string $resourceId, int $expires, string $token, string $clientIp = ''): bool
     {
         if ($expires < time() || $token === '') {
             return false;
         }
-        $expected = self::generatePlaybackToken($resourceId, $expires);
+        $bound = '';
+        if (tv_config('stream_bind_ip')) {
+            $bound = self::normalizeClientIp($clientIp);
+            if ($bound === '') {
+                return false;
+            }
+        }
+        $expected = self::generatePlaybackToken($resourceId, $expires, $bound);
         return $expected !== '' && hash_equals($expected, $token);
     }
 
@@ -485,7 +538,7 @@ class StreamingService
         }
 
         $expires = time() + $ttl;
-        $token = self::generatePlaybackToken((string)$event['id'], $expires);
+        $token = self::generatePlaybackToken((string)$event['id'], $expires, self::boundIp());
         return $base . '/' . ltrim((string)$event['replay_url'], '/')
             . '?expires=' . $expires . '&token=' . urlencode($token) . '&event=' . (int)$event['id'];
     }
