@@ -255,8 +255,11 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
 
     <?php $holidayStripStyle = 'card'; include __DIR__ . '/holiday_strip.php'; ?>
 
-    <!-- Company profile card -->
-    <div id="coProfileCard" style="--i:0" class="dash-fade mb-1 overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white shadow-sm">
+    <!-- Company bar: compact identity + two buttons. The full profile (banner, invite,
+         OneLink, setup progress) lives in the collapsible Company Profile panel so
+         "Your Apps" can start right at the top of the page. Element ids are unchanged
+         so the loader JS below keeps working. -->
+    <div id="coProfileCard" style="--i:0" class="dash-fade mb-3">
 
         <!-- Empty state (no company selected) -->
         <div id="coCardEmpty" class="relative px-6 py-4">
@@ -266,67 +269,79 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
             <p id="companyContext" class="mt-1 text-sm font-semibold text-slate-400">Select a company above, then open an app.</p>
         </div>
 
+
         <!-- Filled state (company selected) -->
         <div id="coCardFilled" class="hidden">
-            <!-- Main row -->
-            <div id="coIdentityBanner" class="relative overflow-hidden bg-transparent">
-                <div id="coBannerPreview" class="absolute inset-0 hidden bg-cover bg-center"></div>
-                <div id="coBannerWash" class="absolute inset-0 hidden bg-transparent"></div>
-                <div class="relative flex flex-col md:min-h-40 md:flex-row md:items-stretch">
 
-                <!-- Avatar -->
-                <div id="coAvatar" class="flex h-32 w-full shrink-0 items-center justify-center overflow-hidden border-b border-slate-200 bg-white/80 text-5xl font-black text-slate-700 select-none md:h-auto md:w-44 md:border-b-0 md:border-r">?</div>
+            <div id="coBar" class="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                <div id="coAvatar" class="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white text-lg font-black text-slate-700 select-none"></div>
 
-                <!-- Name + context -->
-                <div class="flex min-w-0 flex-1 flex-col justify-center p-5">
+                <div class="min-w-0 flex-1">
                     <div class="flex flex-wrap items-center gap-2">
-                        <span id="coName" class="text-xl font-black tracking-tight text-slate-900 truncate">—</span>
-                        <span id="coRoleBadge" class="rounded-full bg-white/55 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] ring-1 ring-white/60">—</span>
+                        <span id="coName" class="truncate text-base font-black tracking-tight text-slate-900">&mdash;</span>
+                        <span id="coRoleBadge" class="rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em]">&mdash;</span>
                         <span id="coBizBadge" class="hidden items-center gap-1 rounded-full bg-violet-600 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-white"></span>
                         <span id="coFiscalBadge" class="hidden items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em]"></span>
                     </div>
-                    <p class="mt-0.5 text-sm font-bold text-slate-700">
-                        Welcome back, <?= htmlspecialchars($user['first_name']) ?>
-                    </p>
-
-                    <p id="peoplePulse" class="mt-1.5 hidden items-center gap-1.5 text-xs font-bold text-slate-600"></p>
-
-                    <!-- Actions -->
-                    <div class="mt-3 flex flex-wrap items-center gap-2">
-                    <button id="coInviteBtn" type="button"
-                       class="flex items-center gap-1.5 rounded-xl border border-white/60 bg-white/50 px-3 py-2 text-xs font-black text-slate-700 backdrop-blur-sm transition hover:bg-white/75 hover:border-white">
-                        <i data-lucide="user-plus" class="h-3.5 w-3.5"></i>
-                        <span class="hidden sm:inline">Invite Member</span>
-                        <span class="rounded-full bg-white/55 px-1.5 py-0.5 text-[10px] text-slate-600 ring-1 ring-white/60">
-                            <span id="coMemberCount">0</span> members
-                        </span>
-                    </button>
-                    <a id="coMemberLink" href="profile.php#companies"
-                       class="flex items-center gap-1.5 rounded-xl border border-white/60 bg-white/50 px-3 py-2 text-xs font-black text-slate-700 backdrop-blur-sm transition hover:bg-white/75 hover:border-white hover:text-slate-950">
-                        <i data-lucide="building-2" class="h-3.5 w-3.5"></i>
-                        <span class="hidden sm:inline">Manage Company Profile</span>
-                    </a>
-                    <a id="coFinishProfileBtn" href="onboarding.php?resume=profile"
-                       class="hidden items-center gap-1.5 rounded-xl border border-violet-300 bg-violet-100/80 px-3 py-2 text-xs font-black text-violet-800 backdrop-blur-sm transition hover:bg-violet-200/80 hover:border-violet-400">
-                        <i data-lucide="clipboard-check" class="h-3.5 w-3.5"></i>
-                        <span>Finish company profile</span>
-                    </a>
-                    <?php if ($canUseOnelink): ?>
-                    <a id="coOnelinkPaymentsBtn" href="onelink-payments.php"
-                       class="flex items-center gap-1.5 rounded-xl border border-white/60 bg-white/50 px-3 py-2 text-xs font-black text-cyan-800 backdrop-blur-sm transition hover:bg-white/75 hover:border-white">
-                        <i data-lucide="credit-card" class="h-3.5 w-3.5"></i>
-                        <span class="hidden sm:inline">OneLink Payments</span>
-                    </a>
-                    <?php endif; ?>
-                    <a id="coAdvertiseBtn" href="sell.php"
-                       class="hidden items-center gap-1.5 rounded-xl border border-white/60 bg-white/50 px-3 py-2 text-xs font-black text-violet-800 backdrop-blur-sm transition hover:bg-white/75 hover:border-white">
-                        <i data-lucide="share-2" class="h-3.5 w-3.5"></i>
-                        <span class="hidden sm:inline">Sell on Store</span>
-                    </a>
-                    </div>
+                    <p class="mt-0.5 text-xs font-bold text-slate-500">Welcome back, <?= htmlspecialchars($user['first_name']) ?></p>
+                    <p id="peoplePulse" class="mt-1 hidden items-center gap-1.5 text-xs font-bold text-slate-600"></p>
                 </div>
+
+                <div class="flex shrink-0 items-center gap-2">
+                    <span id="coSetupChip" class="hidden items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-amber-700"></span>
+                    <a id="coInsightsBtn" href="insights.php" class="hidden items-center gap-1.5 rounded-xl bg-slate-900 px-3.5 py-2 text-xs font-black text-white transition hover:bg-slate-700">
+                        <i data-lucide="bar-chart-3" class="h-3.5 w-3.5"></i>
+                        <span>Insights</span>
+                    </a>
+                    <button id="coProfileToggle" type="button" aria-expanded="false" aria-controls="coProfilePanel"
+                       class="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-black text-slate-700 transition hover:bg-slate-100">
+                        <i data-lucide="building-2" class="h-3.5 w-3.5"></i>
+                        <span>Company Profile</span>
+                        <i id="coProfileChevron" data-lucide="chevron-down" class="h-3.5 w-3.5 transition-transform"></i>
+                    </button>
                 </div>
             </div>
+
+            <!-- Company Profile panel (collapsed by default) -->
+            <div id="coProfilePanel" class="mt-2 hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div id="coIdentityBanner" class="relative h-20 overflow-hidden bg-slate-100">
+                    <div id="coBannerPreview" class="absolute inset-0 hidden bg-cover bg-center"></div>
+                    <div id="coBannerWash" class="absolute inset-0 hidden bg-transparent"></div>
+                </div>
+                <div class="px-5 py-4">
+                    <div class="flex flex-wrap items-center gap-2">
+<button id="coInviteBtn" type="button"
+   class="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-black text-slate-700  transition hover:bg-slate-100">
+    <i data-lucide="user-plus" class="h-3.5 w-3.5"></i>
+    <span class="hidden sm:inline">Invite Member</span>
+    <span class="rounded-full bg-white px-1.5 py-0.5 text-[10px] text-slate-600 ring-1 ring-slate-200">
+        <span id="coMemberCount">0</span> members
+    </span>
+</button>
+<a id="coMemberLink" href="profile.php#companies"
+   class="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-black text-slate-700  transition hover:bg-slate-100 hover:text-slate-950">
+    <i data-lucide="building-2" class="h-3.5 w-3.5"></i>
+    <span class="hidden sm:inline">Manage Company Profile</span>
+</a>
+<a id="coFinishProfileBtn" href="onboarding.php?resume=profile"
+   class="hidden items-center gap-1.5 rounded-xl border border-violet-300 bg-violet-100/80 px-3 py-2 text-xs font-black text-violet-800  transition hover:bg-violet-200/80 hover:border-violet-400">
+    <i data-lucide="clipboard-check" class="h-3.5 w-3.5"></i>
+    <span>Finish company profile</span>
+</a>
+<?php if ($canUseOnelink): ?>
+<a id="coOnelinkPaymentsBtn" href="onelink-payments.php"
+   class="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-black text-cyan-800  transition hover:bg-slate-100">
+    <i data-lucide="credit-card" class="h-3.5 w-3.5"></i>
+    <span class="hidden sm:inline">OneLink Payments</span>
+</a>
+<?php endif; ?>
+<a id="coAdvertiseBtn" href="sell.php"
+   class="hidden items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-black text-violet-800  transition hover:bg-slate-100">
+    <i data-lucide="share-2" class="h-3.5 w-3.5"></i>
+    <span class="hidden sm:inline">Sell on Store</span>
+</a>
+                    </div>
+                </div>
 
             <!-- Setup progress (hidden once complete) -->
             <div id="setupProgressWrap" class="hidden border-t border-slate-100 px-6 py-3.5">
@@ -352,6 +367,7 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
                     </span>
                 </div>
             </div>
+
 
             <!-- Inline invite form (toggled by coInviteBtn) -->
             <div id="inlineInviteForm" class="hidden border-t border-slate-100 bg-slate-50/60 px-6 py-5">
@@ -411,9 +427,10 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
                 </form>
             </div>
 
+            </div>
+
         </div>
     </div>
-
     <section id="campaignLibraryLane" class="mt-4 hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div class="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
             <div>
@@ -1355,7 +1372,7 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
             var coRoleBadge = document.getElementById('coRoleBadge');
             if (coRoleBadge) {
                 coRoleBadge.textContent = c.role || '';
-                coRoleBadge.style.background = 'rgba(255,255,255,0.5)';
+                coRoleBadge.style.background = rColor + '1a';
                 coRoleBadge.style.color = rColor;
             }
 
@@ -1374,6 +1391,13 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
             var onelinkUrl = 'onelink-payments.php' + (selectedUuid ? ('?company_uuid=' + encodeURIComponent(selectedUuid)) : '');
             var coOnelinkBtn = document.getElementById('coOnelinkPaymentsBtn');
             if (coOnelinkBtn) { coOnelinkBtn.href = onelinkUrl; }
+            var coInsightsBtn = document.getElementById('coInsightsBtn');
+            if (coInsightsBtn) {
+                var canInsights = canManageAllCompanies || ['owner', 'admin', 'manager'].indexOf(String(c.role || '').toLowerCase()) !== -1;
+                coInsightsBtn.classList.toggle('hidden', !canInsights);
+                coInsightsBtn.classList.toggle('inline-flex', canInsights);
+                coInsightsBtn.href = 'insights.php?company_id=' + encodeURIComponent(selectedId);
+            }
             loadCampaignLibrary(selectedId);
             loadPeoplePulse(selectedId);
 
@@ -1552,6 +1576,17 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
                     markStep('setupStep4', step4Done);
                 } else {
                     progressWrap.classList.add('hidden');
+                }
+            }
+            var setupChip = document.getElementById('coSetupChip');
+            if (setupChip) {
+                if (stepsComplete < 4) {
+                    setupChip.textContent = 'Setup ' + stepsComplete + '/4';
+                    setupChip.classList.remove('hidden');
+                    setupChip.classList.add('inline-flex');
+                } else {
+                    setupChip.classList.add('hidden');
+                    setupChip.classList.remove('inline-flex');
                 }
             }
 
@@ -2107,6 +2142,22 @@ $tvWatchUrl = (Env::isProduction() && !$canUseTv) ? 'tv.php' : ($tvBaseUrl . '/'
     }
 
     // ── Inline invite-member form ────────────────────────────────────────────
+    // Company Profile panel: collapsed by default, remembered per browser.
+    (function () {
+        var tgl = document.getElementById('coProfileToggle');
+        var panel = document.getElementById('coProfilePanel');
+        var chev = document.getElementById('coProfileChevron');
+        if (!tgl || !panel) { return; }
+        function setOpen(open) {
+            panel.classList.toggle('hidden', !open);
+            tgl.setAttribute('aria-expanded', open ? 'true' : 'false');
+            if (chev) { chev.style.transform = open ? 'rotate(180deg)' : ''; }
+            try { localStorage.setItem('centryk_co_panel_open', open ? '1' : '0'); } catch (e) {}
+        }
+        tgl.addEventListener('click', function () { setOpen(panel.classList.contains('hidden')); });
+        try { if (localStorage.getItem('centryk_co_panel_open') === '1') { setOpen(true); } } catch (e) {}
+    })();
+
     var invBtn       = document.getElementById('coInviteBtn');
     var invForm      = document.getElementById('inviteForm');
     var invWrap      = document.getElementById('inlineInviteForm');
