@@ -260,29 +260,28 @@ if (AuthService::me()['authenticated']) {
 
             <!-- ── Right: Form ── -->
             <div class="lg:sticky lg:top-24">
-                <div class="lf-d rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:p-5">
+                <div class="lf-d rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:p-4">
 
             <!-- ── Sign-in view ── -->
             <div id="signinView">
-                <div class="mb-3.5">
-                    <p class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Returning user</p>
-                    <h2 class="mt-1.5 text-2xl font-black tracking-tight text-slate-950">Welcome back</h2>
+                <div class="mb-2.5">
+                    <h2 class="text-lg font-black tracking-tight text-slate-950">Welcome back</h2>
                 </div>
 
                 <form id="loginForm">
                     <div id="loginAlert" class="mb-3.5 hidden rounded-2xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-600"></div>
-                    <div class="space-y-3.5">
+                    <div class="space-y-2.5">
                         <div>
                             <label class="mb-1.5 block text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Email Address</label>
                             <input name="email" type="email" required autofocus
-                                class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                                class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
                                 placeholder="you@company.com">
                         </div>
                         <div>
                             <label class="mb-1.5 block text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Password</label>
                             <div class="relative">
                                 <input name="password" id="passwordInput" type="password" required
-                                    class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-11 text-sm font-semibold text-slate-900 outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                                    class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 pr-11 text-sm font-semibold text-slate-900 outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
                                     placeholder="Enter password">
                                 <button type="button" id="togglePassword" class="absolute inset-y-0 right-0 flex items-center px-3.5 text-slate-400 hover:text-slate-700" tabindex="-1">
                                     <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -299,23 +298,23 @@ if (AuthService::me()['authenticated']) {
                     </div>
 
                     <button id="loginBtn"
-                        class="mt-4 w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-black uppercase tracking-[0.12em] text-white shadow transition-all duration-200 hover:bg-slate-700 active:scale-[0.99] focus:outline-none focus:ring-4 focus:ring-slate-300">
+                        class="mt-3 w-full rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-black uppercase tracking-[0.12em] text-white shadow transition-all duration-200 hover:bg-slate-700 active:scale-[0.99] focus:outline-none focus:ring-4 focus:ring-slate-300">
                         Sign In to Centryk
                     </button>
 
-                    <div class="mt-3.5 flex items-center justify-between gap-3 border-t border-slate-100 pt-3.5">
+                    <div class="mt-2.5 flex items-center justify-between gap-3 border-t border-slate-100 pt-2.5">
                         <a href="forgot-password.php" class="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400 transition hover:text-slate-700">Forgot Password?</a>
                         <a href="contact.php" class="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400 transition hover:text-slate-700">Need Help?</a>
                     </div>
                 </form>
 
-                <div class="mt-3.5 flex items-center gap-2.5 rounded-xl border border-emerald-100 bg-emerald-50/60 px-4 py-2.5">
+                <div class="mt-2.5 flex items-center gap-2 rounded-lg border border-emerald-100 bg-emerald-50/60 px-3 py-1.5">
                     <svg class="h-4 w-4 shrink-0 text-emerald-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7l-9-5z"/></svg>
-                    <p class="text-xs font-semibold text-slate-500">Encrypted sessions &amp; role-based access control.</p>
+                    <p class="text-[11px] font-semibold text-slate-500">Encrypted sessions &amp; role-based access control.</p>
                 </div>
 
-                <div class="mt-3.5 border-t border-slate-100 pt-3.5">
-                    <button id="showRequestBtn" type="button" class="group flex w-full items-center justify-between gap-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-3 text-left text-white shadow-lg shadow-emerald-500/30 ring-1 ring-emerald-400/40 transition hover:-translate-y-0.5 hover:from-emerald-400 hover:to-teal-400 hover:shadow-emerald-500/40">
+                <div class="mt-2.5 border-t border-slate-100 pt-2.5">
+                    <button id="showRequestBtn" type="button" class="group flex w-full items-center justify-between gap-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-2.5 text-left text-white shadow-lg shadow-emerald-500/30 ring-1 ring-emerald-400/40 transition hover:-translate-y-0.5 hover:from-emerald-400 hover:to-teal-400 hover:shadow-emerald-500/40">
                         <span>
                             <span class="block text-[10px] font-black uppercase tracking-[0.18em] text-emerald-50/90">Not on Centryk yet?</span>
                             <span class="block text-base font-black tracking-tight">Sign Up Free &mdash; Start Now</span>
